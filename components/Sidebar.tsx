@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   BarChart3,
@@ -18,6 +21,16 @@ type SidebarItemProps = {
 };
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#070b18] p-6 lg:flex">
       <div className="mb-10 flex items-center gap-3">
@@ -40,38 +53,43 @@ export default function Sidebar() {
         <SidebarItem
           href="/"
           icon={<LayoutDashboard size={19} />}
-          title="Dashboard"
-          active
+          title="Overview"
+          active={isActive("/")}
         />
 
         <SidebarItem
           href="/peers"
           icon={<Bot size={19} />}
           title="AI Peers"
+          active={isActive("/peers")}
         />
 
         <SidebarItem
           href="/conversations"
           icon={<MessageSquare size={19} />}
           title="Conversations"
+          active={isActive("/conversations")}
         />
 
         <SidebarItem
           href="/knowledge"
           icon={<BookOpen size={19} />}
           title="Knowledge"
+          active={isActive("/knowledge")}
         />
 
         <SidebarItem
           href="/analytics"
           icon={<BarChart3 size={19} />}
           title="Analytics"
+          active={isActive("/analytics")}
         />
 
         <SidebarItem
           href="/settings"
           icon={<Settings size={19} />}
           title="Settings"
+          active={isActive("/settings")}
         />
       </nav>
 
