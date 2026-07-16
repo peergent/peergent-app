@@ -1,4 +1,6 @@
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import { ArrowRight, ScanSearch, Sparkles } from "lucide-react";
 
 const stats = [
   {
@@ -116,6 +118,36 @@ export default function Home() {
                 </p>
               </article>
             ))}
+          </section>
+
+          <section className="mt-8 overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-br from-[#0b1120]/95 via-[#101832]/95 to-violet-950/30 p-6 shadow-2xl shadow-violet-950/20 md:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-300">
+                  <Sparkles size={14} />
+                  Website Intelligence
+                </div>
+
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">
+                  Discover which AI employees your website needs
+                </h2>
+
+                <p className="mt-3 text-sm leading-7 text-slate-400 md:text-base">
+                  Analyze any company website and get a premium workforce
+                  recommendation based on customer touchpoints, automation
+                  opportunities, and growth signals.
+                </p>
+              </div>
+
+              <Link
+                href="/website-intelligence"
+                className="inline-flex w-fit items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-medium shadow-lg shadow-violet-950/40 transition hover:bg-violet-500"
+              >
+                <ScanSearch size={18} />
+                Analyze a website
+                <ArrowRight size={16} />
+              </Link>
+            </div>
           </section>
 
           <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
