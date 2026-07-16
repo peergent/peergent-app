@@ -3,40 +3,51 @@ import type {
   AnalysisStepDefinition,
   WebsiteAnalysisInput,
   WebsiteAnalyzer,
-  WebsiteIntelligenceReport,
 } from "./types";
-import { buildDemoReport } from "./demo-report";
+import { buildDemoAssessment } from "./demo-assessment";
 
 export const ANALYSIS_STEPS: AnalysisStepDefinition[] = [
   {
-    id: "crawl",
-    label: "Crawling website structure",
-    description: "Mapping pages, navigation, and key content zones",
-    durationMs: 1200,
-  },
-  {
-    id: "business-model",
-    label: "Identifying business model",
-    description: "Detecting industry, offerings, and target audience",
+    id: "positioning",
+    label: "Understanding company positioning…",
+    description: "Reading how the business describes itself and what it sells",
     durationMs: 1400,
   },
   {
-    id: "touchpoints",
-    label: "Mapping customer touchpoints",
-    description: "Finding where visitors convert, ask questions, or drop off",
-    durationMs: 1100,
-  },
-  {
-    id: "opportunities",
-    label: "Detecting automation opportunities",
-    description: "Scoring workflows that benefit from AI employees",
+    id: "journey",
+    label: "Mapping customer journey…",
+    description: "Tracing how a visitor might discover, evaluate, and convert",
     durationMs: 1300,
   },
   {
-    id: "recommendations",
-    label: "Generating AI workforce plan",
-    description: "Matching digital employees to your business needs",
-    durationMs: 1500,
+    id: "trust",
+    label: "Reviewing trust signals…",
+    description: "Looking for credibility markers, proof points, and reassurance",
+    durationMs: 1100,
+  },
+  {
+    id: "conversion",
+    label: "Analysing conversion opportunities…",
+    description: "Identifying where interest might be lost or uncaptured",
+    durationMs: 1200,
+  },
+  {
+    id: "operations",
+    label: "Looking for operational bottlenecks…",
+    description: "Scanning for repetitive workflows that automation could relieve",
+    durationMs: 1300,
+  },
+  {
+    id: "workforce",
+    label: "Building AI workforce recommendations…",
+    description: "Matching AI employees to observed and likely business needs",
+    durationMs: 1400,
+  },
+  {
+    id: "briefing",
+    label: "Preparing executive briefing…",
+    description: "Synthesising findings into a Chief of Staff assessment",
+    durationMs: 1200,
   },
 ];
 
@@ -71,7 +82,7 @@ export const demoWebsiteAnalyzer: WebsiteAnalyzer = {
   async analyze(
     input: WebsiteAnalysisInput,
     onProgress: AnalysisProgressCallback
-  ): Promise<WebsiteIntelligenceReport> {
+  ) {
     const url = normalizeUrl(input.url);
 
     if (!url) {
@@ -90,6 +101,6 @@ export const demoWebsiteAnalyzer: WebsiteAnalyzer = {
       onProgress(step.id, index);
     }
 
-    return buildDemoReport(url, hostname);
+    return buildDemoAssessment(url, hostname);
   },
 };

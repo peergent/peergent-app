@@ -1,15 +1,45 @@
 export type {
   AnalysisProgressCallback,
   AnalysisStepDefinition,
-  AutomationOpportunity,
-  RecommendedEmployee,
+  AssessmentFinding,
+  BusinessBrainConclusionChapter,
+  ChapterConfidence,
+  ChapterEnrichmentSlot,
+  CompanyDnaChapter,
+  ConfidenceSnapshot,
+  CustomerJourneyChapter,
+  DataSourceId,
+  EvidenceCategory,
+  ExecutiveSummaryChapter,
+  MarketingGrowthChapter,
+  OperationsChapter,
+  QualitativeConfidence,
   WebsiteAnalysisInput,
   WebsiteAnalyzer,
-  WebsiteInsight,
-  WebsiteIntelligenceReport,
+  WebsiteIntelligenceAssessment,
+  WorkforceRecommendation,
+  WorkforceRecommendationChapter,
 } from "./types";
 
+/** @deprecated Use WorkforceRecommendation */
+export type { WorkforceRecommendation as RecommendedEmployee } from "./types";
+
 export { ANALYSIS_STEPS, demoWebsiteAnalyzer } from "./demo-analyzer";
+export {
+  buildConfidenceSnapshot,
+  buildDemoAssessment,
+  collectAllFindings,
+} from "./demo-assessment";
+
+export {
+  buildAssessmentViewModel,
+  clampWords,
+} from "./assessment-presenter";
+export type {
+  AssessmentViewModel,
+  ModelZoneId,
+  PeerViewModel,
+} from "./assessment-presenter";
 
 /**
  * Replace `demoWebsiteAnalyzer` with a real implementation when AI analysis
