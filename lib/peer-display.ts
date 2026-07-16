@@ -39,6 +39,17 @@ const DEFAULT_ROLE_CONFIG: PeerRoleConfig = {
   ],
 };
 
+export const PEER_ROLES = [
+  "Sales",
+  "Support",
+  "Marketing",
+  "Planning",
+  "Finance",
+  "Custom",
+] as const;
+
+export const PEER_STATUSES = ["active", "inactive"] as const;
+
 const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   Sales: {
     roleLabel: "Sales & lead qualification",
@@ -116,8 +127,12 @@ export type DisplayPeer = {
   isActive: boolean;
 };
 
+export function getRoleConfig(role: string): PeerRoleConfig {
+  return ROLE_CONFIG[role] ?? DEFAULT_ROLE_CONFIG;
+}
+
 export function mapPeerToDisplay(peer: PeerRow): DisplayPeer {
-  const config = ROLE_CONFIG[peer.role] ?? DEFAULT_ROLE_CONFIG;
+  const config = getRoleConfig(peer.role);
 
   return {
     id: peer.id,

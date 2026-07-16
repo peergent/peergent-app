@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import NewPeerModal from "@/components/NewPeerModal";
@@ -276,12 +277,12 @@ export default function PeersPage() {
                       <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
                         <p className="text-xs text-slate-500">{peer.activity}</p>
 
-                        <button
-                          type="button"
+                        <Link
+                          href={`/peers/${peer.id}`}
                           className="text-sm font-medium text-violet-400 transition hover:text-violet-300"
                         >
                           Open peer →
-                        </button>
+                        </Link>
                       </div>
                     </article>
                   );
