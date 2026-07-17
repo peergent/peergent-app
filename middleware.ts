@@ -5,6 +5,7 @@ import {
   isProtectedRoute,
   isPublicRoute,
 } from "@/lib/auth/routes";
+import { isDevPlaygroundEnabled, isDevRoute } from "@/lib/dev/guards";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
@@ -21,6 +22,14 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/peers/workforce") {
     return NextResponse.redirect(new URL("/peers", request.url), 308);
+  }
+
+  if (isDevRoute(pathname)) {
+    if (!isDevPlaygroundEnabled()) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return supabaseResponse;
   }
 
   if (user && pathname === "/") {
