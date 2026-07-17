@@ -1,7 +1,7 @@
 import type { BuildContextRequest, ContextScope } from "../types";
 import { MissingScopeError } from "../core/errors";
 
-function createSessionId() {
+export function createSessionId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }

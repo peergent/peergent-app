@@ -1,6 +1,6 @@
 export { organizationLoader } from "./organization-loader";
 export { peerLoader, objectiveLoader } from "./peer-loader";
-export { preferencesLoader } from "./preferences-loader";
+export { policyLoader, preferencesLoader } from "./preferences-loader";
 export { knowledgeLoader } from "./knowledge-loader";
 export {
   brainLoader,
@@ -15,14 +15,14 @@ import { brainLoader, memoryLoader, telemetryLoader, toolsLoader } from "./brain
 import { knowledgeLoader } from "./knowledge-loader";
 import { organizationLoader } from "./organization-loader";
 import { objectiveLoader, peerLoader } from "./peer-loader";
-import { preferencesLoader } from "./preferences-loader";
+import { policyLoader } from "./preferences-loader";
 import type { ContextLoader } from "./base";
 
 export const defaultLoaders: ContextLoader<unknown>[] = [
   peerLoader,
   organizationLoader,
   objectiveLoader,
-  preferencesLoader,
+  policyLoader,
   telemetryLoader,
   knowledgeLoader,
   memoryLoader,

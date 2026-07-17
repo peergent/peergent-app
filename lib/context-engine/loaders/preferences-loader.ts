@@ -6,7 +6,7 @@ export type PolicySlice = {
   requiresApprovalFor: string[];
 };
 
-export const preferencesLoader: ContextLoader<PolicySlice> = {
+export const policyLoader: ContextLoader<PolicySlice> = {
   key: "policy",
   layerKey: "policy",
   loadMode: "eager",
@@ -18,8 +18,11 @@ export const preferencesLoader: ContextLoader<PolicySlice> = {
       canActIndependently: false,
       requiresApprovalFor: ["external-send", "pricing-change", "refund"],
     },
-    sources: [createStubSource("preferences-loader")],
+    sources: [createStubSource("policy-loader-placeholder")],
     priority: 40,
     loadMode: "eager",
   }),
 };
+
+/** @deprecated Use policyLoader */
+export const preferencesLoader = policyLoader;

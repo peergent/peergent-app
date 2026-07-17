@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { serializeContextBundle } from "../assembly/serialize";
 import { getLayerTtl } from "../cache/ttl";
 import { defaultContextCache, type MemoryContextCache } from "../cache/memory-store";
@@ -7,6 +8,10 @@ import {
   defaultPeerTypeRegistry,
   type PeerTypeRegistry,
 } from "../peer-types/registry";
+import {
+  defaultScopeResolver,
+  type ScopeResolver,
+} from "../scope/scope-resolver";
 import { resolveScope, validateScope } from "../scope/resolve-scope";
 import type {
   BuildContextRequest,
@@ -14,6 +19,7 @@ import type {
   ContextLayerKey,
   PromptPackage,
 } from "../types";
+import type { Database } from "@/lib/supabase/database.types";
 import { ContextBuilder, defaultContextBuilder } from "./builder";
 import { LoaderRegistry } from "./loader-registry";
 import {
@@ -21,11 +27,16 @@ import {
   getDefaultLazyLayers,
 } from "../assembly/compose-context";
 
+export type BuildContextOptions = {
+  supabase?: SupabaseClient<Database>;
+};
+
 export type ContextEngineOptions = {
   loaderRegistry?: LoaderRegistry;
   peerTypeRegistry?: PeerTypeRegistry;
   builder?: ContextBuilder;
   cache?: MemoryContextCache;
+  scopeResolver?: ScopeResolver;
 };
 
 export class ContextEngine {
@@ -33,12 +44,14 @@ export class ContextEngine {
   private readonly peerTypeRegistry: PeerTypeRegistry;
   private readonly builder: ContextBuilder;
   private readonly cache: MemoryContextCache;
+  private readonly scopeResolver: ScopeResolver;
 
   constructor(options: ContextEngineOptions = {}) {
     this.loaderRegistry = options.loaderRegistry ?? new LoaderRegistry();
     this.peerTypeRegistry = options.peerTypeRegistry ?? defaultPeerTypeRegistry;
     this.builder = options.builder ?? defaultContextBuilder;
     this.cache = options.cache ?? defaultContextCache;
+    this.scopeResolver = options.scopeResolver ?? defaultScopeResolver;
 
     if (!options.loaderRegistry) {
       this.loaderRegistry.registerMany(defaultLoaders);
@@ -46,8 +59,13 @@ export class ContextEngine {
     }
   }
 
-  async build(request: BuildContextRequest): Promise<ContextBundle> {
-    const scope = resolveScope(request);
+  async build(
+    request: BuildContextRequest,
+    options: BuildContextOptions = {}
+  ): Promise<ContextBundle> {
+    const scope = options.supabase
+      ? await this.scopeResolver.resolve(options.supabase, request)
+      : resolveScope(request);
     validateScope(scope);
 
     scope.peer.role = this.peerTypeRegistry.get(scope.peer.role).role;
@@ -57,6 +75,7 @@ export class ContextEngine {
     const loaderContext: LoaderContext = {
       scope,
       taskHint: request.taskHint,
+      supabase: options.supabase,
     };
 
     const slices = await Promise.all(
@@ -68,7 +87,8 @@ export class ContextEngine {
 
   async buildLazy(
     bundle: ContextBundle,
-    layerKey: ContextLayerKey
+    layerKey: ContextLayerKey,
+    options: BuildContextOptions = {}
   ): Promise<ContextBundle> {
     if (bundle.layers[layerKey]) {
       return bundle;
@@ -76,6 +96,7 @@ export class ContextEngine {
 
     const loaderContext: LoaderContext = {
       scope: bundle.scope,
+      supabase: options.supabase,
     };
 
     const slice = await this.loadLayer(layerKey, loaderContext);

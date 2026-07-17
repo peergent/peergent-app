@@ -1,10 +1,13 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ContextLayerKey, ContextScope } from "../types";
 import type { SourceRef } from "../types/sources";
+import type { Database } from "@/lib/supabase/database.types";
 
 export type LoaderContext = {
   scope: ContextScope;
   taskHint?: string;
   signal?: AbortSignal;
+  supabase?: SupabaseClient<Database>;
 };
 
 export type ContextSliceResult<T> = {

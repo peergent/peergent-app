@@ -1,28 +1,87 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAccount } from "@/components/account/AccountProvider";
 import { defaultContextEngine } from "@/lib/context-engine";
 import type { ContextBundle } from "@/lib/context-engine";
-
-const PLACEHOLDER_REQUEST = {
-  organizationId: "org_dev_placeholder",
-  peerId: "peer_dev_placeholder",
-  userId: "user_dev_placeholder",
-  taskHint: "Context Engine playground smoke test",
-} as const;
+import type { PeerRow } from "@/lib/peer-display";
+import { fetchOrganizationPeers } from "@/lib/peers/queries";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ContextPlayground() {
+  const { account, loading: accountLoading } = useAccount();
+  const supabase = useMemo(() => createClient(), []);
+  const [peers, setPeers] = useState<PeerRow[]>([]);
+  const [peersLoading, setPeersLoading] = useState(false);
+  const [selectedPeerId, setSelectedPeerId] = useState<string>("");
   const [bundle, setBundle] = useState<ContextBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [lazyLoading, setLazyLoading] = useState(false);
 
+  useEffect(() => {
+    const organizationId = account?.organization?.id;
+
+    if (!organizationId) {
+      setPeers([]);
+      setSelectedPeerId("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPeers() {
+      setPeersLoading(true);
+      setError(null);
+
+      try {
+        const nextPeers = await fetchOrganizationPeers(supabase, organizationId);
+
+        if (cancelled) {
+          return;
+        }
+
+        setPeers(nextPeers);
+        setSelectedPeerId((current) => current || nextPeers[0]?.id || "");
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load organization peers."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setPeersLoading(false);
+        }
+      }
+    }
+
+    void loadPeers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [account?.organization?.id, supabase]);
+
   const runBuild = useCallback(async () => {
+    if (!account?.organization || !selectedPeerId) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const result = await defaultContextEngine.build(PLACEHOLDER_REQUEST);
+      const result = await defaultContextEngine.build(
+        {
+          organizationId: account.organization.id,
+          peerId: selectedPeerId,
+          userId: account.userId,
+          membershipRole: account.organization.role,
+          taskHint: "Context Engine playground smoke test",
+        },
+        { supabase }
+      );
       setBundle(result);
     } catch (err) {
       setBundle(null);
@@ -30,11 +89,15 @@ export default function ContextPlayground() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [account, selectedPeerId, supabase]);
 
   useEffect(() => {
+    if (accountLoading || peersLoading || !selectedPeerId || !account?.organization) {
+      return;
+    }
+
     void runBuild();
-  }, [runBuild]);
+  }, [account, accountLoading, peersLoading, runBuild, selectedPeerId]);
 
   async function runLazyKnowledge() {
     if (!bundle) {
@@ -45,7 +108,9 @@ export default function ContextPlayground() {
     setError(null);
 
     try {
-      const updated = await defaultContextEngine.buildLazy(bundle, "knowledge");
+      const updated = await defaultContextEngine.buildLazy(bundle, "knowledge", {
+        supabase,
+      });
       setBundle(updated);
     } catch (err) {
       setError(
@@ -57,6 +122,31 @@ export default function ContextPlayground() {
   }
 
   const knowledgeLoaded = Boolean(bundle?.layers.knowledge);
+  const selectedPeer = peers.find((peer) => peer.id === selectedPeerId);
+
+  if (accountLoading) {
+    return (
+      <p className="text-sm text-slate-400">Loading authenticated session...</p>
+    );
+  }
+
+  if (!account) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        Sign in to inspect real organization and peer context. The playground uses
+        your authenticated Supabase session.
+      </div>
+    );
+  }
+
+  if (!account.organization) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        No active organization found for this account. Create or join an organization
+        first.
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -70,15 +160,61 @@ export default function ContextPlayground() {
           <code className="rounded bg-white/5 px-1.5 py-0.5 text-violet-200">
             ContextEngine.build()
           </code>{" "}
-          and lazy-load the knowledge layer on demand.
+          using your authenticated organization and a real peer record.
         </p>
       </header>
+
+      <section className="grid gap-3 rounded-xl border border-white/10 bg-[#070b18] p-4 md:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Organization</p>
+          <p className="mt-1 text-sm text-white">{account.organization.name}</p>
+          <p className="text-xs text-slate-400">{account.organization.slug}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">User</p>
+          <p className="mt-1 text-sm text-white">{account.fullName}</p>
+          <p className="text-xs text-slate-400">{account.organization.role}</p>
+        </div>
+        <div className="md:col-span-2">
+          <label
+            htmlFor="peer-select"
+            className="text-xs uppercase tracking-wide text-slate-500"
+          >
+            Peer
+          </label>
+          {peersLoading ? (
+            <p className="mt-2 text-sm text-slate-400">Loading peers...</p>
+          ) : peers.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-400">
+              No peers found in this organization.
+            </p>
+          ) : (
+            <select
+              id="peer-select"
+              value={selectedPeerId}
+              onChange={(event) => setSelectedPeerId(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            >
+              {peers.map((peer) => (
+                <option key={peer.id} value={peer.id} className="bg-slate-900">
+                  {peer.name} · {peer.role}
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedPeer ? (
+            <p className="mt-2 text-xs text-slate-400">
+              Objective: {selectedPeer.objective || "No objective set"}
+            </p>
+          ) : null}
+        </div>
+      </section>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => void runBuild()}
-          disabled={loading || lazyLoading}
+          disabled={loading || lazyLoading || !selectedPeerId}
           className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "Building..." : "Rebuild"}
@@ -132,7 +268,7 @@ export default function ContextPlayground() {
           </pre>
         ) : (
           <p className="px-4 py-6 text-sm text-slate-400">
-            No bundle available. Use Rebuild to try again.
+            No bundle available. Select a peer and use Rebuild to try again.
           </p>
         )}
       </section>

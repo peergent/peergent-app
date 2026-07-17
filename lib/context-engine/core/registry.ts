@@ -5,5 +5,8 @@ export { LoaderRegistry } from "./loader-registry";
 export {
   ContextEngineError,
   MissingScopeError,
+  OrganizationNotFoundError,
+  PeerNotFoundError,
+  ScopeAccessError,
   UnknownLayerError,
 } from "./errors";

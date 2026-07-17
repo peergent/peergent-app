@@ -18,3 +18,24 @@ export class UnknownLayerError extends ContextEngineError {
     this.name = "UnknownLayerError";
   }
 }
+
+export class ScopeAccessError extends ContextEngineError {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScopeAccessError";
+  }
+}
+
+export class OrganizationNotFoundError extends ContextEngineError {
+  constructor(organizationId: string) {
+    super(`Organization not found: ${organizationId}`);
+    this.name = "OrganizationNotFoundError";
+  }
+}
+
+export class PeerNotFoundError extends ContextEngineError {
+  constructor(peerId: string, organizationId: string) {
+    super(`Peer not found in organization: ${peerId} (${organizationId})`);
+    this.name = "PeerNotFoundError";
+  }
+}

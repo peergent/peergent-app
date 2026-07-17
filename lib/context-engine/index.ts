@@ -1,8 +1,9 @@
 export { ContextEngine, defaultContextEngine } from "./core/engine";
-export type { ContextEngineOptions } from "./core/engine";
+export type { BuildContextOptions, ContextEngineOptions } from "./core/engine";
 export { ContextBuilder, defaultContextBuilder } from "./core/builder";
 export { LoaderRegistry } from "./core/loader-registry";
 export { PeerTypeRegistry, defaultPeerTypeRegistry } from "./peer-types/registry";
+export { ScopeResolver, defaultScopeResolver } from "./scope/scope-resolver";
 
 export type {
   ActorScope,
