@@ -1,98 +1,42 @@
 import type {
-  AssessmentFinding,
-  ChapterConfidence,
-  EvidenceCategory,
+  DataSourceId,
   QualitativeConfidence,
   WebsiteIntelligenceAssessment,
   WorkforceRecommendation,
 } from "./types";
 import { collectAllFindings } from "./demo-assessment";
 
-export type ModelZoneId =
-  | "overview"
-  | "business-model"
-  | "growth"
-  | "execution"
-  | "workforce";
-
-export type SignalState = "strong" | "opportunity" | "needs-data" | "unknown";
-
-export type InsightObject = {
-  id: string;
-  title: string;
-  category: EvidenceCategory;
-  statement: string;
-  evidence?: string;
-  enrichmentHint?: string;
+export type TeamMemberView = {
+  name: string;
+  role: string;
 };
 
-export type GapChip = {
+export type BusinessBrainViewModel = {
+  companyName: string;
+  hostname: string;
+  understandingFill: number;
+  opportunity: string;
+  opportunityReason: string;
+  recommendedTeam: TeamMemberView[];
+  hirePeer: WorkforceRecommendation;
+};
+
+export type WaitingForChip = {
   id: string;
   label: string;
   href?: string;
 };
 
-export type SignalStripItem = {
-  id: string;
-  label: string;
-  state: SignalState;
-  strength: 1 | 2 | 3;
+export type ReasoningConfidence = "Strong" | "Growing" | "Moderate" | "Early";
+
+export type BusinessBrainReasoningViewModel = {
+  observed: string[];
+  likely: string[];
+  waitingFor: WaitingForChip[];
+  confidence: ReasoningConfidence;
 };
 
-export type DeployTier = "primary" | "next" | "later";
-
-export type PeerViewModel = {
-  employee: WorkforceRecommendation;
-  deployLabel: string;
-  tier: DeployTier;
-  whyNow: string;
-};
-
-export type ZoneReasoning = {
-  confidenceLabel: string;
-  confidenceReason: string;
-  findings: AssessmentFinding[];
-};
-
-export type AssessmentViewModel = {
-  meta: WebsiteIntelligenceAssessment["meta"];
-  confidence: WebsiteIntelligenceAssessment["confidenceSnapshot"];
-  overview: {
-    opportunityHeadline: string;
-    opportunityAccent: string;
-    signalChips: InsightObject[];
-    gapChips: GapChip[];
-    primaryPeer: PeerViewModel;
-  };
-  signalStrip: SignalStripItem[];
-  businessModel: {
-    pills: { label: string; value: string }[];
-    insights: InsightObject[];
-    reasoning: ZoneReasoning;
-  };
-  growth: {
-    segments: { label: string; count: number; tone: "observed" | "likely" | "unknown" }[];
-    journeyFrictionNode: string;
-    insights: InsightObject[];
-    reasoning: ZoneReasoning;
-  };
-  execution: {
-    areas: { id: string; name: string; state: SignalState }[];
-    topInsight: InsightObject | null;
-    insights: InsightObject[];
-    reasoning: ZoneReasoning;
-  };
-  workforce: {
-    peers: PeerViewModel[];
-  };
-  decision: {
-    peerName: string;
-    whyChips: string[];
-    connectChips: GapChip[];
-  };
-};
-
-export function clampWords(text: string, maxWords: number): string {
+function clampWords(text: string, maxWords: number): string {
   const words = text
     .replace(/[.,—–;:!?()[\]]/g, " ")
     .split(/\s+/)
@@ -101,283 +45,195 @@ export function clampWords(text: string, maxWords: number): string {
   return words.slice(0, maxWords).join(" ");
 }
 
-function findingToInsight(finding: AssessmentFinding, titleWords = 4): InsightObject {
-  return {
-    id: finding.id,
-    title: clampWords(finding.statement, titleWords),
-    category: finding.category,
-    statement: finding.statement,
-    evidence: finding.evidence,
-    enrichmentHint: finding.enrichmentHint,
-  };
-}
+function dedupeLabels(labels: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
 
-function deriveSignalState(
-  confidence: ChapterConfidence,
-  findings: AssessmentFinding[]
-): { state: SignalState; strength: 1 | 2 | 3 } {
-  const hasObserved = findings.some((f) => f.category === "observed");
-  const hasNeedsData = findings.some((f) => f.category === "requires-more-data");
-  const mostlyUnknown =
-    findings.filter((f) => f.category === "unknown").length >
-    findings.length / 2;
-
-  if (hasObserved && confidence.level !== "low") {
-    return { state: "strong", strength: 3 };
-  }
-  if (hasNeedsData || confidence.level === "low") {
-    return {
-      state: mostlyUnknown ? "unknown" : "needs-data",
-      strength: 1,
-    };
-  }
-  if (confidence.level === "moderate") {
-    return { state: "opportunity", strength: 2 };
-  }
-  return { state: "opportunity", strength: 2 };
-}
-
-function peerTier(index: number): {
-  tier: DeployTier;
-  deployLabel: string;
-} {
-  if (index === 0) return { tier: "primary", deployLabel: "Highest leverage" };
-  if (index === 1) return { tier: "next", deployLabel: "Next" };
-  return { tier: "later", deployLabel: "Later" };
-}
-
-function uniqueFindings(
-  findings: AssessmentFinding[],
-  seen: Set<string>,
-  limit: number
-): AssessmentFinding[] {
-  const result: AssessmentFinding[] = [];
-  for (const f of findings) {
-    if (seen.has(f.id)) continue;
-    seen.add(f.id);
-    result.push(f);
+  for (const label of labels) {
+    const key = label.toLowerCase().trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(label);
     if (result.length >= limit) break;
   }
+
   return result;
 }
 
-function collectGapChips(assessment: WebsiteIntelligenceAssessment): GapChip[] {
+function deriveUnderstandingFill(confidence: QualitativeConfidence): number {
+  if (confidence === "high") return 0.82;
+  if (confidence === "moderate") return 0.58;
+  return 0.34;
+}
+
+function deriveOpportunity(assessment: WebsiteIntelligenceAssessment): string {
+  const journey = assessment.customerJourney.opportunities[0]?.statement;
+  const ops = assessment.operations.areas
+    .flatMap((area) => area.findings)
+    .find((f) => f.category === "likely" || f.category === "observed")?.statement;
+
+  const raw = journey ?? ops ?? "Capture inbound demand";
+  const lower = raw.toLowerCase();
+
+  if (lower.includes("qualif")) return "Lead qualification";
+  if (lower.includes("hour") || lower.includes("always-on")) return "Capture inbound after hours";
+  if (lower.includes("schedul") || lower.includes("appointment")) return "Reduce manual scheduling";
+  if (lower.includes("support") || lower.includes("question")) return "Increase self-service";
+  if (lower.includes("follow")) return "Automate lead follow-up";
+
+  return clampWords(raw, 4);
+}
+
+function deriveOpportunityReason(assessment: WebsiteIntelligenceAssessment): string {
+  const friction = assessment.customerJourney.frictionPoints[0]?.statement;
+  const inbound = assessment.operations.areas
+    .flatMap((area) => area.findings)
+    .find((f) => f.id === "ops-lead-1" || f.statement.toLowerCase().includes("qualif"))
+    ?.statement;
+
+  const raw =
+    inbound ??
+    friction ??
+    assessment.executiveSummary.rationale.split(".")[0] ??
+    "Inbound interest is not yet being captured";
+
+  return clampWords(raw, 12);
+}
+
+function findPeer(
+  recommendations: WorkforceRecommendation[],
+  matcher: (rec: WorkforceRecommendation) => boolean
+) {
+  return recommendations.find(matcher);
+}
+
+function buildRecommendedTeam(
+  recommendations: WorkforceRecommendation[]
+): TeamMemberView[] {
+  const sales =
+    findPeer(recommendations, (r) => r.role === "Sales") ?? recommendations[0];
+  const marketing =
+    findPeer(recommendations, (r) => r.role === "Marketing") ?? recommendations[2];
+
+  const team: TeamMemberView[] = [];
+  if (sales) team.push({ name: sales.name, role: sales.role });
+  if (marketing) team.push({ name: marketing.name, role: marketing.role });
+  return team;
+}
+
+const waitingForLabels: Record<DataSourceId, string> = {
+  website: "Website",
+  analytics: "Google Analytics",
+  knowledge: "Knowledge Base",
+  crm: "HubSpot",
+  "operations-scan": "Search Console",
+};
+
+function toObservedLabel(statement: string): string {
+  const lower = statement.toLowerCase();
+  if (lower.includes("contact")) return "Contact form detected";
+  if (lower.includes("pricing")) return "Pricing page found";
+  if (lower.includes("public website") || lower.includes("site reachable"))
+    return "Public website live";
+  if (lower.includes("service")) return "High-value service";
+  if (lower.includes("marketing channel")) return "Owned web channel";
+  if (lower.includes("presents as")) return "Business profile identified";
+  return clampWords(statement, 3);
+}
+
+function toLikelyLabel(statement: string): string {
+  const lower = statement.toLowerCase();
+  if (lower.includes("qualif")) return "Manual qualification";
+  if (lower.includes("follow-up") || lower.includes("follow up")) return "Human follow-up";
+  if (lower.includes("consultative") || lower.includes("trust")) return "Consultative sales";
+  if (lower.includes("decision-maker")) return "B2B buyer journey";
+  if (lower.includes("schedul") || lower.includes("appointment")) return "Manual scheduling";
+  if (lower.includes("inbound") || lower.includes("enquir")) return "High-value leads";
+  if (lower.includes("navigate")) return "Multi-step journey";
+  if (lower.includes("testimonial") || lower.includes("case stud")) return "Trust-led conversion";
+  if (lower.includes("automation")) return "Automation opportunity";
+  if (lower.includes("content marketing")) return "Content-led demand";
+  return clampWords(statement, 3);
+}
+
+function deriveReasoningConfidence(fill: number): ReasoningConfidence {
+  if (fill >= 0.75) return "Strong";
+  if (fill >= 0.55) return "Growing";
+  if (fill >= 0.4) return "Moderate";
+  return "Early";
+}
+
+function collectWaitingFor(assessment: WebsiteIntelligenceAssessment): WaitingForChip[] {
   const slots = [
     ...assessment.marketingGrowth.enrichmentSlots,
     ...assessment.operations.enrichmentSlots,
   ];
   const seen = new Set<string>();
-  const chips: GapChip[] = [];
+  const chips: WaitingForChip[] = [];
 
   for (const slot of slots) {
-    if (seen.has(slot.source)) continue;
+    if (slot.status === "connected" || seen.has(slot.source)) continue;
     seen.add(slot.source);
     chips.push({
       id: slot.source,
-      label: clampWords(slot.label, 2),
+      label: waitingForLabels[slot.source] ?? slot.label,
       href: slot.href,
     });
-    if (chips.length >= 3) break;
+    if (chips.length >= 4) break;
   }
 
   return chips;
 }
 
-function confidenceWord(level: QualitativeConfidence): string {
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
-
-export function buildAssessmentViewModel(
+export function buildBusinessBrainReasoningViewModel(
   assessment: WebsiteIntelligenceAssessment
-): AssessmentViewModel {
-  const seen = new Set<string>();
+): BusinessBrainReasoningViewModel {
   const allFindings = collectAllFindings(assessment);
 
-  const observed = uniqueFindings(
-    allFindings.filter((f) => f.category === "observed"),
-    seen,
-    1
-  );
-  const likely = uniqueFindings(
-    allFindings.filter((f) => f.category === "likely"),
-    seen,
-    1
-  );
-  const opportunity = uniqueFindings(
-    [
-      ...assessment.customerJourney.opportunities,
-      ...assessment.customerJourney.frictionPoints,
-    ],
-    seen,
-    1
-  );
-
-  const signalChips = [...observed, ...likely, ...opportunity]
-    .slice(0, 3)
-    .map((f) => findingToInsight(f, 3));
-
-  const primaryRec = assessment.workforceRecommendations.recommendations[0];
-  const primaryPeer: PeerViewModel = {
-    employee: primaryRec,
-    ...peerTier(0),
-    whyNow: clampWords(primaryRec.whyRecommended, 8),
-  };
-
-  const peers: PeerViewModel[] = assessment.workforceRecommendations.recommendations.map(
-    (employee, index) => ({
-      employee,
-      ...peerTier(index),
-      whyNow: clampWords(employee.whyRecommended, 8),
-    })
-  );
-
-  const companyFindings = uniqueFindings(assessment.companyDna.findings, new Set(), 3);
-  const growthFindings = uniqueFindings(
-    [
-      ...assessment.marketingGrowth.observed,
-      ...assessment.marketingGrowth.likely,
-      ...assessment.marketingGrowth.unknown,
-      ...assessment.customerJourney.opportunities,
-    ],
-    new Set(seen),
-    3
-  );
-  const executionFindings = uniqueFindings(
-    assessment.operations.areas.flatMap((a) => a.findings),
-    new Set(seen),
+  const observed = dedupeLabels(
+    allFindings
+      .filter((f) => f.category === "observed")
+      .map((f) => toObservedLabel(f.statement)),
     3
   );
 
-  const companySignal = deriveSignalState(
-    assessment.companyDna.confidence,
-    assessment.companyDna.findings
+  const likely = dedupeLabels(
+    allFindings
+      .filter((f) => f.category === "likely")
+      .map((f) => toLikelyLabel(f.statement)),
+    3
   );
-  const journeySignal = deriveSignalState(
-    assessment.customerJourney.confidence,
-    [
-      ...assessment.customerJourney.frictionPoints,
-      ...assessment.customerJourney.opportunities,
-    ]
-  );
-  const marketingSignal = deriveSignalState(
-    assessment.marketingGrowth.confidence,
-    [
-      ...assessment.marketingGrowth.observed,
-      ...assessment.marketingGrowth.likely,
-      ...assessment.marketingGrowth.unknown,
-    ]
-  );
-  const opsSignal = deriveSignalState(
-    assessment.operations.confidence,
-    assessment.operations.areas.flatMap((a) => a.findings)
-  );
-  const workforceSignal = deriveSignalState(
-    assessment.workforceRecommendations.confidence,
-    assessment.workforceRecommendations.recommendations.flatMap(
-      (r) => r.supportingFindings
-    )
-  );
+
+  if (observed.length === 0) observed.push("Website signals detected");
+  if (likely.length === 0) likely.push("Inbound conversion gaps");
+
+  const fill = deriveUnderstandingFill(assessment.confidenceSnapshot.overall);
 
   return {
-    meta: assessment.meta,
-    confidence: assessment.confidenceSnapshot,
-    overview: {
-      opportunityHeadline: clampWords(assessment.executiveSummary.conclusion, 6),
-      opportunityAccent: clampWords(
-        assessment.customerJourney.opportunities[0]?.statement ??
-          assessment.executiveSummary.rationale,
-        4
-      ),
-      signalChips,
-      gapChips: collectGapChips(assessment),
-      primaryPeer,
-    },
-    signalStrip: [
-      { id: "company", label: "Model", ...companySignal },
-      { id: "journey", label: "Journey", ...journeySignal },
-      { id: "marketing", label: "Growth", ...marketingSignal },
-      { id: "ops", label: "Execution", ...opsSignal },
-      { id: "workforce", label: "AI hire", ...workforceSignal },
-    ],
-    businessModel: {
-      pills: [
-        { label: "Type", value: clampWords(assessment.companyDna.businessType, 3) },
-        {
-          label: "Buyer",
-          value: clampWords(assessment.companyDna.targetCustomers, 3),
-        },
-        {
-          label: "Brand",
-          value: clampWords(assessment.companyDna.brandPresentation, 3),
-        },
-      ],
-      insights: companyFindings.map((f) => findingToInsight(f)),
-      reasoning: {
-        confidenceLabel: confidenceWord(assessment.companyDna.confidence.level),
-        confidenceReason: assessment.companyDna.confidence.reason,
-        findings: assessment.companyDna.findings,
-      },
-    },
-    growth: {
-      segments: [
-        {
-          label: "Seen",
-          count: assessment.marketingGrowth.observed.length,
-          tone: "observed",
-        },
-        {
-          label: "Likely",
-          count: assessment.marketingGrowth.likely.length,
-          tone: "likely",
-        },
-        {
-          label: "Unknown",
-          count: assessment.marketingGrowth.unknown.length,
-          tone: "unknown",
-        },
-      ],
-      journeyFrictionNode: clampWords(
-        assessment.customerJourney.frictionPoints[0]?.statement ?? "Evaluate",
-        2
-      ),
-      insights: growthFindings.map((f) => findingToInsight(f)),
-      reasoning: {
-        confidenceLabel: confidenceWord(assessment.marketingGrowth.confidence.level),
-        confidenceReason: assessment.marketingGrowth.confidence.reason,
-        findings: [
-          ...assessment.marketingGrowth.observed,
-          ...assessment.marketingGrowth.likely,
-          ...assessment.marketingGrowth.unknown,
-          ...assessment.customerJourney.frictionPoints,
-          ...assessment.customerJourney.opportunities,
-        ],
-      },
-    },
-    execution: {
-      areas: assessment.operations.areas.slice(0, 4).map((area) => {
-        const signal = deriveSignalState(
-          assessment.operations.confidence,
-          area.findings
-        );
-        return { id: area.id, name: area.name, state: signal.state };
-      }),
-      topInsight: executionFindings[0]
-        ? findingToInsight(executionFindings[0])
-        : null,
-      insights: executionFindings.map((f) => findingToInsight(f)),
-      reasoning: {
-        confidenceLabel: confidenceWord(assessment.operations.confidence.level),
-        confidenceReason: assessment.operations.confidence.reason,
-        findings: assessment.operations.areas.flatMap((a) => a.findings),
-      },
-    },
-    workforce: { peers },
-    decision: {
-      peerName: primaryRec.name,
-      whyChips: primaryRec.supportingFindings
-        .slice(0, 3)
-        .map((f) => clampWords(f.statement, 3)),
-      connectChips: collectGapChips(assessment).slice(0, 2),
-    },
+    observed,
+    likely,
+    waitingFor: collectWaitingFor(assessment),
+    confidence: deriveReasoningConfidence(fill),
+  };
+}
+
+export function buildBusinessBrainViewModel(
+  assessment: WebsiteIntelligenceAssessment
+): BusinessBrainViewModel {
+  const hostname = assessment.meta.url
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
+  const recommendations = assessment.workforceRecommendations.recommendations;
+  const hirePeer =
+    findPeer(recommendations, (r) => r.role === "Sales") ?? recommendations[0];
+
+  return {
+    companyName: assessment.meta.companyName,
+    hostname,
+    understandingFill: deriveUnderstandingFill(assessment.confidenceSnapshot.overall),
+    opportunity: deriveOpportunity(assessment),
+    opportunityReason: deriveOpportunityReason(assessment),
+    recommendedTeam: buildRecommendedTeam(recommendations),
+    hirePeer,
   };
 }

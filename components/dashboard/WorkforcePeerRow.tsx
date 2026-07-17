@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import PeerRoleIcon from "@/components/peer/PeerRoleIcon";
 import Avatar from "@/components/ui/Avatar";
 import InsetGroup from "@/components/ui/InsetGroup";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -14,7 +17,6 @@ type WorkforcePeerRowProps = {
 
 export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
   const config = getRoleConfig(peer.role);
-  const Icon = config.icon;
   const isActive = peer.status === "active";
 
   return (
@@ -31,7 +33,7 @@ export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
       >
         <div className="flex min-w-0 flex-1 items-start gap-4">
           <Avatar
-            icon={<Icon size={22} />}
+            icon={<PeerRoleIcon role={peer.role} size={22} />}
             gradient={config.gradient}
             size="lg"
             presence={isActive ? "live" : "idle"}

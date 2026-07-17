@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Bot, Building2, Globe2, Plus, Sparkles, X } from "lucide-react";
+import { useAccount } from "@/components/account/AccountProvider";
+import { withOrganizationId } from "@/lib/peers/queries";
 import { supabase } from "@/lib/supabase";
 
 type NewPeerModalProps = {
@@ -46,6 +48,7 @@ export default function NewPeerModal({
   initialGoal,
   fromWebsiteIntelligence = false,
 }: NewPeerModalProps) {
+  const { organizationId } = useAccount();
   const [name, setName] = useState("");
   const [role, setRole] = useState(DEFAULT_ROLE);
   const [website, setWebsite] = useState("");
@@ -105,17 +108,34 @@ export default function NewPeerModal({
       return;
     }
 
+    if (!organizationId) {
+      setErrorMessage("Your organization is not available yet. Try again in a moment.");
+      return;
+    }
+
     setSaving(true);
+
+    let insertPayload;
+
+    try {
+      insertPayload = withOrganizationId(
+        {
+          name: name.trim(),
+          role,
+          website: website.trim(),
+          objective: goal.trim(),
+          status: "active",
+        },
+        organizationId
+      );
+    } catch {
+      setErrorMessage("Your organization is not available yet. Try again in a moment.");
+      return;
+    }
 
     const { data, error } = await supabase
       .from("peers")
-      .insert({
-        name: name.trim(),
-        role,
-        website: website.trim(),
-        objective: goal.trim(),
-        status: "active",
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 

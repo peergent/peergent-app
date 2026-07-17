@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAccount } from "@/components/account/AccountProvider";
 import Sidebar from "@/components/Sidebar";
 import ExecutiveDailyBrief from "@/components/dashboard/ExecutiveDailyBrief";
 import BusinessHealthPanel from "@/components/dashboard/BusinessHealthPanel";
@@ -28,36 +29,37 @@ import {
 } from "@/lib/command-center/demo-data";
 import { getGreeting } from "@/lib/command-center/greeting";
 import type { PeerRow } from "@/lib/peer-display";
-import { supabase } from "@/lib/supabase";
+import { fetchOrganizationPeers } from "@/lib/peers/queries";
+import { createClient } from "@/lib/supabase/client";
 
 export default function CommandCenter() {
+  const { account, organizationId } = useAccount();
   const [peers, setPeers] = useState<PeerRow[]>([]);
   const [loadingPeers, setLoadingPeers] = useState(true);
 
   const fetchPeers = useCallback(async () => {
     setLoadingPeers(true);
 
-    const { data, error } = await supabase
-      .from("peers")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    try {
+      const supabase = createClient();
+      const data = await fetchOrganizationPeers(supabase, organizationId);
+      setPeers(data);
+    } catch (error) {
       console.error("Supabase fetch error:", error);
       setPeers([]);
+    } finally {
       setLoadingPeers(false);
-      return;
     }
-
-    setPeers(data as PeerRow[]);
-    setLoadingPeers(false);
-  }, []);
+  }, [organizationId]);
 
   useEffect(() => {
     fetchPeers();
   }, [fetchPeers]);
 
-  const greeting = getGreeting();
+  const greeting = getGreeting({
+    firstName: account?.fullName.split(" ")[0],
+    workspaceName: account?.organization?.name,
+  });
   const hasWebsiteOnFile = peers.some((peer) => peer.website?.trim());
   const coverageInput = {
     peerCount: peers.length,

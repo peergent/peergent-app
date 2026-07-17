@@ -1,12 +1,3 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  Bot,
-  CalendarDays,
-  Headphones,
-  Megaphone,
-  TrendingUp,
-} from "lucide-react";
-
 export type PeerRow = {
   id: string;
   name: string;
@@ -15,11 +6,11 @@ export type PeerRow = {
   objective: string;
   status: string;
   created_at?: string;
+  organization_id?: string | null;
 };
 
 type PeerRoleConfig = {
   roleLabel: string;
-  icon: LucideIcon;
   gradient: string;
   workingStatus: string;
   activity: string;
@@ -28,7 +19,6 @@ type PeerRoleConfig = {
 
 const DEFAULT_ROLE_CONFIG: PeerRoleConfig = {
   roleLabel: "Custom AI peer",
-  icon: Bot,
   gradient: "from-slate-500 to-slate-700",
   workingStatus: "Ready to assist your team",
   activity: "Recently created",
@@ -53,7 +43,6 @@ export const PEER_STATUSES = ["active", "inactive"] as const;
 const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   Sales: {
     roleLabel: "Sales & lead qualification",
-    icon: TrendingUp,
     gradient: "from-violet-500 to-blue-600",
     workingStatus: "Talking to a website visitor",
     activity: "Active 12 seconds ago",
@@ -65,7 +54,6 @@ const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   },
   Support: {
     roleLabel: "Customer support",
-    icon: Headphones,
     gradient: "from-cyan-500 to-blue-600",
     workingStatus: "Answering a warranty question",
     activity: "Active 28 seconds ago",
@@ -77,7 +65,6 @@ const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   },
   Marketing: {
     roleLabel: "Content & campaigns",
-    icon: Megaphone,
     gradient: "from-fuchsia-500 to-violet-600",
     workingStatus: "Creating a LinkedIn post",
     activity: "Active 1 minute ago",
@@ -89,7 +76,6 @@ const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   },
   Planning: {
     roleLabel: "Scheduling & reminders",
-    icon: CalendarDays,
     gradient: "from-orange-500 to-pink-600",
     workingStatus: "Checking calendar availability",
     activity: "Active 2 minutes ago",
@@ -101,7 +87,6 @@ const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   },
   Finance: {
     roleLabel: "Finance & reporting",
-    icon: TrendingUp,
     gradient: "from-emerald-500 to-teal-600",
     workingStatus: "Reviewing financial reports",
     activity: "Active 5 minutes ago",
@@ -114,36 +99,6 @@ const ROLE_CONFIG: Record<string, PeerRoleConfig> = {
   Custom: DEFAULT_ROLE_CONFIG,
 };
 
-export type DisplayPeer = {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  icon: LucideIcon;
-  status: string;
-  stats: { label: string; value: string }[];
-  activity: string;
-  gradient: string;
-  isActive: boolean;
-};
-
 export function getRoleConfig(role: string): PeerRoleConfig {
   return ROLE_CONFIG[role] ?? DEFAULT_ROLE_CONFIG;
-}
-
-export function mapPeerToDisplay(peer: PeerRow): DisplayPeer {
-  const config = getRoleConfig(peer.role);
-
-  return {
-    id: peer.id,
-    name: peer.name,
-    role: config.roleLabel,
-    description: peer.objective,
-    icon: config.icon,
-    status: config.workingStatus,
-    stats: config.stats,
-    activity: config.activity,
-    gradient: config.gradient,
-    isActive: peer.status === "active",
-  };
 }

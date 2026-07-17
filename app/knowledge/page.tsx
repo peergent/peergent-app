@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useAccount } from "@/components/account/AccountProvider";
 import Sidebar from "@/components/Sidebar";
 import PeerDetailSection from "@/components/peer-detail/PeerDetailSection";
 import ConnectedSourceCard from "@/components/knowledge/ConnectedSourceCard";
@@ -11,7 +12,8 @@ import {
   DEMO_DOCUMENTS,
   getKnowledgeStats,
 } from "@/lib/knowledge-demo";
-import { supabase } from "@/lib/supabase";
+import { fetchOrganizationPeers } from "@/lib/peers/queries";
+import { createClient } from "@/lib/supabase/client";
 import {
   ArrowRight,
   BookOpen,
@@ -30,35 +32,31 @@ function formatWebsiteUrl(website: string) {
 }
 
 export default function KnowledgePage() {
+  const { organizationId } = useAccount();
   const [companyWebsites, setCompanyWebsites] = useState<string[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(true);
 
   const fetchCompanyWebsites = useCallback(async () => {
     setLoadingWebsites(true);
 
-    const { data, error } = await supabase
-      .from("peers")
-      .select("website, created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    try {
+      const supabase = createClient();
+      const peers = await fetchOrganizationPeers(supabase, organizationId);
+      const uniqueWebsites = [
+        ...new Set(
+          peers
+            .map((peer) => peer.website?.trim())
+            .filter((website): website is string => Boolean(website))
+        ),
+      ];
+      setCompanyWebsites(uniqueWebsites);
+    } catch (error) {
       console.error("Supabase fetch error:", error);
       setCompanyWebsites([]);
+    } finally {
       setLoadingWebsites(false);
-      return;
     }
-
-    const uniqueWebsites = [
-      ...new Set(
-        (data ?? [])
-          .map((peer) => peer.website?.trim())
-          .filter((website): website is string => Boolean(website))
-      ),
-    ];
-
-    setCompanyWebsites(uniqueWebsites);
-    setLoadingWebsites(false);
-  }, []);
+  }, [organizationId]);
 
   useEffect(() => {
     fetchCompanyWebsites();

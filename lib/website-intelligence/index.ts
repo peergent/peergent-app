@@ -31,14 +31,12 @@ export {
   collectAllFindings,
 } from "./demo-assessment";
 
-export {
-  buildAssessmentViewModel,
-  clampWords,
-} from "./assessment-presenter";
+export { buildBusinessBrainReasoningViewModel, buildBusinessBrainViewModel } from "./assessment-presenter";
 export type {
-  AssessmentViewModel,
-  ModelZoneId,
-  PeerViewModel,
+  BusinessBrainReasoningViewModel,
+  BusinessBrainViewModel,
+  ReasoningConfidence,
+  TeamMemberView,
 } from "./assessment-presenter";
 
 /**

@@ -1,14 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+/** @deprecated Use `createClient` from `@/lib/supabase/client`. */
+export const supabase = createClient();
 
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error("Supabase environment variables are missing.");
-}
-
-export const supabase = createClient(
-  supabaseUrl,
-  supabasePublishableKey
-);
+export { createClient } from "@/lib/supabase/client";

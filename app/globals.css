@@ -283,6 +283,26 @@ body {
   animation: pg-pulse-live 2s var(--pg-ease-standard) infinite;
 }
 
+@keyframes pg-workspace-live {
+  0%,
+  100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(124, 58, 237, 0.08);
+  }
+}
+
+.pg-workspace-live {
+  animation: pg-workspace-live 4s var(--pg-ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-workspace-live {
+    animation: none;
+  }
+}
+
 @keyframes pg-breathe {
   0%,
   100% {

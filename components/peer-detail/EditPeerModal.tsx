@@ -7,6 +7,7 @@ import {
   PEER_STATUSES,
   type PeerRow,
 } from "@/lib/peer-display";
+import { useAccount } from "@/components/account/AccountProvider";
 import { supabase } from "@/lib/supabase";
 
 type EditPeerModalProps = {
@@ -22,6 +23,7 @@ export default function EditPeerModal({
   onClose,
   onSuccess,
 }: EditPeerModalProps) {
+  const { organizationId } = useAccount();
   const [name, setName] = useState(peer.name);
   const [role, setRole] = useState(peer.role);
   const [website, setWebsite] = useState(peer.website);
@@ -76,6 +78,11 @@ export default function EditPeerModal({
       return;
     }
 
+    if (!organizationId) {
+      setErrorMessage("Your organization is not available yet. Try again in a moment.");
+      return;
+    }
+
     setSaving(true);
 
     const { error } = await supabase
@@ -87,7 +94,8 @@ export default function EditPeerModal({
         objective: objective.trim(),
         status,
       })
-      .eq("id", peer.id);
+      .eq("id", peer.id)
+      .eq("organization_id", organizationId);
 
     setSaving(false);
 
