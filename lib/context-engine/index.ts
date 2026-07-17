@@ -1,0 +1,34 @@
+export { ContextEngine, defaultContextEngine } from "./core/engine";
+export type { ContextEngineOptions } from "./core/engine";
+export { ContextBuilder, defaultContextBuilder } from "./core/builder";
+export { LoaderRegistry } from "./core/loader-registry";
+export { PeerTypeRegistry, defaultPeerTypeRegistry } from "./peer-types/registry";
+
+export type {
+  ActorScope,
+  BuildContextRequest,
+  ContextBundle,
+  ContextBundleMeta,
+  ContextCapabilities,
+  ContextLayerKey,
+  ContextScope,
+  ContextSlice,
+  LoadMode,
+  OrganizationScope,
+  OrganizationSlice,
+  PeerIdentitySlice,
+  PeerRole,
+  PeerScope,
+  PromptPackage,
+  PromptSection,
+  SourceFreshness,
+  SourceRef,
+  SourceType,
+} from "./types";
+
+export { serializeContextBundle } from "./assembly/serialize";
+export { formatContextAsMarkdown } from "./adapters/llm/formatters/markdown-formatter";
+export { defaultToolRegistry, ToolRegistry } from "./adapters/tools/registry";
+export { toBrainSnapshot } from "./adapters/brain/business-brain-adapter";
+export { defaultLoaders } from "./loaders";
+export { resolveScope, validateScope } from "./scope/resolve-scope";
