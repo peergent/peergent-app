@@ -30,6 +30,12 @@ export type {
 export { serializeContextBundle } from "./assembly/serialize";
 export { formatContextAsMarkdown } from "./adapters/llm/formatters/markdown-formatter";
 export { defaultToolRegistry, ToolRegistry } from "./adapters/tools/registry";
-export { toBrainSnapshot } from "./adapters/brain/business-brain-adapter";
+export {
+  assessmentToBrainSnapshot,
+  emptyBrainSnapshot,
+  toBrainSnapshot,
+} from "./adapters/brain/business-brain-adapter";
+export type { BrainSnapshot } from "./adapters/brain/business-brain-adapter";
+export { businessBrainLoader } from "./loaders/business-brain-loader";
 export { defaultLoaders } from "./loaders";
 export { resolveScope, validateScope } from "./scope/resolve-scope";

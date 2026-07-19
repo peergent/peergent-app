@@ -115,6 +115,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      website_intelligence_assessments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          source_url: string;
+          analyzed_at: string;
+          assessment: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          source_url: string;
+          analyzed_at: string;
+          assessment: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          source_url?: string;
+          analyzed_at?: string;
+          assessment?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

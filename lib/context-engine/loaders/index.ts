@@ -4,10 +4,12 @@ export { policyLoader, preferencesLoader } from "./preferences-loader";
 export { knowledgeLoader } from "./knowledge-loader";
 export {
   brainLoader,
+  businessBrainLoader,
   memoryLoader,
   toolsLoader,
   telemetryLoader,
 } from "./brain-loader";
+export type { BrainSnapshot } from "./business-brain-loader";
 export type { ContextLoader, LoaderContext, ContextSliceResult } from "./base";
 export { createStubSource } from "./base";
 

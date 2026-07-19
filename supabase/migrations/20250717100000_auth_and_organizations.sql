@@ -55,41 +55,49 @@ as $$
   );
 $$;
 
+drop policy if exists "Profiles are readable by owner" on public.profiles;
 create policy "Profiles are readable by owner"
   on public.profiles
   for select
   using (auth.uid() = id);
 
+drop policy if exists "Profiles are insertable by owner" on public.profiles;
 create policy "Profiles are insertable by owner"
   on public.profiles
   for insert
   with check (auth.uid() = id);
 
+drop policy if exists "Profiles are updatable by owner" on public.profiles;
 create policy "Profiles are updatable by owner"
   on public.profiles
   for update
   using (auth.uid() = id);
 
+drop policy if exists "Organizations readable by members" on public.organizations;
 create policy "Organizations readable by members"
   on public.organizations
   for select
   using (public.is_org_member(id));
 
+drop policy if exists "Organizations insertable by authenticated users" on public.organizations;
 create policy "Organizations insertable by authenticated users"
   on public.organizations
   for insert
   with check (auth.uid() is not null);
 
+drop policy if exists "Organization members readable by members" on public.organization_members;
 create policy "Organization members readable by members"
   on public.organization_members
   for select
   using (public.is_org_member(organization_id));
 
+drop policy if exists "Organization members insertable by authenticated users" on public.organization_members;
 create policy "Organization members insertable by authenticated users"
   on public.organization_members
   for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Peers readable by organization members" on public.peers;
 create policy "Peers readable by organization members"
   on public.peers
   for select
@@ -98,6 +106,7 @@ create policy "Peers readable by organization members"
     and public.is_org_member(organization_id)
   );
 
+drop policy if exists "Peers insertable by organization members" on public.peers;
 create policy "Peers insertable by organization members"
   on public.peers
   for insert
@@ -106,6 +115,7 @@ create policy "Peers insertable by organization members"
     and public.is_org_member(organization_id)
   );
 
+drop policy if exists "Peers updatable by organization members" on public.peers;
 create policy "Peers updatable by organization members"
   on public.peers
   for update
@@ -114,6 +124,7 @@ create policy "Peers updatable by organization members"
     and public.is_org_member(organization_id)
   );
 
+drop policy if exists "Peers deletable by organization members" on public.peers;
 create policy "Peers deletable by organization members"
   on public.peers
   for delete

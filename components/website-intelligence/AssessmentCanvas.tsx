@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import ButtonLink from "@/components/ui/ButtonLink";
 import BusinessBrainViewport from "@/components/website-intelligence/intelligence/BusinessBrainViewport";
+import AssessmentBrainDetails from "@/components/website-intelligence/AssessmentBrainDetails";
 import ReasoningCanvas from "@/components/website-intelligence/intelligence/ReasoningCanvas";
 import HireTeamCTA from "@/components/website-intelligence/intelligence/HireTeamCTA";
 import {
@@ -37,6 +38,8 @@ export default function AssessmentCanvas({
       <BusinessBrainViewport brain={brain} onHireTeam={onStartHireTeam} />
 
       <ReasoningCanvas reasoning={reasoning} />
+
+      <AssessmentBrainDetails assessment={assessment} />
 
       <HireTeamCTA onHireTeam={onStartHireTeam} />
 

@@ -1,28 +1,7 @@
 import { createStubSource, type ContextLoader } from "./base";
 
-export type BrainSlice = {
-  available: boolean;
-  summary?: string;
-  coveragePercent?: number;
-};
-
-export const brainLoader: ContextLoader<BrainSlice> = {
-  key: "brain",
-  layerKey: "brain",
-  loadMode: "lazy",
-  ttlMs: 60 * 60 * 1000,
-  load: () => ({
-    key: "brain",
-    data: {
-      available: false,
-      summary: undefined,
-      coveragePercent: undefined,
-    },
-    sources: [createStubSource("brain-loader")],
-    priority: 70,
-    loadMode: "lazy",
-  }),
-};
+export { businessBrainLoader, businessBrainLoader as brainLoader } from "./business-brain-loader";
+export type { BrainSnapshot } from "./business-brain-loader";
 
 export type MemorySlice = {
   items: string[];

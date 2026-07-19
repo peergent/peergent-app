@@ -121,7 +121,18 @@ export class ContextEngine {
 
     const loader = this.loaderRegistry.get(layerKey);
     const slice = await this.builder.runLoader(loader, ctx);
-    this.cache.set(cacheKey, slice, loader.ttlMs ?? getLayerTtl(layerKey));
+
+    const isUnavailableBrainSlice =
+      layerKey === "brain" &&
+      typeof slice.data === "object" &&
+      slice.data !== null &&
+      "available" in slice.data &&
+      (slice.data as { available: boolean }).available === false;
+
+    if (!isUnavailableBrainSlice) {
+      this.cache.set(cacheKey, slice, loader.ttlMs ?? getLayerTtl(layerKey));
+    }
+
     return slice;
   }
 }

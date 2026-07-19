@@ -44,3 +44,11 @@ export type {
  * is connected (e.g. server action, API route, or Supabase Edge Function).
  */
 export { demoWebsiteAnalyzer as websiteAnalyzer } from "./demo-analyzer";
+export {
+  fetchLatestWebsiteIntelligenceAssessment,
+  saveWebsiteIntelligenceAssessment,
+} from "./persistence";
+export type {
+  LoadedWebsiteIntelligenceAssessment,
+  WebsiteIntelligenceAssessmentSource,
+} from "./persistence";
