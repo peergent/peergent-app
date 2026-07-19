@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   AlertCircle,
   BookOpen,
@@ -125,6 +126,7 @@ export default function CurrentFocusHero({
                   priority: primaryRecommendation.priority,
                   kind: primaryRecommendation.kind,
                   planActivityReference: primaryRecommendation.planActivityReference,
+                  knowledgeSection: primaryRecommendation.knowledgeSection,
                 })
               }
               className="pg-focus-premium mt-4 inline-flex items-center gap-2 rounded-[12px] bg-violet-600 px-4 py-2 text-sm font-medium text-white"
@@ -143,11 +145,17 @@ export default function CurrentFocusHero({
           <ul className="mt-2 space-y-2">
             {needsFromYou.map((need) => (
               <li
-                key={need}
+                key={need.id}
                 className="flex items-start gap-2 rounded-[12px] border border-amber-500/15 bg-amber-500/[0.05] px-3 py-2 text-sm text-amber-100/90"
               >
                 <AlertCircle size={14} className="mt-0.5 shrink-0 opacity-70" />
-                {need}
+                {need.href ? (
+                  <Link href={need.href} className="pg-focus-premium underline-offset-2 hover:underline">
+                    {need.label}
+                  </Link>
+                ) : (
+                  need.label
+                )}
               </li>
             ))}
           </ul>

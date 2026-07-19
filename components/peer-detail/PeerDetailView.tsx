@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAccount } from "@/components/account/AccountProvider";
 import Sidebar from "@/components/Sidebar";
 import ApprovalQueue from "@/components/peer-detail/ApprovalQueue";
@@ -38,6 +38,7 @@ type PageState = "loading" | "success" | "error" | "not-found";
 export default function PeerDetailView() {
   const params = useParams<{ id: string }>();
   const peerId = params.id;
+  const router = useRouter();
   const reducedMotion = useReducedMotion();
   const { organizationId } = useAccount();
 
@@ -73,6 +74,11 @@ export default function PeerDetailView() {
         return;
       }
 
+      if (row.role === "Marketing") {
+        router.replace(`/peers/${peerId}/marketing`);
+        return;
+      }
+
       setPeer(row);
 
     const defaults = buildDefaultWorkspacePreferences(row);
@@ -100,7 +106,7 @@ export default function PeerDetailView() {
     );
     setPageState("error");
   }
-  }, [peerId, organizationId]);
+  }, [peerId, organizationId, router]);
 
   useEffect(() => {
     let cancelled = false;

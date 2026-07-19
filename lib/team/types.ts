@@ -22,6 +22,7 @@ export type PeerWorkspace = {
   currentTask: string;
   todayMetrics: PeerTodayMetric[];
   workspaceHref: string;
+  workspaceLabel: string;
 };
 
 export type ActivityPeerTone = "sales" | "marketing" | "neutral";

@@ -11,19 +11,30 @@ type TeamWorkspaceProps = {
 };
 
 export default function TeamWorkspace({ model, reducedMotion }: TeamWorkspaceProps) {
+  const hasStats = model.impactStats.length > 0;
+  const hasActivity = model.activity.length > 0;
+
   return (
     <div className="flex flex-col gap-5 lg:gap-6">
       <TeamHero model={model} reducedMotion={reducedMotion} />
-      <TeamStats stats={model.impactStats} reducedMotion={reducedMotion} />
+      {hasStats && <TeamStats stats={model.impactStats} reducedMotion={reducedMotion} />}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:gap-8 lg:items-start">
-        <aside className="order-1 lg:order-2 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:self-start">
-          <TeamActivityFeed events={model.activity} reducedMotion={reducedMotion} />
-        </aside>
+      <div
+        className={
+          hasActivity
+            ? "grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:gap-8 lg:items-start"
+            : "flex flex-col gap-5"
+        }
+      >
+        {hasActivity && (
+          <aside className="order-1 lg:order-2 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:self-start">
+            <TeamActivityFeed events={model.activity} reducedMotion={reducedMotion} />
+          </aside>
+        )}
 
         <section
           aria-labelledby="team-workspace-heading"
-          className="order-2 flex flex-col gap-5 lg:order-1"
+          className={hasActivity ? "order-2 flex flex-col gap-5 lg:order-1" : "flex flex-col gap-5"}
         >
           <h2 id="team-workspace-heading" className="sr-only">
             Featured AI peers

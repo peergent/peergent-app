@@ -76,7 +76,7 @@ describe("buildWorkNarrative", () => {
         available: true,
         completeness: 60,
         sparse: false,
-        gaps: ["competitorInfo"],
+        gaps: ["competitors"],
       } as never,
       strategy: null,
       plan: null,
@@ -91,7 +91,8 @@ describe("buildWorkNarrative", () => {
       recommendedActions: [],
       apiWarnings: [],
     });
-    expect(narrative.needsFromYou.some((n) => n.includes("LinkedIn post"))).toBe(true);
+    expect(narrative.needsFromYou.some((n) => n.label.includes("LinkedIn post"))).toBe(true);
+    expect(narrative.needsFromYou.some((n) => n.href?.includes("competitors"))).toBe(true);
     expect(narrative.progressCompleted).not.toContain("Today");
   });
 });

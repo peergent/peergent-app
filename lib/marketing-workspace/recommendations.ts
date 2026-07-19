@@ -4,6 +4,7 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import { gapToKnowledgeSection } from "@/lib/knowledge";
 import type {
   MarketingWorkspacePhase,
   RecommendedAction,
@@ -58,6 +59,7 @@ export function buildRecommendedActions(input: {
   const actions: RecommendedAction[] = [];
 
   if (!input.understanding?.available || input.understanding.completeness < 50) {
+    const firstGap = input.understanding?.gaps[0];
     actions.push({
       id: "fill-gaps",
       title: "Complete business knowledge",
@@ -65,6 +67,7 @@ export function buildRecommendedActions(input: {
         "Add products, segments, and brand positioning so the Marketing Peer can work accurately.",
       priority: "high",
       kind: "fill-gaps",
+      knowledgeSection: firstGap ? gapToKnowledgeSection(firstGap) : "company-dna",
     });
   }
 

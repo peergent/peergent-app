@@ -92,7 +92,7 @@ export const BUSINESS_DOMAINS: BusinessDomain[] = [
     id: "knowledge",
     name: "Knowledge",
     state: "needs-data",
-    note: "No documents uploaded",
+    note: "Add Company DNA and Business Brain in Knowledge",
   },
 ];
 

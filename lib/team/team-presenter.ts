@@ -15,6 +15,7 @@ type WorkspaceTemplate = {
   gradient: string;
   statusLabel: string;
   currentTask: string;
+  workspaceLabel: string;
   todayMetrics: PeerTodayMetric[];
 };
 
@@ -22,98 +23,46 @@ const WORKSPACE_TEMPLATES: Record<string, WorkspaceTemplate> = {
   Sales: {
     roleFocus: "Revenue",
     gradient: "from-violet-500 to-blue-600",
-    statusLabel: "Working",
-    currentTask: "Helping a visitor choose the right solar solution.",
-    todayMetrics: [
-      { label: "Conversations", value: "18" },
-      { label: "Qualified leads", value: "6" },
-      { label: "Meetings", value: "2" },
-    ],
+    statusLabel: "Available",
+    currentTask: "Open the workspace to configure sales coverage and review status.",
+    workspaceLabel: "Open workspace",
+    todayMetrics: [],
   },
   Marketing: {
     roleFocus: "Demand",
     gradient: "from-fuchsia-500 to-violet-600",
-    statusLabel: "Working",
-    currentTask: "Preparing tomorrow's LinkedIn campaign.",
-    todayMetrics: [
-      { label: "Posts", value: "3" },
-      { label: "Campaigns", value: "2" },
-      { label: "Approval pending", value: "1" },
-    ],
+    statusLabel: "Available",
+    currentTask:
+      "Open the Marketing workspace to review understanding, strategy, and content drafts.",
+    workspaceLabel: "Open Marketing workspace",
+    todayMetrics: [],
   },
   Support: {
     roleFocus: "Customer care",
     gradient: "from-cyan-500 to-blue-600",
-    statusLabel: "Working",
-    currentTask: "Answering a product question from a returning customer.",
-    todayMetrics: [
-      { label: "Questions", value: "24" },
-      { label: "Resolved", value: "22" },
-      { label: "Rating", value: "4.9" },
-    ],
+    statusLabel: "Available",
+    currentTask: "Open the workspace to configure support coverage.",
+    workspaceLabel: "Open workspace",
+    todayMetrics: [],
   },
   Planning: {
     roleFocus: "Scheduling",
     gradient: "from-orange-500 to-pink-600",
-    statusLabel: "Working",
-    currentTask: "Coordinating meeting availability for the sales team.",
-    todayMetrics: [
-      { label: "Appointments", value: "4" },
-      { label: "Reminders", value: "8" },
-      { label: "Rescheduled", value: "1" },
-    ],
+    statusLabel: "Available",
+    currentTask: "Open the workspace to configure scheduling coverage.",
+    workspaceLabel: "Open workspace",
+    todayMetrics: [],
   },
 };
 
 const DEFAULT_TEMPLATE: WorkspaceTemplate = {
   roleFocus: "Operations",
   gradient: "from-slate-500 to-slate-700",
-  statusLabel: "Working",
-  currentTask: "Ready to assist your team.",
-  todayMetrics: [
-    { label: "Tasks", value: "0" },
-    { label: "Completed", value: "0" },
-    { label: "Active", value: "0" },
-  ],
+  statusLabel: "Available",
+  currentTask: "Open this peer's workspace to review status and settings.",
+  workspaceLabel: "Open workspace",
+  todayMetrics: [],
 };
-
-const TEAM_IMPACT_STATS: TeamImpactStat[] = [
-  { id: "conversations", value: "18", label: "Conversations" },
-  { id: "leads", value: "6", label: "Qualified leads" },
-  { id: "meetings", value: "2", label: "Meetings" },
-  { id: "campaigns", value: "1", label: "Campaign" },
-];
-
-const TEAM_ACTIVITY: TeamActivityEvent[] = [
-  {
-    id: "a1",
-    peerName: "Marketing Peer",
-    tone: "marketing",
-    message: "Finished tomorrow's LinkedIn campaign",
-    relativeTime: "Just now",
-  },
-  {
-    id: "a2",
-    peerName: "Sales Peer",
-    tone: "sales",
-    message: "Qualified a lead from ACME Solar",
-    relativeTime: "2 minutes ago",
-  },
-  {
-    id: "a3",
-    peerName: "Sales Peer",
-    tone: "sales",
-    message: "Booked a meeting",
-    relativeTime: "12 minutes ago",
-  },
-  {
-    id: "a4",
-    peerName: "Marketing Peer",
-    tone: "marketing",
-    message: "Suggested three content ideas for next week",
-    relativeTime: "28 minutes ago",
-  },
-];
 
 const ROLE_DISPLAY_ORDER = ["Sales", "Marketing", "Support", "Planning", "Finance", "Custom"];
 
@@ -172,29 +121,8 @@ function mapPeerToWorkspace(peer: PeerRow): PeerWorkspace {
     todayMetrics: template.todayMetrics,
     workspaceHref:
       peer.role === "Marketing" ? `/peers/${peer.id}/marketing` : `/peers/${peer.id}`,
+    workspaceLabel: template.workspaceLabel,
   };
-}
-
-function resolvePeerName(peers: PeerWorkspace[], role: "Sales" | "Marketing"): string {
-  const match = peers.find((p) => p.name.toLowerCase().includes(role.toLowerCase()));
-  return match?.name ?? `${role} Peer`;
-}
-
-function buildActivityForPeers(peers: PeerWorkspace[]): TeamActivityEvent[] {
-  if (peers.length === 0) return TEAM_ACTIVITY;
-
-  const salesName = resolvePeerName(peers, "Sales");
-  const marketingName = resolvePeerName(peers, "Marketing");
-
-  return TEAM_ACTIVITY.map((event) => ({
-    ...event,
-    peerName:
-      event.tone === "sales"
-        ? salesName
-        : event.tone === "marketing"
-          ? marketingName
-          : event.peerName,
-  }));
 }
 
 function selectFeaturedPeers(
@@ -253,10 +181,10 @@ export function buildTeamWorkspaceViewModel(peerRows: PeerRow[]): TeamWorkspaceV
       greeting: getTimeGreeting(),
       companyName: "",
       subheadline: "",
-      impactStats: [],
+      impactStats: [] as TeamImpactStat[],
       featuredPeers: [],
       workforceSummary: null,
-      activity: [],
+      activity: [] as TeamActivityEvent[],
     };
   }
 
@@ -268,10 +196,10 @@ export function buildTeamWorkspaceViewModel(peerRows: PeerRow[]): TeamWorkspaceV
     isEmpty: false,
     greeting: getTimeGreeting(),
     companyName,
-    subheadline: "Your AI team is already working.",
-    impactStats: TEAM_IMPACT_STATS,
+    subheadline: "Open a peer workspace to review status and continue work.",
+    impactStats: [],
     featuredPeers,
     workforceSummary: buildWorkforceSummary(peerRows),
-    activity: buildActivityForPeers(allPeers),
+    activity: [],
   };
 }

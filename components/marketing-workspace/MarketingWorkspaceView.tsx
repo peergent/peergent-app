@@ -58,6 +58,7 @@ import {
 } from "@/lib/marketing-workspace";
 import { getRoleConfig } from "@/lib/peer-display";
 import { fetchOrganizationPeerById } from "@/lib/peers/queries";
+import { knowledgeSectionHref } from "@/lib/knowledge";
 import type { PeerRow } from "@/lib/peer-display";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/ui/cn";
@@ -249,6 +250,41 @@ export default function MarketingWorkspaceView() {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  const reloadUnderstanding = useCallback(async () => {
+    if (!peerId || pageState !== "success") return;
+
+    setGenerating("understanding");
+    try {
+      const [understandingResult, profileResult] = await Promise.all([
+        fetchMarketingUnderstanding(),
+        fetchMarketingProfile().catch(() => null),
+      ]);
+      setUnderstanding(understandingResult.understanding);
+      if (profileResult?.profile) {
+        setProfileCounts({
+          goals: profileResult.profile.goals.length,
+          content: profileResult.profile.contentItems.length,
+        });
+      }
+    } catch (error) {
+      setApiWarnings([
+        error instanceof Error ? error.message : "Failed to reload marketing understanding.",
+      ]);
+    } finally {
+      setGenerating(null);
+    }
+  }, [peerId, pageState]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void reloadUnderstanding();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reloadUnderstanding]);
 
   const recommendedActions = useMemo(
     () => buildRecommendedActions({ understanding, strategy, plan, drafts }),
@@ -479,7 +515,9 @@ export default function MarketingWorkspaceView() {
         }
         break;
       case "fill-gaps":
-        window.location.href = "/knowledge";
+        window.location.href = knowledgeSectionHref(
+          action.knowledgeSection ?? "company-dna"
+        );
         break;
     }
   };

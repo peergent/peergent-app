@@ -28,7 +28,7 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
         delayClass
       )}
     >
-      <div className="p-6 md:p-7">
+      <Link href={peer.workspaceHref} className="block p-6 md:p-7">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">
             <Avatar
@@ -69,39 +69,41 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
           {peer.currentTask}
         </p>
 
-        <div className="mt-6 border-t border-white/[0.05] pt-5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
-            Today
-          </p>
-          <dl className="mt-3 grid grid-cols-3 gap-3">
-            {peer.todayMetrics.map((metric) => (
-              <div key={metric.label}>
-                <dt className="text-xs text-slate-600">{metric.label}</dt>
-                <dd className="mt-0.5 text-lg font-semibold tracking-tight text-white/90">
-                  {metric.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        {peer.todayMetrics.length > 0 && (
+          <div className="mt-6 border-t border-white/[0.05] pt-5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
+              Today
+            </p>
+            <dl className="mt-3 grid grid-cols-3 gap-3">
+              {peer.todayMetrics.map((metric) => (
+                <div key={metric.label}>
+                  <dt className="text-xs text-slate-600">{metric.label}</dt>
+                  <dd className="mt-0.5 text-lg font-semibold tracking-tight text-white/90">
+                    {metric.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </Link>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Link
-            href={peer.workspaceHref}
-            className="pg-hover-lift pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] bg-white px-5 py-2.5 text-sm font-semibold text-violet-950 transition active:scale-[0.98]"
-          >
-            Open workspace
-            <ArrowRight size={15} strokeWidth={2} />
-          </Link>
-          <button
-            type="button"
-            className="pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-slate-400 transition hover:border-white/[0.14] hover:text-white"
-            aria-label={`Pause ${peer.name}`}
-          >
-            <Pause size={14} strokeWidth={2} />
-            Pause
-          </button>
-        </div>
+      <div className="flex flex-wrap gap-2 px-6 pb-6 md:px-7 md:pb-7">
+        <Link
+          href={peer.workspaceHref}
+          className="pg-hover-lift pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] bg-white px-5 py-2.5 text-sm font-semibold text-violet-950 transition active:scale-[0.98]"
+        >
+          {peer.workspaceLabel}
+          <ArrowRight size={15} strokeWidth={2} />
+        </Link>
+        <button
+          type="button"
+          className="pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-slate-400 transition hover:border-white/[0.14] hover:text-white"
+          aria-label={`Pause ${peer.name}`}
+        >
+          <Pause size={14} strokeWidth={2} />
+          Pause
+        </button>
       </div>
     </article>
   );

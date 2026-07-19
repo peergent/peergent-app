@@ -6,7 +6,6 @@ import PeerRoleIcon from "@/components/peer/PeerRoleIcon";
 import Avatar from "@/components/ui/Avatar";
 import InsetGroup from "@/components/ui/InsetGroup";
 import StatusBadge from "@/components/ui/StatusBadge";
-import DataLabelBadge from "@/components/dashboard/DataLabelBadge";
 import { getRoleConfig } from "@/lib/peer-display";
 import type { PeerRow } from "@/lib/peer-display";
 import { cn } from "@/lib/ui/cn";
@@ -18,10 +17,12 @@ type WorkforcePeerRowProps = {
 export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
   const config = getRoleConfig(peer.role);
   const isActive = peer.status === "active";
+  const workspaceHref =
+    peer.role === "Marketing" ? `/peers/${peer.id}/marketing` : `/peers/${peer.id}`;
 
   return (
     <Link
-      href={`/peers/${peer.id}`}
+      href={workspaceHref}
       className={cn(
         "group block rounded-[var(--pg-radius-lg)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30"
       )}
@@ -44,7 +45,7 @@ export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
               <h3 className="text-base font-semibold text-white">{peer.name}</h3>
               <StatusBadge
                 status={isActive ? "active" : "inactive"}
-                label={isActive ? "Working" : "Available"}
+                label={isActive ? "Active" : "Available"}
               />
             </div>
             <p className="mt-1 text-sm text-violet-400/80">{config.roleLabel}</p>
@@ -52,24 +53,18 @@ export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
         </div>
 
         <div className="min-w-0 flex-1 border-t border-white/[0.06] pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
-              Working on
-            </p>
-            <DataLabelBadge label="demo-activity" />
-          </div>
-          <p className="mt-1.5 text-sm leading-6 text-slate-300">
-            {config.workingStatus}
+          <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+            Workspace
           </p>
-          <p className="mt-2 text-xs text-slate-600">
-            Last activity · {config.activity}
-            <span className="mx-2 text-slate-700">·</span>
-            Confidence provisional
+          <p className="mt-1.5 text-sm leading-6 text-slate-400">
+            {peer.role === "Marketing"
+              ? "Open the Marketing workspace to review understanding and drafts."
+              : "Open the peer workspace to review settings and status."}
           </p>
         </div>
 
         <span className="inline-flex shrink-0 items-center gap-1 self-end text-sm text-violet-400/80 transition group-hover:text-violet-300 sm:self-center">
-          Open
+          {peer.role === "Marketing" ? "Marketing workspace" : "Open"}
           <ArrowRight size={14} />
         </span>
       </InsetGroup>

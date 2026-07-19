@@ -5,11 +5,9 @@ import { useAccount } from "@/components/account/AccountProvider";
 import Sidebar from "@/components/Sidebar";
 import ExecutiveDailyBrief from "@/components/dashboard/ExecutiveDailyBrief";
 import BusinessHealthPanel from "@/components/dashboard/BusinessHealthPanel";
-import BiggestOpportunities from "@/components/dashboard/BiggestOpportunities";
 import RecommendedActions from "@/components/dashboard/RecommendedActions";
 import WorkforcePanel from "@/components/dashboard/WorkforcePanel";
 import IntelligenceCoverage from "@/components/dashboard/IntelligenceCoverage";
-import RecentBusinessActivity from "@/components/dashboard/RecentBusinessActivity";
 import {
   buildDataCompleteness,
   buildIntelligenceCoverage,
@@ -23,8 +21,6 @@ import {
   BUSINESS_DOMAINS,
   getExecutiveBrief,
   getOverallHealthState,
-  OPPORTUNITIES,
-  RECENT_ACTIVITY,
   RECOMMENDED_ACTIONS,
 } from "@/lib/command-center/demo-data";
 import { getGreeting } from "@/lib/command-center/greeting";
@@ -80,7 +76,7 @@ export default function CommandCenter() {
     hasWebsite: hasWebsiteOnFile,
     completeness,
   });
-  const memory = buildBriefMemory(RECENT_ACTIVITY);
+  const memory = buildBriefMemory([]);
 
   return (
     <main className="min-h-screen bg-[#030712] text-white">
@@ -112,13 +108,9 @@ export default function CommandCenter() {
 
             <RecommendedActions actions={RECOMMENDED_ACTIONS} />
 
-            <BiggestOpportunities opportunities={OPPORTUNITIES} />
-
             <WorkforcePanel peers={peers} loading={loadingPeers} />
 
             <IntelligenceCoverage items={coverage} />
-
-            <RecentBusinessActivity activities={RECENT_ACTIVITY} />
           </div>
         </section>
       </div>

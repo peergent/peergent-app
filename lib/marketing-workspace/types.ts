@@ -4,6 +4,7 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import type { KnowledgeSectionId } from "@/lib/knowledge";
 import type { ActivityFeedItem, ConversationMessage } from "./experience/types";
 
 export type MarketingWorkspacePersistedState = {
@@ -30,6 +31,7 @@ export type RecommendedAction = {
   priority: "high" | "medium" | "low";
   kind: "fill-gaps" | "generate-strategy" | "generate-plan" | "create-draft" | "review-draft";
   planActivityReference?: string;
+  knowledgeSection?: KnowledgeSectionId;
 };
 
 export type MarketingWorkspaceSnapshot = {

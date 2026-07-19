@@ -56,6 +56,7 @@ export type ConversationalRecommendation = {
   actionLabel?: string;
   kind: import("../types").RecommendedAction["kind"];
   planActivityReference?: string;
+  knowledgeSection?: import("@/lib/knowledge").KnowledgeSectionId;
   priority: "high" | "medium" | "low";
 };
 

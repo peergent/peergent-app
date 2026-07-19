@@ -4,19 +4,34 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import type { MarketingUnderstandingDimension } from "@/lib/marketing-intelligence";
+import { gapToKnowledgeSection, knowledgeSectionHref } from "@/lib/knowledge";
 import type { RecommendedAction } from "../types";
 import { toConversationalRecommendations } from "./conversational-recommendations";
 import { deriveCurrentFocus, type CurrentFocus } from "./current-focus";
 import { derivePeerPresence } from "./presence";
 import type { PeerPresence } from "./types";
 
+export type NeedFromUser = {
+  id: string;
+  label: string;
+  href?: string;
+};
+
 export type WorkNarrative = {
   focus: CurrentFocus;
   presence: PeerPresence;
   primaryRecommendation: ReturnType<typeof toConversationalRecommendations>[number] | null;
-  needsFromYou: string[];
+  needsFromYou: NeedFromUser[];
   progressCompleted: string[];
 };
+
+function formatGapLabel(gap: MarketingUnderstandingDimension): string {
+  return gap
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
 
 export function buildWorkNarrative(input: {
   generating: "understanding" | "strategy" | "plan" | "draft" | null;
@@ -52,22 +67,29 @@ export function buildWorkNarrative(input: {
   const conversational = toConversationalRecommendations(input.recommendedActions);
   const primaryRecommendation = conversational[0] ?? null;
 
-  const needsFromYou: string[] = [];
+  const needsFromYou: NeedFromUser[] = [];
 
   for (const draft of pendingDrafts) {
-    needsFromYou.push(`Review and approve "${draft.title}"`);
+    needsFromYou.push({
+      id: `review-${draft.id}`,
+      label: `Review and approve "${draft.title}"`,
+    });
   }
 
   for (const gap of input.understanding?.gaps ?? []) {
-    const label = gap
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (c) => c.toUpperCase())
-      .trim();
-    needsFromYou.push(`Add ${label.toLowerCase()} in Knowledge`);
+    const label = formatGapLabel(gap);
+    needsFromYou.push({
+      id: `gap-${gap}`,
+      label: `Add ${label.toLowerCase()} in Knowledge`,
+      href: knowledgeSectionHref(gapToKnowledgeSection(gap)),
+    });
   }
 
   if (!input.strategy && input.understanding?.available) {
-    needsFromYou.push("Confirm strategy direction — generate a strategy to continue");
+    needsFromYou.push({
+      id: "generate-strategy",
+      label: "Confirm strategy direction — generate a strategy to continue",
+    });
   }
 
   if (input.plan && input.plan.contentCalendar.length > 0) {
@@ -79,14 +101,17 @@ export function buildWorkNarrative(input: {
         )
     );
     if (undrafted.length > 0 && pendingDrafts.length === 0 && !input.generating) {
-      needsFromYou.push(`Choose a calendar slot to draft (e.g. "${undrafted[0].title}")`);
+      needsFromYou.push({
+        id: `draft-${undrafted[0].title}`,
+        label: `Choose a calendar slot to draft (e.g. "${undrafted[0].title}")`,
+      });
     }
   }
 
   // Only surface API warnings not already covered by gaps
   for (const warning of input.apiWarnings.slice(0, 2)) {
-    if (!needsFromYou.some((n) => warning.includes(n.slice(0, 20)))) {
-      needsFromYou.push(warning);
+    if (!needsFromYou.some((n) => warning.includes(n.label.slice(0, 20)))) {
+      needsFromYou.push({ id: `warning-${warning.slice(0, 24)}`, label: warning });
     }
   }
 
@@ -107,7 +132,9 @@ export function buildWorkNarrative(input: {
     focus,
     presence,
     primaryRecommendation,
-    needsFromYou: [...new Set(needsFromYou)].slice(0, 5),
+    needsFromYou: needsFromYou
+      .filter((need, index, list) => list.findIndex((n) => n.id === need.id) === index)
+      .slice(0, 5),
     progressCompleted,
   };
 }

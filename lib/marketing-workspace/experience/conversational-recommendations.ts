@@ -13,6 +13,7 @@ const CONVERSATIONAL: Record<
     actionLabel: "Complete knowledge",
     kind: action.kind,
     priority: action.priority,
+    knowledgeSection: action.knowledgeSection,
   }),
   "generate-strategy": (action) => ({
     id: action.id,
