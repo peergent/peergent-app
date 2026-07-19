@@ -34,7 +34,7 @@ describe("AI runtime", () => {
       }),
     });
 
-    const response = await runtime.generateFromPromptPackage(SAMPLE_PROMPT);
+    const response = await runtime.execute(SAMPLE_PROMPT);
 
     expect(response.text).toBe("Here is a concise peer response.");
     expect(response.validated.success).toBe(true);

@@ -1,17 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { buildPromptPackage } from "../prompt-builder";
-import { createMarketingBundle, createTestBundle } from "./fixtures";
+import { buildPrompt, buildPromptPackage } from "../prompt-builder";
+import {
+  createMarketingBundle,
+  createTestBundle,
+  createTestContextPackage,
+} from "./fixtures";
 
-describe("buildPromptPackage", () => {
+describe("buildPrompt", () => {
   it("builds a Sales role prompt with sales-specific priorities", () => {
-    const prompt = buildPromptPackage(createTestBundle({ role: "Sales" }), {
-      taskHint: "Review this inbound lead",
-    });
+    const prompt = buildPrompt(
+      createTestContextPackage({ role: "Sales" }),
+      { taskHint: "Review this inbound lead" }
+    );
 
     expect(prompt.metadata.peerRole).toBe("Sales");
     expect(prompt.systemPrompt).toContain("sales-focused AI peer");
     expect(prompt.systemPrompt).toContain("Lead qualification");
-    expect(prompt.includedLayers).toContain("brain");
+    expect(prompt.includedLayers).toContain("business-brain");
+    expect(prompt.includedLayers).toContain("company-dna");
+    expect(prompt.contextSections.some((section) => section.title === "Company DNA")).toBe(
+      true
+    );
     expect(prompt.contextSections.some((section) => section.title === "Business Brain")).toBe(
       true
     );
@@ -31,7 +40,9 @@ describe("buildPromptPackage", () => {
   });
 
   it("warns when Business Brain is missing", () => {
-    const prompt = buildPromptPackage(createTestBundle({ brain: null }));
+    const prompt = buildPromptPackage(
+      createTestBundle({ businessBrain: null })
+    );
 
     expect(prompt.warnings).toContain("Business Brain unavailable");
     expect(prompt.contextSections.some((section) => section.title === "Business Brain")).toBe(
@@ -39,10 +50,24 @@ describe("buildPromptPackage", () => {
     );
   });
 
-  it("warns when no products are identified", () => {
-    const prompt = buildPromptPackage(createTestBundle());
+  it("warns when Business Brain is sparse", () => {
+    const prompt = buildPromptPackage(
+      createTestBundle({
+        businessBrain: {
+          available: true,
+          sparse: true,
+          products: [],
+          services: [],
+          customerSegments: [],
+          competitors: [],
+          internalProcesses: [],
+          knowledgeSources: [],
+          facts: [],
+        },
+      })
+    );
 
-    expect(prompt.warnings).toContain("No products identified");
+    expect(prompt.warnings).toContain("Business Brain is sparse — limited business knowledge");
   });
 
   it("does not leak telemetry or source IDs into prompts", () => {

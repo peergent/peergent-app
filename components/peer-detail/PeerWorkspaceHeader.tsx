@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MessageSquare, MoreHorizontal, Pause, Play } from "lucide-react";
+import { MessageSquare, Megaphone, MoreHorizontal, Pause, Play } from "lucide-react";
 import PeerRoleIcon from "@/components/peer/PeerRoleIcon";
 import Avatar from "@/components/ui/Avatar";
 import type { PeerWorkspaceHeaderModel } from "@/lib/peer-detail";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/ui/cn";
 type PeerWorkspaceHeaderProps = {
   model: PeerWorkspaceHeaderModel;
   peerRole: string;
+  peerId?: string;
   paused: boolean;
   onPauseToggle: () => void;
   onMoreActions: () => void;
@@ -37,6 +38,7 @@ const workStateStyles = {
 export default function PeerWorkspaceHeader({
   model,
   peerRole,
+  peerId,
   paused,
   onPauseToggle,
   onMoreActions,
@@ -138,12 +140,23 @@ export default function PeerWorkspaceHeader({
         </div>
       </div>
 
-      <Link
-        href="/peers"
-        className="pg-focus-premium mt-5 inline-flex text-sm text-slate-500 transition hover:text-slate-300"
-      >
-        ← Back to AI Team
-      </Link>
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        <Link
+          href="/peers"
+          className="pg-focus-premium inline-flex text-sm text-slate-500 transition hover:text-slate-300"
+        >
+          ← Back to AI Team
+        </Link>
+        {peerRole === "Marketing" && peerId && (
+          <Link
+            href={`/peers/${peerId}/marketing`}
+            className="pg-focus-premium inline-flex items-center gap-1.5 rounded-[12px] border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-sm font-medium text-fuchsia-200 transition hover:border-fuchsia-500/40 hover:bg-fuchsia-500/15"
+          >
+            <Megaphone size={14} aria-hidden />
+            Marketing workspace
+          </Link>
+        )}
+      </div>
     </header>
   );
 }

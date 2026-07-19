@@ -170,7 +170,8 @@ function mapPeerToWorkspace(peer: PeerRow): PeerWorkspace {
           : "Available",
     currentTask: template.currentTask,
     todayMetrics: template.todayMetrics,
-    workspaceHref: `/peers/${peer.id}`,
+    workspaceHref:
+      peer.role === "Marketing" ? `/peers/${peer.id}/marketing` : `/peers/${peer.id}`,
   };
 }
 

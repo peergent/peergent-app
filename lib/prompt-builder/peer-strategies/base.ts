@@ -1,14 +1,19 @@
-import type { BrainSnapshot } from "@/lib/context-engine/adapters/brain/business-brain-adapter";
 import type { ContextLayerKey, PeerRole } from "@/lib/context-engine/types";
 
-export type BrainFieldKey = keyof BrainSnapshot;
+export type BusinessBrainSectionKey =
+  | "products"
+  | "services"
+  | "customerSegments"
+  | "competitors"
+  | "internalProcesses"
+  | "knowledgeSources"
+  | "facts";
 
 export type PeerPromptStrategy = {
   role: PeerRole;
   roleDescription: string;
   behavioralInstructions: readonly string[];
-  relevantBrainFields: readonly BrainFieldKey[];
-  excludedBrainFields: readonly BrainFieldKey[];
+  relevantBusinessBrainSections: readonly BusinessBrainSectionKey[];
   defaultPriorities: readonly string[];
   promptLayers: readonly ContextLayerKey[];
   alwaysExcludeLayers: readonly ContextLayerKey[];

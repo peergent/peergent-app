@@ -1,21 +1,77 @@
 import type { ContextBundle } from "@/lib/context-engine/types";
-import type { BrainSnapshot } from "@/lib/context-engine/adapters/brain/business-brain-adapter";
+import type { BusinessBrainContextSlice } from "@/lib/intelligence/types/business-brain-context-slice";
+import type { CompanyDnaContextSlice } from "@/lib/intelligence/types/company-dna-context-slice";
+import { assembleContextPackage } from "@/lib/context-engine/assembly/context-package";
 
-const BASE_BRAIN: BrainSnapshot = {
+const BASE_DNA: CompanyDnaContextSlice = {
   available: true,
-  companySummary: "Acme helps mid-market teams automate inbound qualification.",
-  industry: "Professional Services",
+  mission: "Help mid-market teams automate inbound qualification.",
+  values: [{ id: "v1", name: "Trust", description: "Consultative and credible" }],
+  toneOfVoice: {
+    summary: "Consultative and trust-oriented",
+    personality: ["Professional", "Direct"],
+  },
+  riskProfile: { tolerance: "balanced", summary: "Measured growth" },
+  decisionPrinciples: [{ id: "p1", name: "Customer-first decisions" }],
+};
+
+const BASE_BRAIN: BusinessBrainContextSlice = {
+  available: true,
   products: [],
-  services: ["Implementation support", "Customer onboarding"],
-  targetCustomers: "B2B operations leaders",
-  valueProposition: "Consultative and trust-oriented",
-  toneOfVoice: "Consultative and trust-oriented",
-  strengths: ["Clear service positioning", "Strong contact path"],
-  weaknesses: ["Limited self-service content"],
-  opportunities: ["Lead qualification", "After-hours capture"],
-  recommendations: ["Alex (Sales): Qualify inbound leads faster"],
-  confidenceScore: 58,
-  lastAnalyzedAt: "2026-07-18T10:00:00.000Z",
+  services: [
+    {
+      id: "svc-1",
+      businessBrainId: "brain-1",
+      name: "Implementation support",
+      description: "Onboarding and setup",
+      metadata: {},
+      sortOrder: 0,
+      createdAt: "2026-07-18T10:00:00.000Z",
+      updatedAt: "2026-07-18T10:00:00.000Z",
+    },
+    {
+      id: "svc-2",
+      businessBrainId: "brain-1",
+      name: "Customer onboarding",
+      metadata: {},
+      sortOrder: 1,
+      createdAt: "2026-07-18T10:00:00.000Z",
+      updatedAt: "2026-07-18T10:00:00.000Z",
+    },
+  ],
+  customerSegments: [
+    {
+      id: "seg-1",
+      businessBrainId: "brain-1",
+      name: "B2B operations leaders",
+      segments: ["Mid-market"],
+      painPoints: ["Manual qualification"],
+      buyingTriggers: ["Growth targets"],
+      metadata: {},
+      sortOrder: 0,
+      createdAt: "2026-07-18T10:00:00.000Z",
+      updatedAt: "2026-07-18T10:00:00.000Z",
+    },
+  ],
+  competitors: [],
+  internalProcesses: [],
+  knowledgeSources: [],
+  facts: [
+    {
+      id: "fact-1",
+      businessBrainId: "brain-1",
+      subject: "Company",
+      predicate: "serves",
+      value: "B2B operations leaders",
+      confidence: "moderate",
+      verified: false,
+      importance: "medium",
+      lastUpdated: "2026-07-18T10:00:00.000Z",
+      metadata: {},
+      sortOrder: 0,
+      createdAt: "2026-07-18T10:00:00.000Z",
+    },
+  ],
 };
 
 export function createTestBundle(
@@ -23,12 +79,16 @@ export function createTestBundle(
     role: ContextBundle["scope"]["peer"]["role"];
     peerName: string;
     objective: string;
-    brain: BrainSnapshot | null;
+    companyDna: CompanyDnaContextSlice | null;
+    businessBrain: BusinessBrainContextSlice | null;
     includeTelemetry: boolean;
     includeKnowledge: boolean;
   }> = {}
 ): ContextBundle {
-  const brain = overrides.brain === null ? undefined : overrides.brain ?? BASE_BRAIN;
+  const companyDna =
+    overrides.companyDna === null ? undefined : overrides.companyDna ?? BASE_DNA;
+  const businessBrain =
+    overrides.businessBrain === null ? undefined : overrides.businessBrain ?? BASE_BRAIN;
 
   return {
     scope: {
@@ -96,12 +156,23 @@ export function createTestBundle(
         priority: 40,
         loadMode: "eager",
       },
-      ...(brain
+      ...(companyDna
         ? {
-            brain: {
-              key: "brain",
-              data: brain,
-              sources: [{ id: "website_intelligence_assessments:org-test-123", type: "supabase", label: "brain", fetchedAt: "2026-07-18T10:00:00.000Z", freshness: "live" }],
+            "company-dna": {
+              key: "company-dna",
+              data: companyDna,
+              sources: [{ id: "company_dna:org-test-123", type: "supabase", label: "Company DNA", fetchedAt: "2026-07-18T10:00:00.000Z", freshness: "live" }],
+              priority: 60,
+              loadMode: "lazy",
+            },
+          }
+        : {}),
+      ...(businessBrain
+        ? {
+            "business-brain": {
+              key: "business-brain",
+              data: businessBrain,
+              sources: [{ id: "business_brains:org-test-123", type: "supabase", label: "Business Brain", fetchedAt: "2026-07-18T10:00:00.000Z", freshness: "live" }],
               priority: 70,
               loadMode: "lazy",
             },
@@ -132,11 +203,19 @@ export function createTestBundle(
     },
     meta: {
       completeness: 70,
-      missingLayers: brain ? ["knowledge"] : ["brain", "knowledge"],
-      pendingLazyLayers: brain ? ["knowledge"] : ["brain", "knowledge"],
+      missingLayers: businessBrain ? ["knowledge"] : ["business-brain", "knowledge"],
+      pendingLazyLayers: businessBrain ? ["knowledge"] : ["business-brain", "knowledge"],
       traceId: "session-test-trace",
     },
   };
+}
+
+export function createTestContextPackage(
+  overrides: Parameters<typeof createTestBundle>[0] = {}
+) {
+  return assembleContextPackage(createTestBundle(overrides), {
+    taskHint: "Review this inbound lead",
+  });
 }
 
 export function createMarketingBundle(): ContextBundle {
@@ -144,10 +223,19 @@ export function createMarketingBundle(): ContextBundle {
     role: "Marketing",
     peerName: "Morgan",
     objective: "Create LinkedIn campaign messaging",
-    brain: {
+    businessBrain: {
       ...BASE_BRAIN,
-      products: ["Analytics platform"],
-      opportunities: ["Content-led demand", "Audience expansion"],
+      products: [
+        {
+          id: "prod-1",
+          businessBrainId: "brain-1",
+          name: "Analytics platform",
+          metadata: {},
+          sortOrder: 0,
+          createdAt: "2026-07-18T10:00:00.000Z",
+          updatedAt: "2026-07-18T10:00:00.000Z",
+        },
+      ],
     },
   });
 }

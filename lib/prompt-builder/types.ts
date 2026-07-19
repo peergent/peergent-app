@@ -27,13 +27,23 @@ export type PromptPackage = {
 
 export type PromptBuilderOptions = {
   taskHint?: string;
+  /** When set to marketing-plan, appends structured plan output instructions. */
+  outputFormat?: "default" | "marketing-strategy" | "marketing-plan" | "marketing-content-draft";
+  /** Required when outputFormat is marketing-plan — the strategy to transform into a plan. */
+  marketingStrategy?: import("@/lib/marketing-intelligence/types/strategy").MarketingStrategy;
+  /** Required when outputFormat is marketing-content-draft — the approved plan. */
+  marketingPlan?: import("@/lib/marketing-intelligence/types/plan").MarketingPlan;
+  /** Required when outputFormat is marketing-content-draft — selected content-calendar activity title. */
+  planActivityReference?: string;
 };
 
 export const PROMPT_LAYER_ORDER: ContextLayerKey[] = [
   "identity",
   "organization",
   "objective",
-  "brain",
+  "company-dna",
+  "marketing-understanding",
+  "business-brain",
   "policy",
   "knowledge",
   "memory",

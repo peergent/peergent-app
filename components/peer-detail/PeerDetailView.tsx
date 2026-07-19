@@ -237,6 +237,7 @@ export default function PeerDetailView() {
               <PeerWorkspaceHeader
                 model={workspace.header}
                 peerRole={peer.role}
+                peerId={peer.id}
                 paused={preferences.paused}
                 onPauseToggle={handlePauseToggle}
                 onMoreActions={() => setEditModalOpen(true)}

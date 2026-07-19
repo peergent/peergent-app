@@ -4,17 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "@/components/account/AccountProvider";
 import PromptPeerSelector from "@/components/dev/PromptPeerSelector";
 import { defaultContextEngine } from "@/lib/context-engine";
-import type { ContextBundle } from "@/lib/context-engine";
 import {
   displayWebsite,
   formatAnalyzedAt,
   resolveDefaultPeerId,
 } from "@/lib/dev/prompt-playground-utils";
 import {
-  buildPromptPackage,
+  buildPrompt,
   formatPromptForCopy,
   type PromptPackage,
 } from "@/lib/prompt-builder";
+import type { ContextPackage } from "@/lib/intelligence";
 import type { AIResponse } from "@/lib/ai-runtime";
 import { requestAIResponse } from "@/lib/dev/request-ai-response";
 import type { PeerRow } from "@/lib/peer-display";
@@ -30,7 +30,7 @@ export default function PromptPlayground() {
   const [lastAnalyzedAt, setLastAnalyzedAt] = useState<string | null>(null);
   const [assessmentWebsite, setAssessmentWebsite] = useState<string | null>(null);
   const [selectedPeerId, setSelectedPeerId] = useState<string>("");
-  const [bundle, setBundle] = useState<ContextBundle | null>(null);
+  const [contextPackage, setContextPackage] = useState<ContextPackage | null>(null);
   const [prompt, setPrompt] = useState<PromptPackage | null>(null);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export default function PromptPlayground() {
     };
   }, [account?.organization?.id, supabase]);
 
-  const buildBundle = useCallback(async () => {
+  const buildContextPackage = useCallback(async () => {
     if (!account?.organization || !selectedPeerId) return null;
 
     setLoading(true);
@@ -107,7 +107,7 @@ export default function PromptPlayground() {
     setAiResponse(null);
 
     try {
-      const baseBundle = await defaultContextEngine.build(
+      const result = await defaultContextEngine.buildContext(
         {
           organizationId: account.organization.id,
           peerId: selectedPeerId,
@@ -118,14 +118,10 @@ export default function PromptPlayground() {
         { supabase }
       );
 
-      const withBrain = await defaultContextEngine.buildLazy(baseBundle, "brain", {
-        supabase,
-      });
-
-      setBundle(withBrain);
-      return withBrain;
+      setContextPackage(result);
+      return result;
     } catch (err) {
-      setBundle(null);
+      setContextPackage(null);
       setError(err instanceof Error ? err.message : "Failed to build context.");
       return null;
     } finally {
@@ -138,10 +134,10 @@ export default function PromptPlayground() {
     setError(null);
 
     try {
-      const nextBundle = bundle ?? (await buildBundle());
-      if (!nextBundle) return;
+      const nextPackage = contextPackage ?? (await buildContextPackage());
+      if (!nextPackage) return;
       setPrompt(
-        buildPromptPackage(nextBundle, {
+        buildPrompt(nextPackage, {
           taskHint: "Prompt Builder playground task",
         })
       );
@@ -151,7 +147,7 @@ export default function PromptPlayground() {
     } finally {
       setGenerating(false);
     }
-  }, [buildBundle, bundle]);
+  }, [buildContextPackage, contextPackage]);
 
   const generateAiResponse = useCallback(async () => {
     setGeneratingAi(true);
@@ -162,9 +158,9 @@ export default function PromptPlayground() {
       let nextPrompt = prompt;
 
       if (!nextPrompt) {
-        const nextBundle = bundle ?? (await buildBundle());
-        if (!nextBundle) return;
-        nextPrompt = buildPromptPackage(nextBundle, {
+        const nextPackage = contextPackage ?? (await buildContextPackage());
+        if (!nextPackage) return;
+        nextPrompt = buildPrompt(nextPackage, {
           taskHint: "Prompt Builder playground task",
         });
         setPrompt(nextPrompt);
@@ -178,7 +174,7 @@ export default function PromptPlayground() {
     } finally {
       setGeneratingAi(false);
     }
-  }, [buildBundle, bundle, prompt]);
+  }, [buildContextPackage, contextPackage, prompt]);
 
   async function handleCopyPrompt() {
     if (!prompt) return;
@@ -204,7 +200,7 @@ export default function PromptPlayground() {
 
   function handleSelectPeer(peerId: string) {
     setSelectedPeerId(peerId);
-    setBundle(null);
+    setContextPackage(null);
     setPrompt(null);
     setAiResponse(null);
   }
@@ -239,8 +235,8 @@ export default function PromptPlayground() {
         </p>
         <h1 className="text-2xl font-semibold text-white">Prompt Builder</h1>
         <p className="max-w-2xl text-sm text-slate-400">
-          Build a ContextBundle from Supabase, lazy-load Business Brain, generate a
-          role-aware PromptPackage, and request the first real AI Peer response.
+          Build a Context Package via buildContext(), generate a role-aware PromptPackage
+          with buildPrompt(), and request an AI Peer response.
         </p>
       </header>
 
@@ -296,11 +292,11 @@ export default function PromptPlayground() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={() => void buildBundle()}
+          onClick={() => void buildContextPackage()}
           disabled={loading || generating || generatingAi || !selectedPeerId}
           className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Building context..." : "Build Context + Brain"}
+          {loading ? "Building context..." : "buildContext()"}
         </button>
         <button
           type="button"

@@ -17,7 +17,9 @@ export default function ContextPlayground() {
   const [bundle, setBundle] = useState<ContextBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [lazyAction, setLazyAction] = useState<"knowledge" | "brain" | null>(null);
+  const [lazyAction, setLazyAction] = useState<
+    "knowledge" | "company-dna" | "business-brain" | null
+  >(null);
 
   useEffect(() => {
     const organizationId = account?.organization?.id;
@@ -99,7 +101,7 @@ export default function ContextPlayground() {
     void runBuild();
   }, [account, accountLoading, peersLoading, runBuild, selectedPeerId]);
 
-  async function runLazyLayer(layerKey: "knowledge" | "brain") {
+  async function runLazyLayer(layerKey: "knowledge" | "company-dna" | "business-brain") {
     if (!bundle) {
       return;
     }
@@ -125,7 +127,8 @@ export default function ContextPlayground() {
 
   const lazyLoading = lazyAction !== null;
   const knowledgeLoaded = Boolean(bundle?.layers.knowledge);
-  const brainLoaded = Boolean(bundle?.layers.brain);
+  const companyDnaLoaded = Boolean(bundle?.layers["company-dna"]);
+  const businessBrainLoaded = Boolean(bundle?.layers["business-brain"]);
   const selectedPeer = peers.find((peer) => peer.id === selectedPeerId);
 
   if (accountLoading) {
@@ -238,22 +241,33 @@ export default function ContextPlayground() {
 
         <button
           type="button"
-          onClick={() => void runLazyLayer("brain")}
+          onClick={() => void runLazyLayer("company-dna")}
           disabled={loading || lazyLoading || !bundle}
           className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {lazyAction === "brain"
+          {lazyAction === "company-dna"
+            ? "Loading Company DNA..."
+            : 'buildLazy("company-dna")'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void runLazyLayer("business-brain")}
+          disabled={loading || lazyLoading || !bundle}
+          className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {lazyAction === "business-brain"
             ? "Loading Business Brain..."
-            : "Load Business Brain"}
+            : 'buildLazy("business-brain")'}
         </button>
 
         {bundle ? (
           <span className="text-sm text-slate-400">
             Completeness: {bundle.meta.completeness}% · Pending lazy layers:{" "}
             {bundle.meta.pendingLazyLayers.join(", ") || "none"}
-            {brainLoaded &&
-            bundle.layers.brain?.sources?.[0]?.type === "supabase"
-              ? " · brain source: supabase"
+            {businessBrainLoaded &&
+            bundle.layers["business-brain"]?.sources?.[0]?.type === "supabase"
+              ? " · business brain source: supabase"
               : null}
           </span>
         ) : null}
@@ -272,13 +286,22 @@ export default function ContextPlayground() {
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <h2 className="text-sm font-medium text-slate-200">ContextBundle</h2>
         <div className="flex items-center gap-2">
-          {brainLoaded ? (
+          {companyDnaLoaded ? (
             <span className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300">
-              brain loaded
+              company dna loaded
             </span>
           ) : (
             <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
-              brain pending
+              company dna pending
+            </span>
+          )}
+          {businessBrainLoaded ? (
+            <span className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300">
+              business brain loaded
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
+              business brain pending
             </span>
           )}
           {knowledgeLoaded ? (

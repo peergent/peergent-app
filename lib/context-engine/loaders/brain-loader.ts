@@ -1,8 +1,5 @@
 import { createStubSource, type ContextLoader } from "./base";
 
-export { businessBrainLoader, businessBrainLoader as brainLoader } from "./business-brain-loader";
-export type { BrainSnapshot } from "./business-brain-loader";
-
 export type MemorySlice = {
   items: string[];
   enabled: boolean;

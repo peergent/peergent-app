@@ -19,6 +19,14 @@ export class AIRuntime {
     this.provider = config.provider ?? defaultOpenAIProvider;
   }
 
+  /** Single public responsibility: execute a prompt against the configured provider. */
+  async execute(
+    promptPackage: PromptPackage,
+    options: AIRuntimeOptions = {}
+  ): Promise<AIResponse> {
+    return this.generateFromPromptPackage(promptPackage, options);
+  }
+
   async generateFromPromptPackage(
     promptPackage: PromptPackage,
     options: AIRuntimeOptions = {}
@@ -33,47 +41,38 @@ export class AIRuntime {
 
     const validated = validateResponse(providerResult.text);
 
+    const metadata = {
+      provider: this.provider.name,
+      model: providerResult.model,
+      finishReason: providerResult.finishReason,
+      latencyMs: providerResult.latencyMs,
+      usage: providerResult.usage,
+      generatedAt: new Date().toISOString(),
+      promptTraceId: promptPackage.metadata.traceId,
+      peerRole: promptPackage.metadata.peerRole,
+    };
+
     if (!validated.success) {
-      return {
-        text: "",
-        providerResult,
-        validated,
-        metadata: {
-          provider: this.provider.name,
-          model: providerResult.model,
-          finishReason: providerResult.finishReason,
-          latencyMs: providerResult.latencyMs,
-          usage: providerResult.usage,
-          generatedAt: new Date().toISOString(),
-          promptTraceId: promptPackage.metadata.traceId,
-          peerRole: promptPackage.metadata.peerRole,
-        },
-      };
+      return { text: "", providerResult, validated, metadata };
     }
 
-    return {
-      text: validated.text,
-      providerResult,
-      validated,
-      metadata: {
-        provider: this.provider.name,
-        model: providerResult.model,
-        finishReason: providerResult.finishReason,
-        latencyMs: providerResult.latencyMs,
-        usage: providerResult.usage,
-        generatedAt: new Date().toISOString(),
-        promptTraceId: promptPackage.metadata.traceId,
-        peerRole: promptPackage.metadata.peerRole,
-      },
-    };
+    return { text: validated.text, providerResult, validated, metadata };
   }
 }
 
 export const defaultAIRuntime = new AIRuntime();
 
+export async function execute(
+  promptPackage: PromptPackage,
+  options: AIRuntimeOptions = {}
+): Promise<AIResponse> {
+  return defaultAIRuntime.execute(promptPackage, options);
+}
+
+/** @deprecated Use execute() */
 export async function generateAIResponse(
   promptPackage: PromptPackage,
   options: AIRuntimeOptions = {}
 ): Promise<AIResponse> {
-  return defaultAIRuntime.generateFromPromptPackage(promptPackage, options);
+  return defaultAIRuntime.execute(promptPackage, options);
 }

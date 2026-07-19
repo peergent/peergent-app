@@ -9,7 +9,9 @@ export type ContextLayerKey =
   | "knowledge"
   | "memory"
   | "tools"
-  | "brain"
+  | "company-dna"
+  | "business-brain"
+  | "marketing-understanding"
   | "telemetry"
   | "peer-type";
 

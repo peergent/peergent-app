@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { assembleContextPackage } from "../assembly/context-package";
 import { serializeContextBundle } from "../assembly/serialize";
 import { getLayerTtl } from "../cache/ttl";
 import { defaultContextCache, type MemoryContextCache } from "../cache/memory-store";
-import { defaultLoaders } from "../loaders";
+import { BUILD_CONTEXT_LAZY_LAYERS, defaultLoaders } from "../loaders";
 import type { LoaderContext } from "../loaders/base";
 import {
   defaultPeerTypeRegistry,
@@ -19,6 +20,7 @@ import type {
   ContextLayerKey,
   PromptPackage,
 } from "../types";
+import type { ContextPackage } from "@/lib/intelligence";
 import type { Database } from "@/lib/supabase/database.types";
 import { ContextBuilder, defaultContextBuilder } from "./builder";
 import { LoaderRegistry } from "./loader-registry";
@@ -38,6 +40,8 @@ export type ContextEngineOptions = {
   cache?: MemoryContextCache;
   scopeResolver?: ScopeResolver;
 };
+
+const COMMUNICATION_ROLES = new Set(["Sales", "Marketing", "Support"]);
 
 export class ContextEngine {
   private readonly loaderRegistry: LoaderRegistry;
@@ -59,6 +63,28 @@ export class ContextEngine {
     }
   }
 
+  /**
+   * Single entry point for AI context retrieval.
+   * Loads eager layers plus intelligence layers (Company DNA, Business Brain, peer-type).
+   */
+  async buildContext(
+    request: BuildContextRequest,
+    options: BuildContextOptions = {}
+  ): Promise<ContextPackage> {
+    const cacheHits: string[] = [];
+    let bundle = await this.build(request, options);
+
+    for (const layerKey of BUILD_CONTEXT_LAZY_LAYERS) {
+      if (bundle.layers[layerKey]) continue;
+      bundle = await this.buildLazy(bundle, layerKey, options, request.taskHint);
+    }
+
+    return assembleContextPackage(bundle, {
+      taskHint: request.taskHint,
+      cacheHits,
+    });
+  }
+
   async build(
     request: BuildContextRequest,
     options: BuildContextOptions = {}
@@ -72,6 +98,11 @@ export class ContextEngine {
 
     const eagerLayers = request.eagerLayers ?? getDefaultEagerLayers();
     const lazyLayers = request.lazyLayers ?? getDefaultLazyLayers();
+
+    if (COMMUNICATION_ROLES.has(scope.peer.role) && !eagerLayers.includes("company-dna")) {
+      eagerLayers.push("company-dna");
+    }
+
     const loaderContext: LoaderContext = {
       scope,
       taskHint: request.taskHint,
@@ -88,7 +119,8 @@ export class ContextEngine {
   async buildLazy(
     bundle: ContextBundle,
     layerKey: ContextLayerKey,
-    options: BuildContextOptions = {}
+    options: BuildContextOptions = {},
+    taskHint?: string
   ): Promise<ContextBundle> {
     if (bundle.layers[layerKey]) {
       return bundle;
@@ -96,6 +128,7 @@ export class ContextEngine {
 
     const loaderContext: LoaderContext = {
       scope: bundle.scope,
+      taskHint,
       supabase: options.supabase,
     };
 
@@ -122,14 +155,16 @@ export class ContextEngine {
     const loader = this.loaderRegistry.get(layerKey);
     const slice = await this.builder.runLoader(loader, ctx);
 
-    const isUnavailableBrainSlice =
-      layerKey === "brain" &&
+    const isUnavailableIntelligenceSlice =
+      (layerKey === "business-brain" ||
+        layerKey === "company-dna" ||
+        layerKey === "marketing-understanding") &&
       typeof slice.data === "object" &&
       slice.data !== null &&
       "available" in slice.data &&
       (slice.data as { available: boolean }).available === false;
 
-    if (!isUnavailableBrainSlice) {
+    if (!isUnavailableIntelligenceSlice) {
       this.cache.set(cacheKey, slice, loader.ttlMs ?? getLayerTtl(layerKey));
     }
 

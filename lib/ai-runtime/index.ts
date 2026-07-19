@@ -1,7 +1,9 @@
-export { AIRuntime, defaultAIRuntime, generateAIResponse } from "./ai-runtime";
+export { AIRuntime, defaultAIRuntime, execute, generateAIResponse } from "./ai-runtime";
 export type { AIRuntimeConfig } from "./ai-runtime";
 export type { LLMProvider } from "./provider";
 export { OpenAIProvider, defaultOpenAIProvider } from "./openai-provider";
+export { resolveProvider, registerProvider, listProviders } from "./provider-registry";
+export type { ProviderId } from "./provider-registry";
 export { validateResponse } from "./response-validator";
 export {
   AIRuntimeError,

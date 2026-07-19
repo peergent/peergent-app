@@ -2,18 +2,17 @@ export { organizationLoader } from "./organization-loader";
 export { peerLoader, objectiveLoader } from "./peer-loader";
 export { policyLoader, preferencesLoader } from "./preferences-loader";
 export { knowledgeLoader } from "./knowledge-loader";
-export {
-  brainLoader,
-  businessBrainLoader,
-  memoryLoader,
-  toolsLoader,
-  telemetryLoader,
-} from "./brain-loader";
-export type { BrainSnapshot } from "./business-brain-loader";
+export { companyDnaLoader } from "./company-dna-loader";
+export { businessBrainDomainLoader } from "./business-brain-domain-loader";
+export { marketingUnderstandingLoader } from "./marketing-understanding-loader";
+export { memoryLoader, toolsLoader, telemetryLoader } from "./brain-loader";
 export type { ContextLoader, LoaderContext, ContextSliceResult } from "./base";
 export { createStubSource } from "./base";
 
-import { brainLoader, memoryLoader, telemetryLoader, toolsLoader } from "./brain-loader";
+import { businessBrainDomainLoader } from "./business-brain-domain-loader";
+import { marketingUnderstandingLoader } from "./marketing-understanding-loader";
+import { memoryLoader, telemetryLoader, toolsLoader } from "./brain-loader";
+import { companyDnaLoader } from "./company-dna-loader";
 import { knowledgeLoader } from "./knowledge-loader";
 import { organizationLoader } from "./organization-loader";
 import { objectiveLoader, peerLoader } from "./peer-loader";
@@ -29,5 +28,15 @@ export const defaultLoaders: ContextLoader<unknown>[] = [
   knowledgeLoader,
   memoryLoader,
   toolsLoader,
-  brainLoader,
+  companyDnaLoader,
+  businessBrainDomainLoader,
+  marketingUnderstandingLoader,
 ];
+
+/** Layers loaded by buildContext() for a complete AI request. */
+export const BUILD_CONTEXT_LAZY_LAYERS = [
+  "company-dna",
+  "business-brain",
+  "marketing-understanding",
+  "peer-type",
+] as const;
