@@ -146,6 +146,8 @@ export type CreativeBrief = {
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** Deterministic selection trace — not dependency payloads. */
+  readonly assemblyTrace?: readonly string[];
 } & CreativeBriefOwnedSections;
 
 /** Keys for completeness and validation (content sections only). */

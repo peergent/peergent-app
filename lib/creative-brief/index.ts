@@ -13,6 +13,25 @@ export type {
   CreativeBriefRequiredSection,
 } from "./ownership";
 
+export { assembleCreativeBrief } from "./assemble-creative-brief";
+
+export type {
+  CreativeBriefAudienceInput,
+  CreativeBriefBrandInput,
+  CreativeBriefBusinessInput,
+  CreativeBriefSource,
+} from "./creative-brief-source";
+
+export {
+  CreativeBriefAssemblyError,
+  CreativeBriefBlockedDecisionError,
+  CreativeBriefGenerationNotAllowedError,
+  CreativeBriefManualOnlyDecisionError,
+  CreativeBriefNoSelectableChannelError,
+  CreativeBriefNoSelectableContentTypeError,
+  CreativeBriefRequestedSelectionBlockedError,
+} from "./errors";
+
 export type {
   CreativeBrief,
   CreativeBriefApprovalRequirements,
