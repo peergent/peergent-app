@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "@/components/account/AccountProvider";
+import BrandBrainInspectorSection from "@/components/dev/BrandBrainInspectorSection";
 import { defaultContextEngine } from "@/lib/context-engine";
 import type { ContextBundle } from "@/lib/context-engine";
+import { presentBrandBrainInspectorView } from "@/lib/dev/brand-brain-inspector-view";
+import type { ContextPackage } from "@/lib/intelligence";
 import type { PeerRow } from "@/lib/peer-display";
 import { fetchOrganizationPeers } from "@/lib/peers/queries";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +18,7 @@ export default function ContextPlayground() {
   const [peersLoading, setPeersLoading] = useState(false);
   const [selectedPeerId, setSelectedPeerId] = useState<string>("");
   const [bundle, setBundle] = useState<ContextBundle | null>(null);
+  const [contextPackage, setContextPackage] = useState<ContextPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lazyAction, setLazyAction] = useState<
@@ -74,19 +78,22 @@ export default function ContextPlayground() {
     setError(null);
 
     try {
-      const result = await defaultContextEngine.build(
-        {
-          organizationId: account.organization.id,
-          peerId: selectedPeerId,
-          userId: account.userId,
-          membershipRole: account.organization.role,
-          taskHint: "Context Engine playground smoke test",
-        },
-        { supabase }
-      );
+      const request = {
+        organizationId: account.organization.id,
+        peerId: selectedPeerId,
+        userId: account.userId,
+        membershipRole: account.organization.role,
+        taskHint: "Context Engine playground smoke test",
+      };
+      const [result, packageResult] = await Promise.all([
+        defaultContextEngine.build(request, { supabase }),
+        defaultContextEngine.buildContext(request, { supabase }),
+      ]);
       setBundle(result);
+      setContextPackage(packageResult);
     } catch (err) {
       setBundle(null);
+      setContextPackage(null);
       setError(err instanceof Error ? err.message : "Failed to build context.");
     } finally {
       setLoading(false);
@@ -129,7 +136,19 @@ export default function ContextPlayground() {
   const knowledgeLoaded = Boolean(bundle?.layers.knowledge);
   const companyDnaLoaded = Boolean(bundle?.layers["company-dna"]);
   const businessBrainLoaded = Boolean(bundle?.layers["business-brain"]);
+  const brandBrainLoaded = Boolean(contextPackage?.slices.brandBrain);
   const selectedPeer = peers.find((peer) => peer.id === selectedPeerId);
+
+  const brandBrainView = useMemo(
+    () =>
+      presentBrandBrainInspectorView({
+        slice: contextPackage?.slices.brandBrain,
+        sources: contextPackage?.meta.sources,
+        warnings: contextPackage?.meta.warnings,
+        organizationName: account?.organization?.name,
+      }),
+    [account?.organization?.name, contextPackage]
+  );
 
   if (accountLoading) {
     return (
@@ -163,12 +182,20 @@ export default function ContextPlayground() {
         </p>
         <h1 className="text-2xl font-semibold text-white">Context Engine</h1>
         <p className="max-w-2xl text-sm text-slate-400">
-          Inspect the ContextBundle returned by{" "}
+          Inspect the ContextBundle from{" "}
           <code className="rounded bg-white/5 px-1.5 py-0.5 text-violet-200">
             ContextEngine.build()
           </code>{" "}
-          using your authenticated organization and a real peer record. Run Website
-          Intelligence first to populate Business Brain data in this browser session.
+          and the v2 ContextPackage (including{" "}
+          <code className="rounded bg-white/5 px-1.5 py-0.5 text-violet-200">
+            slices.brandBrain
+          </code>
+          ) from{" "}
+          <code className="rounded bg-white/5 px-1.5 py-0.5 text-violet-200">
+            buildContext()
+          </code>
+          . Run Website Intelligence first to populate Business Brain data in this browser
+          session.
         </p>
       </header>
 
@@ -261,14 +288,15 @@ export default function ContextPlayground() {
             : 'buildLazy("business-brain")'}
         </button>
 
-        {bundle ? (
+        {contextPackage ? (
           <span className="text-sm text-slate-400">
-            Completeness: {bundle.meta.completeness}% · Pending lazy layers:{" "}
+            Package completeness: {contextPackage.meta.completeness}% · Loaded:{" "}
+            {contextPackage.meta.loadedLayers.join(", ") || "none"}
+          </span>
+        ) : bundle ? (
+          <span className="text-sm text-slate-400">
+            Bundle completeness: {bundle.meta.completeness}% · Pending lazy layers:{" "}
             {bundle.meta.pendingLazyLayers.join(", ") || "none"}
-            {businessBrainLoaded &&
-            bundle.layers["business-brain"]?.sources?.[0]?.type === "supabase"
-              ? " · business brain source: supabase"
-              : null}
           </span>
         ) : null}
       </div>
@@ -281,6 +309,8 @@ export default function ContextPlayground() {
           {error}
         </div>
       ) : null}
+
+      <BrandBrainInspectorSection view={brandBrainView} />
 
       <section className="overflow-hidden rounded-xl border border-white/10 bg-[#070b18]">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
@@ -311,6 +341,15 @@ export default function ContextPlayground() {
           ) : (
             <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
               knowledge pending
+            </span>
+          )}
+          {brandBrainLoaded ? (
+            <span className="rounded-full bg-fuchsia-500/10 px-2.5 py-1 text-xs font-medium text-fuchsia-300">
+              brand brain loaded
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
+              brand brain pending
             </span>
           )}
         </div>
