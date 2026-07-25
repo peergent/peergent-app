@@ -1,0 +1,32 @@
+export type {
+  Campaign,
+  CampaignApprovalMode,
+  CampaignAudience,
+  CampaignBudget,
+  CampaignChannelPlan,
+  CampaignExecution,
+  CampaignGap,
+  CampaignGoal,
+  CampaignKpiPlaceholder,
+  CampaignMilestone,
+  CampaignPerformance,
+  CampaignPersona,
+  CampaignProgress,
+  CampaignRecommendation,
+  CampaignReferences,
+  CampaignSectionKey,
+  CampaignSegmentRef,
+  CampaignStatus,
+  CampaignSuccessMetric,
+  CampaignTimeline,
+  CampaignWorker,
+  CampaignWorkerRole,
+  CampaignWorkerStatus,
+  CampaignWorkforce,
+  CampaignOwnedSections,
+} from "./campaign";
+
+export {
+  CAMPAIGN_WORKFORCE_ROLE_LABELS,
+  CAMPAIGN_WORKFORCE_ROLES,
+} from "./campaign";
