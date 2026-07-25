@@ -8,9 +8,12 @@ import type { CampaignOwnedModule } from "../ownership";
 export type CampaignStatus =
   | "draft"
   | "planning"
+  | "ready"
   | "active"
   | "paused"
   | "completed"
+  | "cancelled"
+  | "blocked"
   | "archived";
 
 export type CampaignApprovalMode =

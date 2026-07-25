@@ -15,6 +15,31 @@ export type {
   CampaignRequiredSection,
 } from "./ownership";
 
+export { assembleCampaign, deriveCampaignStatus, campaignStatusFromFlagsOnly } from "./assemble-campaign";
+
+export type {
+  CampaignAudienceInput,
+  CampaignBudgetInput,
+  CampaignProgressInput,
+  CampaignSource,
+  CampaignStatusFlags,
+  CampaignTimelineInput,
+  CampaignWorkforceAssignment,
+} from "./campaign-source";
+
+export {
+  CampaignAssemblyError,
+  CampaignContradictoryStatusError,
+  CampaignInvalidBudgetError,
+  CampaignInvalidCampaignIdError,
+  CampaignInvalidCompletionError,
+  CampaignInvalidOrganizationIdError,
+  CampaignInvalidProgressError,
+  CampaignInvalidTimelineError,
+  CampaignOrganizationMismatchError,
+  CampaignUnsupportedWorkforceRoleError,
+} from "./errors";
+
 export type {
   Campaign,
   CampaignApprovalMode,
