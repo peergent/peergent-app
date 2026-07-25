@@ -6,6 +6,8 @@ import {
   isAuthContext,
 } from "@/lib/intelligence/api/org-context";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const context = await getAuthenticatedOrgContext();
   if (!isAuthContext(context)) return context;

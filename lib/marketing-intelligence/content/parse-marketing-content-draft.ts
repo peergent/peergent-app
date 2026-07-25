@@ -116,6 +116,8 @@ export function detectUngroundedClaims(
   for (const match of text.matchAll(ourPattern)) {
     const term = match[1]?.trim().toLowerCase();
     if (!term || GENERIC_TERMS.has(term)) continue;
+    const firstWord = term.split(/\s+/)[0];
+    if (firstWord && GENERIC_TERMS.has(firstWord)) continue;
     const grounded = [...known].some(
       (entity) => entity.includes(term) || term.includes(entity)
     );

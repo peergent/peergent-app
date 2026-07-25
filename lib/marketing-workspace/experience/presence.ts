@@ -6,7 +6,7 @@ const PRESENCE_CONFIG: Record<
 > = {
   idle: {
     label: "Idle",
-    description: "Ready when you are — no active task in progress.",
+    description: "Monitoring the execution plan for the next recommended action.",
     color: "slate",
   },
   learning: {
@@ -33,6 +33,11 @@ const PRESENCE_CONFIG: Record<
     label: "Creating",
     description: "Drafting content for a planned calendar activity.",
     color: "fuchsia",
+  },
+  preparing_publication: {
+    label: "Preparing publication",
+    description: "Packaging approved content for its target channel.",
+    color: "violet",
   },
   waiting_for_approval: {
     label: "Waiting for approval",
@@ -65,13 +70,16 @@ export function buildPeerPresence(
 }
 
 export type PresenceInput = {
-  generating: "understanding" | "strategy" | "plan" | "draft" | null;
+  generating: "understanding" | "strategy" | "plan" | "draft" | "publication" | null;
   understandingAvailable: boolean;
   understandingCompleteness: number;
   hasStrategy: boolean;
   hasPlan: boolean;
   pendingDraftCount: number;
-  hasApprovedDrafts: boolean;
+  readyToPublishCount: number;
+  approvedAwaitingPrepCount: number;
+  hasPublishedDrafts: boolean;
+  planComplete: boolean;
   gapCount: number;
 };
 
@@ -90,9 +98,16 @@ export function derivePeerPresence(input: PresenceInput): PeerPresence {
   if (input.generating === "draft") {
     return buildPeerPresence("creating", now);
   }
+  if (input.generating === "publication") {
+    return buildPeerPresence("preparing_publication", now);
+  }
 
   if (input.pendingDraftCount > 0) {
     return buildPeerPresence("waiting_for_approval", now);
+  }
+
+  if (input.readyToPublishCount > 0) {
+    return buildPeerPresence("reviewing", now);
   }
 
   if (input.gapCount > 0 && input.understandingCompleteness < 40) {
@@ -103,15 +118,19 @@ export function derivePeerPresence(input: PresenceInput): PeerPresence {
     return buildPeerPresence("learning", now);
   }
 
-  if (!input.hasStrategy) {
+  if (input.planComplete) {
+    return buildPeerPresence("completed", now);
+  }
+
+  if (!input.hasStrategy || !input.hasPlan) {
     return buildPeerPresence("idle", now);
   }
 
-  if (!input.hasPlan) {
-    return buildPeerPresence("idle", now);
+  if (input.approvedAwaitingPrepCount > 0) {
+    return buildPeerPresence("preparing_publication", now);
   }
 
-  if (input.hasApprovedDrafts && input.pendingDraftCount === 0) {
+  if (input.hasPublishedDrafts && input.pendingDraftCount === 0) {
     return buildPeerPresence("completed", now);
   }
 

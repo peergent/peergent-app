@@ -1,14 +1,19 @@
 import type { ActivityFeedItem } from "./types";
 import type { WorkSummaryItem } from "./types";
 
-export type ArtifactSection =
-  | "understanding"
-  | "strategy"
-  | "plan"
-  | "calendar"
-  | "drafts";
+export type WorkspaceRegion = "understanding" | "strategy" | "plan" | "drafts";
 
-export function resolveActivityTarget(item: ActivityFeedItem): ArtifactSection | null {
+/** @deprecated Use WorkspaceRegion — calendar removed in Sprint 11 Phase 2 */
+export type ArtifactSection = WorkspaceRegion;
+
+export function timelineNodeToWorkspaceRegion(nodeId: string): WorkspaceRegion {
+  if (nodeId.startsWith("milestone:knowledge")) return "understanding";
+  if (nodeId.startsWith("milestone:strategy")) return "strategy";
+  if (nodeId.startsWith("milestone:plan")) return "plan";
+  return "drafts";
+}
+
+export function resolveActivityTarget(item: ActivityFeedItem): WorkspaceRegion | null {
   switch (item.activityType) {
     case "understanding_loaded":
     case "gap_detected":
@@ -21,13 +26,16 @@ export function resolveActivityTarget(item: ActivityFeedItem): ArtifactSection |
     case "waiting_approval":
     case "draft_approved":
     case "draft_rejected":
+    case "publication_prepared":
+    case "publication_ready":
+    case "published":
       return "drafts";
     default:
       return null;
   }
 }
 
-export function resolveSummaryTarget(item: WorkSummaryItem): ArtifactSection | null {
+export function resolveSummaryTarget(item: WorkSummaryItem): WorkspaceRegion | null {
   if (item.id === "understanding") return "understanding";
   if (item.id === "strategy") return "strategy";
   if (item.id === "plan") return "plan";

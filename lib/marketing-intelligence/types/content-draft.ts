@@ -21,11 +21,16 @@ export const SUPPORTED_DRAFT_CONTENT_TYPES: readonly MarketingDraftContentType[]
   "meta_ads_copy",
 ] as const;
 
+/** Pipe-separated enum shared by plan and draft prompts — single source of truth. */
+export const DRAFT_CONTENT_TYPE_SCHEMA = SUPPORTED_DRAFT_CONTENT_TYPES.join("|");
+
 export type ContentDraftStatus =
   | "draft"
   | "ready_for_review"
   | "rejected"
-  | "approved";
+  | "approved"
+  | "ready_to_publish"
+  | "published";
 
 export type ContentSourceReference = {
   source:

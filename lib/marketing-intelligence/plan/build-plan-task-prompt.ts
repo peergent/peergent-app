@@ -1,5 +1,6 @@
 import type { MarketingStrategy } from "../types/strategy";
 import type { PlanReadiness } from "./assess-plan-readiness";
+import { DRAFT_CONTENT_TYPE_SCHEMA } from "../types/content-draft";
 
 const PLAN_JSON_SCHEMA = `{
   "summary": "string — executive summary of the execution plan",
@@ -10,7 +11,7 @@ const PLAN_JSON_SCHEMA = `{
   "priorities": [{ "rank": 1, "title": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
   "timeline": [{ "phase": "string", "startWeek": 1, "endWeek": 4, "activities": ["string"], "title": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
   "campaigns": [{ "title": "string", "channels": ["string"], "startWeek": 1, "endWeek": 6, "milestones": ["string"], "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
-  "contentCalendar": [{ "title": "string", "contentType": "string", "channel": "string", "scheduledWeek": 2, "pillar": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
+  "contentCalendar": [{ "title": "string", "contentType": "${DRAFT_CONTENT_TYPE_SCHEMA}", "channel": "string", "scheduledWeek": 2, "pillar": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
   "dependencies": [{ "dependent": "string", "dependsOn": "string", "rationale": { "why": "string" } }],
   "expectedOutcomes": [{ "title": "string", "outcome": "string", "timeframe": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...], "estimatedEffort": "low|medium|high", "expectedImpact": "low|medium|high" }],
   "successMetrics": [{ "metric": "string", "target": "string", "rationale": { "why": "string" }, "linkedStrategyItems": [...] }],
@@ -65,6 +66,8 @@ export function buildMarketingPlanTaskAppendix(
     "- linkedStrategyItems must reference actual items from the input strategy using type and reference fields.",
     "- Ground the plan in the strategy provided. Do not invent strategy items not present in the input.",
     "- Content calendar entries describe planned content slots (type, channel, week) — not the content itself.",
+    `- contentCalendar.contentType MUST be one of: ${DRAFT_CONTENT_TYPE_SCHEMA}. Use these exact snake_case values — not human-readable labels like "Blog Post".`,
+    "- Do NOT schedule webinar, podcast, video, event, whitepaper, or other formats outside the supported contentType list above.",
     "- When the strategy is incomplete, note limitations in knowledgeGaps.",
     `- Maximum confidence for this request: ${readiness.maxConfidence} (${readiness.strategyItemCount} strategy items available).`,
     gapBlock,

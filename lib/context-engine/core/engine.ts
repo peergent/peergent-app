@@ -65,14 +65,23 @@ export class ContextEngine {
 
   /**
    * Single entry point for AI context retrieval.
-   * Loads eager layers plus intelligence layers (Company DNA, Business Brain, peer-type).
+   * Loads eager layers plus intelligence layers (Company DNA, Business Brain,
+   * Marketing Understanding, peer-type). Optional stub layers (knowledge, memory,
+   * tools) are excluded from the load plan — they are not required for current
+   * Marketing / Sales / Support capabilities.
    */
   async buildContext(
     request: BuildContextRequest,
     options: BuildContextOptions = {}
   ): Promise<ContextPackage> {
     const cacheHits: string[] = [];
-    let bundle = await this.build(request, options);
+    let bundle = await this.build(
+      {
+        ...request,
+        lazyLayers: request.lazyLayers ?? [...BUILD_CONTEXT_LAZY_LAYERS],
+      },
+      options
+    );
 
     for (const layerKey of BUILD_CONTEXT_LAZY_LAYERS) {
       if (bundle.layers[layerKey]) continue;

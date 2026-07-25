@@ -1,5 +1,12 @@
-import MarketingWorkspaceView from "@/components/marketing-workspace/MarketingWorkspaceView";
+import { redirect } from "next/navigation";
+import { peerStudioHref } from "@/lib/config/peer-studio";
 
-export default function MarketingWorkspacePage() {
-  return <MarketingWorkspaceView />;
+type MarketingRedirectPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+/** Legacy marketing workspace — redirects to Peer Studio. */
+export default async function MarketingRedirectPage({ params }: MarketingRedirectPageProps) {
+  const { id } = await params;
+  redirect(peerStudioHref(id));
 }

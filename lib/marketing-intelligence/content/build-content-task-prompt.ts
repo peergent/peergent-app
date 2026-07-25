@@ -1,9 +1,10 @@
 import type { ContentCalendarEntry, MarketingPlan } from "../types/plan";
 import type { MarketingDraftContentType } from "../types/content-draft";
+import { DRAFT_CONTENT_TYPE_SCHEMA } from "../types/content-draft";
 
 const DRAFT_JSON_SCHEMA = `{
   "planActivityReference": "string — must match the selected content-calendar activity title exactly",
-  "contentType": "linkedin_post|blog_article|newsletter|website_article|social_media_post|google_ads_copy|meta_ads_copy",
+  "contentType": "${DRAFT_CONTENT_TYPE_SCHEMA}",
   "channel": "string",
   "objective": "string — what this draft aims to achieve per the plan",
   "targetAudience": "string",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { validateResponse, structuredJsonMaxLength } from "@/lib/ai-runtime/response-validator";
 import { assessStrategyReadiness } from "@/lib/marketing-intelligence/strategy/assess-strategy-readiness";
 import { parseMarketingStrategyResponse } from "@/lib/marketing-intelligence/strategy/parse-marketing-strategy-response";
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
@@ -169,5 +170,23 @@ describe("parseMarketingStrategyResponse", () => {
   it("rejects non-JSON responses", () => {
     const result = parseMarketingStrategyResponse("Not JSON at all");
     expect(result.success).toBe(false);
+  });
+
+  it("fails when AI runtime truncates structured JSON before parsing", () => {
+    const fullJson = JSON.stringify({
+      ...sampleStrategyJson,
+      summary: `${sampleStrategyJson.summary} ${"Additional strategic context. ".repeat(400)}`,
+    });
+    expect(fullJson.length).toBeGreaterThan(8000);
+
+    const truncated = validateResponse(fullJson).text;
+    expect(truncated.length).toBeLessThan(fullJson.length);
+    expect(parseMarketingStrategyResponse(truncated).success).toBe(false);
+
+    const preserved = validateResponse(fullJson, {
+      maxLength: structuredJsonMaxLength(4096),
+    }).text;
+    expect(preserved).toBe(fullJson);
+    expect(parseMarketingStrategyResponse(preserved).success).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ export type { LLMProvider } from "./provider";
 export { OpenAIProvider, defaultOpenAIProvider } from "./openai-provider";
 export { resolveProvider, registerProvider, listProviders } from "./provider-registry";
 export type { ProviderId } from "./provider-registry";
-export { validateResponse } from "./response-validator";
+export { validateResponse, structuredJsonMaxLength } from "./response-validator";
 export {
   AIRuntimeError,
   LLMProviderError,

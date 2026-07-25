@@ -16,6 +16,7 @@ import type {
   TimelinePhase,
 } from "../types/plan";
 import type { MarketingStrategyConfidence } from "../types/strategy";
+import { normalizeContentType } from "../content/resolve-plan-activity";
 
 const VALID_LINK_TYPES: StrategyLinkType[] = [
   "targetAudience",
@@ -249,11 +250,26 @@ function parseContentCalendar(value: unknown, warnings: string[]): ContentCalend
     if (!isRecord(item)) continue;
     const base = parseActivityFields(item, "contentCalendar", warnings, index);
     if (!base) continue;
-    const contentType = asString(item.contentType, "contentCalendar.contentType", warnings);
-    if (!contentType) continue;
+    const rawContentType = asString(item.contentType, "contentCalendar.contentType", warnings);
+    if (!rawContentType) continue;
+
+    const normalizedContentType = normalizeContentType(rawContentType);
+    if (!normalizedContentType) {
+      warnings.push(
+        `contentCalendar[${index}].contentType "${rawContentType}" is not a supported draft content type — entry skipped.`
+      );
+      continue;
+    }
+
+    if (rawContentType !== normalizedContentType) {
+      warnings.push(
+        `contentCalendar[${index}].contentType normalized from "${rawContentType}" to "${normalizedContentType}".`
+      );
+    }
+
     results.push({
       ...base,
-      contentType,
+      contentType: normalizedContentType,
       channel: asString(item.channel, "contentCalendar.channel", warnings) ?? undefined,
       scheduledWeek: asNumber(item.scheduledWeek, "contentCalendar.scheduledWeek", warnings, 1),
       pillar: asString(item.pillar, "contentCalendar.pillar", warnings) ?? undefined,

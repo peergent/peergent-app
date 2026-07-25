@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AIRuntime } from "../ai-runtime";
-import { OpenAIProvider } from "../openai-provider";
-import { MissingApiKeyError } from "../errors";
-import { validateResponse } from "../response-validator";
+import { validateResponse, structuredJsonMaxLength } from "../response-validator";
 import type { LLMProvider } from "../provider";
 import type { LLMGenerateRequest, LLMGenerateResult } from "../types";
 import { buildPromptPackage } from "@/lib/prompt-builder";
@@ -69,15 +67,27 @@ describe("AI runtime", () => {
     );
   });
 
-  it("throws a missing API key error", async () => {
-    const provider = new OpenAIProvider(undefined, "https://example.com/v1/responses");
+  it("preserves structured JSON when responseValidation maxLength matches token budget", async () => {
+    const longJson = `{ "summary": "${"word ".repeat(2500)}", "confidence": "high" }`;
+    expect(longJson.length).toBeGreaterThan(8000);
 
-    await expect(
-      provider.generateResponse({
-        systemPrompt: "system",
-        taskPrompt: "task",
-      })
-    ).rejects.toBeInstanceOf(MissingApiKeyError);
+    const runtime = new AIRuntime({
+      provider: new MockProvider({
+        text: longJson,
+        usage: {},
+        model: "mock-model",
+        finishReason: "completed",
+        latencyMs: 1,
+      }),
+    });
+
+    const truncated = await runtime.execute(SAMPLE_PROMPT);
+    expect(truncated.text.length).toBeLessThan(longJson.length);
+
+    const preserved = await runtime.execute(SAMPLE_PROMPT, {
+      responseValidation: { maxLength: structuredJsonMaxLength(4096) },
+    });
+    expect(preserved.text).toBe(longJson);
   });
 });
 

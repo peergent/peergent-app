@@ -4,27 +4,51 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import { isDraftablePlanActivity } from "@/lib/marketing-intelligence";
+import type { PublicationPackage } from "@/lib/peer-workflow";
 import { gapToKnowledgeSection } from "@/lib/knowledge";
+import {
+  buildMarketingActivityLifecycleMap,
+  findNextMarketingPlanActivity,
+} from "./activity-lifecycle";
 import type {
   MarketingWorkspacePhase,
   RecommendedAction,
 } from "./types";
+
+function activityKey(title: string): string {
+  return title.trim().toLowerCase();
+}
 
 export function deriveWorkspacePhase(input: {
   understanding: MarketingUnderstanding | null;
   strategy: MarketingStrategy | null;
   plan: MarketingPlan | null;
   drafts: MarketingContentDraft[];
+  publicationPackages?: PublicationPackage[];
   isGenerating: boolean;
 }): { phase: MarketingWorkspacePhase; label: string } {
   if (input.isGenerating) {
     return { phase: "learning", label: "Working…" };
   }
 
-  const pendingReview = input.drafts.some((d) => d.status === "draft");
+  const pendingReview = input.drafts.some(
+    (draft) => draft.status === "draft" || draft.status === "ready_for_review"
+  );
 
   if (pendingReview) {
     return { phase: "reviewing", label: "Draft ready for your review" };
+  }
+
+  const readyToPublish = input.drafts.some((draft) => draft.status === "ready_to_publish");
+  const approvedAwaitingPrep = input.drafts.some((draft) => draft.status === "approved");
+
+  if (readyToPublish || approvedAwaitingPrep) {
+    return { phase: "publishing", label: "Preparing content for publication" };
+  }
+
+  if (input.drafts.some((draft) => draft.status === "published")) {
+    return { phase: "ready", label: "Published content on file" };
   }
 
   if (input.drafts.length > 0) {
@@ -55,8 +79,15 @@ export function buildRecommendedActions(input: {
   strategy: MarketingStrategy | null;
   plan: MarketingPlan | null;
   drafts: MarketingContentDraft[];
+  publicationPackages?: PublicationPackage[];
 }): RecommendedAction[] {
   const actions: RecommendedAction[] = [];
+  const publicationPackages = input.publicationPackages ?? [];
+  const lifecycleMap = buildMarketingActivityLifecycleMap({
+    plan: input.plan,
+    drafts: input.drafts,
+    publicationPackages,
+  });
 
   if (!input.understanding?.available || input.understanding.completeness < 50) {
     const firstGap = input.understanding?.gaps[0];
@@ -93,14 +124,68 @@ export function buildRecommendedActions(input: {
     });
   }
 
+  for (const draft of input.drafts.filter((item) => item.status === "ready_to_publish")) {
+    actions.push({
+      id: `publish-${draft.id}`,
+      title: `Publish: ${draft.title}`,
+      description:
+        "Publication package is ready. Confirm when you have published it to the channel.",
+      priority: "high",
+      kind: "mark-published",
+      planActivityReference: draft.planActivityReference,
+      draftId: draft.id,
+    });
+  }
+
+  for (const draft of input.drafts.filter((item) => item.status === "approved")) {
+    actions.push({
+      id: `prepare-${draft.id}`,
+      title: `Prepare publication: ${draft.title}`,
+      description:
+        "I'll package this approved draft for the target channel — nothing goes live until you confirm.",
+      priority: "high",
+      kind: "prepare-publication",
+      planActivityReference: draft.planActivityReference,
+      draftId: draft.id,
+    });
+  }
+
+  for (const draft of input.drafts.filter(
+    (item) => item.status === "draft" || item.status === "ready_for_review"
+  )) {
+    actions.push({
+      id: `review-${draft.id}`,
+      title: `Review: ${draft.title}`,
+      description: draft.rationale.why,
+      priority: "high",
+      kind: "review-draft",
+      planActivityReference: draft.planActivityReference,
+      draftId: draft.id,
+    });
+  }
+
   if (input.plan) {
+    const nextActivity = findNextMarketingPlanActivity(input.plan, lifecycleMap);
+    if (nextActivity) {
+      const key = activityKey(nextActivity.title);
+      const lifecycle = lifecycleMap.get(key);
+      if (lifecycle === "not_started") {
+        actions.push({
+          id: `draft-${nextActivity.title}`,
+          title: `Next up: ${nextActivity.title}`,
+          description: "This is the next scheduled calendar activity without a draft.",
+          priority: "medium",
+          kind: "create-draft",
+          planActivityReference: nextActivity.title,
+        });
+      }
+    }
+
     for (const entry of input.plan.contentCalendar) {
       const hasDraft = input.drafts.some(
-        (d) =>
-          d.planActivityReference.trim().toLowerCase() ===
-          entry.title.trim().toLowerCase()
+        (draft) => activityKey(draft.planActivityReference) === activityKey(entry.title)
       );
-      if (!hasDraft) {
+      if (!hasDraft && isDraftablePlanActivity(entry)) {
         actions.push({
           id: `draft-${entry.title}`,
           title: `Draft: ${entry.title}`,
@@ -113,18 +198,14 @@ export function buildRecommendedActions(input: {
     }
   }
 
-  for (const draft of input.drafts.filter((d) => d.status === "draft")) {
-    actions.push({
-      id: `review-${draft.id}`,
-      title: `Review: ${draft.title}`,
-      description: draft.rationale.why,
-      priority: "high",
-      kind: "review-draft",
-      planActivityReference: draft.planActivityReference,
-    });
-  }
-
-  return actions.slice(0, 6);
+  const seen = new Set<string>();
+  return actions
+    .filter((action) => {
+      if (seen.has(action.id)) return false;
+      seen.add(action.id);
+      return true;
+    })
+    .slice(0, 6);
 }
 
 export function collectWorkspaceWarnings(input: {
@@ -155,8 +236,8 @@ export function collectWorkspaceWarnings(input: {
   }
 
   for (const draft of input.drafts) {
-    for (const w of draft.warnings) {
-      warnings.add(w);
+    for (const warning of draft.warnings) {
+      warnings.add(warning);
     }
   }
 

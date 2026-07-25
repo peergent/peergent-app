@@ -1,3 +1,4 @@
+import type { MarketingUnderstanding, MarketingUnderstandingDimension } from "@/lib/marketing-intelligence";
 import type { ActivityFeedItem, ActivityType } from "./types";
 
 export function createActivity(
@@ -34,6 +35,66 @@ export function prependActivity(
   maxItems = 50
 ): ActivityFeedItem[] {
   return [item, ...feed.filter((f) => f.id !== item.id)].slice(0, maxItems);
+}
+
+export function formatGapLabel(gap: string): string {
+  return gap
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+/** Drop resolved knowledge gaps and refresh understanding completeness in the feed. */
+export function syncActivityFeedWithUnderstanding(
+  feed: ActivityFeedItem[],
+  understanding: MarketingUnderstanding | null
+): ActivityFeedItem[] {
+  const activeGaps = new Set(understanding?.gaps ?? []);
+
+  let next = feed.filter(
+    (item) =>
+      item.activityType !== "gap_detected" ||
+      (item.relatedObject != null &&
+        activeGaps.has(item.relatedObject as MarketingUnderstandingDimension))
+  );
+
+  if (!understanding?.available) {
+    return next;
+  }
+
+  const completenessLabel = `${understanding.completeness}% of marketing dimensions covered.`;
+  const loadedIndex = next.findIndex((item) => item.activityType === "understanding_loaded");
+
+  if (loadedIndex >= 0) {
+    next = next.map((item, index) =>
+      index === loadedIndex ? { ...item, description: completenessLabel } : item
+    );
+  } else {
+    next = prependActivity(
+      next,
+      createActivity(
+        "understanding_loaded",
+        "Loaded marketing understanding",
+        completenessLabel
+      )
+    );
+  }
+
+  for (const gap of understanding.gaps.slice(0, 2)) {
+    if (!next.some((item) => item.activityType === "gap_detected" && item.relatedObject === gap)) {
+      next = prependActivity(
+        next,
+        createActivity(
+          "gap_detected",
+          "Detected missing information",
+          formatGapLabel(gap),
+          { relatedObject: gap }
+        )
+      );
+    }
+  }
+
+  return next;
 }
 
 export function seedActivityFeedFromState(input: {

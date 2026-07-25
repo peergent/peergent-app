@@ -20,6 +20,7 @@ export {
   type GenerateMarketingContentDraftResult,
 } from "./generate-marketing-content-draft";
 export {
+  isDraftablePlanActivity,
   isSupportedContentType,
   listContentCalendarReferences,
   normalizeContentType,

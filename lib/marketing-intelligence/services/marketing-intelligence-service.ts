@@ -59,9 +59,10 @@ export class MarketingIntelligenceService {
   async updateProfile(
     organizationId: string,
     input: UpdateMarketingProfileInput
-  ): Promise<MarketingProfile> {
+  ): Promise<MarketingProfileAggregate> {
     const profile = await this.getOrCreateProfile(organizationId);
-    return this.profileRepo.update(profile.id, input);
+    await this.profileRepo.update(profile.id, input);
+    return this.getAggregate(organizationId);
   }
 
   async listGoals(organizationId: string): Promise<MarketingGoal[]> {

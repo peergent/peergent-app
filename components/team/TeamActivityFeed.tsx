@@ -8,9 +8,10 @@ type TeamActivityFeedProps = {
 };
 
 const toneDot: Record<ActivityPeerTone, string> = {
-  sales: "bg-emerald-400/85 shadow-[0_0_8px_rgba(52,211,153,0.35)]",
-  marketing: "bg-violet-400/80 shadow-[0_0_8px_rgba(167,139,250,0.3)]",
-  neutral: "bg-slate-500",
+  sales: "bg-[var(--pg-success)] shadow-[0_0_8px_color-mix(in_srgb,var(--pg-success)_35%,transparent)]",
+  marketing:
+    "bg-[var(--pg-accent)] shadow-[0_0_8px_color-mix(in_srgb,var(--pg-accent)_30%,transparent)]",
+  neutral: "bg-[var(--pg-status-idle-fg)]",
 };
 
 export default function TeamActivityFeed({
@@ -21,15 +22,9 @@ export default function TeamActivityFeed({
   return (
     <section
       aria-labelledby="team-activity-heading"
-      className={cn(
-        "rounded-[22px] border border-white/[0.06] bg-white/[0.015] p-5",
-        className
-      )}
+      className={cn("pg-panel-compact", className)}
     >
-      <h2
-        id="team-activity-heading"
-        className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600"
-      >
+      <h2 id="team-activity-heading" className="pg-field-label normal-case tracking-[0.18em]">
         Updates
       </h2>
 
@@ -38,7 +33,7 @@ export default function TeamActivityFeed({
           <li
             key={event.id}
             className={cn(
-              "border-t border-white/[0.04] py-4 first:border-t-0 first:pt-0",
+              "border-t border-[var(--pg-divider-line)] py-4 first:border-t-0 first:pt-0",
               !reducedMotion && "pg-section-enter"
             )}
             style={
@@ -55,13 +50,13 @@ export default function TeamActivityFeed({
                 aria-hidden
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium tracking-tight text-white/90">
+                <p className="text-sm font-medium tracking-tight text-[var(--pg-text)]">
                   {event.peerName}
                 </p>
-                <p className="mt-0.5 text-[14px] leading-relaxed text-slate-400">
+                <p className="mt-0.5 text-[14px] leading-relaxed text-[var(--pg-text-muted)]">
                   {event.message}
                 </p>
-                <p className="mt-1.5 text-xs text-slate-600">{event.relativeTime}</p>
+                <p className="mt-1.5 text-xs text-[var(--pg-label-text)]">{event.relativeTime}</p>
               </div>
             </div>
           </li>

@@ -6,29 +6,67 @@ export function toJson(value: unknown): Json {
 }
 
 export function parseRecord(value: Json | null | undefined): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parseRecord(parsed as Json);
+    } catch {
+      return {};
+    }
+  }
+
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
+
   return value as Record<string, unknown>;
 }
 
+function readString(record: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+function readKeyMessages(record: Record<string, unknown>): string[] {
+  const raw = record.keyMessages ?? record.key_messages;
+
+  if (Array.isArray(raw)) {
+    return raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 export function parseBrandPositioning(value: Json | null | undefined): BrandPositioning {
-  const record = parseRecord(value);
-  const keyMessages = record.keyMessages;
+  let record = parseRecord(value);
+  const nested = record.brandPositioning ?? record.brand_positioning;
+
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    record = nested as Record<string, unknown>;
+  }
 
   return {
-    positioningStatement:
-      typeof record.positioningStatement === "string"
-        ? record.positioningStatement
-        : undefined,
-    tagline: typeof record.tagline === "string" ? record.tagline : undefined,
-    valueProposition:
-      typeof record.valueProposition === "string" ? record.valueProposition : undefined,
-    keyMessages: Array.isArray(keyMessages)
-      ? keyMessages.filter((item): item is string => typeof item === "string")
-      : [],
-    marketCategory:
-      typeof record.marketCategory === "string" ? record.marketCategory : undefined,
+    positioningStatement: readString(
+      record,
+      "positioningStatement",
+      "positioning_statement"
+    ),
+    tagline: readString(record, "tagline"),
+    valueProposition: readString(record, "valueProposition", "value_proposition"),
+    keyMessages: readKeyMessages(record),
+    marketCategory: readString(record, "marketCategory", "market_category"),
   };
 }
 

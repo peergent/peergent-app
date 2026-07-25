@@ -1,5 +1,5 @@
 import type { AIResponse, AIRuntimeOptions } from "@/lib/ai-runtime";
-import { defaultAIRuntime } from "@/lib/ai-runtime";
+import { defaultAIRuntime, structuredJsonMaxLength } from "@/lib/ai-runtime";
 import type { ContextPackage } from "@/lib/intelligence";
 import { buildPrompt } from "@/lib/prompt-builder";
 import type { MarketingPlan } from "../types/plan";
@@ -87,10 +87,16 @@ export async function generateMarketingContentDraft(
     planActivityReference,
   });
 
+  const maxTokens = input.runtimeOptions?.maxTokens ?? MARKETING_CONTENT_DEFAULT_MAX_TOKENS;
+
   const aiResponse = await defaultAIRuntime.execute(promptPackage, {
     temperature: input.runtimeOptions?.temperature ?? 0.45,
-    maxTokens: input.runtimeOptions?.maxTokens ?? MARKETING_CONTENT_DEFAULT_MAX_TOKENS,
+    maxTokens,
     model: input.runtimeOptions?.model,
+    responseValidation: {
+      maxLength: structuredJsonMaxLength(maxTokens),
+      ...input.runtimeOptions?.responseValidation,
+    },
   });
 
   if (!aiResponse.validated.success) {

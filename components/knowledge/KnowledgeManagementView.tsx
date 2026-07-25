@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import Sidebar from "@/components/Sidebar";
+import { PgAppShell } from "@/components/design-system";
 import BrandPositioningSection from "@/components/knowledge/BrandPositioningSection";
 import BrainEntityManager, {
   COMPETITOR_FIELDS,
@@ -271,18 +271,14 @@ export default function KnowledgeManagementView() {
   }, [activeSection]);
 
   return (
-    <main className="min-h-screen bg-[#030712] text-white">
-      <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <Sidebar />
-
-        <section className="min-w-0 flex-1 p-5 md:p-8">
+    <main className="min-h-screen bg-[var(--pg-color-canvas)] text-[var(--pg-color-text-primary)]">
+      <PgAppShell>
+        <section className="min-w-0 flex-1 p-5 md:p-8 lg:p-10">
           <header className="mb-8">
-            <p className="text-sm font-medium text-violet-400">Knowledge</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Company knowledge</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">
-              Manage Company DNA, Business Brain, and marketing profile data used by your AI
-              team. Changes here update Marketing Understanding when you return to the
-              Marketing Workspace.
+            <p className="text-sm font-medium text-[var(--pg-color-accent)]">Company</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Business context</h1>
+            <p className="mt-2 max-w-2xl text-sm text-[var(--pg-color-text-secondary)]">
+              Company DNA and marketing profile data your AI team uses to work with full context.
             </p>
           </header>
 
@@ -291,13 +287,11 @@ export default function KnowledgeManagementView() {
               {KNOWLEDGE_SECTIONS.map((item) => (
                 <a
                   key={item.id}
-                  href={`/knowledge?section=${item.id}`}
+                  href={`/company?section=${item.id}`}
                   onClick={() => setActiveSection(item.id)}
                   className={cn(
-                    "block rounded-[12px] px-3 py-2 text-sm transition",
-                    activeSection === item.id
-                      ? "bg-violet-500/15 text-white"
-                      : "text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"
+                    "pg-nav-link",
+                    activeSection === item.id && "is-active"
                   )}
                 >
                   {item.title}
@@ -310,7 +304,7 @@ export default function KnowledgeManagementView() {
             </div>
           </div>
         </section>
-      </div>
+      </PgAppShell>
     </main>
   );
 }

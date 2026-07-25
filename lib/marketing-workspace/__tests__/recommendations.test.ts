@@ -54,7 +54,7 @@ const plan: MarketingPlan = {
   contentCalendar: [
     {
       title: "Blog slot",
-      contentType: "blog_post",
+      contentType: "blog_article",
       scheduledWeek: 2,
       rationale: { why: "test" },
       linkedStrategyItems: [],
@@ -100,6 +100,43 @@ describe("marketing workspace recommendations", () => {
     expect(actions.some((a) => a.kind === "create-draft" && a.planActivityReference === "Blog slot")).toBe(true);
   });
 
+  it("does not recommend draft for unsupported legacy content types", () => {
+    const legacyPlan: MarketingPlan = {
+      ...plan,
+      contentCalendar: [
+        ...plan.contentCalendar,
+        {
+          title: "Webinar: How to Deploy AI Employees Quickly and Securely",
+          contentType: "Webinar" as MarketingPlan["contentCalendar"][number]["contentType"],
+          scheduledWeek: 4,
+          channel: "Web",
+          rationale: { why: "Lead gen event" },
+          linkedStrategyItems: [],
+          estimatedEffort: "high",
+          expectedImpact: "high",
+        },
+      ],
+    };
+
+    const actions = buildRecommendedActions({
+      understanding,
+      strategy,
+      plan: legacyPlan,
+      drafts: [],
+    });
+
+    expect(
+      actions.some(
+        (a) =>
+          a.kind === "create-draft" &&
+          a.planActivityReference === "Webinar: How to Deploy AI Employees Quickly and Securely"
+      )
+    ).toBe(false);
+    expect(actions.some((a) => a.kind === "create-draft" && a.planActivityReference === "Blog slot")).toBe(
+      true
+    );
+  });
+
   it("collects warnings from understanding gaps", () => {
     const warnings = collectWorkspaceWarnings({
       understanding,
@@ -136,5 +173,57 @@ describe("marketing workspace recommendations", () => {
       isGenerating: false,
     });
     expect(phase).toBe("reviewing");
+  });
+
+  it("recommends prepare-publication for approved drafts", () => {
+    const actions = buildRecommendedActions({
+      understanding,
+      strategy,
+      plan,
+      drafts: [
+        {
+          id: "1",
+          planActivityReference: "Blog slot",
+          contentType: "blog_article",
+          objective: "test",
+          title: "Title",
+          body: "Body",
+          keywords: [],
+          rationale: { why: "why", planActivityReference: "Blog slot", strategyLinks: [] },
+          sourceReferences: [],
+          confidence: "high",
+          status: "approved",
+          warnings: [],
+          generatedAt: "",
+        },
+      ],
+    });
+    expect(actions.some((action) => action.kind === "prepare-publication")).toBe(true);
+  });
+
+  it("recommends mark-published for ready_to_publish drafts", () => {
+    const actions = buildRecommendedActions({
+      understanding,
+      strategy,
+      plan,
+      drafts: [
+        {
+          id: "1",
+          planActivityReference: "Blog slot",
+          contentType: "blog_article",
+          objective: "test",
+          title: "Title",
+          body: "Body",
+          keywords: [],
+          rationale: { why: "why", planActivityReference: "Blog slot", strategyLinks: [] },
+          sourceReferences: [],
+          confidence: "high",
+          status: "ready_to_publish",
+          warnings: [],
+          generatedAt: "",
+        },
+      ],
+    });
+    expect(actions.some((action) => action.kind === "mark-published")).toBe(true);
   });
 });

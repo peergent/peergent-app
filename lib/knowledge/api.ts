@@ -59,7 +59,7 @@ export async function updateCompanyDna(input: UpdateCompanyDnaInput): Promise<Co
 }
 
 export async function fetchMarketingProfile(): Promise<MarketingProfileAggregate> {
-  const response = await fetch("/api/marketing-intelligence");
+  const response = await fetch("/api/marketing-intelligence", { cache: "no-store" });
   const data = await parseJson<{ profile: MarketingProfileAggregate }>(response);
   return data.profile;
 }
@@ -71,6 +71,7 @@ export async function updateMarketingProfile(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    cache: "no-store",
   });
   const data = await parseJson<{ profile: MarketingProfileAggregate }>(response);
   return data.profile;
@@ -209,7 +210,7 @@ export async function deleteCustomerSegment(id: string): Promise<void> {
 
 export async function listCompetitors(): Promise<Competitor[]> {
   const data = await parseJson<{ competitors: Competitor[] }>(
-    await fetch(BRAIN_ROUTES.competitors.list)
+    await fetch(BRAIN_ROUTES.competitors.list, { cache: "no-store" })
   );
   return data.competitors;
 }
@@ -349,7 +350,7 @@ export async function deleteKnowledgeSource(id: string): Promise<void> {
 
 export async function listMarketingGoals(): Promise<MarketingGoal[]> {
   const data = await parseJson<{ goals: MarketingGoal[] }>(
-    await fetch("/api/marketing-intelligence/goals")
+    await fetch("/api/marketing-intelligence/goals", { cache: "no-store" })
   );
   return data.goals;
 }
@@ -385,7 +386,7 @@ export async function deleteMarketingGoal(id: string): Promise<void> {
 
 export async function listMarketingContent(): Promise<MarketingContentItem[]> {
   const data = await parseJson<{ contentItems: MarketingContentItem[] }>(
-    await fetch("/api/marketing-intelligence/content")
+    await fetch("/api/marketing-intelligence/content", { cache: "no-store" })
   );
   return data.contentItems;
 }

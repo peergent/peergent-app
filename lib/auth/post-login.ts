@@ -45,12 +45,12 @@ export async function resolvePostLoginPath(): Promise<string> {
       organization = await getPrimaryOrganizationForUser(supabase, user.id);
     } catch (error) {
       console.error("Organization recovery failed:", error);
-      return "/peers";
+      return "/hq";
     }
   }
 
   if (!organization) {
-    return "/peers";
+    return "/hq";
   }
 
   const { count, error } = await supabase
@@ -60,14 +60,14 @@ export async function resolvePostLoginPath(): Promise<string> {
 
   if (error) {
     console.error("Post-login peer count failed:", error);
-    return "/peers";
+    return "/hq";
   }
 
   if ((count ?? 0) === 0) {
     return "/website-intelligence";
   }
 
-  return "/peers";
+  return "/hq";
 }
 
 export async function resolveAuthenticatedDestination(

@@ -14,6 +14,8 @@ import {
   parseJsonBody,
 } from "@/lib/intelligence/api/org-context";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const context = await getAuthenticatedOrgContext();
   if (!isAuthContext(context)) return context;

@@ -52,5 +52,7 @@ export type TeamWorkspaceViewModel = {
   activity: TeamActivityEvent[];
 };
 
-/** Maximum peer cards on the Team overview page. */
+/** Peers page href that expands the full workforce list (not the featured subset). */
+export const TEAM_PEERS_VIEW_ALL_HREF = "/team?view=all";
+
 export const TEAM_FEATURED_PEER_LIMIT = 2;

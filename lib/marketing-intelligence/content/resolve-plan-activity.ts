@@ -34,15 +34,20 @@ export type ResolvedPlanActivity = {
 };
 
 export function normalizeContentType(raw: string): MarketingDraftContentType | null {
-  const key = raw.trim().toLowerCase().replace(/-/g, "_");
+  const key = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (SUPPORTED_DRAFT_CONTENT_TYPES.includes(key as MarketingDraftContentType)) {
     return key as MarketingDraftContentType;
   }
-  return CONTENT_TYPE_ALIASES[key] ?? CONTENT_TYPE_ALIASES[raw.trim().toLowerCase()] ?? null;
+  return CONTENT_TYPE_ALIASES[key] ?? null;
 }
 
 export function isSupportedContentType(raw: string): boolean {
   return normalizeContentType(raw) !== null;
+}
+
+/** Whether a plan activity can enter the content-draft pipeline. */
+export function isDraftablePlanActivity(entry: Pick<ContentCalendarEntry, "contentType">): boolean {
+  return isSupportedContentType(entry.contentType);
 }
 
 /** Resolves a content-calendar activity from the plan by exact title match. */

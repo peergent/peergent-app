@@ -1,4 +1,5 @@
 import type { MarketingStrategyConfidence } from "./strategy";
+import type { MarketingDraftContentType } from "./content-draft";
 
 /** References a specific item from the Marketing Strategy that drives a plan activity. */
 export type StrategyLinkType =
@@ -57,7 +58,7 @@ export type PlannedCampaign = PlannedActivityBase & {
 };
 
 export type ContentCalendarEntry = PlannedActivityBase & {
-  contentType: string;
+  contentType: MarketingDraftContentType;
   channel?: string;
   scheduledWeek: number;
   pillar?: string;

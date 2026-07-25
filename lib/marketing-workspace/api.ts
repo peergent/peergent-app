@@ -20,14 +20,14 @@ export async function fetchMarketingUnderstanding(
   const url = taskHint
     ? `/api/marketing-intelligence/understanding?taskHint=${encodeURIComponent(taskHint)}`
     : "/api/marketing-intelligence/understanding";
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: "no-store" });
   return parseJson(response);
 }
 
 export async function fetchMarketingProfile(): Promise<{
   profile: MarketingProfileAggregate;
 }> {
-  const response = await fetch("/api/marketing-intelligence");
+  const response = await fetch("/api/marketing-intelligence", { cache: "no-store" });
   return parseJson(response);
 }
 

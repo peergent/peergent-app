@@ -76,7 +76,7 @@ export default function PlanDeliverable({ plan }: PlanDeliverableProps) {
         </Section>
       )}
 
-      <ExplainabilitySection view={buildPlanExplainability(plan)} defaultOpen />
+      <ExplainabilitySection view={buildPlanExplainability(plan)} />
     </div>
   );
 }

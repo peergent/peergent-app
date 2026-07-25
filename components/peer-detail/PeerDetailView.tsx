@@ -75,7 +75,7 @@ export default function PeerDetailView() {
       }
 
       if (row.role === "Marketing") {
-        router.replace(`/peers/${peerId}/marketing`);
+        router.replace(`/team/${peerId}`);
         return;
       }
 

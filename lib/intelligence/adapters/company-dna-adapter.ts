@@ -4,7 +4,6 @@ import type { SourceRef } from "@/lib/context-engine/types/sources";
 import type { AppSupabaseClient } from "../api/org-context";
 import {
   companyDnaToContextSlice,
-  emptyCompanyDnaContextSlice,
 } from "../types/company-dna-context-slice";
 
 export type CompanyDnaLoadResult = {
@@ -20,25 +19,14 @@ export async function loadCompanyDnaContext(
   const dna = await service.getOrCreate(organizationId);
   const slice = companyDnaToContextSlice(dna);
 
-  if (!slice.available) {
-    return {
-      slice: emptyCompanyDnaContextSlice(),
-      sources: [
-        {
-          id: `company_dna:${organizationId}:empty`,
-          type: "supabase",
-          label: "Company DNA (empty)",
-          fetchedAt: new Date().toISOString(),
-          freshness: "live",
-        },
-      ],
-    };
-  }
-
   return {
     slice,
     sources: [
-      createSupabaseSource("company_dna", organizationId, "Company DNA"),
+      createSupabaseSource(
+        "company_dna",
+        organizationId,
+        slice.available ? "Company DNA" : "Company DNA (empty)"
+      ),
     ],
   };
 }

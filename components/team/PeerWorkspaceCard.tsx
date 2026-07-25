@@ -12,9 +12,9 @@ type PeerWorkspaceCardProps = {
 };
 
 const statusStyles = {
-  working: "text-emerald-400/85",
-  paused: "text-amber-400/85",
-  idle: "text-slate-500",
+  working: "text-[var(--pg-status-working-fg)]",
+  paused: "text-[var(--pg-status-paused-fg)]",
+  idle: "text-[var(--pg-status-idle-fg)]",
 } as const;
 
 export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCardProps) {
@@ -23,8 +23,7 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
   return (
     <article
       className={cn(
-        "group overflow-hidden rounded-[28px] border border-white/[0.06] bg-white/[0.02] shadow-[0_12px_40px_rgba(0,0,0,0.22)] transition duration-300",
-        "hover:-translate-y-0.5 hover:border-white/[0.1] hover:shadow-[0_16px_48px_rgba(0,0,0,0.28)]",
+        "pg-card-elevated group hover:-translate-y-0.5",
         delayClass
       )}
     >
@@ -38,10 +37,10 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
               presence={presence}
             />
             <div className="min-w-0 pt-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
+              <p className="pg-field-label normal-case tracking-[0.16em]">
                 {peer.roleFocus}
               </p>
-              <h2 className="mt-1 text-lg font-medium tracking-tight text-white">
+              <h2 className="mt-1 text-lg font-medium tracking-tight text-[var(--pg-text)]">
                 {peer.name}
               </h2>
               <p
@@ -53,9 +52,9 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    peer.workStatus === "working" && "bg-emerald-400/80 pg-pulse-live",
-                    peer.workStatus === "paused" && "bg-amber-400/80",
-                    peer.workStatus === "idle" && "bg-slate-600"
+                    peer.workStatus === "working" && "bg-[var(--pg-status-working-fg)] pg-pulse-live",
+                    peer.workStatus === "paused" && "bg-[var(--pg-status-paused-fg)]",
+                    peer.workStatus === "idle" && "bg-[var(--pg-status-idle-fg)]"
                   )}
                   aria-hidden
                 />
@@ -65,20 +64,18 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
           </div>
         </div>
 
-        <p className="mt-6 text-[15px] leading-relaxed text-slate-400">
+        <p className="mt-6 text-[15px] leading-relaxed text-[var(--pg-text-muted)]">
           {peer.currentTask}
         </p>
 
         {peer.todayMetrics.length > 0 && (
-          <div className="mt-6 border-t border-white/[0.05] pt-5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
-              Today
-            </p>
+          <div className="mt-6 border-t border-[var(--pg-divider-line)] pt-5">
+            <p className="pg-field-label normal-case tracking-[0.16em]">Today</p>
             <dl className="mt-3 grid grid-cols-3 gap-3">
               {peer.todayMetrics.map((metric) => (
                 <div key={metric.label}>
-                  <dt className="text-xs text-slate-600">{metric.label}</dt>
-                  <dd className="mt-0.5 text-lg font-semibold tracking-tight text-white/90">
+                  <dt className="text-xs text-[var(--pg-label-text)]">{metric.label}</dt>
+                  <dd className="mt-0.5 text-lg font-semibold tracking-tight text-[var(--pg-text)]">
                     {metric.value}
                   </dd>
                 </div>
@@ -89,16 +86,13 @@ export default function PeerWorkspaceCard({ peer, delayClass }: PeerWorkspaceCar
       </Link>
 
       <div className="flex flex-wrap gap-2 px-6 pb-6 md:px-7 md:pb-7">
-        <Link
-          href={peer.workspaceHref}
-          className="pg-hover-lift pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] bg-white px-5 py-2.5 text-sm font-semibold text-violet-950 transition active:scale-[0.98]"
-        >
+        <Link href={peer.workspaceHref} className="pg-btn-contrast pg-hover-lift pg-focus-premium">
           {peer.workspaceLabel}
           <ArrowRight size={15} strokeWidth={2} />
         </Link>
         <button
           type="button"
-          className="pg-focus-premium inline-flex min-h-11 items-center gap-2 rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-slate-400 transition hover:border-white/[0.14] hover:text-white"
+          className="pg-btn-secondary pg-focus-premium"
           aria-label={`Pause ${peer.name}`}
         >
           <Pause size={14} strokeWidth={2} />

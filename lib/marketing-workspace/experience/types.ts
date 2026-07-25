@@ -5,6 +5,7 @@ export type PeerPresenceId =
   | "strategizing"
   | "planning"
   | "creating"
+  | "preparing_publication"
   | "waiting_for_approval"
   | "reviewing"
   | "completed"
@@ -27,6 +28,9 @@ export type ActivityType =
   | "waiting_approval"
   | "draft_approved"
   | "draft_rejected"
+  | "publication_prepared"
+  | "publication_ready"
+  | "published"
   | "conversation"
   | "focus_updated";
 

@@ -1,5 +1,5 @@
-import CommandCenter from "@/components/dashboard/CommandCenter";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
-  return <CommandCenter />;
+export default function DashboardRedirectPage() {
+  redirect("/home");
 }

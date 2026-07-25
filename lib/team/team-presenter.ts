@@ -8,7 +8,8 @@ import type {
   TeamWorkspaceViewModel,
   WorkforceSummary,
 } from "./types";
-import { TEAM_FEATURED_PEER_LIMIT } from "./types";
+import { marketingPeerWorkspaceHref } from "@/lib/config/peer-studio";
+import { TEAM_FEATURED_PEER_LIMIT, TEAM_PEERS_VIEW_ALL_HREF } from "./types";
 
 type WorkspaceTemplate = {
   roleFocus: string;
@@ -120,7 +121,9 @@ function mapPeerToWorkspace(peer: PeerRow): PeerWorkspace {
     currentTask: template.currentTask,
     todayMetrics: template.todayMetrics,
     workspaceHref:
-      peer.role === "Marketing" ? `/peers/${peer.id}/marketing` : `/peers/${peer.id}`,
+      peer.role === "Marketing"
+        ? marketingPeerWorkspaceHref(peer.id)
+        : `/peers/${peer.id}`,
     workspaceLabel: template.workspaceLabel,
   };
 }
@@ -170,11 +173,19 @@ function buildWorkforceSummary(peerRows: PeerRow[]): WorkforceSummary | null {
   return {
     totalCount: peerRows.length,
     roles: collectWorkforceRoles(peerRows),
-    workforceHref: "/peers",
+    workforceHref: TEAM_PEERS_VIEW_ALL_HREF,
   };
 }
 
-export function buildTeamWorkspaceViewModel(peerRows: PeerRow[]): TeamWorkspaceViewModel {
+export type BuildTeamWorkspaceOptions = {
+  /** When true, show every peer and hide the workforce summary card. */
+  showAllPeers?: boolean;
+};
+
+export function buildTeamWorkspaceViewModel(
+  peerRows: PeerRow[],
+  options: BuildTeamWorkspaceOptions = {}
+): TeamWorkspaceViewModel {
   if (peerRows.length === 0) {
     return {
       isEmpty: true,
@@ -189,7 +200,9 @@ export function buildTeamWorkspaceViewModel(peerRows: PeerRow[]): TeamWorkspaceV
   }
 
   const allPeers = peerRows.map(mapPeerToWorkspace);
-  const featuredPeers = selectFeaturedPeers(peerRows, allPeers);
+  const featuredPeers = options.showAllPeers
+    ? allPeers
+    : selectFeaturedPeers(peerRows, allPeers);
   const companyName = companyFromWebsite(peerRows[0].website);
 
   return {
@@ -199,7 +212,7 @@ export function buildTeamWorkspaceViewModel(peerRows: PeerRow[]): TeamWorkspaceV
     subheadline: "Open a peer workspace to review status and continue work.",
     impactStats: [],
     featuredPeers,
-    workforceSummary: buildWorkforceSummary(peerRows),
+    workforceSummary: options.showAllPeers ? null : buildWorkforceSummary(peerRows),
     activity: [],
   };
 }

@@ -15,9 +15,9 @@ export default function AuthLayout({
   footer,
 }: AuthLayoutProps) {
   return (
-    <div className="relative min-h-screen bg-[#030712] text-white">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-[12%] h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]" />
+    <div className="relative min-h-screen bg-[var(--pg-bg)] text-[var(--pg-text)]">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="auth-layout-glow absolute left-1/2 top-[10%] h-[480px] w-[min(720px,90vw)] -translate-x-1/2 rounded-full blur-2xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col px-5 py-10 md:px-6">
@@ -32,22 +32,20 @@ export default function AuthLayout({
             height={36}
             className="h-9 w-9 object-contain"
           />
-          <span className="text-lg font-semibold text-white">Peergent</span>
+          <span className="text-lg font-semibold text-[var(--pg-text)]">Peergent</span>
         </Link>
 
         <div className="my-auto w-full py-10">
           <div className="mb-8">
-            <h1 className="text-[1.75rem] font-semibold tracking-tight text-white">
+            <h1 className="text-[1.75rem] font-semibold tracking-tight text-[var(--pg-text)]">
               {title}
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            <p className="mt-2 text-sm leading-relaxed text-[var(--pg-text-muted)]">
               {description}
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-white/[0.06] bg-white/[0.02] p-6 md:p-7">
-            {children}
-          </div>
+          <div className="pg-section-panel !rounded-[24px] !p-6 md:!p-7">{children}</div>
 
           {footer ? <div className="mt-6 text-center text-sm">{footer}</div> : null}
         </div>

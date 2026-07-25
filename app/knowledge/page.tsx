@@ -1,10 +1,11 @@
-import { Suspense } from "react";
-import KnowledgeManagementView from "@/components/knowledge/KnowledgeManagementView";
+import { redirect } from "next/navigation";
 
-export default function KnowledgePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#030712]" />}>
-      <KnowledgeManagementView />
-    </Suspense>
-  );
+type KnowledgeRedirectPageProps = {
+  searchParams: Promise<{ section?: string }>;
+};
+
+export default async function KnowledgeRedirectPage({ searchParams }: KnowledgeRedirectPageProps) {
+  const params = await searchParams;
+  const query = params.section ? `?section=${encodeURIComponent(params.section)}` : "";
+  redirect(`/company${query}`);
 }

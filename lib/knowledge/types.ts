@@ -106,7 +106,7 @@ export function gapToKnowledgeSection(
 }
 
 export function knowledgeSectionHref(section: KnowledgeSectionId): string {
-  return `/knowledge?section=${section}`;
+  return `/company?section=${section}`;
 }
 
 export function parseKnowledgeSection(value: string | null): KnowledgeSectionId {

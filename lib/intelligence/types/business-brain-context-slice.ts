@@ -47,3 +47,25 @@ export function isBusinessBrainSparse(slice: BusinessBrainContextSlice): boolean
     slice.facts.length === 0
   );
 }
+
+/** Maps a full Business Brain aggregate into the understanding context slice. */
+export function businessBrainAggregateToContextSlice(
+  aggregate: import("@/lib/business-brain").BusinessBrainAggregate
+): BusinessBrainContextSlice {
+  const slice: BusinessBrainContextSlice = {
+    available: true,
+    products: aggregate.products,
+    services: aggregate.services,
+    customerSegments: aggregate.customerSegments,
+    competitors: aggregate.competitors,
+    internalProcesses: aggregate.internalProcesses,
+    knowledgeSources: aggregate.knowledgeSources,
+    facts: aggregate.facts,
+  };
+
+  if (isBusinessBrainSparse(slice)) {
+    slice.sparse = true;
+  }
+
+  return slice;
+}

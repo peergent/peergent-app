@@ -4,9 +4,16 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import { isDraftablePlanActivity } from "@/lib/marketing-intelligence";
 import type { MarketingUnderstandingDimension } from "@/lib/marketing-intelligence";
+import type { PublicationPackage } from "@/lib/peer-workflow";
 import { gapToKnowledgeSection, knowledgeSectionHref } from "@/lib/knowledge";
 import type { RecommendedAction } from "../types";
+import {
+  buildMarketingActivityLifecycleMap,
+  findNextMarketingPlanActivity,
+  isPlanExecutionComplete,
+} from "../activity-lifecycle";
 import { toConversationalRecommendations } from "./conversational-recommendations";
 import { deriveCurrentFocus, type CurrentFocus } from "./current-focus";
 import { derivePeerPresence } from "./presence";
@@ -34,23 +41,59 @@ function formatGapLabel(gap: MarketingUnderstandingDimension): string {
 }
 
 export function buildWorkNarrative(input: {
-  generating: "understanding" | "strategy" | "plan" | "draft" | null;
+  generating: "understanding" | "strategy" | "plan" | "draft" | "publication" | null;
   generatingActivity?: string | null;
   understanding: MarketingUnderstanding | null;
   strategy: MarketingStrategy | null;
   plan: MarketingPlan | null;
   drafts: MarketingContentDraft[];
+  publicationPackages?: PublicationPackage[];
   recommendedActions: RecommendedAction[];
   apiWarnings: string[];
 }): WorkNarrative {
+  const publicationPackages = input.publicationPackages ?? [];
+  const lifecycleMap = buildMarketingActivityLifecycleMap({
+    plan: input.plan,
+    drafts: input.drafts,
+    publicationPackages,
+    generating: Boolean(input.generating),
+    generatingActivity: input.generatingActivity,
+  });
+
   const pendingDrafts = input.drafts.filter(
-    (d) => d.status === "draft" || d.status === "ready_for_review"
+    (draft) => draft.status === "draft" || draft.status === "ready_for_review"
   );
+  const readyToPublishDrafts = input.drafts.filter(
+    (draft) => draft.status === "ready_to_publish"
+  );
+  const approvedDrafts = input.drafts.filter((draft) => draft.status === "approved");
+  const nextActivity = findNextMarketingPlanActivity(input.plan, lifecycleMap);
+  const planComplete = isPlanExecutionComplete(input.plan, lifecycleMap);
+
+  const undraftedCount =
+    input.plan?.contentCalendar.filter(
+      (entry) =>
+        isDraftablePlanActivity(entry) &&
+        !input.drafts.some(
+          (draft) =>
+            draft.planActivityReference.trim().toLowerCase() ===
+            entry.title.trim().toLowerCase()
+        )
+    ).length ?? 0;
 
   const focus = deriveCurrentFocus({
     generating: input.generating,
     generatingActivity: input.generatingActivity,
     pendingDraftTitle: pendingDrafts[0]?.title,
+    nextScheduledActivityTitle: nextActivity?.title,
+    nextScheduledActivityWeek: input.plan?.contentCalendar.find(
+      (entry) => entry.title === nextActivity?.title
+    )?.scheduledWeek,
+    readyToPublishDraftTitle: readyToPublishDrafts[0]?.title,
+    approvedDraftTitle:
+      readyToPublishDrafts.length === 0 ? approvedDrafts[0]?.title : undefined,
+    undraftedActivityCount: pendingDrafts.length === 0 ? undraftedCount : 0,
+    planComplete,
   });
 
   const presence = derivePeerPresence({
@@ -60,7 +103,10 @@ export function buildWorkNarrative(input: {
     hasStrategy: Boolean(input.strategy),
     hasPlan: Boolean(input.plan),
     pendingDraftCount: pendingDrafts.length,
-    hasApprovedDrafts: input.drafts.some((d) => d.status === "approved"),
+    readyToPublishCount: readyToPublishDrafts.length,
+    approvedAwaitingPrepCount: approvedDrafts.length,
+    hasPublishedDrafts: input.drafts.some((draft) => draft.status === "published"),
+    planComplete,
     gapCount: input.understanding?.gaps.length ?? 0,
   });
 
@@ -73,6 +119,20 @@ export function buildWorkNarrative(input: {
     needsFromYou.push({
       id: `review-${draft.id}`,
       label: `Review and approve "${draft.title}"`,
+    });
+  }
+
+  for (const draft of readyToPublishDrafts) {
+    needsFromYou.push({
+      id: `publish-${draft.id}`,
+      label: `Confirm publication for "${draft.title}"`,
+    });
+  }
+
+  for (const draft of approvedDrafts) {
+    needsFromYou.push({
+      id: `prepare-${draft.id}`,
+      label: `Prepare "${draft.title}" for publication`,
     });
   }
 
@@ -92,25 +152,24 @@ export function buildWorkNarrative(input: {
     });
   }
 
-  if (input.plan && input.plan.contentCalendar.length > 0) {
-    const undrafted = input.plan.contentCalendar.filter(
-      (entry) =>
-        !input.drafts.some(
-          (d) =>
-            d.planActivityReference.trim().toLowerCase() === entry.title.trim().toLowerCase()
-        )
-    );
-    if (undrafted.length > 0 && pendingDrafts.length === 0 && !input.generating) {
+  if (
+    nextActivity &&
+    pendingDrafts.length === 0 &&
+    readyToPublishDrafts.length === 0 &&
+    approvedDrafts.length === 0 &&
+    !input.generating
+  ) {
+    const lifecycle = lifecycleMap.get(nextActivity.title.trim().toLowerCase());
+    if (lifecycle === "not_started") {
       needsFromYou.push({
-        id: `draft-${undrafted[0].title}`,
-        label: `Choose a calendar slot to draft (e.g. "${undrafted[0].title}")`,
+        id: `draft-${nextActivity.title}`,
+        label: `Draft next activity: "${nextActivity.title}"`,
       });
     }
   }
 
-  // Only surface API warnings not already covered by gaps
   for (const warning of input.apiWarnings.slice(0, 2)) {
-    if (!needsFromYou.some((n) => warning.includes(n.label.slice(0, 20)))) {
+    if (!needsFromYou.some((need) => warning.includes(need.label.slice(0, 20)))) {
       needsFromYou.push({ id: `warning-${warning.slice(0, 24)}`, label: warning });
     }
   }
@@ -121,11 +180,28 @@ export function buildWorkNarrative(input: {
   }
   if (input.strategy) progressCompleted.push("Marketing strategy");
   if (input.plan) progressCompleted.push("Execution plan");
-  const approvedCount = input.drafts.filter((d) => d.status === "approved").length;
+  const approvedCount = input.drafts.filter((draft) => draft.status === "approved").length;
   if (approvedCount > 0) {
     progressCompleted.push(
       approvedCount === 1 ? "1 draft approved" : `${approvedCount} drafts approved`
     );
+  }
+  const readyCount = readyToPublishDrafts.length;
+  if (readyCount > 0) {
+    progressCompleted.push(
+      readyCount === 1
+        ? "1 draft ready to publish"
+        : `${readyCount} drafts ready to publish`
+    );
+  }
+  const publishedCount = input.drafts.filter((draft) => draft.status === "published").length;
+  if (publishedCount > 0) {
+    progressCompleted.push(
+      publishedCount === 1 ? "1 item published" : `${publishedCount} items published`
+    );
+  }
+  if (planComplete) {
+    progressCompleted.push("Execution plan cycle complete");
   }
 
   return {
@@ -133,7 +209,7 @@ export function buildWorkNarrative(input: {
     presence,
     primaryRecommendation,
     needsFromYou: needsFromYou
-      .filter((need, index, list) => list.findIndex((n) => n.id === need.id) === index)
+      .filter((need, index, list) => list.findIndex((item) => item.id === need.id) === index)
       .slice(0, 5),
     progressCompleted,
   };

@@ -71,7 +71,7 @@ export default function StrategyDeliverable({ strategy }: StrategyDeliverablePro
         </Section>
       )}
 
-      <ExplainabilitySection view={buildStrategyExplainability(strategy)} defaultOpen />
+                          <ExplainabilitySection view={buildStrategyExplainability(strategy)} />
     </div>
   );
 }

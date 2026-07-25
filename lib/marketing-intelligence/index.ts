@@ -54,6 +54,7 @@ export {
   buildMarketingContentTaskAppendix,
   detectUngroundedClaims,
   generateMarketingContentDraft,
+  isDraftablePlanActivity,
   isSupportedContentType,
   normalizeContentType,
   parseMarketingContentDraft,

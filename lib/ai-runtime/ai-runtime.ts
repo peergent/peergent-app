@@ -39,7 +39,10 @@ export class AIRuntime {
       model: options.model,
     });
 
-    const validated = validateResponse(providerResult.text);
+    const validated = validateResponse(
+      providerResult.text,
+      options.responseValidation
+    );
 
     const metadata = {
       provider: this.provider.name,

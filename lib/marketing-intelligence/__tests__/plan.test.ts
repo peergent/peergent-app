@@ -163,8 +163,65 @@ describe("parseMarketingPlanResponse", () => {
       "Founder playbook"
     );
     expect(result.plan.contentCalendar[0]?.estimatedEffort).toBe("medium");
+    expect(result.plan.contentCalendar[0]?.contentType).toBe("blog_article");
     expect(result.plan.dependencies[0]?.dependsOn).toContain("pillars");
     expect(result.plan.successMetrics[0]?.target).toContain("20");
+  });
+
+  it("normalizes human-readable content types to canonical draft types", () => {
+    const withBlogPostLabel = {
+      ...samplePlanJson,
+      contentCalendar: [
+        {
+          title: "Educational Blog Post: AI Employees vs AI Tools",
+          contentType: "Blog Post",
+          channel: "Blog",
+          scheduledWeek: 3,
+          pillar: "Education",
+          ...activityBase,
+        },
+      ],
+    };
+
+    const result = parseMarketingPlanResponse(JSON.stringify(withBlogPostLabel));
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.plan.contentCalendar[0]?.contentType).toBe("blog_article");
+    expect(result.warnings.some((w) => w.includes('normalized from "Blog Post"'))).toBe(true);
+  });
+
+  it("skips unsupported content types such as Webinar", () => {
+    const withWebinar = {
+      ...samplePlanJson,
+      contentCalendar: [
+        {
+          title: "Webinar: How to Deploy AI Employees Quickly and Securely",
+          contentType: "Webinar",
+          channel: "Web",
+          scheduledWeek: 4,
+          pillar: "Education",
+          ...activityBase,
+        },
+        {
+          title: "Founder pain points slot",
+          contentType: "blog_post",
+          channel: "Blog",
+          scheduledWeek: 6,
+          pillar: "Growth efficiency",
+          ...activityBase,
+        },
+      ],
+    };
+
+    const result = parseMarketingPlanResponse(JSON.stringify(withWebinar));
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.plan.contentCalendar).toHaveLength(1);
+    expect(result.plan.contentCalendar[0]?.title).toBe("Founder pain points slot");
+    expect(result.warnings.some((w) => w.includes('"Webinar"'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("entry skipped"))).toBe(true);
   });
 
   it("rejects plan without valid activities", () => {

@@ -12,6 +12,11 @@ export const PUBLIC_ROUTES = [
 ] as const;
 
 export const PROTECTED_ROUTE_PREFIXES = [
+  "/hq",
+  "/home",
+  "/inbox",
+  "/team",
+  "/company",
   "/dashboard",
   "/peers",
   "/knowledge",

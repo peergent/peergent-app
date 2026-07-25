@@ -1,0 +1,146 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Megaphone } from "lucide-react";
+import {
+  buildMarketingProjectsViewModel,
+  projectFilters,
+} from "@/lib/peer-experience/marketing/view-models/build-marketing-projects-view-model";
+import {
+  deriveProjectProgress,
+  deriveProjectStatus,
+  projectStatusLabel,
+} from "@/lib/peer-experience/marketing/projects/project-engine";
+import type { MarketingProjectFilter } from "@/lib/peer-experience/marketing/domain/marketing-peer-types";
+import { getWorkHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
+import {
+  buildProjectCardSteps,
+  remainingProjectSteps,
+} from "../lib/build-project-card-steps";
+
+function scheduledDraftIds(
+  overlays: MarketingPeerDomainInput["approvalOverlays"]
+): Set<string> {
+  const ids = new Set<string>();
+  for (const [draftId, overlay] of Object.entries(overlays ?? {})) {
+    if (overlay?.publishing?.scheduledAt) ids.add(draftId);
+  }
+  return ids;
+}
+
+function statusDisplay(statusLabel: string): { className: string; live: boolean } {
+  const lower = statusLabel.toLowerCase();
+  if (lower.includes("plan")) return { className: "mw-project-status mw-project-status--planning", live: false };
+  if (lower.includes("complete") || lower.includes("monitor"))
+    return { className: "mw-project-status", live: false };
+  return { className: "mw-project-status", live: true };
+}
+
+export type ProjectsTabProps = {
+  peerId: string;
+  domainInput: MarketingPeerDomainInput;
+};
+
+export default function ProjectsTab({ peerId, domainInput }: ProjectsTabProps) {
+  const searchParams = useSearchParams();
+  const filter = (searchParams.get("filter") as MarketingProjectFilter) ?? "active";
+  const scheduled = useMemo(() => scheduledDraftIds(domainInput.approvalOverlays), [domainInput.approvalOverlays]);
+
+  const vm = useMemo(
+    () => buildMarketingProjectsViewModel({ ...domainInput, filter }),
+    [domainInput, filter]
+  );
+
+  return (
+    <section className="mw-section" style={{ animationDelay: "0.05s", marginBottom: 0 }}>
+      <div className="mw-section-head">
+        <div className="mw-section-title">
+          <Megaphone size={15} aria-hidden />
+          Where {domainInput.peerName} is working
+        </div>
+        <Link href={getWorkHref(peerId)} className="mw-section-link">
+          New project
+        </Link>
+      </div>
+
+      <div className="mw-content-filters" style={{ marginBottom: 16 }}>
+        {projectFilters().map((f) => (
+          <Link
+            key={f.id}
+            href={`${getWorkHref(peerId)}?filter=${f.id}`}
+            className={`mw-filter-chip pg-focus-premium${filter === f.id ? " mw-filter-chip--active" : ""}`}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </div>
+
+      {vm.items.length === 0 ? (
+        <p className="mw-empty-inline">{vm.emptyMessage}</p>
+      ) : (
+        <div className="mw-projects-grid">
+          {vm.items.map((item) => {
+            const project = domainInput.projects.find((p) => p.id === item.id)!;
+            const status = deriveProjectStatus(
+              project,
+              domainInput.workUnits,
+              domainInput.drafts,
+              scheduled
+            );
+            const progress = deriveProjectProgress(project, domainInput.workUnits, status);
+            const steps = buildProjectCardSteps(item.id, domainInput.workUnits);
+            const remaining = remainingProjectSteps(steps);
+            const statusInfo = statusDisplay(item.statusLabel);
+
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="mw-glass mw-project-card pg-focus-premium"
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <div className="mw-project-head">
+                  <div>
+                    <div className="mw-project-title">{item.title}</div>
+                    <div className={statusInfo.className}>
+                      {statusInfo.live && <span className="mw-live-dot" aria-hidden />}
+                      {projectStatusLabel(status)}
+                    </div>
+                  </div>
+                  <div className="mw-project-pct">{progress}%</div>
+                </div>
+                <div className="mw-project-track">
+                  <div className="mw-project-fill" style={{ width: `${progress}%` }} />
+                </div>
+                {project.goal && (
+                  <p className="mw-project-goal">
+                    Goal: <strong>{project.goal}</strong>
+                  </p>
+                )}
+                <div className="mw-project-steps">
+                  {steps.slice(0, 5).map((step) => (
+                    <div
+                      key={step.id}
+                      className={`mw-step${step.state === "done" ? " mw-step--done" : ""}${step.state === "current" ? " mw-step--current" : ""}`}
+                    >
+                      <span className="mw-step-mark">
+                        {step.state === "done" ? "✓" : step.state === "current" ? "→" : "·"}
+                      </span>
+                      {step.label}
+                    </div>
+                  ))}
+                </div>
+                <p className="mw-project-remaining">
+                  {remaining <= 1 ? "1 step left" : `${remaining} steps left`}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

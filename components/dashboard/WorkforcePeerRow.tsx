@@ -6,6 +6,7 @@ import PeerRoleIcon from "@/components/peer/PeerRoleIcon";
 import Avatar from "@/components/ui/Avatar";
 import InsetGroup from "@/components/ui/InsetGroup";
 import StatusBadge from "@/components/ui/StatusBadge";
+import { marketingPeerWorkspaceHref } from "@/lib/config/peer-studio";
 import { getRoleConfig } from "@/lib/peer-display";
 import type { PeerRow } from "@/lib/peer-display";
 import { cn } from "@/lib/ui/cn";
@@ -18,7 +19,7 @@ export default function WorkforcePeerRow({ peer }: WorkforcePeerRowProps) {
   const config = getRoleConfig(peer.role);
   const isActive = peer.status === "active";
   const workspaceHref =
-    peer.role === "Marketing" ? `/peers/${peer.id}/marketing` : `/peers/${peer.id}`;
+    peer.role === "Marketing" ? marketingPeerWorkspaceHref(peer.id) : `/peers/${peer.id}`;
 
   return (
     <Link

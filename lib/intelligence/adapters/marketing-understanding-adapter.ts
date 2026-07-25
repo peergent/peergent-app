@@ -1,11 +1,11 @@
+import { createBusinessBrainService } from "@/lib/business-brain";
 import { createMarketingIntelligenceService } from "@/lib/marketing-intelligence";
 import { buildMarketingUnderstanding } from "@/lib/marketing-intelligence/understanding";
 import { createSupabaseSource } from "@/lib/context-engine/data/sources";
 import type { SourceRef } from "@/lib/context-engine/types/sources";
 import type { AppSupabaseClient } from "../api/org-context";
 import { loadCompanyDnaContext } from "./company-dna-adapter";
-import { executeBusinessBrainQuery } from "./business-brain-query-service";
-import { planMarketingBusinessBrainQuery } from "../retrieval/marketing-query-planner";
+import { businessBrainAggregateToContextSlice } from "../types/business-brain-context-slice";
 import {
   emptyMarketingUnderstandingContextSlice,
   toMarketingUnderstandingContextSlice,
@@ -25,7 +25,7 @@ export async function loadMarketingUnderstandingContext(
   supabase: AppSupabaseClient,
   organizationId: string,
   role: string,
-  taskHint?: string
+  _taskHint?: string
 ): Promise<MarketingUnderstandingLoadResult> {
   if (role !== "Marketing") {
     return {
@@ -50,17 +50,17 @@ export async function loadMarketingUnderstandingContext(
   }
 
   try {
-    const queryPlan = planMarketingBusinessBrainQuery(taskHint);
-
-    const [dnaResult, brainResult, marketingProfile] = await Promise.all([
+    const [dnaResult, businessBrain, marketingProfile] = await Promise.all([
       loadCompanyDnaContext(supabase, organizationId),
-      executeBusinessBrainQuery(supabase, organizationId, queryPlan),
+      createBusinessBrainService(supabase).getAggregate(organizationId),
       createMarketingIntelligenceService(supabase).getAggregate(organizationId),
     ]);
 
+    const brainSlice = businessBrainAggregateToContextSlice(businessBrain);
+
     const understanding = buildMarketingUnderstanding({
       companyDna: dnaResult.slice,
-      businessBrain: brainResult.slice,
+      businessBrain: brainSlice,
       marketingProfile,
     });
 
@@ -68,7 +68,11 @@ export async function loadMarketingUnderstandingContext(
       slice: toMarketingUnderstandingContextSlice(understanding),
       sources: [
         ...dnaResult.sources,
-        ...brainResult.sources,
+        createSupabaseSource(
+          "business_brains",
+          organizationId,
+          "Business Brain"
+        ),
         createSupabaseSource(
           "marketing_profiles",
           organizationId,
@@ -76,18 +80,8 @@ export async function loadMarketingUnderstandingContext(
         ),
       ],
     };
-  } catch {
-    return {
-      slice: emptyMarketingUnderstandingContextSlice(),
-      sources: [
-        {
-          id: "marketing-understanding:error",
-          type: "derived",
-          label: "Marketing Understanding load failed",
-          fetchedAt: new Date().toISOString(),
-          freshness: "cached",
-        },
-      ],
-    };
+  } catch (error) {
+    console.error("[loadMarketingUnderstandingContext] failed:", error);
+    throw error;
   }
 }

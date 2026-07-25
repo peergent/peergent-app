@@ -1,0 +1,25 @@
+/**
+ * Smooth cross-theme transitions — applied briefly during theme switches.
+ */
+
+html[data-pg-theme-transition="true"] *,
+html[data-pg-theme-transition="true"] *::before,
+html[data-pg-theme-transition="true"] *::after {
+  transition-property: background-color, background, border-color, color, box-shadow, fill, stroke;
+  transition-duration: var(--pg-theme-transition-duration);
+  transition-timing-function: var(--pg-theme-transition-ease);
+}
+
+html[data-pg-theme-transition="true"] canvas,
+html[data-pg-theme-transition="true"] .bar,
+html[data-pg-theme-transition="true"] .type-dot,
+html[data-pg-theme-transition="true"] .pulse-ring,
+html[data-pg-theme-transition="true"] .breathing,
+html[data-pg-theme-transition="true"] .orb,
+html[data-pg-theme-transition="true"] .orb2,
+html[data-pg-theme-transition="true"] .decision-border,
+html[data-pg-theme-transition="true"] .dot-grid,
+html[data-pg-theme-transition="true"] .aurora-hero,
+html[data-pg-theme-transition="true"] .sparkle {
+  transition: none !important;
+}

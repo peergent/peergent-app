@@ -32,6 +32,8 @@ export function companyDnaToContextSlice(
     Boolean(dna.mission?.trim()) ||
     dna.values.length > 0 ||
     Boolean(dna.toneOfVoice.summary?.trim()) ||
+    (dna.toneOfVoice.personality?.length ?? 0) > 0 ||
+    Boolean(dna.riskProfile.summary?.trim()) ||
     dna.decisionPrinciples.length > 0;
 
   return {

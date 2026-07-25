@@ -1,7 +1,8 @@
 import type { AIResponse, AIRuntimeOptions } from "@/lib/ai-runtime";
-import { defaultAIRuntime } from "@/lib/ai-runtime";
+import { defaultAIRuntime, structuredJsonMaxLength } from "@/lib/ai-runtime";
 import type { ContextPackage } from "@/lib/intelligence";
 import type { MarketingUnderstandingContextSlice } from "@/lib/intelligence/types/marketing-understanding-context-slice";
+import { shouldLogPrompts } from "@/lib/ai-runtime/env";
 import { buildPrompt } from "@/lib/prompt-builder";
 import type { MarketingStrategy } from "../types/strategy";
 import {
@@ -75,11 +76,31 @@ export async function generateMarketingStrategy(
     outputFormat: "marketing-strategy",
   });
 
+  const maxTokens = input.runtimeOptions?.maxTokens ?? MARKETING_STRATEGY_DEFAULT_MAX_TOKENS;
+
   const aiResponse = await defaultAIRuntime.execute(promptPackage, {
     temperature: input.runtimeOptions?.temperature ?? 0.35,
-    maxTokens: input.runtimeOptions?.maxTokens ?? MARKETING_STRATEGY_DEFAULT_MAX_TOKENS,
+    maxTokens,
     model: input.runtimeOptions?.model,
+    responseValidation: {
+      maxLength: structuredJsonMaxLength(maxTokens),
+      ...input.runtimeOptions?.responseValidation,
+    },
   });
+
+  if (shouldLogPrompts()) {
+    console.info("[generateMarketingStrategy] LLM response", {
+      traceId,
+      finishReason: aiResponse.metadata.finishReason,
+      rawLength: aiResponse.providerResult.text.length,
+      validatedLength: aiResponse.text.length,
+      validatedWarnings: aiResponse.validated.warnings,
+      usage: aiResponse.metadata.usage,
+    });
+    if (!aiResponse.validated.success) {
+      console.info("[generateMarketingStrategy] raw LLM text", aiResponse.providerResult.text);
+    }
+  }
 
   if (!aiResponse.validated.success) {
     return {
@@ -92,6 +113,20 @@ export async function generateMarketingStrategy(
   }
 
   const parsed = parseMarketingStrategyResponse(aiResponse.text);
+
+  if (shouldLogPrompts()) {
+    console.info("[generateMarketingStrategy] parse result", {
+      traceId,
+      success: parsed.success,
+      error: parsed.success ? undefined : parsed.error,
+      warnings: parsed.warnings,
+    });
+    if (!parsed.success) {
+      console.info("[generateMarketingStrategy] raw LLM text", aiResponse.providerResult.text);
+      console.info("[generateMarketingStrategy] text passed to parser", aiResponse.text);
+    }
+  }
+
   if (!parsed.success) {
     return {
       success: false,

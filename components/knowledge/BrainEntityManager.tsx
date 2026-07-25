@@ -145,7 +145,7 @@ export default function BrainEntityManager<T extends { id: string; name?: string
       {success && <KnowledgeAlert tone="success">{success}</KnowledgeAlert>}
 
       {items.length === 0 && (
-        <p className="text-sm text-slate-500">{emptyLabel}</p>
+        <p className="text-sm text-[var(--pg-text-muted)]">{emptyLabel}</p>
       )}
 
       {items.map((item) => (
@@ -191,8 +191,8 @@ export default function BrainEntityManager<T extends { id: string; name?: string
         </ItemCard>
       ))}
 
-      <div className="rounded-[14px] border border-dashed border-white/[0.08] p-4">
-        <p className="text-sm font-medium text-slate-300">{addLabel}</p>
+      <div className="rounded-[14px] border border-dashed border-[var(--pg-input-border)] bg-[var(--pg-surface-secondary)] p-4">
+        <p className="text-sm font-medium text-[var(--pg-text)]">{addLabel}</p>
         {fields.map((field) => (
           <div key={field.key} className="mt-3">
             <FieldLabel>{field.label}</FieldLabel>

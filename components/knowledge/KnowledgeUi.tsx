@@ -11,9 +11,9 @@ export function KnowledgeAlert({
   children: ReactNode;
 }) {
   const styles = {
-    error: "border-red-500/20 bg-red-500/10 text-red-200",
-    success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-    info: "border-violet-500/20 bg-violet-500/10 text-violet-200",
+    error: "pg-alert-error",
+    success: "pg-alert-success",
+    info: "pg-alert-info",
   };
   return (
     <div className={cn("rounded-[14px] border px-4 py-3 text-sm", styles[tone])} role="alert">
@@ -23,11 +23,7 @@ export function KnowledgeAlert({
 }
 
 export function FieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-600">
-      {children}
-    </label>
-  );
+  return <label className="pg-field-label">{children}</label>;
 }
 
 export function TextInput({
@@ -48,7 +44,7 @@ export function TextInput({
       disabled={disabled}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="pg-focus-premium mt-1.5 w-full rounded-[12px] border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-slate-600 disabled:opacity-50"
+      className="pg-input pg-focus-premium"
     />
   );
 }
@@ -73,7 +69,7 @@ export function TextArea({
       rows={rows}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="pg-focus-premium mt-1.5 w-full rounded-[12px] border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-slate-600 disabled:opacity-50"
+      className="pg-textarea pg-focus-premium"
     />
   );
 }
@@ -88,12 +84,7 @@ export function SaveButton({
   label?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={saving}
-      className="pg-focus-premium inline-flex items-center gap-2 rounded-[12px] bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-    >
+    <button type="button" onClick={onClick} disabled={saving} className="pg-btn-save pg-focus-premium">
       {saving ? "Saving…" : label}
     </button>
   );
@@ -111,11 +102,13 @@ export function SectionCard({
   actions?: ReactNode;
 }) {
   return (
-    <section className="rounded-[20px] border border-white/[0.06] bg-white/[0.02] p-5 md:p-6">
+    <section className="pg-section-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+          <h2 className="text-lg font-semibold text-[var(--pg-text)]">{title}</h2>
+          {description && (
+            <p className="mt-1 text-sm text-[var(--pg-helper-text)]">{description}</p>
+          )}
         </div>
         {actions}
       </div>
@@ -136,15 +129,15 @@ export function ItemCard({
   deleting?: boolean;
 }) {
   return (
-    <div className="rounded-[14px] border border-white/[0.05] bg-white/[0.02] p-4">
+    <div className="pg-item-panel">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-white">{title}</h3>
+        <h3 className="text-sm font-medium text-[var(--pg-text)]">{title}</h3>
         {onDelete && (
           <button
             type="button"
             onClick={onDelete}
             disabled={deleting}
-            className="text-xs text-red-400/80 hover:text-red-300 disabled:opacity-50"
+            className="text-xs text-[var(--pg-danger)] hover:opacity-80 disabled:opacity-50"
           >
             Delete
           </button>

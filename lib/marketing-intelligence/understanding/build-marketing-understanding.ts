@@ -19,22 +19,25 @@ const UNDERSTANDING_DIMENSIONS: MarketingUnderstandingDimension[] = [
 
 function hasBrandPositioning(profile: MarketingProfileAggregate): boolean {
   const bp = profile.brandPositioning;
+  if (!bp) return false;
+
   return Boolean(
     bp.positioningStatement?.trim() ||
       bp.tagline?.trim() ||
       bp.valueProposition?.trim() ||
-      bp.keyMessages.length > 0 ||
+      (bp.keyMessages?.length ?? 0) > 0 ||
       bp.marketCategory?.trim()
   );
 }
 
 function hasCompanyDna(dna: CompanyDnaContextSlice): boolean {
   return Boolean(
-    dna.available &&
-      (dna.mission?.trim() ||
-        dna.values.length > 0 ||
-        dna.toneOfVoice.summary?.trim() ||
-        (dna.toneOfVoice.personality?.length ?? 0) > 0)
+    dna.mission?.trim() ||
+      dna.values.length > 0 ||
+      dna.toneOfVoice.summary?.trim() ||
+      (dna.toneOfVoice.personality?.length ?? 0) > 0 ||
+      dna.riskProfile.summary?.trim() ||
+      dna.decisionPrinciples.length > 0
   );
 }
 

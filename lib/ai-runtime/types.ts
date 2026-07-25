@@ -58,6 +58,8 @@ export type AIRuntimeOptions = {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  /** Overrides default response normalization (e.g. higher limit for structured JSON outputs). */
+  responseValidation?: ResponseValidationOptions;
 };
 
 export type ResponseValidationOptions = {

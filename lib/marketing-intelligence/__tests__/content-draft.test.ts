@@ -5,6 +5,7 @@ import {
   parseMarketingContentDraft,
 } from "@/lib/marketing-intelligence/content/parse-marketing-content-draft";
 import {
+  isDraftablePlanActivity,
   isSupportedContentType,
   normalizeContentType,
   resolveContentCalendarActivity,
@@ -31,7 +32,7 @@ const samplePlan: MarketingPlan = {
   contentCalendar: [
     {
       title: "Founder pain points slot",
-      contentType: "blog_post",
+      contentType: "blog_article",
       channel: "Blog",
       scheduledWeek: 6,
       pillar: "Growth efficiency",
@@ -110,9 +111,23 @@ describe("normalizeContentType", () => {
     expect(normalizeContentType("blog_post")).toBe("blog_article");
   });
 
+  it("maps human-readable Blog Post labels to blog_article", () => {
+    expect(normalizeContentType("Blog Post")).toBe("blog_article");
+  });
+
   it("returns null for unsupported types", () => {
     expect(normalizeContentType("podcast_episode")).toBeNull();
+    expect(normalizeContentType("Webinar")).toBeNull();
     expect(isSupportedContentType("podcast_episode")).toBe(false);
+    expect(isSupportedContentType("Webinar")).toBe(false);
+  });
+
+  it("marks webinar plan activities as not draftable", () => {
+    expect(
+      isDraftablePlanActivity({
+        contentType: "Webinar" as MarketingPlan["contentCalendar"][number]["contentType"],
+      })
+    ).toBe(false);
   });
 });
 
@@ -131,7 +146,7 @@ describe("resolveContentCalendarActivity", () => {
     const planWithBadType: MarketingPlan = {
       ...samplePlan,
       contentCalendar: [
-        { title: "Podcast ep 1", contentType: "podcast", scheduledWeek: 1, ...activityBase },
+        { title: "Podcast ep 1", contentType: "podcast" as unknown as MarketingPlan["contentCalendar"][number]["contentType"], scheduledWeek: 1, ...activityBase },
       ],
     };
     expect(resolveContentCalendarActivity(planWithBadType, "Podcast ep 1")).toBeNull();
@@ -162,16 +177,114 @@ describe("assessContentDraftReadiness", () => {
     expect(result.ready).toBe(true);
     expect(result.normalizedContentType).toBe("blog_article");
   });
+
+  it("accepts valid plan activity with human-readable content type labels", () => {
+    const planWithLabel: MarketingPlan = {
+      ...samplePlan,
+      contentCalendar: [
+        {
+          title: "Educational Blog Post: AI Employees vs AI Tools",
+          contentType: "blog_article",
+          channel: "Blog",
+          scheduledWeek: 3,
+          pillar: "Education",
+          ...activityBase,
+        },
+      ],
+    };
+
+    const result = assessContentDraftReadiness(
+      planWithLabel,
+      "Educational Blog Post: AI Employees vs AI Tools",
+      minimalContextPackage
+    );
+    expect(result.ready).toBe(true);
+    expect(result.normalizedContentType).toBe("blog_article");
+  });
+
+  it("accepts legacy plan activities stored with Blog Post labels", () => {
+    const legacyPlan: MarketingPlan = {
+      ...samplePlan,
+      contentCalendar: [
+        {
+          title: "Educational Blog Post: AI Employees vs AI Tools",
+          contentType: "Blog Post" as unknown as MarketingPlan["contentCalendar"][number]["contentType"],
+          channel: "Blog",
+          scheduledWeek: 3,
+          ...activityBase,
+        },
+      ],
+    };
+
+    const result = assessContentDraftReadiness(
+      legacyPlan,
+      "Educational Blog Post: AI Employees vs AI Tools",
+      minimalContextPackage
+    );
+    expect(result.ready).toBe(true);
+    expect(result.normalizedContentType).toBe("blog_article");
+  });
 });
 
 describe("detectUngroundedClaims", () => {
+  const knownProducts = ["Platform", "Analytics platform"];
+  const knownServices = ["Onboarding"];
+
   it("flags unknown product references", () => {
-    const warnings = detectUngroundedClaims("Try our SuperWidget today.", ["Platform"], []);
+    const warnings = detectUngroundedClaims("Try our SuperWidget today.", knownProducts, []);
     expect(warnings.some((w) => w.includes("SuperWidget"))).toBe(true);
   });
 
+  it("flags invented multi-word product names", () => {
+    const warnings = detectUngroundedClaims(
+      "Deploy our GrowthEngine across your stack. Try our LeadPilot solution.",
+      knownProducts,
+      knownServices
+    );
+    expect(warnings.some((w) => w.includes("GrowthEngine"))).toBe(true);
+    expect(warnings.some((w) => w.includes("LeadPilot"))).toBe(true);
+  });
+
   it("allows known product references", () => {
-    const warnings = detectUngroundedClaims("Our Platform helps teams.", ["Platform"], []);
+    const warnings = detectUngroundedClaims("Our Platform helps teams.", knownProducts, []);
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("allows grounded multi-word product names from Business Brain", () => {
+    const warnings = detectUngroundedClaims(
+      "See how our Analytics platform supports inbound teams.",
+      knownProducts,
+      knownServices
+    );
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("allows grounded service references", () => {
+    const warnings = detectUngroundedClaims(
+      "Book our Onboarding program to get started.",
+      knownProducts,
+      knownServices
+    );
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("does not warn on generic multi-word CTA phrases", () => {
+    const samples = [
+      "Contact our team for a personalized walkthrough of AI employees.",
+      "Our company can help your team scale efficiently.",
+      "Our solution is designed for growth-stage founders.",
+      "Our platform team is ready to support your rollout.",
+      "Reach out to our service team for onboarding support.",
+    ];
+
+    for (const text of samples) {
+      const warnings = detectUngroundedClaims(text, knownProducts, knownServices);
+      expect(warnings).toHaveLength(0);
+    }
+  });
+
+  it("does not warn when the full captured phrase is a generic term", () => {
+    const warnings = detectUngroundedClaims("Our product is built for teams.", knownProducts, []);
     expect(warnings).toHaveLength(0);
   });
 });

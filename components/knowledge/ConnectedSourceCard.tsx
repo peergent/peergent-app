@@ -6,6 +6,7 @@ import {
   Layers,
 } from "lucide-react";
 import type { ConnectedSource } from "@/lib/knowledge-demo";
+import { cn } from "@/lib/ui/cn";
 
 type ConnectedSourceCardProps = {
   source: ConnectedSource;
@@ -27,42 +28,44 @@ export default function ConnectedSourceCard({
 
   return (
     <article
-      className={`rounded-2xl border p-5 transition ${
+      className={cn(
+        "rounded-2xl border p-5 transition",
         isConnected
-          ? "border-emerald-500/20 bg-emerald-500/[0.04]"
-          : "border-white/10 bg-white/[0.025]"
-      }`}
+          ? "border-[var(--pg-success-border)] bg-[var(--pg-success-muted)]"
+          : "border-[var(--pg-panel-border)] bg-[var(--pg-item-panel-bg)]"
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-            isConnected ? "bg-emerald-500/15" : "bg-white/[0.05]"
-          }`}
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+            isConnected ? "bg-[var(--pg-success-muted)]" : "bg-[var(--pg-pill-bg)]"
+          )}
         >
           <Icon
             size={20}
-            className={isConnected ? "text-emerald-400" : "text-slate-400"}
+            className={isConnected ? "text-[var(--pg-success)]" : "text-[var(--pg-text-muted)]"}
           />
         </div>
 
         {isConnected ? (
-          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+          <span className="rounded-full border border-[var(--pg-success-border)] bg-[var(--pg-success-muted)] px-2.5 py-1 text-xs font-medium text-[var(--pg-success)]">
             Connected
           </span>
         ) : (
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-500">
+          <span className="rounded-full border border-[var(--pg-border-soft)] bg-[var(--pg-pill-bg)] px-2.5 py-1 text-xs text-[var(--pg-text-muted)]">
             Coming Soon
           </span>
         )}
       </div>
 
-      <h3 className="mt-4 font-semibold">{source.name}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-400">
+      <h3 className="mt-4 font-semibold text-[var(--pg-text)]">{source.name}</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--pg-text-muted)]">
         {source.description}
       </p>
 
       {isConnected && (
-        <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+        <div className="mt-4 flex flex-wrap gap-3 text-xs text-[var(--pg-label-text)]">
           {source.documentCount !== undefined && (
             <span>{source.documentCount} pages indexed</span>
           )}

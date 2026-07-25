@@ -149,7 +149,7 @@ export default function PeerWorkspaceHeader({
         </Link>
         {peerRole === "Marketing" && peerId && (
           <Link
-            href={`/peers/${peerId}/marketing`}
+            href={`/team/${peerId}`}
             className="pg-focus-premium inline-flex items-center gap-1.5 rounded-[12px] border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-sm font-medium text-fuchsia-200 transition hover:border-fuchsia-500/40 hover:bg-fuchsia-500/15"
           >
             <Megaphone size={14} aria-hidden />

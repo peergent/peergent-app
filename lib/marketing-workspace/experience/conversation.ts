@@ -65,7 +65,7 @@ export function respondToConversation(
           "peer",
           "No drafts are waiting for approval right now. When I create one, it will appear in Drafts for you to review."
         ),
-        nextStep: { label: "View content calendar", section: "calendar" },
+        nextStep: { label: "View campaign plan", section: "plan" },
       };
     }
     return {
@@ -179,7 +179,7 @@ export function respondToConversation(
           "peer",
           `The plan includes ${context.plan.contentCalendar.length} calendar slots. Open the Plan or Calendar section to review activities and create drafts.`
         ),
-        nextStep: { label: "Open calendar", section: "calendar" },
+        nextStep: { label: "Open campaign plan", section: "plan" },
       };
     }
     return {
@@ -217,7 +217,7 @@ export function respondToConversation(
         ),
         nextStep: {
           label: `Draft "${next.title}"`,
-          section: "calendar",
+          section: "plan",
           action: {
             id: `draft-${next.title}`,
             title: `Draft: ${next.title}`,

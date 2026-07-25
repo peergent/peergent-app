@@ -22,7 +22,10 @@ describe("derivePeerPresence", () => {
       hasStrategy: true,
       hasPlan: true,
       pendingDraftCount: 0,
-      hasApprovedDrafts: false,
+      readyToPublishCount: 0,
+      approvedAwaitingPrepCount: 0,
+      hasPublishedDrafts: false,
+      planComplete: false,
       gapCount: 0,
     });
     expect(presence.id).toBe("creating");
@@ -36,7 +39,10 @@ describe("derivePeerPresence", () => {
       hasStrategy: true,
       hasPlan: false,
       pendingDraftCount: 0,
-      hasApprovedDrafts: false,
+      readyToPublishCount: 0,
+      approvedAwaitingPrepCount: 0,
+      hasPublishedDrafts: false,
+      planComplete: false,
       gapCount: 0,
     });
     expect(presence.id).toBe("idle");
@@ -117,7 +123,7 @@ describe("navigation", () => {
 });
 
 describe("conversational recommendations", () => {
-  it("uses forward-looking language for strategy", () => {
+  it("maps engine recommendation fields without duplicating Maya copy", () => {
     const actions = buildRecommendedActions({
       understanding: { available: true, completeness: 70, sparse: false, gaps: [] } as never,
       strategy: null,
@@ -126,7 +132,9 @@ describe("conversational recommendations", () => {
     });
     const recs = toConversationalRecommendations(actions);
     const strategyRec = recs.find((r) => r.kind === "generate-strategy");
-    expect(strategyRec?.peerMessage).toContain("When you're ready");
+    const engineAction = actions.find((a) => a.kind === "generate-strategy");
+    expect(strategyRec?.peerMessage).toBe(engineAction?.description);
+    expect(strategyRec?.actionLabel).toBe(engineAction?.title);
   });
 });
 
@@ -138,11 +146,27 @@ describe("activity feed", () => {
 });
 
 describe("deriveCurrentFocus", () => {
-  it("shows pending draft when waiting for approval", () => {
+  it("returns legacy markers for pending draft input", () => {
     const focus = deriveCurrentFocus({
       generating: null,
       pendingDraftTitle: "LinkedIn launch post",
     });
-    expect(focus.headline).toContain("waiting for your approval");
+    expect(focus.headline).toContain("pending:LinkedIn launch post");
+  });
+
+  it("returns legacy markers for undrafted slots", () => {
+    const focus = deriveCurrentFocus({
+      generating: null,
+      undraftedActivityCount: 2,
+    });
+    expect(focus.headline).toContain("undrafted:2");
+  });
+
+  it("returns legacy markers when draft is ready to publish", () => {
+    const focus = deriveCurrentFocus({
+      generating: null,
+      readyToPublishDraftTitle: "LinkedIn launch post",
+    });
+    expect(focus.headline).toContain("ready_to_publish:LinkedIn launch post");
   });
 });
