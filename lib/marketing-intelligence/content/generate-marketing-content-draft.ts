@@ -9,6 +9,9 @@ import {
   extractKnownEntities,
 } from "./assess-content-readiness";
 import { MARKETING_CONTENT_DEFAULT_MAX_TOKENS } from "./build-content-task-prompt";
+import { enrichMarketingContentPromptPackage } from "./format-creative-brief-prompt-section";
+import { isMarketingCreativeBriefPromptEnabled } from "./marketing-feature-flags";
+import { resolveCreativeBriefForContent } from "./resolve-creative-brief-for-content";
 import { parseMarketingContentDraft } from "./parse-marketing-content-draft";
 
 export type GenerateMarketingContentDraftInput = {
@@ -80,12 +83,33 @@ export async function generateMarketingContentDraft(
   const entities = extractKnownEntities(contextPackage);
   const defaultTask = `Create a draft ${readiness.normalizedContentType} for plan activity "${readiness.activity.title}".`;
 
-  const promptPackage = buildPrompt(contextPackage, {
+  const promptPackageBase = buildPrompt(contextPackage, {
     taskHint: taskHint ?? defaultTask,
     outputFormat: "marketing-content-draft",
     marketingPlan: plan,
     planActivityReference,
   });
+
+  let promptPackage = promptPackageBase;
+
+  if (isMarketingCreativeBriefPromptEnabled()) {
+    const resolved = resolveCreativeBriefForContent({
+      contextPackage,
+      plan,
+      activity: readiness.activity,
+      normalizedContentType: readiness.normalizedContentType,
+    });
+    warnings.push(...resolved.warnings);
+    if (resolved.status === "used" && resolved.brief) {
+      warnings.push("Creative brief used for content prompt constraints.");
+      promptPackage = enrichMarketingContentPromptPackage(
+        promptPackageBase,
+        resolved.brief
+      );
+    } else if (resolved.fallbackReason) {
+      warnings.push(`Creative Brief legacy fallback: ${resolved.fallbackReason}`);
+    }
+  }
 
   const maxTokens = input.runtimeOptions?.maxTokens ?? MARKETING_CONTENT_DEFAULT_MAX_TOKENS;
 

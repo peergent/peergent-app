@@ -20,6 +20,22 @@ export {
   type GenerateMarketingContentDraftResult,
 } from "./generate-marketing-content-draft";
 export {
+  formatCreativeBriefPromptSection,
+  enrichMarketingContentPromptPackage,
+  CREATIVE_BRIEF_PROMPT_DELIMITER_START,
+  CREATIVE_BRIEF_PROMPT_DELIMITER_END,
+} from "./format-creative-brief-prompt-section";
+export {
+  isMarketingCreativeBriefPromptEnabled,
+  marketingCreativeBriefPromptEnabled,
+} from "./marketing-feature-flags";
+export {
+  buildMarketingDecisionSourceForContent,
+  resolveCreativeBriefForContent,
+  type CreativeBriefContentIntegrationStatus,
+  type ResolveCreativeBriefForContentResult,
+} from "./resolve-creative-brief-for-content";
+export {
   isDraftablePlanActivity,
   isSupportedContentType,
   listContentCalendarReferences,
