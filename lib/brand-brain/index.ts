@@ -23,6 +23,25 @@ export {
 } from "./assemble-brand-profile";
 export type { AssembledBrandProfile } from "./assemble-brand-profile";
 
+export {
+  BrandBrainInvalidOrganizationIdError,
+  BrandBrainOrganizationNotFoundError,
+  BrandBrainSourceLoadError,
+} from "./errors";
+
+export type { BrandBrainOrganization, BrandBrainRepository } from "./brand-brain-repository";
+
+export {
+  BrandBrainService,
+  createBrandBrainService,
+} from "./brand-brain-service";
+export type { BrandBrainServiceReadContext } from "./brand-brain-service";
+
+export {
+  createExistingPeergentBrandRepository,
+  ExistingPeergentBrandRepository,
+} from "./adapters/existing-peergent-brand-repository";
+
 export type {
   BrandAssetReference,
   BrandAssetReferenceRole,

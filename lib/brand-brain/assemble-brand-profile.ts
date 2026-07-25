@@ -8,6 +8,7 @@
  */
 
 import type { BrandProfileSource } from "./brand-profile-source";
+import { BrandProfileOrganizationMismatchError } from "./errors";
 import type {
   BrandBrainGap,
   BrandCreativeRules,
@@ -18,14 +19,7 @@ import type {
   BrandVoiceRules,
 } from "./types";
 
-export class BrandProfileOrganizationMismatchError extends Error {
-  readonly code = "BRAND_PROFILE_ORGANIZATION_MISMATCH" as const;
-
-  constructor(message: string) {
-    super(message);
-    this.name = "BrandProfileOrganizationMismatchError";
-  }
-}
+export { BrandProfileOrganizationMismatchError } from "./errors";
 
 export type AssembledBrandProfile = {
   readonly profile: BrandProfile;
