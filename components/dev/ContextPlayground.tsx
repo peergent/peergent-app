@@ -3,9 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "@/components/account/AccountProvider";
 import BrandBrainInspectorSection from "@/components/dev/BrandBrainInspectorSection";
+import CreativeBriefInspectorSection from "@/components/dev/CreativeBriefInspectorSection";
+import MarketingDecisionInspectorSection from "@/components/dev/MarketingDecisionInspectorSection";
 import { defaultContextEngine } from "@/lib/context-engine";
 import type { ContextBundle } from "@/lib/context-engine";
 import { presentBrandBrainInspectorView } from "@/lib/dev/brand-brain-inspector-view";
+import {
+  presentCreativeBriefInspectorView,
+  tryAssembleDevCreativeBrief,
+} from "@/lib/dev/creative-brief-inspector-view";
+import {
+  assembleDevMarketingDecision,
+  presentMarketingDecisionInspectorView,
+} from "@/lib/dev/marketing-decision-inspector-view";
+import type { BrandBrainContextSlice } from "@/lib/brand-brain/types";
 import type { ContextPackage } from "@/lib/intelligence";
 import type { PeerRow } from "@/lib/peer-display";
 import { fetchOrganizationPeers } from "@/lib/peers/queries";
@@ -24,6 +35,11 @@ export default function ContextPlayground() {
   const [lazyAction, setLazyAction] = useState<
     "knowledge" | "company-dna" | "business-brain" | null
   >(null);
+  const [devObjective, setDevObjective] = useState(
+    "Development validation — inspect deterministic decision pipeline"
+  );
+  const [devRequestedChannelId, setDevRequestedChannelId] = useState("");
+  const [devRequestedContentTypeId, setDevRequestedContentTypeId] = useState("");
 
   useEffect(() => {
     const organizationId = account?.organization?.id;
@@ -150,6 +166,46 @@ export default function ContextPlayground() {
     [account?.organization?.name, contextPackage]
   );
 
+  const devControls = useMemo(
+    () => ({
+      objective: devObjective,
+      requestedChannelId: devRequestedChannelId || undefined,
+      requestedContentTypeId: devRequestedContentTypeId || undefined,
+    }),
+    [devObjective, devRequestedChannelId, devRequestedContentTypeId]
+  );
+
+  const devPipeline = useMemo(() => {
+    if (!contextPackage) {
+      return { marketingDecisionView: null, creativeBriefView: null };
+    }
+    const { record, build } = assembleDevMarketingDecision({
+      contextPackage,
+      controls: devControls,
+    });
+    const marketingDecisionView = presentMarketingDecisionInspectorView({
+      record,
+      assumptions: build.assumptions,
+      missingFromContext: build.missingFromContext,
+    });
+    const brand = contextPackage.slices.brandBrain as BrandBrainContextSlice | undefined;
+    const briefResult = tryAssembleDevCreativeBrief({
+      decision: record,
+      brand,
+      controls: devControls,
+      assembledAt: contextPackage.scope.requestedAt,
+    });
+    const creativeBriefView = presentCreativeBriefInspectorView({
+      brief: briefResult.success ? briefResult.brief : null,
+      failure: briefResult.success ? undefined : briefResult.failure,
+      brand,
+    });
+    return { marketingDecisionView, creativeBriefView };
+  }, [contextPackage, devControls]);
+
+  const marketingDecisionView = devPipeline.marketingDecisionView;
+  const creativeBriefView = devPipeline.creativeBriefView;
+
   if (accountLoading) {
     return (
       <p className="text-sm text-slate-400">Loading authenticated session...</p>
@@ -245,6 +301,49 @@ export default function ContextPlayground() {
         </div>
       </section>
 
+      <section className="grid gap-3 rounded-xl border border-white/10 bg-[#070b18] p-4 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Deterministic pipeline (development only)
+          </p>
+        </div>
+        <div className="md:col-span-2">
+          <label htmlFor="dev-objective" className="text-xs uppercase tracking-wide text-slate-500">
+            Objective text
+          </label>
+          <input
+            id="dev-objective"
+            value={devObjective}
+            onChange={(event) => setDevObjective(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label htmlFor="dev-channel" className="text-xs uppercase tracking-wide text-slate-500">
+            Requested channel id (optional)
+          </label>
+          <input
+            id="dev-channel"
+            value={devRequestedChannelId}
+            onChange={(event) => setDevRequestedChannelId(event.target.value)}
+            placeholder="linkedin"
+            className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label htmlFor="dev-content-type" className="text-xs uppercase tracking-wide text-slate-500">
+            Requested content type id (optional)
+          </label>
+          <input
+            id="dev-content-type"
+            value={devRequestedContentTypeId}
+            onChange={(event) => setDevRequestedContentTypeId(event.target.value)}
+            placeholder="linkedin_post"
+            className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          />
+        </div>
+      </section>
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -311,6 +410,8 @@ export default function ContextPlayground() {
       ) : null}
 
       <BrandBrainInspectorSection view={brandBrainView} />
+      <MarketingDecisionInspectorSection view={marketingDecisionView} />
+      <CreativeBriefInspectorSection view={creativeBriefView} />
 
       <section className="overflow-hidden rounded-xl border border-white/10 bg-[#070b18]">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
