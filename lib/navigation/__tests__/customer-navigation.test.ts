@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CANONICAL_CUSTOMER_NAV_HREFS,
   customerNavigationItems,
+  findVisibleCanonicalRouteCollisions,
   getCustomerNavigationItem,
   getNavigationItemByHref,
   getPrimaryCustomerNavigation,
@@ -106,6 +107,22 @@ describe("customer-navigation", () => {
   describe("validateCustomerNavigation", () => {
     it("returns no validation errors", () => {
       expect(validateCustomerNavigation()).toEqual([]);
+    });
+
+    it("detects visible canonical route collisions", () => {
+      const knowledge = customerNavigationItems.find(
+        (item) => item.id === "nav.knowledge"
+      );
+      expect(knowledge?.visibility).toBe("HIDDEN");
+
+      const visibleKnowledge = customerNavigationItems.map((item) =>
+        item.id === "nav.knowledge"
+          ? { ...item, visibility: "SECONDARY" as const }
+          : item
+      );
+      expect(findVisibleCanonicalRouteCollisions(visibleKnowledge).length).toBe(
+        1
+      );
     });
   });
 });

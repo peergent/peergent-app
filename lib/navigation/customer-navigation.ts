@@ -1,4 +1,5 @@
 import {
+  getCanonicalRoute,
   getRouteById,
   type RouteManifestEntry,
 } from "@/lib/navigation/route-manifest";
@@ -149,7 +150,9 @@ export const customerNavigationItems: readonly NavigationItem[] = [
     section: "ORGANIZATION",
     routeId: "legacy.knowledge",
     organizationScoped: true,
-    visibility: "SECONDARY",
+    // Hidden until /knowledge is a separate canonical surface. It currently redirects to
+    // /company (route-manifest ALIAS); showing it alongside Company would duplicate one destination.
+    visibility: "HIDDEN",
   },
   {
     id: "nav.integrations",
@@ -212,6 +215,56 @@ export function getNavigationItemByHref(href: string): NavigationItem | undefine
 
 export function getPrimaryCustomerNavigation(): readonly NavigationItem[] {
   return customerNavigationItems.filter((item) => item.visibility === "PRIMARY");
+}
+
+export function isVisibleNavigationItem(item: NavigationItem): boolean {
+  return item.visibility === "PRIMARY" || item.visibility === "SECONDARY";
+}
+
+function canonicalRouteKeyForNavHref(href: string): string | undefined {
+  const canonical = getCanonicalRoute(href);
+  if (!canonical) {
+    return undefined;
+  }
+  return canonical.id;
+}
+
+/** Detects visible nav items that share the same route-manifest canonical destination. */
+export function findVisibleCanonicalRouteCollisions(
+  items: readonly NavigationItem[] = customerNavigationItems
+): string[] {
+  const errors: string[] = [];
+  const visibleItems = items.filter(isVisibleNavigationItem);
+  const buckets = new Map<string, NavigationItem[]>();
+
+  for (const item of visibleItems) {
+    const key = canonicalRouteKeyForNavHref(item.href);
+    if (!key) {
+      errors.push(
+        `Visible navigation item ${item.id} (${item.href}) does not resolve to a route-manifest entry.`
+      );
+      continue;
+    }
+    const group = buckets.get(key) ?? [];
+    group.push(item);
+    buckets.set(key, group);
+  }
+
+  for (const [canonicalRouteId, group] of buckets) {
+    if (group.length <= 1) {
+      continue;
+    }
+    const labels = group
+      .map((item) => `${item.id} (${item.href})`)
+      .join(", ");
+    const canonical = getRouteById(canonicalRouteId);
+    const destination = canonical?.path ?? canonicalRouteId;
+    errors.push(
+      `Visible navigation items share canonical route "${canonicalRouteId}" (${destination}): ${labels}.`
+    );
+  }
+
+  return errors;
 }
 
 export function validateCustomerNavigation(): string[] {
@@ -316,6 +369,8 @@ export function validateCustomerNavigation(): string[] {
       errors.push(`Missing navigation item for canonical href ${href}.`);
     }
   }
+
+  errors.push(...findVisibleCanonicalRouteCollisions());
 
   return errors;
 }
