@@ -167,7 +167,8 @@ export class ContextEngine {
     const isUnavailableIntelligenceSlice =
       (layerKey === "business-brain" ||
         layerKey === "company-dna" ||
-        layerKey === "marketing-understanding") &&
+        layerKey === "marketing-understanding" ||
+        layerKey === "brand-brain") &&
       typeof slice.data === "object" &&
       slice.data !== null &&
       "available" in slice.data &&

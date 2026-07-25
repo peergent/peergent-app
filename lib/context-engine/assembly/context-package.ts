@@ -4,6 +4,7 @@ import type { BusinessBrainContextSlice } from "@/lib/intelligence/types/busines
 import type { CompanyDnaContextSlice } from "@/lib/intelligence/types/company-dna-context-slice";
 import type { BusinessBrainQueryPlan } from "@/lib/intelligence/types/business-brain-query";
 import type { MarketingUnderstandingContextSlice } from "@/lib/intelligence/types/marketing-understanding-context-slice";
+import type { BrandBrainContextSlice } from "@/lib/intelligence/types/brand-brain-context-slice";
 
 function collectSources(bundle: ContextBundle) {
   const seen = new Set<string>();
@@ -53,6 +54,21 @@ function buildWarnings(bundle: ContextBundle): string[] {
     }
   }
 
+  const brandBrain = bundle.layers["brand-brain"]?.data as
+    | BrandBrainContextSlice
+    | undefined;
+  if (brandBrain) {
+    if (!brandBrain.available) {
+      warnings.push("Brand Brain unavailable or empty");
+    } else if (brandBrain.gaps.length > 0) {
+      warnings.push(
+        `Brand Brain is incomplete (${brandBrain.completeness}% complete) — gaps: ${brandBrain.gaps.join(", ")}`
+      );
+    }
+  } else if (bundle.meta.missingLayers.includes("brand-brain")) {
+    warnings.push("brand-brain layer not loaded");
+  }
+
   for (const layer of bundle.meta.missingLayers) {
     if (layer === "telemetry") continue;
     warnings.push(`${layer} layer not loaded`);
@@ -87,6 +103,9 @@ export function assembleContextPackage(
       businessBrain: brain,
       marketingUnderstanding: bundle.layers["marketing-understanding"]?.data as
         | MarketingUnderstandingContextSlice
+        | undefined,
+      brandBrain: bundle.layers["brand-brain"]?.data as
+        | BrandBrainContextSlice
         | undefined,
       peerType: bundle.layers["peer-type"]?.data,
       knowledge: bundle.layers.knowledge?.data,

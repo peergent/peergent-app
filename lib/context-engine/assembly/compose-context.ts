@@ -15,6 +15,7 @@ const LAZY_LAYER_KEYS: ContextLayerKey[] = [
   "company-dna",
   "business-brain",
   "marketing-understanding",
+  "brand-brain",
   "peer-type",
 ];
 

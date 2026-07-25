@@ -12,6 +12,7 @@ export type ContextLayerKey =
   | "company-dna"
   | "business-brain"
   | "marketing-understanding"
+  | "brand-brain"
   | "telemetry"
   | "peer-type";
 

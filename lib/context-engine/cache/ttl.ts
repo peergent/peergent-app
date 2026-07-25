@@ -12,6 +12,7 @@ export const LAYER_TTL_MS: Partial<Record<ContextLayerKey, number>> = {
   "company-dna": 30 * 60 * 1000,
   "business-brain": 15 * 60 * 1000,
   "marketing-understanding": 15 * 60 * 1000,
+  "brand-brain": 30 * 60 * 1000,
   "peer-type": 15 * 60 * 1000,
 };
 

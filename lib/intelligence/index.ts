@@ -5,6 +5,7 @@ import type { SourceRef } from "@/lib/context-engine/types/sources";
 import type { BusinessBrainContextSlice } from "./types/business-brain-context-slice";
 import type { BusinessBrainEntityType, BusinessBrainQueryPlan } from "./types/business-brain-query";
 import type { CompanyDnaContextSlice } from "./types/company-dna-context-slice";
+import type { BrandBrainContextSlice } from "./types/brand-brain-context-slice";
 import type { MarketingUnderstandingContextSlice } from "./types/marketing-understanding-context-slice";
 
 /** Combined org intelligence snapshot for downstream modules. */
@@ -27,6 +28,7 @@ export type ContextPackage = {
     companyDna?: CompanyDnaContextSlice;
     businessBrain?: BusinessBrainContextSlice;
     marketingUnderstanding?: MarketingUnderstandingContextSlice;
+    brandBrain?: BrandBrainContextSlice;
     peerType?: unknown;
     knowledge?: unknown;
     memory?: unknown;
@@ -63,10 +65,12 @@ export type {
   BusinessBrainQueryPlan,
   CompanyDnaContextSlice,
   MarketingUnderstandingContextSlice,
+  BrandBrainContextSlice,
 };
 
 export {
   loadCompanyDnaContext,
+  loadBrandBrainContext,
   loadBusinessBrainContext,
   loadMarketingUnderstandingContext,
   executeBusinessBrainQuery,

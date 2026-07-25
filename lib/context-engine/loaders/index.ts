@@ -1,3 +1,4 @@
+export { brandBrainLoader } from "./brand-brain-loader";
 export { organizationLoader } from "./organization-loader";
 export { peerLoader, objectiveLoader } from "./peer-loader";
 export { policyLoader, preferencesLoader } from "./preferences-loader";
@@ -9,6 +10,7 @@ export { memoryLoader, toolsLoader, telemetryLoader } from "./brain-loader";
 export type { ContextLoader, LoaderContext, ContextSliceResult } from "./base";
 export { createStubSource } from "./base";
 
+import { brandBrainLoader } from "./brand-brain-loader";
 import { businessBrainDomainLoader } from "./business-brain-domain-loader";
 import { marketingUnderstandingLoader } from "./marketing-understanding-loader";
 import { memoryLoader, telemetryLoader, toolsLoader } from "./brain-loader";
@@ -30,6 +32,7 @@ export const defaultLoaders: ContextLoader<unknown>[] = [
   toolsLoader,
   companyDnaLoader,
   businessBrainDomainLoader,
+  brandBrainLoader,
   marketingUnderstandingLoader,
 ];
 
@@ -38,5 +41,6 @@ export const BUILD_CONTEXT_LAZY_LAYERS = [
   "company-dna",
   "business-brain",
   "marketing-understanding",
+  "brand-brain",
   "peer-type",
 ] as const;
