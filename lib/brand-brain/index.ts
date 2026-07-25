@@ -9,6 +9,20 @@ export type {
   BrandBrainOwnedModule,
 } from "./ownership";
 
+export type { BrandProfileSource } from "./brand-profile-source";
+export type {
+  BrandProfileSourceCompanyDna,
+  BrandProfileSourceDerivedBrand,
+  BrandProfileSourceMarketingProfile,
+} from "./brand-profile-source";
+
+export {
+  assembleBrandProfile,
+  assembleBrandProfileSnapshot,
+  BrandProfileOrganizationMismatchError,
+} from "./assemble-brand-profile";
+export type { AssembledBrandProfile } from "./assemble-brand-profile";
+
 export type {
   BrandAssetReference,
   BrandAssetReferenceRole,
