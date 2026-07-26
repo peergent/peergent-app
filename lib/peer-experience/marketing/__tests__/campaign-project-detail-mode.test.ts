@@ -130,4 +130,20 @@ describe("campaign wizard project detail mode", () => {
     expect(src).not.toContain("originLabel");
     expect(src).not.toContain("campaign_wizard");
   });
+
+  it("Campaign detail integrates execution plan section after overview", () => {
+    const detail = read("features/marketing-workspace/components/CampaignDetailSections.tsx");
+    expect(detail).toContain("CampaignExecutionPlanSection");
+    expect(detail).toContain("executionPlan");
+    expect(detail).toMatch(
+      /mw-section-title[\s\S]{0,120}Overview[\s\S]*CampaignExecutionPlanSection[\s\S]*Deliverables/
+    );
+  });
+
+  it("ProjectDetailTab builds execution plan only for campaign wizard experience", () => {
+    const tab = read("features/marketing-workspace/details/ProjectDetailTab.tsx");
+    expect(tab).toContain("buildCampaignExecutionPlanViewModelOrUnavailable");
+    expect(tab).toContain("executionPlan={executionPlan}");
+    expect(tab).toMatch(/showCampaignExperience && campaignDetail[\s\S]*executionPlan/);
+  });
 });
