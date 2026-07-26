@@ -1,18 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { Flag } from "lucide-react";
+import { Flag, Megaphone } from "lucide-react";
+import type { MarketingContentItem } from "@/lib/peer-experience/marketing/domain/marketing-peer-types";
 import type { MarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/marketing-campaign-types";
 import type { MarketingProjectTimelineEntry } from "@/lib/peer-experience/marketing/projects/types";
+import type {
+  ProjectConversationEntry,
+  ProjectQuestion,
+} from "@/lib/peer-experience/marketing/projects/project-experience-types";
+import { getContentHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
 import {
   countDeliverableApprovalStates,
   presentCampaignConciseGoal,
   presentCampaignProgressLabel,
 } from "../lib/campaign-detail-presenter";
 
+export type CampaignDetailMeta = {
+  ownerLabel: string;
+  campaignTypeLabel: string;
+  createdAt: string;
+};
+
 export type CampaignDetailSectionsProps = {
   campaign: MarketingCampaignDetailViewModel;
   projectActivity?: readonly MarketingProjectTimelineEntry[];
+  campaignMeta?: CampaignDetailMeta;
+  contentItems?: readonly MarketingContentItem[];
+  contentPeerId?: string;
+  questions?: readonly ProjectQuestion[];
+  peerName?: string;
+  conversation?: readonly ProjectConversationEntry[];
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -25,6 +43,12 @@ function statusChipClass(statusLabel: string): string {
 export default function CampaignDetailSections({
   campaign,
   projectActivity,
+  campaignMeta,
+  contentItems = [],
+  contentPeerId,
+  questions = [],
+  peerName,
+  conversation = [],
 }: CampaignDetailSectionsProps) {
   const progressLabel = presentCampaignProgressLabel(campaign);
   const goalLine = presentCampaignConciseGoal(campaign);
@@ -37,6 +61,13 @@ export default function CampaignDetailSections({
           at: entry.at,
         }))
       : campaign.activitySummary;
+
+  const contentDraftIds = new Set(contentItems.map((item) => item.draftId));
+  const supplementalLinked = campaign.linkedContent.filter(
+    (item) => !contentDraftIds.has(item.id)
+  );
+  const hasDeliverableContent =
+    contentItems.length > 0 || supplementalLinked.length > 0;
 
   return (
     <section
@@ -106,23 +137,46 @@ export default function CampaignDetailSections({
 
       <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <div className="mw-section-title" style={{ marginBottom: 10 }}>
+          <Megaphone size={15} aria-hidden style={{ marginRight: 6, verticalAlign: "middle" }} />
           Deliverables
         </div>
         <p className="mw-kn-helper">{campaign.deliverableSummary}</p>
-        {campaign.linkedContent.length === 0 ? (
+        {!hasDeliverableContent ? (
           <p className="mw-empty-inline" style={{ marginTop: 8 }}>
             No deliverables yet.
           </p>
         ) : (
-          <ul className="mw-detail-links" style={{ marginTop: 10 }}>
-            {campaign.linkedContent.map((item) => (
-              <li key={item.id}>
-                <Link href={item.href} className="mw-section-link">
-                  {item.title} · {item.channelLabel} · {item.statusLabel}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <>
+            {contentItems.length > 0 && contentPeerId && (
+              <div className="mw-content-grid" style={{ marginTop: 12 }}>
+                {contentItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={getContentHref(contentPeerId, item.draftId)}
+                    className="mw-glass mw-content-card pg-focus-premium"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className="mw-content-body">
+                      <div className="mw-content-platform">{item.channel}</div>
+                      <div className="mw-content-snippet">{item.title}</div>
+                      <div className="mw-kn-helper">{item.status.replace(/_/g, " ")}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            {supplementalLinked.length > 0 && (
+              <ul className="mw-detail-links" style={{ marginTop: 10 }}>
+                {supplementalLinked.map((item) => (
+                  <li key={item.id}>
+                    <Link href={item.href} className="mw-section-link">
+                      {item.title} · {item.channelLabel} · {item.statusLabel}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
 
@@ -206,7 +260,23 @@ export default function CampaignDetailSections({
         </div>
       )}
 
-      <div className="mw-section mw-glass" style={{ padding: 16 }}>
+      {questions.length > 0 && peerName && (
+        <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }} id="questions">
+          <div className="mw-section-title" style={{ marginBottom: 10 }}>
+            {peerName} has a question
+          </div>
+          <ul className="mw-resp-list">
+            {questions.map((q) => (
+              <li key={q.id} className="mw-resp-row">
+                <p className="mw-approval-title">{q.prompt}</p>
+                {q.context && <p className="mw-kn-helper">{q.context}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <div className="mw-section-title" style={{ marginBottom: 10 }}>
           Activity
         </div>
@@ -233,6 +303,47 @@ export default function CampaignDetailSections({
           </div>
         )}
       </div>
+
+      {campaignMeta && (
+        <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
+          <div className="mw-section-title" style={{ marginBottom: 12 }}>
+            Campaign details
+          </div>
+          <dl className="mw-detail-dl">
+            <div>
+              <dt>Owner</dt>
+              <dd>{campaignMeta.ownerLabel}</dd>
+            </div>
+            <div>
+              <dt>Campaign type</dt>
+              <dd>{campaignMeta.campaignTypeLabel}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{new Date(campaignMeta.createdAt).toLocaleDateString()}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {conversation.length > 0 && peerName && (
+        <div className="mw-section mw-glass" style={{ padding: 16 }}>
+          <div className="mw-section-title" style={{ marginBottom: 10 }}>
+            {peerName}&apos;s workday
+          </div>
+          <div className="mw-timeline">
+            {conversation.slice(0, 6).map((entry) => (
+              <div key={entry.id} className="mw-tl-row">
+                <div className="mw-tl-dot" aria-hidden />
+                <div>
+                  <div className="mw-tl-text">&ldquo;{entry.message}&rdquo;</div>
+                  <div className="mw-tl-time">{entry.timeLabel}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

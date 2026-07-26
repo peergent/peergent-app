@@ -97,3 +97,10 @@ export function assertCustomerSafeCampaignPresentation(
 export function presentMarketingCampaignsEmptyMessage(peerName: string): string {
   return `${peerName} has not set up a campaign yet. When strategy and planning are ready, you'll see campaign progress here.`;
 }
+
+/**
+ * When the card is wrapped in a single primary Link, the next-action must not be another anchor.
+ */
+export function shouldRenderCampaignCardNextActionAsLink(cardWrappedInLink: boolean): boolean {
+  return !cardWrappedInLink;
+}

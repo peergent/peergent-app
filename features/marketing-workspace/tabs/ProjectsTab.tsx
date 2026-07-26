@@ -13,6 +13,7 @@ import {
   deriveProjectStatus,
   projectStatusLabel,
 } from "@/lib/peer-experience/marketing/projects/project-engine";
+import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { MarketingProjectFilter } from "@/lib/peer-experience/marketing/domain/marketing-peer-types";
 import { getWorkHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
@@ -21,7 +22,7 @@ import {
   remainingProjectSteps,
 } from "../lib/build-project-card-steps";
 import MarketingCampaignsSection from "../components/MarketingCampaignsSection";
-import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
+import CreateCampaignModal from "../components/CreateCampaignModal";
 
 function scheduledDraftIds(
   overlays: MarketingPeerDomainInput["approvalOverlays"]
@@ -44,13 +45,27 @@ function statusDisplay(statusLabel: string): { className: string; live: boolean 
 export type ProjectsTabProps = {
   peerId: string;
   domainInput: MarketingPeerDomainInput;
-  onCreateCampaign?: () => void;
+  ownerLabel: string;
+  peerName: string;
+  campaignsEnabled: boolean;
+  createCampaignWizardOpen: boolean;
+  onOpenCreateCampaignWizard: () => void;
+  onCloseCreateCampaignWizard: () => void;
+  onCreateCampaign?: (input: CreateMarketingCampaignProjectInput) => Promise<{ projectId: string }>;
+  onCampaignCreated?: (projectId: string) => void;
 };
 
 export default function ProjectsTab({
   peerId,
   domainInput,
+  ownerLabel,
+  peerName,
+  campaignsEnabled,
+  createCampaignWizardOpen,
+  onOpenCreateCampaignWizard,
+  onCloseCreateCampaignWizard,
   onCreateCampaign,
+  onCampaignCreated,
 }: ProjectsTabProps) {
   const searchParams = useSearchParams();
   const filter = (searchParams.get("filter") as MarketingProjectFilter) ?? "active";
@@ -62,12 +77,29 @@ export default function ProjectsTab({
     [domainInput, filter]
   );
 
-  const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
-
   return (
     <>
       {campaignsEnabled ? (
-        <MarketingCampaignsSection peerId={peerId} domainInput={domainInput} />
+        <MarketingCampaignsSection
+          peerId={peerId}
+          domainInput={domainInput}
+          onCreateCampaign={onOpenCreateCampaignWizard}
+        />
+      ) : null}
+
+      {campaignsEnabled && onCreateCampaign ? (
+        <CreateCampaignModal
+          open={createCampaignWizardOpen}
+          onClose={onCloseCreateCampaignWizard}
+          peerId={peerId}
+          ownerLabel={ownerLabel}
+          peerName={peerName}
+          onCreate={async (input) => {
+            const result = await onCreateCampaign(input);
+            onCampaignCreated?.(result.projectId);
+            return result;
+          }}
+        />
       ) : null}
 
     <section className="mw-section" style={{ animationDelay: "0.05s", marginBottom: 0 }}>
@@ -76,14 +108,24 @@ export default function ProjectsTab({
           <Megaphone size={15} aria-hidden />
           Where {domainInput.peerName} is working
         </div>
-        <button
-          type="button"
-          className="mw-btn-primary pg-focus-premium"
-          data-testid="mw-new-project"
-          onClick={() => onCreateCampaign?.()}
-        >
-          New project
-        </button>
+        {campaignsEnabled ? (
+          <button
+            type="button"
+            className="mw-btn-primary pg-focus-premium"
+            data-testid="mw-new-campaign"
+            onClick={onOpenCreateCampaignWizard}
+          >
+            New campaign
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="mw-btn-primary pg-focus-premium"
+            data-testid="mw-new-project"
+          >
+            New project
+          </button>
+        )}
       </div>
 
       <div className="mw-content-filters" style={{ marginBottom: 16 }}>

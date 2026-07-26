@@ -72,12 +72,17 @@ export function assembleCampaignForMarketingProject(
   );
   const draftIds = draftIdsForMarketingProject(project.id, source.workUnits);
   const workforce = workforceAssignmentsForProject(project, source);
+  const setup = project.campaignSetup;
+  const targetAudience =
+    setup?.targetAudience?.trim() ||
+    audienceOneLiner(source) ||
+    undefined;
 
   return assembleCampaign({
     organizationId: source.organizationId ?? "unknown-org",
     campaignId: project.id,
     name: project.title,
-    description: project.goal,
+    description: setup?.description?.trim() || project.goal,
     strategy: source.strategy ?? undefined,
     plan: source.plan ?? undefined,
     assembledAt: project.updatedAt,
@@ -91,9 +96,22 @@ export function assembleCampaignForMarketingProject(
         : undefined,
     },
     generatedContentIds: draftIds,
-    audience: audienceOneLiner(source)
-      ? { targetAudience: audienceOneLiner(source)! }
-      : undefined,
+    audience: targetAudience ? { targetAudience } : undefined,
+    timeline:
+      setup?.startDate || setup?.endDate
+        ? {
+            startDate: setup.startDate,
+            endDate: setup.endDate,
+          }
+        : undefined,
+    budget:
+      setup?.budgetAmount !== undefined && setup.budgetAmount > 0
+        ? {
+            allocated: setup.budgetAmount,
+            currency: setup.budgetCurrency ?? "USD",
+          }
+        : undefined,
+    approvalMode: setup?.approvalMode,
     workforce,
     seedCanonicalWorkforce: false,
   });

@@ -12,11 +12,13 @@ import {
   assertCustomerSafeCampaignPresentation,
   presentMarketingCampaignCard,
   presentMarketingCampaignsEmptyMessage,
+  shouldRenderCampaignCardNextActionAsLink,
 } from "../lib/marketing-campaign-card-presenter";
 
 export type MarketingCampaignsSectionProps = {
   peerId: string;
   domainInput: MarketingPeerDomainInput;
+  onCreateCampaign?: () => void;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -28,9 +30,12 @@ function statusChipClass(statusLabel: string): string {
 
 function CampaignCardBody({
   presentation,
+  cardWrappedInLink = false,
 }: {
   presentation: ReturnType<typeof presentMarketingCampaignCard>;
+  cardWrappedInLink?: boolean;
 }) {
+  const nextActionAsLink = shouldRenderCampaignCardNextActionAsLink(cardWrappedInLink);
   return (
     <>
       <div className="mw-project-head">
@@ -51,9 +56,13 @@ function CampaignCardBody({
       </ul>
       <p className="mw-campaign-next">
         Next action:{" "}
-        <Link href={presentation.nextActionHref} className="mw-section-link">
-          {presentation.nextActionLabel}
-        </Link>
+        {nextActionAsLink ? (
+          <Link href={presentation.nextActionHref} className="mw-section-link">
+            {presentation.nextActionLabel}
+          </Link>
+        ) : (
+          <span className="mw-section-link">{presentation.nextActionLabel}</span>
+        )}
       </p>
     </>
   );
@@ -65,6 +74,7 @@ function CampaignCardBody({
 export default function MarketingCampaignsSection({
   peerId,
   domainInput,
+  onCreateCampaign,
 }: MarketingCampaignsSectionProps) {
   const vm = useMemo(() => {
     const source = buildMarketingCampaignViewModelSourceFromDomainInput(domainInput);
@@ -98,9 +108,22 @@ export default function MarketingCampaignsSection({
       </div>
 
       {cards.length === 0 ? (
-        <p className="mw-empty-inline" data-testid="mw-campaigns-empty">
-          {vm.emptyMessage || presentMarketingCampaignsEmptyMessage(domainInput.peerName)}
-        </p>
+        <div data-testid="mw-campaigns-empty">
+          <p className="mw-empty-inline">
+            {vm.emptyMessage || presentMarketingCampaignsEmptyMessage(domainInput.peerName)}
+          </p>
+          {onCreateCampaign ? (
+            <button
+              type="button"
+              className="mw-btn-primary pg-focus-premium"
+              style={{ marginTop: 12 }}
+              data-testid="mw-campaigns-create"
+              onClick={onCreateCampaign}
+            >
+              Create campaign
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="mw-projects-grid">
           {cards.map(({ item, presentation }) =>
@@ -112,7 +135,7 @@ export default function MarketingCampaignsSection({
                 style={{ textDecoration: "none", color: "inherit" }}
                 data-testid={`mw-campaign-card-${item.id}`}
               >
-                <CampaignCardBody presentation={presentation} />
+                <CampaignCardBody presentation={presentation} cardWrappedInLink />
               </Link>
             ) : (
               <div

@@ -12,6 +12,7 @@ import {
   assertCustomerSafeCampaignPresentation,
   presentMarketingCampaignCard,
   presentMarketingCampaignsEmptyMessage,
+  shouldRenderCampaignCardNextActionAsLink,
   truncateCampaignText,
 } from "@/features/marketing-workspace/lib/marketing-campaign-card-presenter";
 import {
@@ -326,5 +327,10 @@ describe("marketing campaign UI presenters", () => {
   it("preserves existing marketing workspace tabs when flag off", () => {
     expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("work");
     expect(MARKETING_PEER_TABS).toHaveLength(9);
+  });
+
+  it("does not nest next-action links inside linked campaign cards", () => {
+    expect(shouldRenderCampaignCardNextActionAsLink(true)).toBe(false);
+    expect(shouldRenderCampaignCardNextActionAsLink(false)).toBe(true);
   });
 });

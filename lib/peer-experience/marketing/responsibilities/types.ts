@@ -122,7 +122,8 @@ export type MarketingProjectOrigin =
   | "responsibility"
   | "brain_insight"
   | "recurring_schedule"
-  | "recommendation";
+  | "recommendation"
+  | "campaign_wizard";
 
 export const MARKETING_PROJECT_ORIGIN_LABELS: Record<MarketingProjectOrigin, string> = {
   manual_assignment: "Manual Assignment",
@@ -130,6 +131,7 @@ export const MARKETING_PROJECT_ORIGIN_LABELS: Record<MarketingProjectOrigin, str
   brain_insight: "Brain Insight",
   recurring_schedule: "Recurring Schedule",
   recommendation: "Recommendation",
+  campaign_wizard: "Campaign",
 };
 
 export type ResponsibilityEvaluationAction =

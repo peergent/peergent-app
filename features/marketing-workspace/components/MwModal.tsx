@@ -3,6 +3,10 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import {
+  createModalFocusSession,
+  findModalInitialFocusTarget,
+} from "@/lib/peer-experience/marketing/mw-modal-focus-session";
 
 export type MwModalProps = {
   open: boolean;
@@ -11,6 +15,8 @@ export type MwModalProps = {
   subtitle?: string;
   children: ReactNode;
   maxWidth?: number;
+  closeOnEscape?: boolean;
+  closeOnOverlayClick?: boolean;
 };
 
 export default function MwModal({
@@ -20,31 +26,51 @@ export default function MwModal({
   subtitle,
   children,
   maxWidth = 540,
+  closeOnEscape = true,
+  closeOnOverlayClick = true,
 }: MwModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
+  const focusSessionRef = useRef(createModalFocusSession());
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
-    if (!open) return;
-    lastFocus.current = document.activeElement as HTMLElement | null;
-    const panel = panelRef.current;
-    const focusable = panel?.querySelector<HTMLElement>(
-      'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable?.focus();
+    if (!open) {
+      focusSessionRef.current.markClosed();
+      return;
+    }
 
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
+    focusSessionRef.current.markOpened();
+    lastFocus.current = document.activeElement as HTMLElement | null;
+
+    if (focusSessionRef.current.shouldApplyInitialFocus()) {
+      const panel = panelRef.current;
+      const focusable = panel ? findModalInitialFocusTarget(panel) : null;
+      focusable?.focus();
+    }
+
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
       lastFocus.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && closeOnEscape) {
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, closeOnEscape]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -53,7 +79,7 @@ export default function MwModal({
       className="mw-modal-overlay mw-modal-overlay--open"
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (closeOnOverlayClick && e.target === e.currentTarget) onClose();
       }}
     >
       <div

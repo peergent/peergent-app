@@ -49,7 +49,11 @@ import {
 } from "@/lib/peer-workflow";
 import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
-import { createMarketingProject } from "@/lib/peer-experience/marketing/projects/project-engine";
+import {
+  createMarketingCampaignProject,
+  createMarketingProject,
+  type CreateMarketingCampaignProjectInput,
+} from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { MarketingResponsibility } from "@/lib/peer-experience/marketing/responsibilities/types";
 import { evaluateResponsibility } from "@/lib/peer-experience/marketing/responsibilities/evaluation-engine";
 import { touchResponsibilityEvaluation } from "@/lib/peer-experience/marketing/responsibilities/responsibility-engine";
@@ -1394,6 +1398,27 @@ export function useMarketingWorkspace(
     [logActivity]
   );
 
+  /** Empty campaign from Create Campaign wizard — no work units, drafts, or AI. */
+  const handleCreateCampaign = useCallback(
+    async (input: CreateMarketingCampaignProjectInput): Promise<{ projectId: string }> => {
+      if (!peerId) {
+        throw new Error("Workspace unavailable.");
+      }
+      const project = createMarketingCampaignProject(input);
+      updateProjects([project, ...projects]);
+      logActivity(
+        createActivity(
+          "focus_updated",
+          `Campaign created: ${project.title}`,
+          project.goal,
+          { relatedObject: project.title }
+        )
+      );
+      return { projectId: project.id };
+    },
+    [peerId, projects, updateProjects, logActivity]
+  );
+
   return {
     peer,
     pageState,
@@ -1427,6 +1452,7 @@ export function useMarketingWorkspace(
     handlePrimaryAction,
     executeRecommendedAction,
     handleExecuteDelegation,
+    handleCreateCampaign,
     activeDelegation,
     syncedWorkUnits,
     projects,

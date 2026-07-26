@@ -49,6 +49,20 @@ export const MARKETING_CAMPAIGN_TYPE_LABELS: Record<MarketingCampaignType, strin
 };
 
 import type { MarketingProjectOrigin } from "../responsibilities/types";
+import type { CampaignApprovalMode } from "@/lib/campaign";
+
+/** Optional wizard fields persisted on the project (session workspace storage). */
+export type MarketingProjectCampaignSetup = {
+  readonly description: string;
+  readonly primaryGoalId: string;
+  readonly customGoalText?: string;
+  readonly targetAudience?: string;
+  readonly startDate?: string;
+  readonly endDate?: string;
+  readonly budgetAmount?: number;
+  readonly budgetCurrency?: string;
+  readonly approvalMode?: CampaignApprovalMode;
+};
 
 export type MarketingProject = {
   id: string;
@@ -63,6 +77,7 @@ export type MarketingProject = {
   archivedAt?: string | null;
   responsibilityId?: string | null;
   origin?: MarketingProjectOrigin;
+  campaignSetup?: MarketingProjectCampaignSetup;
 };
 
 export type MarketingProjectTimelineEntry = {

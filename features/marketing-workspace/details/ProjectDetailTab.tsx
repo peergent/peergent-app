@@ -5,6 +5,10 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
+import {
+  campaignWizardDetailBackLabel,
+  shouldRenderCampaignWizardDetailView,
+} from "@/lib/peer-experience/marketing/projects/campaign-project-detail-mode";
 import { buildMarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-campaign-detail-view-model";
 import { buildMarketingCampaignDetailSourceFromDomainInput } from "@/lib/peer-experience/marketing/view-models/build-project-campaign-projection";
 import { buildMarketingProjectDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-project-detail-view-model";
@@ -33,6 +37,7 @@ export default function ProjectDetailTab({
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
+  const project = domainInput.projects.find((p) => p.id === projectId);
   const vm = buildMarketingProjectDetailViewModel({ ...domainInput, projectId });
 
   const campaignDetail = useMemo(() => {
@@ -53,6 +58,36 @@ export default function ProjectDetailTab({
   }
 
   const { experience: exp } = vm;
+  const showCampaignExperience = shouldRenderCampaignWizardDetailView(
+    campaignsEnabled,
+    project,
+    campaignDetail
+  );
+
+  if (showCampaignExperience && campaignDetail) {
+    return (
+      <>
+        <Link href={getProjectHref(peerId)} className="mw-detail-back pg-focus-premium">
+          {campaignWizardDetailBackLabel()}
+        </Link>
+        <CampaignDetailSections
+          campaign={campaignDetail}
+          projectActivity={vm.timeline}
+          campaignMeta={{
+            ownerLabel: vm.ownerLabel,
+            campaignTypeLabel: vm.campaignTypeLabel,
+            createdAt: vm.createdAt,
+          }}
+          contentItems={vm.contentItems}
+          contentPeerId={peerId}
+          questions={exp.questions}
+          peerName={domainInput.peerName}
+          conversation={exp.conversation}
+        />
+      </>
+    );
+  }
+
   const deliverableId = searchParams.get("deliverableId") ?? searchParams.get("draft");
   const steps = buildProjectCardSteps(projectId, domainInput.workUnits);
   const remaining = remainingProjectSteps(steps);
@@ -63,13 +98,6 @@ export default function ProjectDetailTab({
       <Link href={getProjectHref(peerId)} className="mw-detail-back pg-focus-premium">
         ← Projects
       </Link>
-
-      {campaignDetail ? (
-        <CampaignDetailSections
-          campaign={campaignDetail}
-          projectActivity={vm.timeline}
-        />
-      ) : null}
 
       <section className="mw-section mw-glass mw-detail-hero" style={{ animationDelay: "0.03s" }}>
         <div className="mw-project-head">

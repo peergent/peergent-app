@@ -1,14 +1,15 @@
 import type { MarketingContentDraft } from "@/lib/marketing-intelligence";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { WorkLifecycleStage } from "@/lib/peer-workflow/work-lifecycle";
+import type { MarketingProjectOrigin } from "../responsibilities/types";
+import { MARKETING_CAMPAIGN_TYPE_LABELS, MARKETING_PROJECT_STATUS_LABELS } from "./types";
 import type {
   MarketingCampaignType,
   MarketingProject,
+  MarketingProjectCampaignSetup,
   MarketingProjectStatus,
   MarketingProjectTimelineEntry,
 } from "./types";
-import type { MarketingProjectOrigin } from "../responsibilities/types";
-import { MARKETING_CAMPAIGN_TYPE_LABELS, MARKETING_PROJECT_STATUS_LABELS } from "./types";
 
 function projectId(): string {
   return `proj-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -60,6 +61,77 @@ export function createMarketingProject(input: CreateMarketingProjectInput): Mark
     archivedAt: null,
     responsibilityId: input.responsibilityId ?? null,
     origin: input.origin ?? "manual_assignment",
+  };
+}
+
+/**
+ * Empty campaign/project from the Create Campaign wizard — no work units or content generation.
+ * Delegated content work continues to use `createMarketingProject` with channel/deliverable inputs.
+ */
+export type CreateMarketingCampaignProjectInput = {
+  peerId: string;
+  ownerLabel: string;
+  name: string;
+  goalLabel: string;
+  description: string;
+  primaryGoalId: string;
+  customGoalText?: string;
+  targetAudience?: string;
+  startDate?: string;
+  endDate?: string;
+  budgetAmount?: number;
+  budgetCurrency?: string;
+  approvalMode?: MarketingProjectCampaignSetup["approvalMode"];
+};
+
+function campaignTypeFromPrimaryGoal(primaryGoalId: string): MarketingCampaignType {
+  switch (primaryGoalId) {
+    case "brand_awareness":
+      return "brand_awareness";
+    case "product_launch":
+      return "product_launch";
+    case "generate_leads":
+      return "content_series";
+    case "promote_offer":
+      return "meta_campaign";
+    case "recruit":
+      return "linkedin_campaign";
+    default:
+      return "custom";
+  }
+}
+
+export function createMarketingCampaignProject(
+  input: CreateMarketingCampaignProjectInput
+): MarketingProject {
+  const setup: MarketingProjectCampaignSetup = {
+    description: input.description.trim(),
+    primaryGoalId: input.primaryGoalId,
+    ...(input.customGoalText?.trim() ? { customGoalText: input.customGoalText.trim() } : {}),
+    ...(input.targetAudience?.trim() ? { targetAudience: input.targetAudience.trim() } : {}),
+    ...(input.startDate ? { startDate: input.startDate } : {}),
+    ...(input.endDate ? { endDate: input.endDate } : {}),
+    ...(input.budgetAmount !== undefined && input.budgetAmount > 0
+      ? { budgetAmount: input.budgetAmount, budgetCurrency: input.budgetCurrency ?? "USD" }
+      : {}),
+    ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
+  };
+
+  const base = createMarketingProject({
+    peerId: input.peerId,
+    title: input.name.trim(),
+    goal: input.goalLabel.trim(),
+    channel: "Campaign",
+    deliverableKind: "generic",
+    rawRequest: input.description.trim(),
+    ownerLabel: input.ownerLabel,
+    origin: "campaign_wizard",
+  });
+
+  return {
+    ...base,
+    campaignType: campaignTypeFromPrimaryGoal(input.primaryGoalId),
+    campaignSetup: setup,
   };
 }
 
