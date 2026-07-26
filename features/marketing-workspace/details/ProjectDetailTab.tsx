@@ -29,12 +29,18 @@ export type ProjectDetailTabProps = {
   peerId: string;
   projectId: string;
   domainInput: MarketingPeerDomainInput;
+  onStartCampaignExecution?: (
+    projectId: string
+  ) => Promise<
+    import("@/lib/peer-experience/marketing/campaign-execution").CampaignExecutionWorkspaceResult
+  >;
 };
 
 export default function ProjectDetailTab({
   peerId,
   projectId,
   domainInput,
+  onStartCampaignExecution,
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
@@ -91,6 +97,11 @@ export default function ProjectDetailTab({
           questions={exp.questions}
           peerName={domainInput.peerName}
           conversation={exp.conversation}
+          campaignsEnabled={campaignsEnabled}
+          projectId={projectId}
+          projectOrigin={project?.origin}
+          workUnits={domainInput.workUnits}
+          onStartCampaignExecution={onStartCampaignExecution}
         />
       </>
     );

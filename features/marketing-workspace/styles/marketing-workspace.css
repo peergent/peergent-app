@@ -1509,6 +1509,139 @@
   color: var(--mw-text-1);
 }
 
+.mw-modal-body {
+  padding-top: 2px;
+}
+
+.mw-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.mw-modal-secondary {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--mw-border);
+  background: transparent;
+  color: var(--mw-text-2);
+  cursor: pointer;
+}
+
+.mw-modal-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mw-campaign-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.mw-campaign-start-feedback {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.mw-campaign-start-feedback--success {
+  color: var(--pg-color-success, #6ee7a0);
+}
+
+.mw-campaign-start-feedback--info {
+  color: var(--mw-text-2);
+}
+
+.mw-campaign-start-feedback--warning {
+  color: var(--pg-color-warning, #fbbf24);
+}
+
+.mw-campaign-start-feedback--error {
+  color: var(--pg-color-danger, #f87171);
+}
+
+.mw-marketing-peer-onboarding-lead {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--mw-text-1);
+}
+
+.mw-marketing-peer-onboarding-prep {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mw-marketing-peer-onboarding-prep li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mw-text-2);
+}
+
+.mw-marketing-peer-onboarding-check {
+  color: var(--pg-color-success, #6ee7a0);
+  font-weight: 700;
+}
+
+.mw-marketing-peer-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.mw-marketing-peer-onboarding-skip {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: var(--mw-text-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mw-marketing-peer-onboarding-tasks {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--mw-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mw-marketing-peer-onboarding-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--mw-text-2);
+  pointer-events: none;
+  user-select: none;
+}
+
+.mw-marketing-peer-onboarding-task-marker {
+  color: var(--mw-text-3);
+  font-size: 12px;
+}
+
 .mw-field-error {
   margin: 6px 0 0;
   font-size: 12px;

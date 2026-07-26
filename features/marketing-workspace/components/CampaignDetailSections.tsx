@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Flag, Megaphone } from "lucide-react";
 import type { MarketingContentItem } from "@/lib/peer-experience/marketing/domain/marketing-peer-types";
@@ -17,6 +18,15 @@ import {
 } from "../lib/campaign-detail-presenter";
 import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
 import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
+import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
+import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
+import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
+import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
+import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
+import {
+  shouldHideCampaignExecutionPlanWhileOnboarding,
+  shouldShowMarketingPeerOnboarding,
+} from "../lib/marketing-peer-onboarding-presenter";
 
 export type CampaignDetailMeta = {
   ownerLabel: string;
@@ -34,6 +44,11 @@ export type CampaignDetailSectionsProps = {
   peerName?: string;
   conversation?: readonly ProjectConversationEntry[];
   executionPlan?: CampaignExecutionPlanViewModel | null;
+  campaignsEnabled?: boolean;
+  projectId?: string;
+  projectOrigin?: MarketingProjectOrigin;
+  workUnits?: readonly WorkUnit[];
+  onStartCampaignExecution?: (projectId: string) => Promise<CampaignExecutionWorkspaceResult>;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -53,7 +68,35 @@ export default function CampaignDetailSections({
   peerName,
   conversation = [],
   executionPlan,
+  campaignsEnabled = false,
+  projectId,
+  projectOrigin,
+  workUnits = [],
+  onStartCampaignExecution,
 }: CampaignDetailSectionsProps) {
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const onboardingActive = useMemo(
+    () =>
+      shouldShowMarketingPeerOnboarding({
+        campaignsEnabled,
+        projectOrigin,
+        projectId: projectId ?? campaign.id,
+        workUnits,
+        campaignStatus: campaign.status,
+        onboardingDismissed,
+      }),
+    [
+      campaignsEnabled,
+      projectOrigin,
+      projectId,
+      campaign.id,
+      campaign.status,
+      workUnits,
+      onboardingDismissed,
+    ]
+  );
+  const hideExecutionPlan = shouldHideCampaignExecutionPlanWhileOnboarding(onboardingActive);
+
   const progressLabel = presentCampaignProgressLabel(campaign);
   const goalLine = presentCampaignConciseGoal(campaign);
   const approvalCounts = countDeliverableApprovalStates(campaign.linkedContent);
@@ -107,15 +150,52 @@ export default function CampaignDetailSections({
           </div>
         )}
         {goalLine && <p className="mw-kn-helper" style={{ marginTop: 12 }}>{goalLine}</p>}
-        <p className="mw-campaign-next" style={{ marginTop: 12 }}>
-          Next action:{" "}
-          <Link href={campaign.nextAction.href} className="mw-section-link">
-            {campaign.nextAction.label}
-          </Link>
-        </p>
+        {campaignsEnabled && projectId && onStartCampaignExecution && !onboardingActive ? (
+          <div style={{ marginTop: 16 }}>
+            <CampaignStartCampaignAction
+              projectId={projectId}
+              campaignsEnabled={campaignsEnabled}
+              projectOrigin={projectOrigin}
+              workUnits={workUnits}
+              executionPlan={executionPlan}
+              approvalModeLabel={campaign.approvalModeLabel}
+              onStartCampaignExecution={onStartCampaignExecution}
+            />
+          </div>
+        ) : null}
+        {!onboardingActive ? (
+          <p className="mw-campaign-next" style={{ marginTop: 12 }}>
+            Next action:{" "}
+            <Link href={campaign.nextAction.href} className="mw-section-link">
+              {campaign.nextAction.label}
+            </Link>
+          </p>
+        ) : null}
       </div>
 
-      <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
+      {onboardingActive && peerName ? (
+        <MarketingPeerOnboardingCard
+          peerName={peerName}
+          onContinue={() => {
+            setOnboardingDismissed(true);
+            const target = document.getElementById("questions");
+            if (target) {
+              target.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              document
+                .getElementById("mw-campaign-overview")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
+          onSkip={() => setOnboardingDismissed(true)}
+        />
+      ) : null}
+
+      <div
+        id="mw-campaign-overview"
+        className="mw-section mw-glass"
+        style={{ padding: 16, marginBottom: 12 }}
+      >
         <div className="mw-section-title" style={{ marginBottom: 10 }}>
           Overview
         </div>
@@ -139,7 +219,9 @@ export default function CampaignDetailSections({
           )}
       </div>
 
-      {executionPlan ? <CampaignExecutionPlanSection plan={executionPlan} /> : null}
+      {executionPlan && !hideExecutionPlan ? (
+        <CampaignExecutionPlanSection plan={executionPlan} />
+      ) : null}
 
       <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <div className="mw-section-title" style={{ marginBottom: 10 }}>
