@@ -18,6 +18,7 @@ function ProjectDetailPageInner() {
           projectId={decodeURIComponent(projectId)}
           domainInput={domainInput}
           onStartCampaignExecution={workspace.handleStartCampaignExecution}
+          onCompleteCampaignOnboarding={workspace.handleCompleteCampaignOnboarding}
         />
       )}
     </MarketingPeerPageFrame>

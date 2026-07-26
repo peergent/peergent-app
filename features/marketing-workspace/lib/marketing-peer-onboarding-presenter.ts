@@ -1,4 +1,6 @@
 import type { CampaignStatus } from "@/lib/campaign/types/campaign";
+import { isCampaignOnboardingComplete } from "@/lib/peer-experience/marketing/campaign-onboarding";
+import type { MarketingProjectCampaignSetup } from "@/lib/peer-experience/marketing/projects/types";
 import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import { projectHasCampaignExecutionWork } from "./campaign-start-action-presenter";
@@ -19,33 +21,86 @@ export const MARKETING_PEER_ONBOARDING_TASK_LABELS = [
   "Prepare content calendar",
 ] as const;
 
-export type MarketingPeerOnboardingVisibilityInput = {
+export type CampaignOnboardingUiContext = {
   readonly campaignsEnabled: boolean;
   readonly projectOrigin?: MarketingProjectOrigin;
   readonly projectId: string;
   readonly workUnits: readonly WorkUnit[];
   readonly campaignStatus: CampaignStatus;
-  /** Session-only dismiss (Skip for now / Continue until persistence in a later sprint). */
-  readonly onboardingDismissed?: boolean;
+  readonly campaignSetup?: MarketingProjectCampaignSetup;
+  /** Welcome card dismissed for this session (Skip for now on welcome). */
+  readonly welcomeDismissed?: boolean;
 };
 
-/**
- * Customer onboarding replaces the empty planning state before execution starts.
- * Planner/executor unchanged — UI only.
- */
-export function shouldShowMarketingPeerOnboarding(
-  input: MarketingPeerOnboardingVisibilityInput
-): boolean {
-  if (!input.campaignsEnabled) return false;
-  if (input.projectOrigin !== "campaign_wizard") return false;
-  if (input.onboardingDismissed) return false;
-  if (input.campaignStatus !== "planning") return false;
-  if (projectHasCampaignExecutionWork(input.projectId, input.workUnits)) return false;
+function isCampaignWizardPreExecution(ctx: CampaignOnboardingUiContext): boolean {
+  if (!ctx.campaignsEnabled) return false;
+  if (ctx.projectOrigin !== "campaign_wizard") return false;
+  if (ctx.campaignStatus !== "planning") return false;
+  if (projectHasCampaignExecutionWork(ctx.projectId, ctx.workUnits)) return false;
   return true;
 }
 
-export function shouldHideCampaignExecutionPlanWhileOnboarding(
-  onboardingActive: boolean
+/** Welcome card before conversational setup begins. */
+export function shouldShowMarketingPeerWelcomeCard(ctx: CampaignOnboardingUiContext): boolean {
+  if (!isCampaignWizardPreExecution(ctx)) return false;
+  if (isCampaignOnboardingComplete(ctx.campaignSetup)) return false;
+  if (ctx.welcomeDismissed) return false;
+  return true;
+}
+
+/** Calm incomplete state after Skip for now on the welcome card. */
+export function shouldShowMarketingPeerIncompleteSetup(ctx: CampaignOnboardingUiContext): boolean {
+  if (!isCampaignWizardPreExecution(ctx)) return false;
+  if (isCampaignOnboardingComplete(ctx.campaignSetup)) return false;
+  return Boolean(ctx.welcomeDismissed);
+}
+
+export function shouldShowCampaignExecutionPlan(ctx: CampaignOnboardingUiContext): boolean {
+  if (!ctx.campaignsEnabled) return true;
+  if (ctx.projectOrigin !== "campaign_wizard") return true;
+  if (projectHasCampaignExecutionWork(ctx.projectId, ctx.workUnits)) return true;
+  return isCampaignOnboardingComplete(ctx.campaignSetup);
+}
+
+export function shouldHideStartCampaignDuringSetup(ctx: CampaignOnboardingUiContext): boolean {
+  if (!ctx.campaignsEnabled || ctx.projectOrigin !== "campaign_wizard") return false;
+  if (projectHasCampaignExecutionWork(ctx.projectId, ctx.workUnits)) return false;
+  return !isCampaignOnboardingComplete(ctx.campaignSetup);
+}
+
+export function isPlannerOrientedNextActionLabel(label: string): boolean {
+  const lower = label.trim().toLowerCase();
+  return (
+    lower.includes("continue planning") ||
+    lower.includes("plan campaign") ||
+    lower.includes("generate missing creative")
+  );
+}
+
+export function shouldShowHeroNextAction(
+  ctx: CampaignOnboardingUiContext,
+  nextActionLabel: string
 ): boolean {
+  if (!isCampaignWizardPreExecution(ctx)) return true;
+  if (!isCampaignOnboardingComplete(ctx.campaignSetup)) return false;
+  return !isPlannerOrientedNextActionLabel(nextActionLabel);
+}
+
+/** @deprecated Use shouldShowMarketingPeerWelcomeCard */
+export function shouldShowMarketingPeerOnboarding(input: {
+  campaignsEnabled: boolean;
+  projectOrigin?: MarketingProjectOrigin;
+  projectId: string;
+  workUnits: readonly WorkUnit[];
+  campaignStatus: CampaignStatus;
+  onboardingDismissed?: boolean;
+}): boolean {
+  return shouldShowMarketingPeerWelcomeCard({
+    ...input,
+    welcomeDismissed: input.onboardingDismissed,
+  });
+}
+
+export function shouldHideCampaignExecutionPlanWhileOnboarding(onboardingActive: boolean): boolean {
   return onboardingActive;
 }

@@ -79,7 +79,7 @@ export function buildCampaignStartActionViewModel(input: {
       kind: "already_started",
       buttonLabel: "Campaign started",
       buttonDisabled: true,
-      helperText: "Campaign work has already started.",
+      helperText: "",
     };
   }
 

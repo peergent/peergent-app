@@ -56,7 +56,13 @@ export default function CampaignStartCampaignAction({
     try {
       const result = await onStartCampaignExecution(projectId);
       const nextFeedback = presentCampaignStartFeedback(result);
-      setFeedback(nextFeedback);
+      if (result.status === "started" || result.status === "partially_started") {
+        setFeedback(nextFeedback);
+      } else if (result.status === "already_started") {
+        setFeedback(null);
+      } else {
+        setFeedback(nextFeedback);
+      }
       if (nextFeedback.marksStarted) {
         setSessionStarted(true);
       }

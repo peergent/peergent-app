@@ -12,8 +12,9 @@ import type {
   CampaignPlannerWorkUnitSummary,
 } from "@/lib/campaign/planner/types";
 import type { ApprovalDeliverableOverlay } from "../approval/approval-overlay";
-import type { MarketingProject } from "../projects/types";
+import { mapCampaignSetupToPlannerExplicit } from "../campaign-onboarding/map-setup-to-planner-explicit";
 import { workUnitsForProject } from "../projects/project-engine";
+import type { MarketingProject } from "../projects/types";
 import type { MarketingResponsibility } from "../responsibilities/types";
 import {
   assembleCampaignForMarketingProject,
@@ -341,7 +342,22 @@ export function buildCampaignPlannerSourceFromDomainInput(
       ? undefined
       : buildPlanSummary(domainInput.plan, applicable, units, scopeNotes);
 
-  const { deliverables, channels } = buildExplicitDeliverablesFromUnits(units);
+  const { deliverables: unitDeliverables, channels: unitChannels } =
+    buildExplicitDeliverablesFromUnits(units);
+  const fromSetup = project.campaignSetup
+    ? mapCampaignSetupToPlannerExplicit(project.campaignSetup)
+    : { deliverables: [], channels: [], pairingWarnings: [] };
+
+  for (const warning of fromSetup.pairingWarnings ?? []) {
+    scopeNotes.push({
+      id: `setup-pairing-${scopeNotes.length}`,
+      kind: "uncertainty",
+      message: warning,
+    });
+  }
+
+  const deliverables = [...unitDeliverables, ...fromSetup.deliverables];
+  const channels = [...new Set([...unitChannels, ...fromSetup.channels])];
 
   if (deliverables.length === 0) {
     scopeNotes.push({

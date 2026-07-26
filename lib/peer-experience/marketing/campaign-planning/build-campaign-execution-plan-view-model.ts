@@ -12,7 +12,9 @@ import type {
   CampaignExecutionPlanViewModel,
   CampaignExecutionPlanViewModelResult,
 } from "./campaign-execution-plan-view-model";
+import { resolveSetupChannelLabels } from "../campaign-onboarding/map-setup-to-planner-explicit";
 import type { MarketingPeerDomainInput } from "../view-models/marketing-peer-domain-input";
+import { buildAllowedChannelLabelsFromSetup } from "@/features/marketing-workspace/lib/campaign-execution-plan-customer-presenter";
 
 export type BuildCampaignExecutionPlanViewModelInput = {
   projectId: string;
@@ -35,9 +37,19 @@ export function buildCampaignExecutionPlanViewModel(
       version: input.version,
     });
     const plan = planCampaignExecution(source);
+    const project = input.domainInput.projects.find((p) => p.id === input.projectId);
+    const allowedChannelLabels =
+      project?.campaignSetup?.onboardingCompletedAt &&
+      project.campaignSetup.selectedChannels?.length
+        ? buildAllowedChannelLabelsFromSetup(
+            resolveSetupChannelLabels(project.campaignSetup)
+          )
+        : undefined;
+
     const viewModel = presentCampaignExecutionPlan({
       plan,
       scopeNotes: source.scopeNotes,
+      presentation: allowedChannelLabels ? { allowedChannelLabels } : {},
     });
     assertCustomerSafeExecutionPlanViewModel(viewModel);
     return { ok: true, viewModel };

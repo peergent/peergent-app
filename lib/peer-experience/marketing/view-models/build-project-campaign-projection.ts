@@ -2,6 +2,7 @@ import { assembleCampaign } from "@/lib/campaign";
 import type { Campaign, CampaignStatus } from "@/lib/campaign";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProject, MarketingProjectStatus } from "../projects/types";
+import { resolveCampaignSetupAudience } from "../campaign-onboarding/complete-campaign-onboarding";
 import {
   buildProjectTimeline,
   deriveProjectProgress,
@@ -74,7 +75,7 @@ export function assembleCampaignForMarketingProject(
   const workforce = workforceAssignmentsForProject(project, source);
   const setup = project.campaignSetup;
   const targetAudience =
-    setup?.targetAudience?.trim() ||
+    resolveCampaignSetupAudience(setup) ||
     audienceOneLiner(source) ||
     undefined;
 

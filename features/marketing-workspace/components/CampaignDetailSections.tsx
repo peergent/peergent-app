@@ -16,16 +16,24 @@ import {
   presentCampaignConciseGoal,
   presentCampaignProgressLabel,
 } from "../lib/campaign-detail-presenter";
+import { presentCampaignDetailHero } from "../lib/campaign-detail-hero-presenter";
 import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
 import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
+import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
+import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
+import MarketingPeerCampaignOnboardingModal from "./MarketingPeerCampaignOnboardingModal";
 import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
+import MarketingPeerOnboardingIncompleteCard from "./MarketingPeerOnboardingIncompleteCard";
 import {
-  shouldHideCampaignExecutionPlanWhileOnboarding,
-  shouldShowMarketingPeerOnboarding,
+  shouldHideStartCampaignDuringSetup,
+  shouldShowCampaignExecutionPlan,
+  shouldShowMarketingPeerIncompleteSetup,
+  shouldShowMarketingPeerWelcomeCard,
+  type CampaignOnboardingUiContext,
 } from "../lib/marketing-peer-onboarding-presenter";
 
 export type CampaignDetailMeta = {
@@ -40,6 +48,7 @@ export type CampaignDetailSectionsProps = {
   campaignMeta?: CampaignDetailMeta;
   contentItems?: readonly MarketingContentItem[];
   contentPeerId?: string;
+  peerId?: string;
   questions?: readonly ProjectQuestion[];
   peerName?: string;
   conversation?: readonly ProjectConversationEntry[];
@@ -48,7 +57,12 @@ export type CampaignDetailSectionsProps = {
   projectId?: string;
   projectOrigin?: MarketingProjectOrigin;
   workUnits?: readonly WorkUnit[];
+  project?: MarketingProject;
   onStartCampaignExecution?: (projectId: string) => Promise<CampaignExecutionWorkspaceResult>;
+  onCompleteCampaignOnboarding?: (
+    projectId: string,
+    input: CampaignOnboardingInput
+  ) => Promise<CampaignOnboardingResult>;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -64,6 +78,7 @@ export default function CampaignDetailSections({
   campaignMeta,
   contentItems = [],
   contentPeerId,
+  peerId,
   questions = [],
   peerName,
   conversation = [],
@@ -72,19 +87,23 @@ export default function CampaignDetailSections({
   projectId,
   projectOrigin,
   workUnits = [],
+  project,
   onStartCampaignExecution,
+  onCompleteCampaignOnboarding,
 }: CampaignDetailSectionsProps) {
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const onboardingActive = useMemo(
-    () =>
-      shouldShowMarketingPeerOnboarding({
-        campaignsEnabled,
-        projectOrigin,
-        projectId: projectId ?? campaign.id,
-        workUnits,
-        campaignStatus: campaign.status,
-        onboardingDismissed,
-      }),
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+
+  const onboardingCtx: CampaignOnboardingUiContext = useMemo(
+    () => ({
+      campaignsEnabled,
+      projectOrigin,
+      projectId: projectId ?? campaign.id,
+      workUnits,
+      campaignStatus: campaign.status,
+      campaignSetup: project?.campaignSetup,
+      welcomeDismissed,
+    }),
     [
       campaignsEnabled,
       projectOrigin,
@@ -92,10 +111,36 @@ export default function CampaignDetailSections({
       campaign.id,
       campaign.status,
       workUnits,
-      onboardingDismissed,
+      project?.campaignSetup,
+      welcomeDismissed,
     ]
   );
-  const hideExecutionPlan = shouldHideCampaignExecutionPlanWhileOnboarding(onboardingActive);
+
+  const showWelcomeCard = shouldShowMarketingPeerWelcomeCard(onboardingCtx);
+  const showIncompleteSetup = shouldShowMarketingPeerIncompleteSetup(onboardingCtx);
+  const showExecutionPlan = shouldShowCampaignExecutionPlan(onboardingCtx);
+  const hideStartCampaign = shouldHideStartCampaignDuringSetup(onboardingCtx);
+
+  const openSetupFlow = () => setSetupModalOpen(true);
+
+  const hero = useMemo(() => {
+    if (!peerId || !peerName || !projectId) {
+      return null;
+    }
+    return presentCampaignDetailHero({
+      campaign,
+      projectId: projectId ?? campaign.id,
+      peerId,
+      peerName,
+      workUnits,
+    });
+  }, [campaign, peerId, peerName, projectId, workUnits]);
+
+  const showHeroNextAction =
+    hero &&
+    (hero.showLinkedNextAction
+      ? hero.nextActionLabel.length > 0
+      : Boolean(hero.stateLine || hero.nextActionLabel));
 
   const progressLabel = presentCampaignProgressLabel(campaign);
   const goalLine = presentCampaignConciseGoal(campaign);
@@ -135,8 +180,17 @@ export default function CampaignDetailSections({
             <h2 className="mw-detail-title" style={{ fontSize: "1.35rem" }}>
               {campaign.title}
             </h2>
-            <div className={statusChipClass(campaign.statusLabel)} style={{ marginTop: 8 }}>
-              {campaign.statusLabel}
+            <div
+              className={
+                hero?.statusChipVariant === "blocked"
+                  ? "mw-project-status mw-project-status--blocked"
+                  : hero?.statusChipVariant === "planning"
+                    ? "mw-project-status mw-project-status--planning"
+                    : statusChipClass(hero?.statusLabel ?? campaign.statusLabel)
+              }
+              style={{ marginTop: 8 }}
+            >
+              {hero?.statusLabel ?? campaign.statusLabel}
             </div>
           </div>
           <div className="mw-project-pct">{progressLabel}</div>
@@ -150,7 +204,10 @@ export default function CampaignDetailSections({
           </div>
         )}
         {goalLine && <p className="mw-kn-helper" style={{ marginTop: 12 }}>{goalLine}</p>}
-        {campaignsEnabled && projectId && onStartCampaignExecution && !onboardingActive ? (
+        {campaignsEnabled &&
+        projectId &&
+        onStartCampaignExecution &&
+        !hideStartCampaign ? (
           <div style={{ marginTop: 16 }}>
             <CampaignStartCampaignAction
               projectId={projectId}
@@ -163,31 +220,54 @@ export default function CampaignDetailSections({
             />
           </div>
         ) : null}
-        {!onboardingActive ? (
-          <p className="mw-campaign-next" style={{ marginTop: 12 }}>
-            Next action:{" "}
-            <Link href={campaign.nextAction.href} className="mw-section-link">
-              {campaign.nextAction.label}
-            </Link>
-          </p>
+        {hero && showHeroNextAction ? (
+          hero.showLinkedNextAction ? (
+            <p className="mw-campaign-next" style={{ marginTop: 12 }}>
+              Next action:{" "}
+              <Link href={hero.nextActionHref} className="mw-section-link">
+                {hero.nextActionLabel}
+              </Link>
+            </p>
+          ) : hero.stateLine ? (
+            <p className="mw-kn-helper" style={{ marginTop: 12 }}>
+              {hero.stateLine}
+            </p>
+          ) : (
+            <p className="mw-kn-helper" style={{ marginTop: 12 }}>
+              {hero.nextActionLabel}
+            </p>
+          )
         ) : null}
       </div>
 
-      {onboardingActive && peerName ? (
+      {showWelcomeCard && peerName ? (
         <MarketingPeerOnboardingCard
           peerName={peerName}
-          onContinue={() => {
-            setOnboardingDismissed(true);
-            const target = document.getElementById("questions");
-            if (target) {
-              target.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-              document
-                .getElementById("mw-campaign-overview")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
+          onSetUpCampaign={openSetupFlow}
+          onSkip={() => setWelcomeDismissed(true)}
+        />
+      ) : null}
+
+      {showIncompleteSetup && peerName ? (
+        <MarketingPeerOnboardingIncompleteCard
+          peerName={peerName}
+          onContinueSetup={openSetupFlow}
+        />
+      ) : null}
+
+      {project && onCompleteCampaignOnboarding && peerName ? (
+        <MarketingPeerCampaignOnboardingModal
+          open={setupModalOpen}
+          project={project}
+          peerName={peerName}
+          campaignGoal={campaign.goal.businessObjective || project.goal}
+          approvalModeLabel={campaign.approvalModeLabel}
+          onClose={() => setSetupModalOpen(false)}
+          onSkipForNow={() => {
+            setSetupModalOpen(false);
+            setWelcomeDismissed(true);
           }}
-          onSkip={() => setOnboardingDismissed(true)}
+          onComplete={onCompleteCampaignOnboarding}
         />
       ) : null}
 
@@ -219,7 +299,7 @@ export default function CampaignDetailSections({
           )}
       </div>
 
-      {executionPlan && !hideExecutionPlan ? (
+      {executionPlan && showExecutionPlan ? (
         <CampaignExecutionPlanSection plan={executionPlan} />
       ) : null}
 

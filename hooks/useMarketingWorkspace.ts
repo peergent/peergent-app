@@ -50,6 +50,12 @@ import {
 import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import {
+  applyCampaignOnboardingToProject,
+  CampaignOnboardingValidationError,
+  type CampaignOnboardingInput,
+  type CampaignOnboardingResult,
+} from "@/lib/peer-experience/marketing/campaign-onboarding";
+import {
   createMarketingCampaignProject,
   createMarketingProject,
   type CreateMarketingCampaignProjectInput,
@@ -1553,6 +1559,78 @@ export function useMarketingWorkspace(
     ]
   );
 
+  const handleCompleteCampaignOnboarding = useCallback(
+    async (
+      projectId: string,
+      input: CampaignOnboardingInput
+    ): Promise<CampaignOnboardingResult> => {
+      if (!peerId) {
+        return {
+          ok: false,
+          projectId,
+          code: "WORKSPACE_UNAVAILABLE",
+          message: "Workspace unavailable.",
+        };
+      }
+
+      const existing = projectsRef.current.find((p) => p.id === projectId);
+      if (!existing) {
+        return {
+          ok: false,
+          projectId,
+          code: "PROJECT_NOT_FOUND",
+          message: "Project not found.",
+        };
+      }
+      if (existing.origin !== "campaign_wizard") {
+        return {
+          ok: false,
+          projectId,
+          code: "NOT_CAMPAIGN_WIZARD",
+          message: "This project is not a campaign-wizard project.",
+        };
+      }
+      if (existing.campaignSetup?.onboardingCompletedAt) {
+        return {
+          ok: false,
+          projectId,
+          code: "ALREADY_COMPLETED",
+          message: "Campaign setup is already complete.",
+        };
+      }
+
+      const completedAt = new Date().toISOString();
+      try {
+        const updated = applyCampaignOnboardingToProject(existing, input, completedAt);
+        const nextProjects = projectsRef.current.map((p) =>
+          p.id === projectId ? updated : p
+        );
+        updateProjects(nextProjects);
+        logActivity(
+          createActivity(
+            "focus_updated",
+            "Campaign setup saved",
+            `${updated.title} — audience and deliverables captured for planning.`,
+            { relatedObject: updated.title }
+          )
+        );
+        return { ok: true, projectId, completedAt };
+      } catch (error) {
+        const message =
+          error instanceof CampaignOnboardingValidationError
+            ? error.message
+            : "Invalid campaign setup.";
+        return {
+          ok: false,
+          projectId,
+          code: "INVALID_INPUT",
+          message,
+        };
+      }
+    },
+    [peerId, updateProjects, logActivity]
+  );
+
   return {
     peer,
     pageState,
@@ -1587,6 +1665,7 @@ export function useMarketingWorkspace(
     executeRecommendedAction,
     handleExecuteDelegation,
     handleCreateCampaign,
+    handleCompleteCampaignOnboarding,
     handleStartCampaignExecution,
     activeDelegation,
     syncedWorkUnits,

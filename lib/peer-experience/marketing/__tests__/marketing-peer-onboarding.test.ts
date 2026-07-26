@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { rawRequestWithExecutorOperationId } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import {
-  shouldHideCampaignExecutionPlanWhileOnboarding,
-  shouldShowMarketingPeerOnboarding,
+  shouldShowCampaignExecutionPlan,
+  shouldShowMarketingPeerWelcomeCard,
 } from "@/features/marketing-workspace/lib/marketing-peer-onboarding-presenter";
 
 const repoRoot = join(process.cwd());
@@ -15,16 +15,15 @@ const read = (relativePath: string) =>
 
 const projectId = "project-onboard-1";
 
-function baseInput(
-  overrides: Partial<Parameters<typeof shouldShowMarketingPeerOnboarding>[0]> = {}
-) {
+function baseCtx(overrides: Record<string, unknown> = {}) {
   return {
     campaignsEnabled: true,
     projectOrigin: "campaign_wizard" as const,
     projectId,
     workUnits: [] as readonly WorkUnit[],
     campaignStatus: "planning" as const,
-    onboardingDismissed: false,
+    campaignSetup: { description: "d", primaryGoalId: "product_launch" },
+    welcomeDismissed: false,
     ...overrides,
   };
 }
@@ -34,15 +33,15 @@ function executorWorkUnit(id: string): WorkUnit {
     id,
     peerId: "peer-emma",
     projectId,
-    role: "marketing",
+    role: "Marketing",
     title: "Step",
-    status: "pending",
+    status: "planning",
     deliverableKind: "social_post",
-    channel: "linkedin",
+    channel: "LinkedIn",
     objective: null,
     audience: null,
     needsVisual: false,
-    recurrence: "none",
+    recurrence: "once",
     automationTrigger: null,
     draftId: null,
     planActivityReference: null,
@@ -57,73 +56,63 @@ function executorWorkUnit(id: string): WorkUnit {
   };
 }
 
-describe("shouldShowMarketingPeerOnboarding", () => {
+describe("shouldShowMarketingPeerWelcomeCard", () => {
   it("shows for campaign wizard in planning before execution starts", () => {
-    expect(shouldShowMarketingPeerOnboarding(baseInput())).toBe(true);
+    expect(shouldShowMarketingPeerWelcomeCard(baseCtx())).toBe(true);
   });
 
   it("hides when campaign workspace feature flag is off", () => {
-    expect(shouldShowMarketingPeerOnboarding(baseInput({ campaignsEnabled: false }))).toBe(
+    expect(shouldShowMarketingPeerWelcomeCard(baseCtx({ campaignsEnabled: false }))).toBe(
       false
     );
   });
 
   it("hides for legacy manual projects", () => {
     expect(
-      shouldShowMarketingPeerOnboarding(
-        baseInput({ projectOrigin: "manual_assignment" })
-      )
+      shouldShowMarketingPeerWelcomeCard(baseCtx({ projectOrigin: "manual_assignment" }))
     ).toBe(false);
   });
 
   it("hides after campaign execution work has started", () => {
     expect(
-      shouldShowMarketingPeerOnboarding(
-        baseInput({ workUnits: [executorWorkUnit("wu-1")] })
+      shouldShowMarketingPeerWelcomeCard(
+        baseCtx({ workUnits: [executorWorkUnit("wu-1")] })
       )
     ).toBe(false);
   });
 
-  it("hides when campaign is no longer in planning status", () => {
-    expect(
-      shouldShowMarketingPeerOnboarding(baseInput({ campaignStatus: "active" }))
-    ).toBe(false);
-  });
-
-  it("hides when customer skipped or continued (session dismiss)", () => {
-    expect(
-      shouldShowMarketingPeerOnboarding(baseInput({ onboardingDismissed: true }))
-    ).toBe(false);
+  it("hides when welcome dismissed for session skip", () => {
+    expect(shouldShowMarketingPeerWelcomeCard(baseCtx({ welcomeDismissed: true }))).toBe(
+      false
+    );
   });
 });
 
-describe("shouldHideCampaignExecutionPlanWhileOnboarding", () => {
-  it("hides execution plan section while onboarding is active", () => {
-    expect(shouldHideCampaignExecutionPlanWhileOnboarding(true)).toBe(true);
-    expect(shouldHideCampaignExecutionPlanWhileOnboarding(false)).toBe(false);
+describe("execution plan visibility", () => {
+  it("stays hidden until onboardingCompletedAt is set", () => {
+    expect(shouldShowCampaignExecutionPlan(baseCtx())).toBe(false);
+    expect(
+      shouldShowCampaignExecutionPlan(
+        baseCtx({
+          campaignSetup: {
+            description: "d",
+            primaryGoalId: "x",
+            onboardingCompletedAt: "2026-07-24T12:00:00.000Z",
+          },
+        })
+      )
+    ).toBe(true);
   });
 });
 
 describe("Campaign detail onboarding integration", () => {
   const detail = read("features/marketing-workspace/components/CampaignDetailSections.tsx");
 
-  it("renders MarketingPeerOnboardingCard when onboarding is active", () => {
-    expect(detail).toContain("MarketingPeerOnboardingCard");
-    expect(detail).toContain("shouldShowMarketingPeerOnboarding");
-  });
-
-  it("gates execution plan behind onboarding hide helper", () => {
-    expect(detail).toContain("shouldHideCampaignExecutionPlanWhileOnboarding");
-    expect(detail).toMatch(/executionPlan && !hideExecutionPlan/);
-  });
-
-  it("does not expose onboarding tasks as interactive controls", () => {
-    const card = read("features/marketing-workspace/components/MarketingPeerOnboardingCard.tsx");
-    const css = read("features/marketing-workspace/styles/marketing-workspace.css");
-    expect(card).toContain("mw-marketing-peer-onboarding-task");
-    expect(card).toMatch(/MARKETING_PEER_ONBOARDING_TASK_LABELS\.map/);
-    expect(card).not.toMatch(/MARKETING_PEER_ONBOARDING_TASK_LABELS\.map[\s\S]*<button/);
-    expect(css).toContain("pointer-events: none");
+  it("wires conversational onboarding modal and incomplete state", () => {
+    expect(detail).toContain("MarketingPeerCampaignOnboardingModal");
+    expect(detail).toContain("MarketingPeerOnboardingIncompleteCard");
+    expect(detail).toContain("shouldShowCampaignExecutionPlan");
+    expect(detail).toContain("onCompleteCampaignOnboarding");
   });
 
   it("legacy ProjectDetailTab path unchanged for non-wizard projects", () => {
@@ -136,17 +125,8 @@ describe("Campaign detail onboarding integration", () => {
 describe("MarketingPeerOnboardingCard copy", () => {
   const card = read("features/marketing-workspace/components/MarketingPeerOnboardingCard.tsx");
 
-  it("includes Continue and Skip for now actions", () => {
-    expect(card).toContain("Continue");
+  it("uses Set up campaign primary action", () => {
+    expect(card).toContain("Set up campaign");
     expect(card).toContain("Skip for now");
-    expect(card).toContain("MARKETING_PEER_ONBOARDING_PREP_ITEMS");
-  });
-
-  it("lists five onboarding task labels in presenter", () => {
-    const presenter = read(
-      "features/marketing-workspace/lib/marketing-peer-onboarding-presenter.ts"
-    );
-    expect(presenter).toContain("Understand your business");
-    expect(presenter).toContain("Prepare content calendar");
   });
 });

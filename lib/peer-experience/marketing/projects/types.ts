@@ -52,11 +52,42 @@ import type { MarketingProjectOrigin } from "../responsibilities/types";
 import type { CampaignApprovalMode } from "@/lib/campaign";
 
 /** Optional wizard fields persisted on the project (session workspace storage). */
+export type CampaignSetupChannel =
+  | "linkedin"
+  | "instagram"
+  | "email"
+  | "blog"
+  | "website_landing"
+  | "meta_ads"
+  | "google_ads"
+  | "other"
+  | "decide_later";
+
+export type CampaignSetupDeliverable =
+  | "social_post"
+  | "carousel"
+  | "advertisement"
+  | "email"
+  | "blog_article"
+  | "landing_page"
+  | "campaign_concept"
+  | "other"
+  | "decide_later";
+
 export type MarketingProjectCampaignSetup = {
   readonly description: string;
   readonly primaryGoalId: string;
   readonly customGoalText?: string;
+  /** Wizard audience; superseded by `confirmedAudience` after onboarding when set. */
   readonly targetAudience?: string;
+  /** Canonical audience after conversational onboarding (`confirmedAudience` wins). */
+  readonly confirmedAudience?: string;
+  readonly selectedChannels?: readonly CampaignSetupChannel[];
+  readonly customChannelLabels?: readonly string[];
+  readonly selectedDeliverables?: readonly CampaignSetupDeliverable[];
+  readonly customDeliverableLabels?: readonly string[];
+  readonly timingDecision?: "dated" | "no_deadline";
+  readonly onboardingCompletedAt?: string;
   readonly startDate?: string;
   readonly endDate?: string;
   readonly budgetAmount?: number;

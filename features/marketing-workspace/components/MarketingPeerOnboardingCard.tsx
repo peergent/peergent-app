@@ -7,13 +7,13 @@ import {
 
 export type MarketingPeerOnboardingCardProps = {
   peerName: string;
-  onContinue: () => void;
+  onSetUpCampaign: () => void;
   onSkip: () => void;
 };
 
 export default function MarketingPeerOnboardingCard({
   peerName,
-  onContinue,
+  onSetUpCampaign,
   onSkip,
 }: MarketingPeerOnboardingCardProps) {
   return (
@@ -51,9 +51,9 @@ export default function MarketingPeerOnboardingCard({
           type="button"
           className="mw-btn-primary pg-focus-premium"
           data-testid="mw-marketing-peer-onboarding-continue"
-          onClick={onContinue}
+          onClick={onSetUpCampaign}
         >
-          Continue
+          Set up campaign
         </button>
         <button
           type="button"

@@ -4,12 +4,26 @@ import type {
   CampaignWorkPackagePhase,
   CampaignWorkPackageType,
 } from "@/lib/campaign/planner/types";
+import type { CampaignExecutionPlanApproval } from "@/lib/campaign/planner/types/campaign-execution-plan";
 import { CAMPAIGN_WORKFORCE_ROLE_LABELS } from "@/lib/campaign/types/campaign";
 import type { CampaignPlannerScopeNote } from "@/lib/campaign/planner/types";
+
+import {
+  buildAllowedChannelLabelsFromSetup,
+  displayPhaseLabelForPackage,
+  isActionableOptionalImprovement,
+  isProductionDeliverablePackage,
+  presentCustomerCompactMeta,
+  presentCustomerOwnerLine,
+  presentCustomerWorkItemTitle,
+  shouldIncludePackageInCustomerPlan,
+  type CampaignPlanPresentationContext,
+} from "./campaign-execution-plan-customer-presenter";
 
 import type {
   CampaignExecutionPlanApprovalMomentViewModel,
   CampaignExecutionPlanOverallStatus,
+  CampaignExecutionPlanPhaseGroupViewModel,
   CampaignExecutionPlanPhaseViewModel,
   CampaignExecutionPlanViewModel,
   CampaignExecutionPlanWorkItemViewModel,
@@ -63,19 +77,30 @@ const EFFORT_LABELS = {
   high: "High effort",
 } as const;
 
-const GAP_CUSTOMER_MESSAGES: Record<string, string> = {
-  "gap-channels-deliverables":
-    "Choose channels and deliverables before content work can be planned.",
-  "gap-no-explicit-deliverables":
-    "Choose channels and deliverables before content work can be planned.",
-  "gap-plan-activities-unlinked":
-    "No campaign-specific marketing plan is linked yet.",
-  "gap-plan-no-matching-activities":
-    "Your marketing plan does not yet match work on this campaign.",
+const SETUP_GAP_IDS = new Set([
+  "gap-channels-deliverables",
+  "gap-no-explicit-deliverables",
+]);
+
+const IMPROVE_LATER_GAP_IDS = new Set([
+  "gap-strategy",
+  "gap-plan",
+  "gap-plan-activities-unlinked",
+  "gap-plan-no-matching-activities",
+  "gap-creative-brief",
+]);
+
+const IMPROVE_LATER_MESSAGES: Record<string, string> = {
   "gap-strategy":
-    "Strategy details will strengthen the plan once they are available.",
+    "A fuller marketing strategy can sharpen messaging when you add it to your workspace.",
+  "gap-plan":
+    "A linked marketing plan calendar can refine timing when you connect it later.",
+  "gap-plan-activities-unlinked":
+    "Linking workspace plan activities can refine deliverable timing later.",
+  "gap-plan-no-matching-activities":
+    "Matching plan activities to this campaign can improve scheduling later.",
   "gap-creative-brief":
-    "Creative direction will be prepared after the campaign plan.",
+    "Creative direction will be developed as part of planned campaign work.",
 };
 
 const SCOPE_NOTE_CUSTOMER_MESSAGES: Record<string, string> = {
@@ -116,14 +141,97 @@ export function presentPlanOverallStatusLabel(
 }
 
 export function translatePlannerGapToCustomerMessage(gapId: string, fallback: string): string {
-  return GAP_CUSTOMER_MESSAGES[gapId] ?? fallback.replace(/\s+/g, " ").trim();
+  if (SETUP_GAP_IDS.has(gapId)) {
+    return "Choose channels and deliverables before content work can be planned.";
+  }
+  return IMPROVE_LATER_MESSAGES[gapId] ?? fallback.replace(/\s+/g, " ").trim();
+}
+
+function classifyPlannerGap(
+  gapId: string,
+  planStatus: CampaignExecutionPlanOverallStatus
+): "missing" | "improve" | "ignore" {
+  if (SETUP_GAP_IDS.has(gapId)) {
+    return planStatus === "ready" ? "ignore" : "missing";
+  }
+  if (IMPROVE_LATER_GAP_IDS.has(gapId)) {
+    return "improve";
+  }
+  if (planStatus === "ready") return "ignore";
+  return "missing";
+}
+
+function groupWorkItemsByPhase(
+  items: readonly CampaignExecutionPlanWorkItemViewModel[]
+): CampaignExecutionPlanPhaseGroupViewModel[] {
+  const order: string[] = [];
+  const map = new Map<string, CampaignExecutionPlanWorkItemViewModel[]>();
+  for (const item of items) {
+    if (!map.has(item.phaseLabel)) {
+      order.push(item.phaseLabel);
+      map.set(item.phaseLabel, []);
+    }
+    map.get(item.phaseLabel)!.push(item);
+  }
+  return order.map((phaseLabel) => ({
+    phaseLabel,
+    items: Object.freeze(map.get(phaseLabel)!),
+  }));
+}
+
+export function dedupeCampaignApprovalMoments(
+  approvals: readonly CampaignExecutionPlanApproval[],
+  titleById: Map<string, string>
+): CampaignExecutionPlanApprovalMomentViewModel[] {
+  const moments: CampaignExecutionPlanApprovalMomentViewModel[] = [];
+  let hasPublicationSummary = false;
+
+  for (const a of approvals) {
+    if (a.gate === "before_publication") {
+      if (hasPublicationSummary) continue;
+      hasPublicationSummary = true;
+      moments.push({
+        label: "Before publication",
+        description:
+          "Your approval is required before anything from this campaign is published.",
+      });
+      continue;
+    }
+    const stepTitle = titleById.get(a.packageId) ?? "A planned step";
+    if (a.gate === "before_generation") {
+      moments.push({
+        label: "Before content is created",
+        description: `${stepTitle} — ${a.description}`,
+      });
+      continue;
+    }
+    moments.push({
+      label: "Manual approval",
+      description: `${stepTitle} — ${a.description}`,
+    });
+  }
+
+  const deduped = new Map<string, CampaignExecutionPlanApprovalMomentViewModel>();
+  for (const moment of moments) {
+    const key = `${moment.label}|${moment.description}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, moment);
+    }
+  }
+  return [...deduped.values()];
 }
 
 export function translateScopeNoteToCustomerWarning(note: CampaignPlannerScopeNote): string | null {
+  if (note.id.startsWith("setup-pairing-")) {
+    return null;
+  }
   const mapped = SCOPE_NOTE_CUSTOMER_MESSAGES[note.id];
   if (mapped) return mapped;
   if (note.kind === "gap") {
     return note.message.replace(/peer-level/gi, "workspace").replace(/Work Units?/gi, "work");
+  }
+  if (note.kind === "uncertainty" && note.id.startsWith("setup-pairing-")) {
+    return null;
   }
   if (note.kind === "evidence") return null;
   return null;
@@ -214,44 +322,83 @@ function findNextStep(
 export function presentCampaignExecutionPlan(input: {
   plan: CampaignExecutionPlan;
   scopeNotes?: readonly CampaignPlannerScopeNote[];
+  presentation?: CampaignPlanPresentationContext;
 }): CampaignExecutionPlanViewModel {
-  const { plan, scopeNotes = [] } = input;
+  const { plan, scopeNotes = [], presentation = {} } = input;
   const titleById = new Map(plan.workPackages.map((p) => [p.id, p.title]));
 
   const ordered = plan.executionOrder
     .map((id) => plan.workPackages.find((p) => p.id === id))
     .filter((p): p is CampaignWorkPackage => Boolean(p));
 
-  const workItems: CampaignExecutionPlanWorkItemViewModel[] = ordered.map((pkg) => ({
-    title: pkg.title,
-    description: pkg.description,
-    phaseLabel: presentWorkPackagePhaseLabel(pkg.phase),
-    statusLabel: STATUS_LABELS[pkg.status],
-    ownerLabel: presentOwnerLabel(pkg),
-    effortLabel: EFFORT_LABELS[pkg.estimatedEffort],
-    ...(presentApprovalLabel(pkg) ? { approvalLabel: presentApprovalLabel(pkg) } : {}),
-    ...(dependencySummary(pkg, titleById)
-      ? { dependencySummary: dependencySummary(pkg, titleById) }
-      : {}),
-    ...(pkg.blockers.length
-      ? { blockerSummary: pkg.blockers.join(" ") }
-      : {}),
-    ...(pkg.channel?.trim() ? { channelLabel: pkg.channel.trim() } : {}),
-    ...(pkg.deliverableType
-      ? { deliverableLabel: presentDeliverableLabel(pkg.deliverableType) }
-      : {}),
-  }));
+  const visiblePackages = ordered.filter((pkg) =>
+    shouldIncludePackageInCustomerPlan(pkg, presentation)
+  );
 
-  const progress = computePlanProgress(plan.workPackages);
+  const planningTitles = new Set(
+    visiblePackages
+      .filter((p) => !isProductionDeliverablePackage(p))
+      .map((p) => presentCustomerWorkItemTitle(p).toLowerCase())
+  );
 
-  const missingInformation = [
-    ...plan.gaps.map((g) => translatePlannerGapToCustomerMessage(g.id, g.message)),
-    ...scopeNotes
-      .map(translateScopeNoteToCustomerWarning)
-      .filter((m): m is string => Boolean(m)),
-  ];
+  const workItems: CampaignExecutionPlanWorkItemViewModel[] = [];
+
+  for (const pkg of visiblePackages) {
+    if (isProductionDeliverablePackage(pkg)) {
+      const title = presentCustomerWorkItemTitle(pkg);
+      if (planningTitles.has(title.toLowerCase())) {
+        continue;
+      }
+    }
+
+    const channelLabel = pkg.channel?.trim() ? pkg.channel.trim() : undefined;
+    const deliverableLabel = presentDeliverableLabel(pkg.deliverableType);
+    const ownerLine = presentCustomerOwnerLine(pkg);
+    const isProduction = isProductionDeliverablePackage(pkg);
+
+    workItems.push({
+      title: presentCustomerWorkItemTitle(pkg),
+      description: isProduction ? "" : pkg.description,
+      phaseLabel: displayPhaseLabelForPackage(pkg),
+      statusLabel: STATUS_LABELS[pkg.status],
+      ownerLabel: ownerLine,
+      effortLabel: EFFORT_LABELS[pkg.estimatedEffort],
+      compactMeta: presentCustomerCompactMeta(pkg, ownerLine),
+      ...(presentApprovalLabel(pkg) ? { approvalLabel: presentApprovalLabel(pkg) } : {}),
+      ...(dependencySummary(pkg, titleById)
+        ? { dependencySummary: dependencySummary(pkg, titleById) }
+        : {}),
+      ...(pkg.blockers.length ? { blockerSummary: pkg.blockers.join(" ") } : {}),
+      ...(channelLabel ? { channelLabel } : {}),
+      ...(deliverableLabel ? { deliverableLabel } : {}),
+    });
+  }
+
+  const progress = computePlanProgress(visiblePackages);
+
+  const missingInformation: string[] = [];
+  const optionalImprovements: string[] = [];
+
+  for (const g of plan.gaps) {
+    const bucket = classifyPlannerGap(g.id, plan.status);
+    const message = IMPROVE_LATER_MESSAGES[g.id] ?? translatePlannerGapToCustomerMessage(g.id, g.message);
+    if (bucket === "missing") missingInformation.push(message);
+    if (bucket === "improve") optionalImprovements.push(message);
+  }
+
+  for (const note of scopeNotes) {
+    const warning = translateScopeNoteToCustomerWarning(note);
+    if (!warning) continue;
+    if (note.id.startsWith("setup-pairing-")) {
+      continue;
+    }
+    if (note.kind === "uncertainty") {
+      optionalImprovements.push(warning);
+    }
+  }
 
   const uniqueMissing = [...new Set(missingInformation)];
+  const uniqueImprove = [...new Set(optionalImprovements)].filter(isActionableOptionalImprovement);
 
   const blockers = [
     ...plan.workPackages.flatMap((p) => p.blockers),
@@ -261,26 +408,7 @@ export function presentCampaignExecutionPlan(input: {
   ];
   const uniqueBlockers = [...new Set(blockers)];
 
-  const approvalMoments: CampaignExecutionPlanApprovalMomentViewModel[] =
-    plan.approvals.map((a) => {
-      const stepTitle = titleById.get(a.packageId) ?? "A planned step";
-      if (a.gate === "before_generation") {
-        return {
-          label: "Before content is created",
-          description: `${stepTitle} — ${a.description}`,
-        };
-      }
-      if (a.gate === "before_publication") {
-        return {
-          label: "Before publication",
-          description: `${stepTitle} — ${a.description}`,
-        };
-      }
-      return {
-        label: "Manual approval",
-        description: `${stepTitle} — ${a.description}`,
-      };
-    });
+  const approvalMoments = dedupeCampaignApprovalMoments(plan.approvals, titleById);
 
   const warnings: string[] = [];
   if (plan.status === "draft") {
@@ -289,6 +417,8 @@ export function presentCampaignExecutionPlan(input: {
   if (plan.status === "restricted") {
     warnings.push("Additional approvals apply before some work can proceed.");
   }
+
+  const phaseGroups = groupWorkItemsByPhase(workItems);
 
   return {
     availability: "visible",
@@ -300,9 +430,11 @@ export function presentCampaignExecutionPlan(input: {
     planStepsTotal: progress.total,
     phases: buildPhases(workItems),
     workItems,
+    phaseGroups,
     approvalMoments,
     blockers: uniqueBlockers,
     missingInformation: uniqueMissing,
+    optionalImprovements: uniqueImprove,
     warnings,
     nextPlannedStep: findNextStep(plan, titleById),
     ...(plan.status === "restricted"
@@ -326,9 +458,11 @@ export function presentCampaignExecutionPlanUnavailable(): CampaignExecutionPlan
     planStepsTotal: 0,
     phases: [],
     workItems: [],
+    phaseGroups: [],
     approvalMoments: [],
     blockers: [],
     missingInformation: [],
+    optionalImprovements: [],
     warnings: [],
     nextPlannedStep: null,
   };

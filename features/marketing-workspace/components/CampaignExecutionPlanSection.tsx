@@ -32,6 +32,8 @@ export default function CampaignExecutionPlanSection({ plan }: CampaignExecution
     );
   }
 
+  const groups = plan.phaseGroups.length > 0 ? plan.phaseGroups : [];
+
   return (
     <div
       className="mw-section mw-glass mw-campaign-execution-plan"
@@ -80,6 +82,19 @@ export default function CampaignExecutionPlanSection({ plan }: CampaignExecution
         </div>
       )}
 
+      {plan.optionalImprovements.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div className="mw-modal-label" style={{ marginBottom: 6 }}>
+            Can improve later
+          </div>
+          <ul className="mw-campaign-meta">
+            {plan.optionalImprovements.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {plan.blockers.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div className="mw-modal-label" style={{ marginBottom: 6 }}>
@@ -122,31 +137,46 @@ export default function CampaignExecutionPlanSection({ plan }: CampaignExecution
       <div className="mw-modal-label" style={{ marginBottom: 8 }}>
         Planned work
       </div>
-      <div className="mw-glass mw-project-steps" style={{ padding: 12 }}>
-        {plan.workItems.map((item, index) => (
-          <div
-            key={`${item.title}-${index}`}
-            className="mw-step"
-            data-testid="mw-campaign-plan-step"
-          >
-            <span className="mw-step-mark" aria-hidden>
-              {item.statusLabel === "Complete" ? "✓" : index + 1}
-            </span>
-            <div style={{ flex: 1 }}>
-              <div className="mw-approval-title">{item.title}</div>
-              <p className="mw-kn-helper">{item.description}</p>
-              <ul className="mw-campaign-meta" style={{ marginTop: 6 }}>
-                <li>{item.phaseLabel}</li>
-                <li>{item.statusLabel}</li>
-                <li>{item.ownerLabel}</li>
-                <li>{item.effortLabel}</li>
-                {item.approvalLabel && <li>{item.approvalLabel}</li>}
-                {item.channelLabel && <li>Channel: {item.channelLabel}</li>}
-                {item.deliverableLabel && <li>Format: {item.deliverableLabel}</li>}
-                {item.dependencySummary && <li>{item.dependencySummary}</li>}
-                {item.blockerSummary && <li>{item.blockerSummary}</li>}
-              </ul>
+      <div className="mw-campaign-plan-phase-groups">
+        {groups.map((group) => (
+          <div key={group.phaseLabel} className="mw-campaign-plan-phase" style={{ marginBottom: 14 }}>
+            <div className="mw-modal-label" style={{ marginBottom: 8 }}>
+              {group.phaseLabel}
             </div>
+            <ul className="mw-campaign-plan-compact-list">
+              {group.items.map((item, index) => (
+                <li
+                  key={`${item.title}-${index}`}
+                  className="mw-campaign-plan-compact-row"
+                  data-testid="mw-campaign-plan-step"
+                >
+                  <div className="mw-campaign-plan-compact-head">
+                    <span className={itemStatusClass(item.statusLabel)}>{item.statusLabel}</span>
+                    <span className="mw-approval-title">{item.title}</span>
+                  </div>
+                  {item.compactMeta ? (
+                    <p className="mw-kn-helper" style={{ marginTop: 4 }}>
+                      {item.compactMeta}
+                    </p>
+                  ) : null}
+                  {item.dependencySummary ? (
+                    <p className="mw-kn-helper" style={{ marginTop: 2 }}>
+                      {item.dependencySummary}
+                    </p>
+                  ) : null}
+                  {item.blockerSummary ? (
+                    <p className="mw-kn-helper" style={{ marginTop: 2 }}>
+                      {item.blockerSummary}
+                    </p>
+                  ) : null}
+                  {item.description ? (
+                    <p className="mw-kn-helper" style={{ marginTop: 4 }}>
+                      {item.description}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>

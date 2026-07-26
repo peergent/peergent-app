@@ -13,16 +13,23 @@ export type CampaignExecutionPlanPhaseViewModel = {
 
 export type CampaignExecutionPlanWorkItemViewModel = {
   readonly title: string;
+  /** Detailed copy; omitted from compact scan UI when empty. */
   readonly description: string;
   readonly phaseLabel: string;
   readonly statusLabel: string;
   readonly ownerLabel: string;
   readonly effortLabel: string;
+  readonly compactMeta?: string;
   readonly approvalLabel?: string;
   readonly dependencySummary?: string;
   readonly blockerSummary?: string;
   readonly channelLabel?: string;
   readonly deliverableLabel?: string;
+};
+
+export type CampaignExecutionPlanPhaseGroupViewModel = {
+  readonly phaseLabel: string;
+  readonly items: readonly CampaignExecutionPlanWorkItemViewModel[];
 };
 
 export type CampaignExecutionPlanApprovalMomentViewModel = {
@@ -49,9 +56,11 @@ export type CampaignExecutionPlanViewModel = {
   readonly approvalMoments: readonly CampaignExecutionPlanApprovalMomentViewModel[];
   readonly blockers: readonly string[];
   readonly missingInformation: readonly string[];
+  readonly optionalImprovements: readonly string[];
   readonly warnings: readonly string[];
   readonly nextPlannedStep: CampaignExecutionPlanNextStepViewModel | null;
   readonly restrictionMessage?: string;
+  readonly phaseGroups: readonly CampaignExecutionPlanPhaseGroupViewModel[];
 };
 
 export type CampaignExecutionPlanViewModelResult =
