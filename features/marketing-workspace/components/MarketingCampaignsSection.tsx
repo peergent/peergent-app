@@ -44,14 +44,10 @@ function CampaignCardBody({
       </div>
       {presentation.goalLine && <p className="mw-project-goal">{presentation.goalLine}</p>}
       <ul className="mw-campaign-meta">
-        {presentation.audienceLine && <li>{presentation.audienceLine}</li>}
         {presentation.channelsLine && <li>{presentation.channelsLine}</li>}
-        {presentation.timelineLine && <li>{presentation.timelineLine}</li>}
         {presentation.approvalLine && <li>{presentation.approvalLine}</li>}
         {presentation.contentLine && <li>{presentation.contentLine}</li>}
         {presentation.blockedLine && <li>{presentation.blockedLine}</li>}
-        {presentation.workforceLine && <li>{presentation.workforceLine}</li>}
-        {presentation.recommendationLine && <li>{presentation.recommendationLine}</li>}
       </ul>
       <p className="mw-campaign-next">
         Next action:{" "}

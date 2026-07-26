@@ -19,7 +19,7 @@ import {
   assertCustomerSafeCampaignPresentation,
   presentMarketingCampaignCard,
   presentMarketingCampaignsEmptyMessage,
-} from "../lib/marketing-campaign-card-presenter";
+} from "@/features/marketing-workspace/lib/marketing-campaign-card-presenter";
 
 const assembledAt = "2026-07-20T12:00:00.000Z";
 

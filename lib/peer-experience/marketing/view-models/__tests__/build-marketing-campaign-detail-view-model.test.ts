@@ -8,6 +8,8 @@ import type { MarketingStrategy } from "@/lib/marketing-intelligence/types/strat
 import { deriveMarketingCampaignNextAction } from "../marketing-campaign-next-action";
 import { buildMarketingCampaignDetailViewModel } from "../build-marketing-campaign-detail-view-model";
 import { MARKETING_PLAN_FALLBACK_CAMPAIGN_ID } from "../build-marketing-campaigns-view-model";
+import type { MarketingPeerDomainInput } from "../marketing-peer-domain-input";
+import { buildMarketingCampaignDetailSourceFromDomainInput } from "../build-project-campaign-projection";
 
 const assembledAt = "2026-07-20T12:00:00.000Z";
 const peerId = "peer-emma";
@@ -105,6 +107,45 @@ const pendingDraft: MarketingContentDraft = {
 };
 
 describe("buildMarketingCampaignDetailViewModel", () => {
+  it("builds detail from marketing project anchor", () => {
+    const input: MarketingPeerDomainInput = {
+      peerId: "peer-emma",
+      peerName: "Emma",
+      userName: "Alex",
+      campaignTitle: "Campaign",
+      generating: null,
+      generatingActivity: null,
+      understanding: null,
+      strategy: null,
+      plan: null,
+      drafts: [],
+      publicationPackages: [],
+      activityFeed: [],
+      workUnits: [],
+      projects: [
+        {
+          id: "proj-anchor",
+          peerId: "peer-emma",
+          title: "Anchor project",
+          goal: "Ship launch",
+          campaignType: "product_launch",
+          createdAt: assembledAt,
+          updatedAt: assembledAt,
+          ownerLabel: "Alex",
+          rawRequest: "Launch",
+        },
+      ],
+      responsibilities: [],
+      automations: [],
+      connections: [],
+    };
+    const detail = buildMarketingCampaignDetailViewModel(
+      buildMarketingCampaignDetailSourceFromDomainInput(input, "proj-anchor")
+    );
+    expect(detail?.title).toBe("Anchor project");
+    expect(detail?.recommendations).toEqual([]);
+  });
+
   it("builds detail from assembled campaign", () => {
     const campaign = fullCampaign();
     const detail = buildMarketingCampaignDetailViewModel({

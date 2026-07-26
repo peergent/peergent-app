@@ -13,6 +13,17 @@ import {
 import { humanChannelLabel } from "../publish-preview-formatters";
 import type { MarketingPeerDomainInput } from "./marketing-peer-domain-input";
 import { deriveMarketingCampaignNextAction } from "./marketing-campaign-next-action";
+import type { MarketingProject } from "../projects/types";
+import {
+  deriveProjectProgress,
+  deriveProjectStatus,
+} from "../projects/project-engine";
+import {
+  assembleCampaignForMarketingProject,
+  enrichSourceWithProjectContentIds,
+  projectActivitySummaryForCampaign,
+  projectCampaignProgressKnown,
+} from "./build-project-campaign-projection";
 import type {
   MarketingCampaignCardViewModel,
   MarketingCampaignsViewModel,
@@ -210,7 +221,13 @@ function buildCardNextAction(
 
 function campaignCardFromAssembled(
   campaign: Campaign,
-  source: MarketingCampaignViewModelSource
+  source: MarketingCampaignViewModelSource,
+  overrides?: {
+    progressKnown?: boolean;
+    progress?: number;
+    goal?: string;
+    channels?: readonly string[];
+  }
 ): MarketingCampaignCardViewModel {
   const draftIds = resolveCampaignContentDraftIds(campaign.id, campaign, source);
   const drafts = source.drafts ?? [];
@@ -227,17 +244,30 @@ function campaignCardFromAssembled(
   const planActivityCount =
     source.selectedPlanActivities?.length ?? source.plan?.contentCalendar.length ?? 0;
 
+  const progressKnown = overrides?.progressKnown ?? true;
+  const progress =
+    overrides?.progress ?? campaign.performance.progress.percentComplete;
+  const goal =
+    overrides?.goal ??
+    (campaign.goal.marketingObjective ||
+      campaign.goal.businessObjective ||
+      campaign.description ||
+      "");
+  const channels =
+    overrides?.channels ??
+    campaign.execution.channels.map((c) => c.label ?? c.channelId);
+
   return {
     id: campaign.id,
     title: campaign.name,
     description: campaign.description,
     status: campaign.execution.status,
     statusLabel: MARKETING_CAMPAIGN_STATUS_LABELS[campaign.execution.status],
-    progress: campaign.performance.progress.percentComplete,
-    progressKnown: true,
-    goal: campaign.goal.marketingObjective || campaign.goal.businessObjective,
+    progress,
+    progressKnown,
+    goal,
     audienceSummary: campaign.audience.targetAudience,
-    channels: campaign.execution.channels.map((c) => c.label ?? c.channelId),
+    channels,
     timelineSummary: formatCampaignTimelineSummary(campaign, source.plan),
     approvalCount,
     generatedContentCount: draftIds.length,
@@ -272,16 +302,16 @@ function fallbackCampaignCard(source: MarketingCampaignViewModelSource): Marketi
   const { progress, progressKnown } = fallbackCampaignProgress();
 
   const title =
-    source.plan?.summary?.trim() ||
     source.strategy?.campaignIdeas[0]?.name?.trim() ||
+    concisePlanTitle(source) ||
     "Marketing campaign";
 
-  const description =
-    source.plan?.basedOnStrategySummary?.trim() || source.strategy?.summary?.trim();
+  const description = source.plan?.basedOnStrategySummary?.trim();
 
   const goal =
-    source.strategy?.summary?.trim() ||
-    source.plan?.summary?.trim() ||
+    source.strategy?.campaignIdeas[0]?.objective?.trim() ||
+    source.plan?.objectives[0]?.title?.trim() ||
+    concisePlanGoal(source) ||
     "";
 
   const audienceSummary =
@@ -331,6 +361,70 @@ function fallbackCampaignCard(source: MarketingCampaignViewModelSource): Marketi
       planActivityCount,
     }),
   };
+}
+
+function concisePlanTitle(source: MarketingCampaignViewModelSource): string {
+  const summary = source.plan?.summary?.trim();
+  if (!summary) return "";
+  return summary.length > 60 ? `${summary.slice(0, 59).trim()}…` : summary;
+}
+
+function concisePlanGoal(source: MarketingCampaignViewModelSource): string {
+  const summary = source.plan?.summary?.trim();
+  if (!summary) return "";
+  return summary.length > 80 ? `${summary.slice(0, 79).trim()}…` : summary;
+}
+
+function buildProjectCampaignCards(
+  source: MarketingCampaignViewModelSource
+): MarketingCampaignCardViewModel[] {
+  const projects = (source.projects ?? []).filter((p) => !p.archivedAt);
+  return projects.map((project) => projectCampaignCard(project, source));
+}
+
+function projectCampaignCard(
+  project: MarketingProject,
+  source: MarketingCampaignViewModelSource
+): MarketingCampaignCardViewModel {
+  const enriched = enrichSourceWithProjectContentIds(source, project.id);
+  const campaign = assembleCampaignForMarketingProject(project, enriched);
+  const projectStatus = deriveProjectStatus(
+    project,
+    [...(source.workUnits ?? [])],
+    [...(source.drafts ?? [])],
+    new Set<string>()
+  );
+  const progress = deriveProjectProgress(
+    project,
+    [...(source.workUnits ?? [])],
+    projectStatus
+  );
+  const draftIds = enriched.contentIdsByCampaignId?.[project.id] ?? [];
+  const channels = channelsFromDraftIds(draftIds, source.drafts ?? []);
+
+  return campaignCardFromAssembled(campaign, enriched, {
+    progressKnown: projectCampaignProgressKnown(project, source.workUnits, progress),
+    progress,
+    goal: project.goal.trim(),
+    channels,
+  });
+}
+
+function channelsFromDraftIds(
+  draftIds: readonly string[],
+  drafts: readonly MarketingContentDraft[]
+): string[] {
+  const idSet = new Set(draftIds);
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const draft of drafts) {
+    if (!idSet.has(draft.id)) continue;
+    const label = humanChannelLabel(draft);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
 }
 
 function collectFallbackChannels(
@@ -385,9 +479,14 @@ export function buildMarketingCampaignsViewModel(
       items.push(campaignCardFromAssembled(campaign, source));
     }
   } else {
-    const fallback = fallbackCampaignCard(source);
-    if (fallback) {
-      items.push(fallback);
+    const projectCards = buildProjectCampaignCards(source);
+    if (projectCards.length) {
+      items.push(...projectCards);
+    } else {
+      const fallback = fallbackCampaignCard(source);
+      if (fallback) {
+        items.push(fallback);
+      }
     }
   }
 

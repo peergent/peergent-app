@@ -3,24 +3,39 @@
  */
 import type { MarketingCampaignCardViewModel } from "@/lib/peer-experience/marketing/view-models/marketing-campaign-types";
 
+const MAX_TITLE_LENGTH = 60;
+const MAX_GOAL_LENGTH = 80;
+const MAX_CHANNEL_LABELS = 3;
+
 export type MarketingCampaignCardPresentation = {
   title: string;
   statusLabel: string;
   progressLabel: string;
   goalLine: string | null;
-  audienceLine: string | null;
   channelsLine: string | null;
-  timelineLine: string | null;
   approvalLine: string | null;
   contentLine: string | null;
   blockedLine: string | null;
-  recommendationLine: string | null;
-  workforceLine: string | null;
   nextActionLabel: string;
   nextActionHref: string;
   linkEnabled: boolean;
   href: string;
 };
+
+export function truncateCampaignText(text: string, maxLength: number): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength - 1).trim()}…`;
+}
+
+function formatChannelsLine(channels: readonly string[]): string | null {
+  if (!channels.length) return null;
+  const labels = channels.slice(0, MAX_CHANNEL_LABELS);
+  const extra = channels.length - labels.length;
+  const base = labels.join(", ");
+  return extra > 0 ? `Channels: ${base} +${extra}` : `Channels: ${base}`;
+}
 
 export function presentMarketingCampaignCard(
   card: MarketingCampaignCardViewModel
@@ -29,20 +44,14 @@ export function presentMarketingCampaignCard(
     ? `${card.progress}%`
     : "Not measured yet";
 
+  const goalText = truncateCampaignText(card.goal, MAX_GOAL_LENGTH);
+
   return {
-    title: card.title,
+    title: truncateCampaignText(card.title, MAX_TITLE_LENGTH),
     statusLabel: card.statusLabel,
     progressLabel,
-    goalLine: card.goal.trim() ? `Goal: ${card.goal.trim()}` : null,
-    audienceLine: card.audienceSummary.trim()
-      ? `Audience: ${card.audienceSummary.trim()}`
-      : null,
-    channelsLine: card.channels.length
-      ? `Channels: ${card.channels.join(", ")}`
-      : null,
-    timelineLine: card.timelineSummary.trim()
-      ? `Timeline: ${card.timelineSummary.trim()}`
-      : null,
+    goalLine: goalText ? `Goal: ${goalText}` : null,
+    channelsLine: formatChannelsLine(card.channels),
     approvalLine:
       card.approvalCount > 0
         ? `Waiting for approval: ${card.approvalCount}`
@@ -52,13 +61,7 @@ export function presentMarketingCampaignCard(
         ? `Content created: ${card.generatedContentCount}`
         : null,
     blockedLine:
-      card.blockedItemCount > 0 ? `Blocked items: ${card.blockedItemCount}` : null,
-    recommendationLine: card.recommendationSummary?.trim()
-      ? card.recommendationSummary.trim()
-      : null,
-    workforceLine: card.assignedWorkforce.length
-      ? `Team: ${card.assignedWorkforce.map((w) => w.roleLabel).join(", ")}`
-      : null,
+      card.blockedItemCount > 0 ? `Blocked: ${card.blockedItemCount}` : null,
     nextActionLabel: card.nextAction.label,
     nextActionHref: card.nextAction.href,
     linkEnabled: card.linkEnabled,
@@ -74,12 +77,15 @@ export function assertCustomerSafeCampaignPresentation(
   const forbidden = [
     "marketingdecision",
     "creativebrief",
+    "creative brief",
     "context slice",
+    "context package",
     "assembler",
     "assemblytrace",
     "evidence",
     "gaps",
     "prompt",
+    "workunit",
   ];
   for (const term of forbidden) {
     if (blob.includes(term)) {

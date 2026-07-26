@@ -2,6 +2,26 @@ import type { Campaign, CampaignApprovalMode } from "@/lib/campaign";
 import { assembleCampaign } from "@/lib/campaign";
 
 import {
+  assembleCampaignForMarketingProject,
+  enrichSourceWithProjectContentIds,
+  projectActivitySummaryForCampaign,
+  projectCampaignProgressKnown,
+} from "./build-project-campaign-projection";
+import type { MarketingProject } from "../projects/types";
+import {
+  deriveProjectProgress,
+  deriveProjectStatus,
+} from "../projects/project-engine";
+import type {
+  MarketingCampaignDetailSource,
+  MarketingCampaignDetailViewModel,
+} from "./marketing-campaign-types";
+import {
+  MARKETING_CAMPAIGN_STATUS_LABELS,
+} from "./marketing-campaign-types";
+import { getPerformanceHref, getReviewHref } from "../navigation/marketing-peer-links";
+import { deriveMarketingCampaignNextAction } from "./marketing-campaign-next-action";
+import {
   buildLinkedContentItems,
   countBlockedItems,
   countPendingApprovals,
@@ -13,15 +33,6 @@ import {
   resolveCampaignCreativeBriefIds,
   sanitizeCustomerCampaignWarnings,
 } from "./build-marketing-campaigns-view-model";
-import type {
-  MarketingCampaignDetailSource,
-  MarketingCampaignDetailViewModel,
-} from "./marketing-campaign-types";
-import {
-  MARKETING_CAMPAIGN_STATUS_LABELS,
-} from "./marketing-campaign-types";
-import { getPerformanceHref, getReviewHref } from "../navigation/marketing-peer-links";
-import { deriveMarketingCampaignNextAction } from "./marketing-campaign-next-action";
 
 export { deriveMarketingCampaignNextAction } from "./marketing-campaign-next-action";
 
@@ -76,7 +87,7 @@ function buildDetailFromCampaign(
     explicitPerformance?.summary ??
     (campaign.performance.kpiPlaceholders.length
       ? campaign.performance.kpiPlaceholders.map((k) => k.name).join(", ")
-      : "Performance data not available yet.");
+      : "Performance not available yet.");
 
   const kpiLabels =
     explicitPerformance?.kpiLabels ??
@@ -182,12 +193,75 @@ function buildDetailFromCampaign(
   };
 }
 
+function buildDetailFromMarketingProject(
+  project: MarketingProject,
+  source: MarketingCampaignDetailSource
+): MarketingCampaignDetailViewModel {
+  const enriched = enrichSourceWithProjectContentIds(source, project.id);
+  const detailSource: MarketingCampaignDetailSource = {
+    ...enriched,
+    campaignId: project.id,
+  };
+  const campaign = assembleCampaignForMarketingProject(project, enriched);
+  const projectStatus = deriveProjectStatus(
+    project,
+    [...(source.workUnits ?? [])],
+    [...(source.drafts ?? [])],
+    new Set<string>()
+  );
+  const progress = deriveProjectProgress(
+    project,
+    [...(source.workUnits ?? [])],
+    projectStatus
+  );
+  const progressKnown = projectCampaignProgressKnown(
+    project,
+    source.workUnits,
+    progress
+  );
+  const detail = buildDetailFromCampaign(campaign, detailSource, { progressKnown });
+  const activitySummary = projectActivitySummaryForCampaign(
+    project,
+    source.workUnits
+  );
+  const goalText = project.goal.trim();
+  return {
+    ...detail,
+    progress,
+    progressKnown,
+    title: project.title,
+    description: project.goal,
+    goal: {
+      businessObjective: goalText,
+      marketingObjective: goalText,
+      successMetrics: detail.goal.successMetrics,
+    },
+    recommendations: [],
+    creativeBriefReferences: [],
+    activitySummary:
+      activitySummary.length > 0 ? activitySummary : detail.activitySummary,
+    performance: detail.performance.performanceKnown
+      ? detail.performance
+      : {
+          ...detail.performance,
+          performanceKnown: false,
+          summary: "Performance not available yet.",
+          kpiLabels: [],
+        },
+  };
+}
+
 export function buildMarketingCampaignDetailViewModel(
   source: MarketingCampaignDetailSource
 ): MarketingCampaignDetailViewModel | null {
   const assembled = source.campaigns?.find((c) => c.id === source.campaignId);
   if (assembled) {
     return buildDetailFromCampaign(assembled, source, { progressKnown: true });
+  }
+
+  const project = source.projects?.find((p) => p.id === source.campaignId);
+  if (project) {
+    return buildDetailFromMarketingProject(project, source);
   }
 
   if (

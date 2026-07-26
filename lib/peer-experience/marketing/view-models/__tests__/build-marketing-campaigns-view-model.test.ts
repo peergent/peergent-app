@@ -143,6 +143,30 @@ describe("buildMarketingCampaignsViewModel", () => {
     expect(vm.items[0]?.nextAction.label).toBeTruthy();
   });
 
+  it("builds project-scoped cards instead of fallback when projects exist", () => {
+    const vm = buildMarketingCampaignsViewModel({
+      peerId,
+      strategy: sampleStrategy,
+      plan: samplePlan,
+      projects: [
+        {
+          id: "proj-list-1",
+          peerId,
+          title: "Project card",
+          goal: "Goal",
+          campaignType: "linkedin_campaign",
+          createdAt: assembledAt,
+          updatedAt: assembledAt,
+          ownerLabel: "Alex",
+          rawRequest: "Launch",
+        },
+      ],
+    });
+    expect(vm.items).toHaveLength(1);
+    expect(vm.items[0]?.id).toBe("proj-list-1");
+    expect(vm.items[0]?.linkEnabled).toBe(true);
+  });
+
   it("falls back to strategy/plan without inventing brief counts", () => {
     const vm = buildMarketingCampaignsViewModel({
       peerId,

@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Megaphone } from "lucide-react";
+import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
+import { buildMarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-campaign-detail-view-model";
+import { buildMarketingCampaignDetailSourceFromDomainInput } from "@/lib/peer-experience/marketing/view-models/build-project-campaign-projection";
 import { buildMarketingProjectDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-project-detail-view-model";
 import {
   getContentHref,
@@ -14,6 +18,7 @@ import {
   buildProjectCardSteps,
   remainingProjectSteps,
 } from "../lib/build-project-card-steps";
+import CampaignDetailSections from "../components/CampaignDetailSections";
 
 export type ProjectDetailTabProps = {
   peerId: string;
@@ -27,7 +32,14 @@ export default function ProjectDetailTab({
   domainInput,
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
+  const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
   const vm = buildMarketingProjectDetailViewModel({ ...domainInput, projectId });
+
+  const campaignDetail = useMemo(() => {
+    if (!campaignsEnabled || !vm) return null;
+    const source = buildMarketingCampaignDetailSourceFromDomainInput(domainInput, projectId);
+    return buildMarketingCampaignDetailViewModel(source);
+  }, [campaignsEnabled, domainInput, projectId, vm]);
 
   if (!vm) {
     return (
@@ -51,6 +63,13 @@ export default function ProjectDetailTab({
       <Link href={getProjectHref(peerId)} className="mw-detail-back pg-focus-premium">
         ← Projects
       </Link>
+
+      {campaignDetail ? (
+        <CampaignDetailSections
+          campaign={campaignDetail}
+          projectActivity={vm.timeline}
+        />
+      ) : null}
 
       <section className="mw-section mw-glass mw-detail-hero" style={{ animationDelay: "0.03s" }}>
         <div className="mw-project-head">
