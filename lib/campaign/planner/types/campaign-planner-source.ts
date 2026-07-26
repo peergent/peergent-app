@@ -81,6 +81,13 @@ export type CampaignPlannerExplicitDeliverable = {
   readonly planActivityReference?: string;
 };
 
+/** Adapter-supplied scope notes (peer-level intelligence linkage, etc.). Ignored by pure planner logic. */
+export type CampaignPlannerScopeNote = {
+  readonly id: string;
+  readonly kind: "uncertainty" | "evidence" | "gap";
+  readonly message: string;
+};
+
 /**
  * Readonly planner input — structured summaries only where possible.
  * Campaign is included as the coordination anchor; dependency domains stay summarized.
@@ -97,6 +104,7 @@ export type CampaignPlannerSource = {
   readonly existingWorkUnits?: readonly CampaignPlannerWorkUnitSummary[];
   readonly explicitChannels?: readonly string[];
   readonly explicitDeliverables?: readonly CampaignPlannerExplicitDeliverable[];
+  readonly scopeNotes?: readonly CampaignPlannerScopeNote[];
   readonly assembledAt: string;
   readonly version?: number;
 };

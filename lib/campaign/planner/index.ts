@@ -35,6 +35,7 @@ export type {
   CampaignPlannerPlanDependencySummary,
   CampaignPlannerPlanSummary,
   CampaignPlannerResponsibilitySummary,
+  CampaignPlannerScopeNote,
   CampaignPlannerSource,
   CampaignPlannerStrategySummary,
   CampaignPlannerWorkUnitSummary,
