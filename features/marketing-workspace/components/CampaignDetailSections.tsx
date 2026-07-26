@@ -20,7 +20,9 @@ import { presentCampaignDetailHero } from "../lib/campaign-detail-hero-presenter
 import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
 import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
+import CampaignStrategyWorkUnitAction from "./CampaignStrategyWorkUnitAction";
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
+import type { MarketingWorkUnitExecutionResult } from "@/lib/peer-experience/marketing/runtime";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
@@ -63,6 +65,10 @@ export type CampaignDetailSectionsProps = {
     projectId: string,
     input: CampaignOnboardingInput
   ) => Promise<CampaignOnboardingResult>;
+  onExecuteMarketingWorkUnit?: (
+    workUnitId: string
+  ) => Promise<MarketingWorkUnitExecutionResult>;
+  executingWorkUnitId?: string | null;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -90,6 +96,8 @@ export default function CampaignDetailSections({
   project,
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
+  onExecuteMarketingWorkUnit,
+  executingWorkUnitId,
 }: CampaignDetailSectionsProps) {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
@@ -301,6 +309,16 @@ export default function CampaignDetailSections({
 
       {executionPlan && showExecutionPlan ? (
         <CampaignExecutionPlanSection plan={executionPlan} />
+      ) : null}
+
+      {projectId && onExecuteMarketingWorkUnit ? (
+        <CampaignStrategyWorkUnitAction
+          projectId={projectId}
+          campaignsEnabled={campaignsEnabled}
+          workUnits={workUnits}
+          executingWorkUnitId={executingWorkUnitId}
+          onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+        />
       ) : null}
 
       <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>

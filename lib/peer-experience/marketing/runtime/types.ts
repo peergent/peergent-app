@@ -19,6 +19,17 @@ export type MarketingWorkUnitExecutionPhase =
   | "completed"
   | "failed";
 
+export type MarketingWorkUnitFailureStage =
+  | "resolve_work_unit"
+  | "resolve_project"
+  | "build_context"
+  | "assemble_decision"
+  | "assemble_brief"
+  | "generate_strategy"
+  | "validate_output"
+  | "save_strategy"
+  | "update_work_unit";
+
 export type MarketingPeerRuntimePersistencePort = {
   readonly saveStrategy: (strategy: MarketingStrategy) => void | Promise<void>;
   readonly updateWorkUnit: (unit: WorkUnit) => WorkUnit | Promise<WorkUnit>;
@@ -55,6 +66,7 @@ export type UnsupportedWorkUnitResult = {
   readonly code: "UnsupportedWorkUnit";
   readonly message: string;
   readonly workUnitId: string;
+  readonly failureStage: "resolve_work_unit";
 };
 
 export type MarketingWorkUnitExecutionFailure = {
@@ -63,9 +75,11 @@ export type MarketingWorkUnitExecutionFailure = {
     import("./errors").MarketingWorkUnitRuntimeErrorCode,
     "UnsupportedWorkUnit"
   >;
+  /** Customer-safe message — never raw provider or stack details. */
   readonly message: string;
   readonly workUnitId: string;
   readonly phase: MarketingWorkUnitExecutionPhase;
+  readonly failureStage: MarketingWorkUnitFailureStage;
   readonly workUnit?: WorkUnit;
 };
 

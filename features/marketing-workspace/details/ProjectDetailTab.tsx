@@ -40,6 +40,12 @@ export type ProjectDetailTabProps = {
   ) => Promise<
     import("@/lib/peer-experience/marketing/campaign-onboarding").CampaignOnboardingResult
   >;
+  onExecuteMarketingWorkUnit?: (
+    workUnitId: string
+  ) => Promise<
+    import("@/lib/peer-experience/marketing/runtime").MarketingWorkUnitExecutionResult
+  >;
+  executingWorkUnitId?: string | null;
 };
 
 export default function ProjectDetailTab({
@@ -48,6 +54,8 @@ export default function ProjectDetailTab({
   domainInput,
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
+  onExecuteMarketingWorkUnit,
+  executingWorkUnitId,
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
@@ -112,6 +120,8 @@ export default function ProjectDetailTab({
           project={project}
           onStartCampaignExecution={onStartCampaignExecution}
           onCompleteCampaignOnboarding={onCompleteCampaignOnboarding}
+          onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+          executingWorkUnitId={executingWorkUnitId}
         />
       </>
     );

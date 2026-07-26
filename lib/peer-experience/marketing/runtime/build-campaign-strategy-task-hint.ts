@@ -12,7 +12,7 @@ export function buildCampaignStrategyTaskHint(input: {
 }): string {
   const lines = [
     `Develop the campaign strategy for "${input.project.title}".`,
-    `Campaign goal: ${input.project.goal.trim() || input.campaign.description || "See campaign context."}`,
+    `Campaign goal: ${(input.project.goal ?? "").trim() || input.campaign.description || "See campaign context."}`,
     `Marketing decision objective: ${input.decision.objective}`,
   ];
 

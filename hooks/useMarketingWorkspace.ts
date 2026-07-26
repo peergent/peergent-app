@@ -47,6 +47,7 @@ import {
   resumeWorkUnit,
   transitionWorkUnit,
 } from "@/lib/peer-workflow";
+import { revertWorkUnitFromFailedExecution } from "@/lib/peer-workflow/work-unit-engine";
 import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import {
@@ -86,10 +87,18 @@ import {
   type CampaignExecutionWorkspaceResult,
   CampaignExecutionWorkspaceFeatureDisabledError,
 } from "@/lib/peer-experience/marketing/campaign-execution";
+import {
+  executeMarketingWorkUnitInWorkspace,
+  logMarketingWorkUnitExecutionFailure,
+  marketingWorkUnitExecutionResultFromError,
+  type MarketingWorkUnitExecutionResult,
+} from "@/lib/peer-experience/marketing/runtime";
 import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
 import { resolveCampaignTitle } from "@/lib/peer-experience/marketing/resolve-campaign-title";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import { createClient } from "@/lib/supabase/client";
+
+export type { MarketingWorkUnitExecutionResult } from "@/lib/peer-experience/marketing/runtime";
 
 export type MarketingWorkspacePageState =
   | "loading"
@@ -157,9 +166,12 @@ export function useMarketingWorkspace(
   const reloadUnderstandingRef = useRef<(() => Promise<void>) | null>(null);
   const projectsRef = useRef(projects);
   const workUnitsRef = useRef(workUnits);
+  const strategyRef = useRef(strategy);
+  const workUnitExecutionInFlightRef = useRef<string | null>(null);
 
   projectsRef.current = projects;
   workUnitsRef.current = workUnits;
+  strategyRef.current = strategy;
 
   pageStateRef.current = pageState;
   generatingRef.current = generating;
@@ -1631,6 +1643,180 @@ export function useMarketingWorkspace(
     [peerId, updateProjects, logActivity]
   );
 
+  const handleExecuteMarketingWorkUnit = useCallback(
+    async (workUnitId: string): Promise<MarketingWorkUnitExecutionResult> => {
+      const assembledAt = new Date().toISOString();
+
+      if (!peerId) {
+        return {
+          ok: false,
+          code: "WorkspaceUnavailable",
+          message: "Workspace unavailable.",
+          workUnitId,
+        };
+      }
+
+      if (workUnitExecutionInFlightRef.current) {
+        return {
+          ok: false,
+          code: "ExecutionInProgress",
+          message: "Another work unit is already executing.",
+          workUnitId,
+        };
+      }
+
+      workUnitExecutionInFlightRef.current = workUnitId;
+      setActiveWorkUnitId(workUnitId);
+      setApiWarnings([]);
+
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData.user?.id ?? organizationId;
+
+        const domainInput: MarketingPeerDomainInput = {
+          peerId,
+          organizationId,
+          userName: "You",
+          peerName: peer?.name ?? "Marketing",
+          campaignTitle: resolveCampaignTitle(plan, strategyRef.current),
+          generating,
+          generatingActivity,
+          understanding,
+          strategy: strategyRef.current,
+          plan,
+          drafts,
+          publicationPackages,
+          activityFeed,
+          workUnits: syncedWorkUnits,
+          projects: projectsRef.current,
+          responsibilities,
+          automations,
+          connections: loadIntegrationConnections(organizationId),
+          storedMetrics,
+          approvalOverlays,
+          insightRotation,
+          selectedWorkUnitId,
+          activeWorkUnitId: workUnitId,
+          selectedDraftId,
+        };
+
+        const result = await executeMarketingWorkUnitInWorkspace({
+          workUnitId,
+          organizationId,
+          userId,
+          domainInput,
+          assembledAt,
+          campaignWorkspaceEnabled: isMarketingCampaignWorkspaceEnabled(),
+          supabase,
+          getWorkspaceSnapshot: () => ({
+            workUnits: workUnitsRef.current,
+            strategy: strategyRef.current,
+          }),
+          commitWorkspaceState: (next) => {
+            const nextUnits = [...next.workUnits];
+            setWorkUnits(nextUnits);
+            setStrategy(next.strategy);
+            persistState({
+              workUnits: nextUnits,
+              strategy: next.strategy ?? undefined,
+            });
+          },
+        });
+
+        if (result.ok) {
+          setStrategy(result.strategy);
+          const nextUnits = workUnitsRef.current.map((unit) =>
+            unit.id === result.workUnit.id ? result.workUnit : unit
+          );
+          updateWorkUnits(nextUnits);
+
+          if (!result.idempotent) {
+            const project = projectsRef.current.find(
+              (p) => p.id === result.workUnit.projectId
+            );
+            logActivity(
+              createActivity(
+                "strategy_completed",
+                "Campaign strategy executed",
+                result.output.summary.slice(0, 140),
+                { relatedObject: project?.title ?? result.workUnit.title }
+              )
+            );
+          }
+
+          if (result.warnings.length > 0) {
+            setApiWarnings([...result.warnings]);
+          }
+        } else if (
+          !result.ok &&
+          "workUnit" in result &&
+          result.workUnit
+        ) {
+          const failedUnit = result.workUnit;
+          updateWorkUnits(
+            workUnitsRef.current.map((unit) =>
+              unit.id === failedUnit.id ? failedUnit : unit
+            )
+          );
+          setApiWarnings([result.message]);
+        } else if (!result.ok) {
+          setApiWarnings([result.message]);
+        }
+
+        return result;
+      } catch (error) {
+        logMarketingWorkUnitExecutionFailure({
+          failureStage: "update_work_unit",
+          code: "WorkspaceUnavailable",
+          workUnitId,
+          internalMessage:
+            error instanceof Error ? error.message : "Unhandled work unit execution error.",
+          error,
+        });
+        const stuck = workUnitsRef.current.find((u) => u.id === workUnitId);
+        if (stuck?.status === "creating") {
+          const reverted = revertWorkUnitFromFailedExecution(
+            stuck,
+            error instanceof Error ? error.message : "Execution failed."
+          );
+          const nextUnits = workUnitsRef.current.map((unit) =>
+            unit.id === reverted.id ? reverted : unit
+          );
+          updateWorkUnits(nextUnits);
+          persistState({ workUnits: nextUnits });
+        }
+        return marketingWorkUnitExecutionResultFromError(error, workUnitId);
+      } finally {
+        workUnitExecutionInFlightRef.current = null;
+        setActiveWorkUnitId(null);
+      }
+    },
+    [
+      peerId,
+      organizationId,
+      peer,
+      plan,
+      generating,
+      generatingActivity,
+      understanding,
+      drafts,
+      publicationPackages,
+      activityFeed,
+      syncedWorkUnits,
+      responsibilities,
+      automations,
+      storedMetrics,
+      approvalOverlays,
+      insightRotation,
+      selectedWorkUnitId,
+      selectedDraftId,
+      persistState,
+      updateWorkUnits,
+      logActivity,
+    ]
+  );
+
   return {
     peer,
     pageState,
@@ -1667,6 +1853,7 @@ export function useMarketingWorkspace(
     handleCreateCampaign,
     handleCompleteCampaignOnboarding,
     handleStartCampaignExecution,
+    handleExecuteMarketingWorkUnit,
     activeDelegation,
     syncedWorkUnits,
     projects,

@@ -105,6 +105,27 @@ export function transitionWorkUnit(
   };
 }
 
+/** Roll back from failed in-flight execution so the customer can retry explicitly. */
+export function revertWorkUnitFromFailedExecution(unit: WorkUnit, note: string): WorkUnit {
+  if (unit.cancelled) return unit;
+  const at = new Date().toISOString();
+  const trimmed = note.trim() || "Execution failed.";
+  const logEntry: WorkUnitEvent = {
+    id: eventId(),
+    at,
+    event: "planning_started",
+    fromStage: unit.status,
+    toStage: "planning",
+    note: `Execution rolled back for retry: ${trimmed}`,
+  };
+  return {
+    ...unit,
+    status: "planning",
+    updatedAt: at,
+    eventLog: [...unit.eventLog, logEntry],
+  };
+}
+
 export function attachDraftToWorkUnit(
   unit: WorkUnit,
   draft: MarketingContentDraft

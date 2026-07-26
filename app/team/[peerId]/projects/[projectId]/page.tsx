@@ -19,6 +19,8 @@ function ProjectDetailPageInner() {
           domainInput={domainInput}
           onStartCampaignExecution={workspace.handleStartCampaignExecution}
           onCompleteCampaignOnboarding={workspace.handleCompleteCampaignOnboarding}
+          onExecuteMarketingWorkUnit={workspace.handleExecuteMarketingWorkUnit}
+          executingWorkUnitId={workspace.activeWorkUnitId}
         />
       )}
     </MarketingPeerPageFrame>

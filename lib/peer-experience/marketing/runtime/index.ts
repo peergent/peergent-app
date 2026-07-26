@@ -15,5 +15,21 @@ export type {
   MarketingWorkUnitExecutionFailure,
   MarketingWorkUnitExecutionPhase,
   MarketingWorkUnitExecutionSuccess,
+  MarketingWorkUnitFailureStage,
   UnsupportedWorkUnitResult,
 } from "./types";
+export {
+  customerSafeExecutionMessage,
+  CUSTOMER_SAFE_EXECUTION_MESSAGES,
+  logMarketingWorkUnitExecutionFailure,
+} from "./marketing-work-unit-runtime-diagnostics";
+export {
+  executeMarketingWorkUnitInWorkspace,
+  marketingWorkUnitExecutionResultFromError,
+  MarketingWorkUnitExecutionFeatureDisabledError,
+  type ExecuteMarketingWorkUnitInWorkspaceArgs,
+  type MarketingWorkUnitExecutionResult,
+  type MarketingWorkUnitExecutionBusyResult,
+  type MarketingWorkUnitExecutionFeatureDisabledResult,
+  type MarketingWorkUnitExecutionWorkspaceUnavailableResult,
+} from "./execute-marketing-work-unit-workspace";

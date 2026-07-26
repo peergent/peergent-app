@@ -4,6 +4,7 @@ import { assembleMarketingDecision } from "@/lib/marketing-decision";
 import { generateMarketingStrategy } from "@/lib/marketing-intelligence/strategy/generate-marketing-strategy";
 import {
   recordWorkUnitNote,
+  revertWorkUnitFromFailedExecution,
   transitionWorkUnit,
 } from "@/lib/peer-workflow/work-unit-engine";
 import {
@@ -15,14 +16,20 @@ import { assembleCampaignForMarketingProject } from "../view-models/build-projec
 import { buildMarketingCampaignViewModelSourceFromDomainInput } from "../view-models/build-marketing-campaigns-view-model";
 import { buildCampaignStrategyTaskHint } from "./build-campaign-strategy-task-hint";
 import { buildMarketingDecisionSourceForCampaign } from "./build-marketing-decision-source-for-campaign";
+import type { MarketingWorkUnitRuntimeErrorCode } from "./errors";
 import { isCampaignStrategyWorkUnit } from "./identify-work-unit";
 import { mapMarketingStrategyToCampaignStrategyOutput } from "./map-campaign-strategy-output";
+import {
+  customerSafeExecutionMessage,
+  logMarketingWorkUnitExecutionFailure,
+} from "./marketing-work-unit-runtime-diagnostics";
 import { resolveCreativeBriefForCampaignStrategy } from "./resolve-creative-brief-for-campaign-strategy";
 import { validateCampaignStrategyWorkUnitOutput } from "./validate-campaign-strategy-output";
 import type {
   ExecuteMarketingWorkUnitInput,
   ExecuteMarketingWorkUnitResult,
   MarketingWorkUnitExecutionFailure,
+  MarketingWorkUnitFailureStage,
   MarketingWorkUnitRuntimeDeps,
 } from "./types";
 
@@ -78,11 +85,15 @@ function markCompleted(unit: import("@/lib/peer-workflow/work-unit").WorkUnit) {
   return next;
 }
 
-function markFailed(
+function restoreAfterFailedExecution(
   unit: import("@/lib/peer-workflow/work-unit").WorkUnit,
-  message: string
+  internalMessage: string
 ) {
-  return recordWorkUnitNote(unit, `${EXECUTION_FAILED_PREFIX} ${message}`);
+  const note = `${EXECUTION_FAILED_PREFIX} ${internalMessage}`;
+  if (unit.status === "creating") {
+    return revertWorkUnitFromFailedExecution(unit, internalMessage);
+  }
+  return recordWorkUnitNote(unit, note);
 }
 
 function hasCompletedStrategyExecution(unit: import("@/lib/peer-workflow/work-unit").WorkUnit): boolean {
@@ -104,20 +115,34 @@ function resolveDeps(
   };
 }
 
-function failure(
-  workUnitId: string,
-  code: MarketingWorkUnitExecutionFailure["code"],
-  message: string,
-  phase: MarketingWorkUnitExecutionFailure["phase"],
-  workUnit?: import("@/lib/peer-workflow/work-unit").WorkUnit
+function executionFailure(
+  input: {
+    workUnitId: string;
+    projectId?: string;
+    code: Exclude<MarketingWorkUnitRuntimeErrorCode, "UnsupportedWorkUnit">;
+    failureStage: MarketingWorkUnitFailureStage;
+    internalMessage: string;
+    phase: MarketingWorkUnitExecutionFailure["phase"];
+    workUnit?: import("@/lib/peer-workflow/work-unit").WorkUnit;
+    error?: unknown;
+  }
 ): MarketingWorkUnitExecutionFailure {
+  logMarketingWorkUnitExecutionFailure({
+    failureStage: input.failureStage,
+    code: input.code,
+    workUnitId: input.workUnitId,
+    projectId: input.projectId,
+    internalMessage: input.internalMessage,
+    error: input.error,
+  });
   return {
     ok: false,
-    code,
-    message,
-    workUnitId,
-    phase,
-    ...(workUnit ? { workUnit } : {}),
+    code: input.code,
+    message: customerSafeExecutionMessage(input.code),
+    workUnitId: input.workUnitId,
+    phase: input.phase,
+    failureStage: input.failureStage,
+    ...(input.workUnit ? { workUnit: input.workUnit } : {}),
   };
 }
 
@@ -133,38 +158,55 @@ export async function executeMarketingWorkUnit(
 
   const unit = domainInput.workUnits.find((u) => u.id === workUnitId);
   if (!unit) {
-    return failure(workUnitId, "ContextUnavailable", "Work unit not found.", "planning");
+    return executionFailure({
+      workUnitId,
+      code: "ContextUnavailable",
+      failureStage: "resolve_work_unit",
+      internalMessage: "Work unit not found.",
+      phase: "planning",
+    });
   }
 
   if (!isCampaignStrategyWorkUnit(unit)) {
+    logMarketingWorkUnitExecutionFailure({
+      failureStage: "resolve_work_unit",
+      code: "UnsupportedWorkUnit",
+      workUnitId,
+      projectId: unit.projectId ?? undefined,
+      internalMessage: "Work unit type is not supported by runtime.",
+    });
     return {
       ok: false,
       code: "UnsupportedWorkUnit",
       message: "This work unit type is not supported by the Marketing Peer runtime yet.",
       workUnitId,
+      failureStage: "resolve_work_unit",
     };
   }
 
   const projectId = unit.projectId?.trim();
   if (!projectId) {
-    return failure(
+    return executionFailure({
       workUnitId,
-      "ContextUnavailable",
-      "Campaign strategy work must be linked to a marketing project.",
-      "planning",
-      unit
-    );
+      code: "ContextUnavailable",
+      failureStage: "resolve_project",
+      internalMessage: "Campaign strategy work must be linked to a marketing project.",
+      phase: "planning",
+      workUnit: unit,
+    });
   }
 
   const project = domainInput.projects.find((p) => p.id === projectId);
   if (!project) {
-    return failure(
+    return executionFailure({
       workUnitId,
-      "ContextUnavailable",
-      "Marketing project not found for this work unit.",
-      "planning",
-      unit
-    );
+      projectId,
+      code: "ContextUnavailable",
+      failureStage: "resolve_project",
+      internalMessage: "Marketing project not found for this work unit.",
+      phase: "planning",
+      workUnit: unit,
+    });
   }
 
   if (hasCompletedStrategyExecution(unit) && domainInput.strategy) {
@@ -190,21 +232,47 @@ export async function executeMarketingWorkUnit(
 
   try {
     workingUnit = await persistWorkUnit(persistence, workingUnit);
-  } catch {
-    return failure(
+  } catch (error) {
+    return executionFailure({
       workUnitId,
-      "PersistenceFailure",
-      "Could not mark work unit as executing.",
-      "executing",
-      workingUnit
-    );
+      projectId,
+      code: "PersistenceFailure",
+      failureStage: "update_work_unit",
+      internalMessage: "Could not mark work unit as executing.",
+      phase: "executing",
+      workUnit: workingUnit,
+      error,
+    });
   }
 
   const vmSource = buildMarketingCampaignViewModelSourceFromDomainInput({
     ...domainInput,
     organizationId,
   });
-  const campaign = assembleCampaignForMarketingProject(project, vmSource);
+
+  let campaign;
+  let taskHint: string;
+
+  try {
+    campaign = assembleCampaignForMarketingProject(project, vmSource);
+  } catch (error) {
+    workingUnit = restoreAfterFailedExecution(
+      workingUnit,
+      error instanceof Error ? error.message : "Campaign projection failed."
+    );
+    await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "ContextUnavailable",
+      failureStage: "resolve_project",
+      internalMessage:
+        error instanceof Error ? error.message : "Campaign could not be resolved for this project.",
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
+  }
 
   let contextPackage;
   try {
@@ -215,13 +283,24 @@ export async function executeMarketingWorkUnit(
       taskHint: `Campaign strategy for ${project.title}`,
     });
   } catch (error) {
-    const message =
+    const internalMessage =
       error instanceof ContextEngineError
         ? error.message
-        : "Business context could not be loaded.";
-    workingUnit = markFailed(workingUnit, message);
+        : error instanceof Error
+          ? error.message
+          : "Business context could not be loaded.";
+    workingUnit = restoreAfterFailedExecution(workingUnit, internalMessage);
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(workUnitId, "ContextUnavailable", message, "failed", workingUnit);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "ContextUnavailable",
+      failureStage: "build_context",
+      internalMessage,
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
   }
 
   const decisionSource = buildMarketingDecisionSourceForCampaign({
@@ -236,18 +315,20 @@ export async function executeMarketingWorkUnit(
   try {
     decision = assembleMarketingDecision(decisionSource);
   } catch (error) {
-    const message =
+    const internalMessage =
       error instanceof Error ? error.message : "Marketing decision could not be resolved.";
-    workingUnit = markFailed(workingUnit, message);
+    workingUnit = restoreAfterFailedExecution(workingUnit, internalMessage);
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(workUnitId, "PromptBuildFailure", message, "failed", workingUnit);
-  }
-
-  if (decision.approvalPolicy.mode === "blocked_manual_only") {
-    const message = "Manual-only marketing policy blocks autonomous strategy execution.";
-    workingUnit = markFailed(workingUnit, message);
-    await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(workUnitId, "PromptBuildFailure", message, "failed", workingUnit);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "PromptBuildFailure",
+      failureStage: "assemble_decision",
+      internalMessage,
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
   }
 
   const briefResult = resolveCreativeBriefForCampaignStrategy({
@@ -256,25 +337,53 @@ export async function executeMarketingWorkUnit(
     decision,
   });
 
-  const taskHint = buildCampaignStrategyTaskHint({
-    project,
-    campaign,
-    decision,
-    ...(briefResult.brief ? { brief: briefResult.brief } : {}),
-  });
+  try {
+    taskHint = buildCampaignStrategyTaskHint({
+      project,
+      campaign,
+      decision,
+      ...(briefResult.brief ? { brief: briefResult.brief } : {}),
+    });
+  } catch (error) {
+    workingUnit = restoreAfterFailedExecution(
+      workingUnit,
+      error instanceof Error ? error.message : "Campaign strategy task hint failed."
+    );
+    await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "PromptBuildFailure",
+      failureStage: "assemble_brief",
+      internalMessage:
+        error instanceof Error ? error.message : "Campaign strategy task hint could not be built.",
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
+  }
 
   const generation = await deps.generateStrategy({ contextPackage, taskHint });
 
   if (!generation.success) {
-    const message = generation.error || "AI runtime failed to produce campaign strategy.";
-    const code = generation.error.toLowerCase().includes("understanding")
+    const internalMessage =
+      generation.error || "AI runtime failed to produce campaign strategy.";
+    const code = internalMessage.toLowerCase().includes("understanding")
       ? "ContextUnavailable"
-      : generation.error.toLowerCase().includes("marketing peer")
+      : internalMessage.toLowerCase().includes("marketing peer")
         ? "PromptBuildFailure"
         : "AIRuntimeFailure";
-    workingUnit = markFailed(workingUnit, message);
+    workingUnit = restoreAfterFailedExecution(workingUnit, internalMessage);
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(workUnitId, code, message, "failed", workingUnit);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code,
+      failureStage: "generate_strategy",
+      internalMessage,
+      phase: "failed",
+      workUnit: workingUnit,
+    });
   }
 
   const output = mapMarketingStrategyToCampaignStrategyOutput({
@@ -285,37 +394,51 @@ export async function executeMarketingWorkUnit(
 
   const validation = validateCampaignStrategyWorkUnitOutput(output);
   if (!validation.valid) {
-    const message = validation.errors.join(" ");
-    workingUnit = markFailed(workingUnit, message);
+    const internalMessage = validation.errors.join(" ");
+    workingUnit = restoreAfterFailedExecution(workingUnit, internalMessage);
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(workUnitId, "ValidationFailure", message, "failed", workingUnit);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "ValidationFailure",
+      failureStage: "validate_output",
+      internalMessage,
+      phase: "failed",
+      workUnit: workingUnit,
+    });
   }
 
   try {
     await Promise.resolve(persistence.saveStrategy(generation.strategy));
-  } catch {
-    workingUnit = markFailed(workingUnit, "Strategy could not be saved.");
+  } catch (error) {
+    workingUnit = restoreAfterFailedExecution(workingUnit, "Strategy could not be saved.");
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return failure(
+    return executionFailure({
       workUnitId,
-      "PersistenceFailure",
-      "Strategy could not be saved to the marketing workspace.",
-      "failed",
-      workingUnit
-    );
+      projectId,
+      code: "PersistenceFailure",
+      failureStage: "save_strategy",
+      internalMessage: "Strategy could not be saved to the marketing workspace.",
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
   }
 
   workingUnit = markCompleted(workingUnit);
   try {
     workingUnit = await persistWorkUnit(persistence, workingUnit);
-  } catch {
-    return failure(
+  } catch (error) {
+    return executionFailure({
       workUnitId,
-      "PersistenceFailure",
-      "Strategy was generated but the work unit could not be marked complete.",
-      "failed",
-      workingUnit
-    );
+      projectId,
+      code: "PersistenceFailure",
+      failureStage: "update_work_unit",
+      internalMessage: "Strategy was generated but the work unit could not be marked complete.",
+      phase: "failed",
+      workUnit: workingUnit,
+      error,
+    });
   }
 
   return {

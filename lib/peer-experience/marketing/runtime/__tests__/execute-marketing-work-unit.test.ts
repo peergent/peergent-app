@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { ContextEngineError } from "@/lib/context-engine/core/errors";
 import { assembleContextPackage } from "@/lib/context-engine/assembly/context-package";
+import * as marketingDecision from "@/lib/marketing-decision";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence";
 import { createMarketingCampaignProject } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { createWorkUnit, transitionWorkUnit } from "@/lib/peer-workflow/work-unit-engine";
@@ -238,7 +239,215 @@ describe("executeMarketingWorkUnit", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("ContextUnavailable");
+    expect(result.failureStage).toBe("build_context");
+    expect(result.message).toBe("More campaign information is required.");
     expect(result.phase).toBe("failed");
+    if ("workUnit" in result && result.workUnit) {
+      expect(result.workUnit.status).toBe("planning");
+    }
+  });
+
+  it("does not call strategy generation when context build fails", async () => {
+    const project = createMarketingCampaignProject({
+      peerId,
+      ownerLabel: "You",
+      name: "Launch",
+      goalLabel: "Awareness",
+      description: "Grow",
+      primaryGoalId: "brand_awareness",
+    });
+    const unit = campaignStrategyUnit(project.id);
+    const generateStrategy = vi.fn();
+
+    await executeMarketingWorkUnit({
+      workUnitId: unit.id,
+      organizationId,
+      userId,
+      assembledAt,
+      domainInput: domainInput({ projects: [project], workUnits: [unit] }),
+      persistence: {
+        saveStrategy: () => undefined,
+        updateWorkUnit: (u) => u,
+      },
+      deps: {
+        buildContext: vi.fn().mockRejectedValue(new ContextEngineError("Peer not found")),
+        generateStrategy,
+      },
+    });
+
+    expect(generateStrategy).not.toHaveBeenCalled();
+  });
+
+  it("surfaces assemble_decision stage when marketing decision assembly throws", async () => {
+    const project = createMarketingCampaignProject({
+      peerId,
+      ownerLabel: "You",
+      name: "Launch",
+      goalLabel: "Awareness",
+      description: "Grow",
+      primaryGoalId: "brand_awareness",
+    });
+    const unit = campaignStrategyUnit(project.id);
+    const contextPackage = assembleContextPackage(createMarketingBundle(), {
+      taskHint: "Campaign strategy",
+    });
+    const generateStrategy = vi.fn();
+    vi.spyOn(marketingDecision, "assembleMarketingDecision").mockImplementation(() => {
+      throw new Error("Decision assembly failed.");
+    });
+
+    const result = await executeMarketingWorkUnit({
+      workUnitId: unit.id,
+      organizationId,
+      userId,
+      assembledAt,
+      domainInput: domainInput({ projects: [project], workUnits: [unit] }),
+      persistence: {
+        saveStrategy: () => undefined,
+        updateWorkUnit: (u) => u,
+      },
+      deps: {
+        buildContext: vi.fn().mockResolvedValue(contextPackage),
+        generateStrategy,
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failureStage).toBe("assemble_decision");
+    expect(result.code).toBe("PromptBuildFailure");
+    expect(generateStrategy).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it("does not block strategy generation when marketing decision is blocked_manual_only", async () => {
+    const project = createMarketingCampaignProject({
+      peerId,
+      ownerLabel: "You",
+      name: "Launch",
+      goalLabel: "Awareness",
+      description: "Grow",
+      primaryGoalId: "brand_awareness",
+    });
+    const unit = campaignStrategyUnit(project.id);
+    const contextPackage = assembleContextPackage(createMarketingBundle(), {
+      taskHint: "Campaign strategy",
+    });
+    const generateStrategy = vi.fn().mockResolvedValue({
+      success: true,
+      strategy: sampleStrategy(),
+      warnings: [],
+      traceId: "trace-blocked-policy",
+    });
+
+    const result = await executeMarketingWorkUnit({
+      workUnitId: unit.id,
+      organizationId,
+      userId,
+      assembledAt,
+      domainInput: domainInput({
+        projects: [project],
+        workUnits: [unit],
+        responsibilities: [
+          {
+            id: "resp-suggest",
+            peerId,
+            title: "Social",
+            description: "d",
+            category: "linkedin",
+            goal: "g",
+            cadence: { type: "weekly" },
+            autonomyLevel: "suggest",
+            approvalPolicy: "approval_required",
+            priority: 1,
+            status: "enabled",
+            enabled: true,
+            guardrails: {},
+            createdAt: assembledAt,
+            updatedAt: assembledAt,
+          },
+        ],
+      }),
+      persistence: {
+        saveStrategy: () => undefined,
+        updateWorkUnit: (u) => u,
+      },
+      deps: {
+        buildContext: vi.fn().mockResolvedValue(contextPackage),
+        generateStrategy,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(generateStrategy).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows retry after a failed execution by rolling back from creating", async () => {
+    const project = createMarketingCampaignProject({
+      peerId,
+      ownerLabel: "You",
+      name: "Launch",
+      goalLabel: "Awareness",
+      description: "Grow",
+      primaryGoalId: "brand_awareness",
+    });
+    const unit = campaignStrategyUnit(project.id);
+    const contextPackage = assembleContextPackage(createMarketingBundle(), {
+      taskHint: "Campaign strategy",
+    });
+    const generateStrategy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        success: false,
+        error: "Model returned invalid JSON.",
+        warnings: [],
+        traceId: "t",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        strategy: sampleStrategy(),
+        warnings: [],
+        traceId: "t2",
+      });
+
+    const persistence = {
+      saveStrategy: () => undefined,
+      updateWorkUnit: vi.fn((u: typeof unit) => u),
+    };
+
+    const failed = await executeMarketingWorkUnit({
+      workUnitId: unit.id,
+      organizationId,
+      userId,
+      assembledAt,
+      domainInput: domainInput({ projects: [project], workUnits: [unit] }),
+      persistence,
+      deps: {
+        buildContext: vi.fn().mockResolvedValue(contextPackage),
+        generateStrategy,
+      },
+    });
+
+    expect(failed.ok).toBe(false);
+    if (failed.ok || !("workUnit" in failed) || !failed.workUnit) return;
+    expect(failed.failureStage).toBe("generate_strategy");
+    expect(failed.workUnit.status).toBe("planning");
+
+    const retry = await executeMarketingWorkUnit({
+      workUnitId: unit.id,
+      organizationId,
+      userId,
+      assembledAt,
+      domainInput: domainInput({ projects: [project], workUnits: [failed.workUnit] }),
+      persistence,
+      deps: {
+        buildContext: vi.fn().mockResolvedValue(contextPackage),
+        generateStrategy,
+      },
+    });
+
+    expect(retry.ok).toBe(true);
+    expect(generateStrategy).toHaveBeenCalledTimes(2);
   });
 
   it("surfaces AIRuntimeFailure when AI generation fails", async () => {
@@ -279,6 +488,10 @@ describe("executeMarketingWorkUnit", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("AIRuntimeFailure");
+    expect(result.failureStage).toBe("generate_strategy");
+    expect(result.message).toBe(
+      "Marketing Peer could not prepare the strategy. Please try again."
+    );
   });
 
   it("surfaces ValidationFailure when mapped output is incomplete", async () => {
