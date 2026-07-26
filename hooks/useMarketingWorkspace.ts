@@ -72,6 +72,17 @@ import {
   findPlanActivityForDelegation,
 } from "@/lib/peer-experience/marketing/resolve-delegation-plan-activity";
 import { delegationTaskTitle } from "@/lib/peer-experience/marketing/parse-delegation-intent";
+import {
+  CAMPAIGN_EXECUTION_ACTIVITY_TITLE,
+  campaignExecutionWorkspaceResultFromError,
+  executeMarketingCampaign,
+  shouldAppendCampaignExecutionActivity,
+  type CampaignExecutionWorkspaceResult,
+  CampaignExecutionWorkspaceFeatureDisabledError,
+} from "@/lib/peer-experience/marketing/campaign-execution";
+import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
+import { resolveCampaignTitle } from "@/lib/peer-experience/marketing/resolve-campaign-title";
+import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import { createClient } from "@/lib/supabase/client";
 
 export type MarketingWorkspacePageState =
@@ -138,6 +149,11 @@ export function useMarketingWorkspace(
   const generatingRef = useRef<GeneratingAction>(null);
   const reloadGuardRef = useRef(createReloadGuard());
   const reloadUnderstandingRef = useRef<(() => Promise<void>) | null>(null);
+  const projectsRef = useRef(projects);
+  const workUnitsRef = useRef(workUnits);
+
+  projectsRef.current = projects;
+  workUnitsRef.current = workUnits;
 
   pageStateRef.current = pageState;
   generatingRef.current = generating;
@@ -1419,6 +1435,124 @@ export function useMarketingWorkspace(
     [peerId, projects, updateProjects, logActivity]
   );
 
+  const handleStartCampaignExecution = useCallback(
+    async (projectId: string): Promise<CampaignExecutionWorkspaceResult> => {
+      const executedAt = new Date().toISOString();
+      if (!peerId) {
+        return campaignExecutionWorkspaceResultFromError(
+          new Error("Workspace unavailable."),
+          executedAt,
+          projectId
+        );
+      }
+
+      const domainInput: MarketingPeerDomainInput = {
+        peerId,
+        organizationId,
+        userName: "You",
+        peerName: peer?.name ?? "Marketing",
+        campaignTitle: resolveCampaignTitle(plan, strategy),
+        generating,
+        generatingActivity,
+        understanding,
+        strategy,
+        plan,
+        drafts,
+        publicationPackages,
+        activityFeed,
+        workUnits: syncedWorkUnits,
+        projects: projectsRef.current,
+        responsibilities,
+        automations,
+        connections: loadIntegrationConnections(organizationId),
+        storedMetrics,
+        approvalOverlays,
+        insightRotation,
+        selectedWorkUnitId,
+        activeWorkUnitId,
+        selectedDraftId,
+      };
+
+      try {
+        const result = await executeMarketingCampaign({
+          projectId,
+          domainInput,
+          requestedBy: organizationId,
+          executedAt,
+          campaignWorkspaceEnabled: isMarketingCampaignWorkspaceEnabled(),
+          getWorkspaceSnapshot: () => ({
+            projects: projectsRef.current,
+            workUnits: workUnitsRef.current,
+          }),
+          commitWorkspaceState: (next) => {
+            const nextProjects = [...next.projects];
+            const nextWorkUnits = [...next.workUnits];
+            setProjects(nextProjects);
+            setWorkUnits(nextWorkUnits);
+            persistState({ projects: nextProjects, workUnits: nextWorkUnits });
+          },
+        });
+
+        if (shouldAppendCampaignExecutionActivity(result.status)) {
+          const project = projectsRef.current.find((p) => p.id === projectId);
+          logActivity(
+            createActivity(
+              "plan_completed",
+              CAMPAIGN_EXECUTION_ACTIVITY_TITLE,
+              project?.goal ?? "Campaign execution work units were created.",
+              { relatedObject: project?.title ?? projectId }
+            )
+          );
+        }
+
+        return result;
+      } catch (error) {
+        if (error instanceof CampaignExecutionWorkspaceFeatureDisabledError) {
+          return {
+            status: "restricted",
+            campaignId: projectId,
+            plannerStatus: "draft",
+            executionStatus: "restricted",
+            createdWorkUnitIds: [],
+            updatedWorkUnitIds: [],
+            campaignUpdated: false,
+            warnings: [],
+            nextAction: {
+              label: "Campaign workspace disabled",
+              reason: error.message,
+            },
+            executedAt,
+          };
+        }
+        return campaignExecutionWorkspaceResultFromError(error, executedAt, projectId);
+      }
+    },
+    [
+      peerId,
+      organizationId,
+      peer,
+      plan,
+      strategy,
+      generating,
+      generatingActivity,
+      understanding,
+      drafts,
+      publicationPackages,
+      activityFeed,
+      syncedWorkUnits,
+      responsibilities,
+      automations,
+      storedMetrics,
+      approvalOverlays,
+      insightRotation,
+      selectedWorkUnitId,
+      activeWorkUnitId,
+      selectedDraftId,
+      persistState,
+      logActivity,
+    ]
+  );
+
   return {
     peer,
     pageState,
@@ -1453,6 +1587,7 @@ export function useMarketingWorkspace(
     executeRecommendedAction,
     handleExecuteDelegation,
     handleCreateCampaign,
+    handleStartCampaignExecution,
     activeDelegation,
     syncedWorkUnits,
     projects,
