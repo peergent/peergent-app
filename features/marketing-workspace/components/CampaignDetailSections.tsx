@@ -15,6 +15,8 @@ import {
   presentCampaignConciseGoal,
   presentCampaignProgressLabel,
 } from "../lib/campaign-detail-presenter";
+import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
+import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 
 export type CampaignDetailMeta = {
   ownerLabel: string;
@@ -31,6 +33,7 @@ export type CampaignDetailSectionsProps = {
   questions?: readonly ProjectQuestion[];
   peerName?: string;
   conversation?: readonly ProjectConversationEntry[];
+  executionPlan?: CampaignExecutionPlanViewModel | null;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -49,6 +52,7 @@ export default function CampaignDetailSections({
   questions = [],
   peerName,
   conversation = [],
+  executionPlan,
 }: CampaignDetailSectionsProps) {
   const progressLabel = presentCampaignProgressLabel(campaign);
   const goalLine = presentCampaignConciseGoal(campaign);
@@ -134,6 +138,8 @@ export default function CampaignDetailSections({
             <p className="mw-empty-inline">Campaign details will appear as planning progresses.</p>
           )}
       </div>
+
+      {executionPlan ? <CampaignExecutionPlanSection plan={executionPlan} /> : null}
 
       <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <div className="mw-section-title" style={{ marginBottom: 10 }}>

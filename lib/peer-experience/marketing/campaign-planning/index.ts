@@ -1,4 +1,18 @@
 export {
+  buildCampaignExecutionPlanViewModel,
+  buildCampaignExecutionPlanViewModelOrUnavailable,
+  type BuildCampaignExecutionPlanViewModelInput,
+} from "./build-campaign-execution-plan-view-model";
+
+export type {
+  CampaignExecutionPlanApprovalMomentViewModel,
+  CampaignExecutionPlanPhaseViewModel,
+  CampaignExecutionPlanViewModel,
+  CampaignExecutionPlanViewModelResult,
+  CampaignExecutionPlanWorkItemViewModel,
+} from "./campaign-execution-plan-view-model";
+
+export {
   buildCampaignPlannerSourceFromDomainInput,
   type BuildCampaignPlannerSourceFromDomainInputArgs,
 } from "./build-campaign-planner-source-from-domain-input";

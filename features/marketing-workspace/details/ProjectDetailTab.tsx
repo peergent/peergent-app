@@ -23,6 +23,7 @@ import {
   remainingProjectSteps,
 } from "../lib/build-project-card-steps";
 import CampaignDetailSections from "../components/CampaignDetailSections";
+import { buildCampaignExecutionPlanViewModelOrUnavailable } from "@/lib/peer-experience/marketing/campaign-planning/build-campaign-execution-plan-view-model";
 
 export type ProjectDetailTabProps = {
   peerId: string;
@@ -65,6 +66,12 @@ export default function ProjectDetailTab({
   );
 
   if (showCampaignExperience && campaignDetail) {
+    const executionPlan = buildCampaignExecutionPlanViewModelOrUnavailable({
+      projectId,
+      domainInput,
+      assembledAt: project!.updatedAt,
+    });
+
     return (
       <>
         <Link href={getProjectHref(peerId)} className="mw-detail-back pg-focus-premium">
@@ -73,6 +80,7 @@ export default function ProjectDetailTab({
         <CampaignDetailSections
           campaign={campaignDetail}
           projectActivity={vm.timeline}
+          executionPlan={executionPlan}
           campaignMeta={{
             ownerLabel: vm.ownerLabel,
             campaignTypeLabel: vm.campaignTypeLabel,
