@@ -12,11 +12,12 @@ function ProjectDetailPageInner() {
 
   return (
     <MarketingPeerPageFrame activeTab="work">
-      {({ domainInput }) => (
+      {({ domainInput, workspace }) => (
         <ProjectDetailTab
           peerId={peerId}
           projectId={decodeURIComponent(projectId)}
           domainInput={domainInput}
+          onStartCampaignExecution={workspace.handleStartCampaignExecution}
         />
       )}
     </MarketingPeerPageFrame>
