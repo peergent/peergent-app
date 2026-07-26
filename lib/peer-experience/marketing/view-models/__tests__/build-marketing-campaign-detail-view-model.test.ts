@@ -5,7 +5,7 @@ import type { MarketingContentDraft } from "@/lib/marketing-intelligence";
 import type { MarketingPlan } from "@/lib/marketing-intelligence/types/plan";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence/types/strategy";
 
-import { deriveMarketingCampaignNextAction } from "../build-marketing-campaign-detail-view-model";
+import { deriveMarketingCampaignNextAction } from "../marketing-campaign-next-action";
 import { buildMarketingCampaignDetailViewModel } from "../build-marketing-campaign-detail-view-model";
 import { MARKETING_PLAN_FALLBACK_CAMPAIGN_ID } from "../build-marketing-campaigns-view-model";
 

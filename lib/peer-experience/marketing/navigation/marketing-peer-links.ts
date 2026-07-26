@@ -88,6 +88,11 @@ export function getProjectHref(peerId: string, projectId?: string, section?: str
   return `${base}?${params.toString()}`;
 }
 
+/** Campaign cards reuse the project detail route when a matching project exists. */
+export function getMarketingCampaignHref(peerId: string, campaignId: string): string {
+  return getProjectHref(peerId, campaignId);
+}
+
 export function getProjectReviewHref(
   peerId: string,
   projectId: string,

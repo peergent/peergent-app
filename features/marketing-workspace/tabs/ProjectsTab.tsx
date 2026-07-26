@@ -20,6 +20,8 @@ import {
   buildProjectCardSteps,
   remainingProjectSteps,
 } from "../lib/build-project-card-steps";
+import MarketingCampaignsSection from "../components/MarketingCampaignsSection";
+import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
 
 function scheduledDraftIds(
   overlays: MarketingPeerDomainInput["approvalOverlays"]
@@ -54,7 +56,14 @@ export default function ProjectsTab({ peerId, domainInput }: ProjectsTabProps) {
     [domainInput, filter]
   );
 
+  const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
+
   return (
+    <>
+      {campaignsEnabled ? (
+        <MarketingCampaignsSection peerId={peerId} domainInput={domainInput} />
+      ) : null}
+
     <section className="mw-section" style={{ animationDelay: "0.05s", marginBottom: 0 }}>
       <div className="mw-section-head">
         <div className="mw-section-title">
@@ -142,5 +151,6 @@ export default function ProjectsTab({ peerId, domainInput }: ProjectsTabProps) {
         </div>
       )}
     </section>
+    </>
   );
 }

@@ -138,7 +138,9 @@ describe("buildMarketingCampaignsViewModel", () => {
     expect(vm.items[0]?.progressKnown).toBe(true);
     expect(vm.items[0]?.creativeBriefCount).toBe(2);
     expect(vm.items[0]?.approvalCount).toBe(1);
-    expect(vm.items[0]?.href).toBe("/team/peer-emma/projects/campaign-1");
+    expect(vm.items[0]?.href).toBe("");
+    expect(vm.items[0]?.linkEnabled).toBe(false);
+    expect(vm.items[0]?.nextAction.label).toBeTruthy();
   });
 
   it("falls back to strategy/plan without inventing brief counts", () => {
@@ -154,6 +156,7 @@ describe("buildMarketingCampaignsViewModel", () => {
     expect(vm.items[0]?.status).toBe("planning");
     expect(vm.items[0]?.progressKnown).toBe(false);
     expect(vm.items[0]?.creativeBriefCount).toBe(0);
+    expect(vm.items[0]?.linkEnabled).toBe(false);
     expect(vm.items[0]?.generatedContentCount).toBe(1);
   });
 

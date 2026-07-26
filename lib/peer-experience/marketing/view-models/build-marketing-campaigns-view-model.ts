@@ -7,11 +7,12 @@ import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 
 import {
   getContentHref,
-  getPerformanceHref,
-  getProjectHref,
+  getMarketingCampaignHref,
   getReviewHref,
 } from "../navigation/marketing-peer-links";
 import { humanChannelLabel } from "../publish-preview-formatters";
+import type { MarketingPeerDomainInput } from "./marketing-peer-domain-input";
+import { deriveMarketingCampaignNextAction } from "./marketing-campaign-next-action";
 import type {
   MarketingCampaignCardViewModel,
   MarketingCampaignsViewModel,
@@ -25,6 +26,8 @@ import {
 
 export const MARKETING_PLAN_FALLBACK_CAMPAIGN_ID = "marketing-plan-campaign";
 
+export { getMarketingCampaignHref } from "../navigation/marketing-peer-links";
+
 const INTERNAL_WARNING_PATTERNS = [
   /assembly/i,
   /trace/i,
@@ -35,10 +38,6 @@ const INTERNAL_WARNING_PATTERNS = [
   /creative brief engine/i,
   /evidence/i,
 ];
-
-export function getMarketingCampaignHref(peerId: string, campaignId: string): string {
-  return getProjectHref(peerId, campaignId);
-}
 
 export function sanitizeCustomerCampaignWarnings(
   warnings: readonly string[] | undefined
@@ -146,6 +145,69 @@ export function fallbackCampaignProgress(): { progress: number; progressKnown: b
   return { progress: 0, progressKnown: false };
 }
 
+export function buildMarketingCampaignViewModelSourceFromDomainInput(
+  input: MarketingPeerDomainInput
+): MarketingCampaignViewModelSource {
+  return {
+    peerId: input.peerId,
+    organizationId: input.organizationId,
+    peerName: input.peerName,
+    strategy: input.strategy,
+    plan: input.plan,
+    selectedPlanActivities: input.plan?.contentCalendar,
+    drafts: input.drafts,
+    workUnits: input.workUnits,
+    projects: input.projects,
+    responsibilities: input.responsibilities,
+  };
+}
+
+function resolveCampaignCardNavigation(
+  source: MarketingCampaignViewModelSource,
+  campaignId: string
+): { href: string; linkEnabled: boolean } {
+  if (campaignId === MARKETING_PLAN_FALLBACK_CAMPAIGN_ID) {
+    return { href: "", linkEnabled: false };
+  }
+  const hasProject = (source.projects ?? []).some((project) => project.id === campaignId);
+  if (!hasProject) {
+    return { href: "", linkEnabled: false };
+  }
+  return {
+    href: getMarketingCampaignHref(source.peerId, campaignId),
+    linkEnabled: true,
+  };
+}
+
+function buildCardNextAction(
+  source: MarketingCampaignViewModelSource,
+  input: {
+    campaignId: string;
+    status: Campaign["execution"]["status"];
+    approvalCount: number;
+    blockedItemCount: number;
+    draftIds: string[];
+    planActivityCount: number;
+  }
+): MarketingCampaignCardViewModel["nextAction"] {
+  const drafts = source.drafts ?? [];
+  const hasPublished = drafts.some(
+    (d) => input.draftIds.includes(d.id) && d.status === "published"
+  );
+  return deriveMarketingCampaignNextAction({
+    peerId: source.peerId,
+    campaignId: input.campaignId,
+    status: input.status,
+    approvalCount: input.approvalCount,
+    blockedItemCount: input.blockedItemCount,
+    draftIds: input.draftIds,
+    drafts,
+    planActivityCount: input.planActivityCount,
+    performanceKnown: false,
+    hasPublishedContent: hasPublished,
+  });
+}
+
 function campaignCardFromAssembled(
   campaign: Campaign,
   source: MarketingCampaignViewModelSource
@@ -161,6 +223,9 @@ function campaignCardFromAssembled(
     source.workUnits ?? []
   );
   const recommendation = campaign.performance.recommendations[0]?.summary;
+  const navigation = resolveCampaignCardNavigation(source, campaign.id);
+  const planActivityCount =
+    source.selectedPlanActivities?.length ?? source.plan?.contentCalendar.length ?? 0;
 
   return {
     id: campaign.id,
@@ -181,7 +246,16 @@ function campaignCardFromAssembled(
     recommendationSummary: recommendation,
     assignedWorkforce: mapCampaignWorkforce(campaign),
     lastUpdated: campaign.updatedAt,
-    href: getMarketingCampaignHref(source.peerId, campaign.id),
+    href: navigation.href,
+    linkEnabled: navigation.linkEnabled,
+    nextAction: buildCardNextAction(source, {
+      campaignId: campaign.id,
+      status: campaign.execution.status,
+      approvalCount,
+      blockedItemCount,
+      draftIds,
+      planActivityCount,
+    }),
   };
 }
 
@@ -216,6 +290,16 @@ function fallbackCampaignCard(source: MarketingCampaignViewModelSource): Marketi
     "";
 
   const channels = collectFallbackChannels(source.plan, source.selectedPlanActivities);
+  const navigation = resolveCampaignCardNavigation(source, campaignId);
+  const planActivityCount =
+    source.selectedPlanActivities?.length ?? source.plan?.contentCalendar.length ?? 0;
+  const approvalCount = countPendingApprovals(draftIds, drafts);
+  const blockedItemCount = countBlockedItems(
+    undefined,
+    draftIds,
+    drafts,
+    source.workUnits ?? []
+  );
 
   return {
     id: campaignId,
@@ -229,14 +313,23 @@ function fallbackCampaignCard(source: MarketingCampaignViewModelSource): Marketi
     audienceSummary,
     channels,
     timelineSummary: formatCampaignTimelineSummary(undefined, source.plan),
-    approvalCount: countPendingApprovals(draftIds, drafts),
+    approvalCount,
     generatedContentCount: draftIds.length,
     creativeBriefCount: briefIds.length,
-    blockedItemCount: countBlockedItems(undefined, draftIds, drafts, source.workUnits ?? []),
+    blockedItemCount,
     recommendationSummary: undefined,
     assignedWorkforce: mapResponsibilityWorkforce(source),
     lastUpdated: source.plan?.generatedAt ?? source.strategy?.generatedAt ?? new Date(0).toISOString(),
-    href: getMarketingCampaignHref(source.peerId, campaignId),
+    href: navigation.href,
+    linkEnabled: navigation.linkEnabled,
+    nextAction: buildCardNextAction(source, {
+      campaignId,
+      status,
+      approvalCount,
+      blockedItemCount,
+      draftIds,
+      planActivityCount,
+    }),
   };
 }
 

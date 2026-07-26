@@ -49,7 +49,13 @@ export type MarketingCampaignCardViewModel = {
   readonly recommendationSummary?: string;
   readonly assignedWorkforce: readonly MarketingCampaignWorkforceItem[];
   readonly lastUpdated: string;
+  /** When false, UI renders a read-only card (no project detail route yet). */
+  readonly linkEnabled: boolean;
   readonly href: string;
+  readonly nextAction: {
+    readonly label: string;
+    readonly href: string;
+  };
 };
 
 export type MarketingCampaignsViewModel = {
