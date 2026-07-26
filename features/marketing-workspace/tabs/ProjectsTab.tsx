@@ -44,11 +44,17 @@ function statusDisplay(statusLabel: string): { className: string; live: boolean 
 export type ProjectsTabProps = {
   peerId: string;
   domainInput: MarketingPeerDomainInput;
+  onCreateCampaign?: () => void;
 };
 
-export default function ProjectsTab({ peerId, domainInput }: ProjectsTabProps) {
+export default function ProjectsTab({
+  peerId,
+  domainInput,
+  onCreateCampaign,
+}: ProjectsTabProps) {
   const searchParams = useSearchParams();
   const filter = (searchParams.get("filter") as MarketingProjectFilter) ?? "active";
+
   const scheduled = useMemo(() => scheduledDraftIds(domainInput.approvalOverlays), [domainInput.approvalOverlays]);
 
   const vm = useMemo(
@@ -70,9 +76,14 @@ export default function ProjectsTab({ peerId, domainInput }: ProjectsTabProps) {
           <Megaphone size={15} aria-hidden />
           Where {domainInput.peerName} is working
         </div>
-        <Link href={getWorkHref(peerId)} className="mw-section-link">
+        <button
+          type="button"
+          className="mw-btn-primary pg-focus-premium"
+          data-testid="mw-new-project"
+          onClick={() => onCreateCampaign?.()}
+        >
           New project
-        </Link>
+        </button>
       </div>
 
       <div className="mw-content-filters" style={{ marginBottom: 16 }}>

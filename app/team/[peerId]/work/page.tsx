@@ -8,7 +8,13 @@ function WorkPageInner() {
   return (
     <MarketingPeerPageFrame activeTab="work">
       {({ peerId, domainInput }) => (
-        <ProjectsTab peerId={peerId} domainInput={domainInput} />
+        <ProjectsTab
+          peerId={peerId}
+          domainInput={domainInput}
+          onCreateCampaign={() => {
+            // TODO: Sprint 15+ — wire dedicated campaign/project creation (not Create post modal).
+          }}
+        />
       )}
     </MarketingPeerPageFrame>
   );
