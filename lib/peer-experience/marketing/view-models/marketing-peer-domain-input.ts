@@ -4,6 +4,7 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import type { CreativeBrief } from "@/lib/creative-brief";
 import type { ActivityFeedItem } from "@/lib/marketing-workspace";
 import type { GeneratingActivity } from "@/lib/marketing-workspace/workflow-focus";
 import type { IntegrationConnection } from "@/lib/integrations/types";
@@ -26,6 +27,7 @@ export type MarketingPeerDomainInput = {
   generatingActivity: string | null;
   understanding: MarketingUnderstanding | null;
   strategy: MarketingStrategy | null;
+  creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
   plan: MarketingPlan | null;
   drafts: MarketingContentDraft[];
   publicationPackages: PublicationPackage[];

@@ -7,6 +7,7 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import type { CreativeBrief } from "@/lib/creative-brief";
 import { isDraftablePlanActivity } from "@/lib/marketing-intelligence";
 import {
   applyUnderstandingToWorkspace,
@@ -125,6 +126,9 @@ export function useMarketingWorkspace(
   const [understanding, setUnderstanding] = useState<MarketingUnderstanding | null>(null);
   const [profileCounts, setProfileCounts] = useState({ goals: 0, content: 0 });
   const [strategy, setStrategy] = useState<MarketingStrategy | null>(null);
+  const [creativeBriefByCampaignId, setCreativeBriefByCampaignId] = useState<
+    Record<string, CreativeBrief>
+  >({});
   const [plan, setPlan] = useState<MarketingPlan | null>(null);
   const [drafts, setDrafts] = useState<MarketingContentDraft[]>([]);
   const [publicationPackages, setPublicationPackages] = useState<PublicationPackage[]>([]);
@@ -167,11 +171,13 @@ export function useMarketingWorkspace(
   const projectsRef = useRef(projects);
   const workUnitsRef = useRef(workUnits);
   const strategyRef = useRef(strategy);
+  const creativeBriefByCampaignIdRef = useRef(creativeBriefByCampaignId);
   const workUnitExecutionInFlightRef = useRef<string | null>(null);
 
   projectsRef.current = projects;
   workUnitsRef.current = workUnits;
   strategyRef.current = strategy;
+  creativeBriefByCampaignIdRef.current = creativeBriefByCampaignId;
 
   pageStateRef.current = pageState;
   generatingRef.current = generating;
@@ -179,6 +185,7 @@ export function useMarketingWorkspace(
   const persistState = useCallback(
     (patch: {
       strategy?: MarketingStrategy | null;
+      creativeBriefByCampaignId?: Record<string, CreativeBrief>;
       plan?: MarketingPlan | null;
       drafts?: MarketingContentDraft[];
       publicationPackages?: PublicationPackage[];
@@ -196,6 +203,9 @@ export function useMarketingWorkspace(
       patchMarketingWorkspaceState(peerId, {
         ...(patch.strategy !== undefined
           ? { strategy: patch.strategy ?? undefined }
+          : {}),
+        ...(patch.creativeBriefByCampaignId !== undefined
+          ? { creativeBriefByCampaignId: patch.creativeBriefByCampaignId }
           : {}),
         ...(patch.plan !== undefined ? { plan: patch.plan ?? undefined } : {}),
         ...(patch.drafts !== undefined ? { drafts: patch.drafts } : {}),
@@ -295,6 +305,7 @@ export function useMarketingWorkspace(
 
       const stored = loadMarketingWorkspaceState(peerId);
       setStrategy(stored.strategy ?? null);
+      setCreativeBriefByCampaignId(stored.creativeBriefByCampaignId ?? {});
       setPlan(stored.plan ?? null);
       setDrafts(stored.drafts ?? []);
       setPublicationPackages(stored.publicationPackages ?? []);
@@ -1684,6 +1695,7 @@ export function useMarketingWorkspace(
           generatingActivity,
           understanding,
           strategy: strategyRef.current,
+          creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
           plan,
           drafts,
           publicationPackages,
@@ -1712,34 +1724,56 @@ export function useMarketingWorkspace(
           getWorkspaceSnapshot: () => ({
             workUnits: workUnitsRef.current,
             strategy: strategyRef.current,
+            creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
           }),
           commitWorkspaceState: (next) => {
             const nextUnits = [...next.workUnits];
             setWorkUnits(nextUnits);
             setStrategy(next.strategy);
+            setCreativeBriefByCampaignId({ ...next.creativeBriefByCampaignId });
             persistState({
               workUnits: nextUnits,
               strategy: next.strategy ?? undefined,
+              creativeBriefByCampaignId: { ...next.creativeBriefByCampaignId },
             });
           },
         });
 
         if (result.ok) {
-          setStrategy(result.strategy);
           const nextUnits = workUnitsRef.current.map((unit) =>
             unit.id === result.workUnit.id ? result.workUnit : unit
           );
           updateWorkUnits(nextUnits);
 
-          if (!result.idempotent) {
-            const project = projectsRef.current.find(
-              (p) => p.id === result.workUnit.projectId
-            );
+          if (result.kind === "campaign_strategy") {
+            setStrategy(result.strategy);
+            if (!result.idempotent) {
+              const project = projectsRef.current.find(
+                (p) => p.id === result.workUnit.projectId
+              );
+              logActivity(
+                createActivity(
+                  "strategy_completed",
+                  "Campaign strategy executed",
+                  result.output.summary.slice(0, 140),
+                  { relatedObject: project?.title ?? result.workUnit.title }
+                )
+              );
+            }
+          } else if (!result.idempotent) {
+            const projectId = result.workUnit.projectId;
+            if (projectId) {
+              setCreativeBriefByCampaignId((prev) => ({
+                ...prev,
+                [projectId]: result.brief,
+              }));
+            }
+            const project = projectsRef.current.find((p) => p.id === result.workUnit.projectId);
             logActivity(
               createActivity(
                 "strategy_completed",
-                "Campaign strategy executed",
-                result.output.summary.slice(0, 140),
+                "Creative direction executed",
+                result.output.campaignConcept.slice(0, 140),
                 { relatedObject: project?.title ?? result.workUnit.title }
               )
             );

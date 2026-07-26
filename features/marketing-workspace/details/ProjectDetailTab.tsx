@@ -122,6 +122,7 @@ export default function ProjectDetailTab({
           onCompleteCampaignOnboarding={onCompleteCampaignOnboarding}
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
           executingWorkUnitId={executingWorkUnitId}
+          campaignStrategy={domainInput.strategy}
         />
       </>
     );

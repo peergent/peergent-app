@@ -21,6 +21,7 @@ import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marke
 import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
 import CampaignStrategyWorkUnitAction from "./CampaignStrategyWorkUnitAction";
+import CampaignCreativeDirectionWorkUnitAction from "./CampaignCreativeDirectionWorkUnitAction";
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { MarketingWorkUnitExecutionResult } from "@/lib/peer-experience/marketing/runtime";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
@@ -69,6 +70,7 @@ export type CampaignDetailSectionsProps = {
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
   executingWorkUnitId?: string | null;
+  campaignStrategy?: import("@/lib/marketing-intelligence").MarketingStrategy | null;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -98,6 +100,7 @@ export default function CampaignDetailSections({
   onCompleteCampaignOnboarding,
   onExecuteMarketingWorkUnit,
   executingWorkUnitId,
+  campaignStrategy = null,
 }: CampaignDetailSectionsProps) {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
@@ -316,6 +319,17 @@ export default function CampaignDetailSections({
           projectId={projectId}
           campaignsEnabled={campaignsEnabled}
           workUnits={workUnits}
+          executingWorkUnitId={executingWorkUnitId}
+          onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+        />
+      ) : null}
+
+      {projectId && onExecuteMarketingWorkUnit ? (
+        <CampaignCreativeDirectionWorkUnitAction
+          projectId={projectId}
+          campaignsEnabled={campaignsEnabled}
+          workUnits={workUnits}
+          strategy={campaignStrategy}
           executingWorkUnitId={executingWorkUnitId}
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
         />

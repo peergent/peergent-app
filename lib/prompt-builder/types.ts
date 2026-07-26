@@ -28,7 +28,7 @@ export type PromptPackage = {
 export type PromptBuilderOptions = {
   taskHint?: string;
   /** When set to marketing-plan, appends structured plan output instructions. */
-  outputFormat?: "default" | "marketing-strategy" | "marketing-plan" | "marketing-content-draft";
+  outputFormat?: "default" | "marketing-strategy" | "marketing-plan" | "marketing-content-draft" | "marketing-creative-brief";
   /** Required when outputFormat is marketing-plan — the strategy to transform into a plan. */
   marketingStrategy?: import("@/lib/marketing-intelligence/types/strategy").MarketingStrategy;
   /** Required when outputFormat is marketing-content-draft — the approved plan. */

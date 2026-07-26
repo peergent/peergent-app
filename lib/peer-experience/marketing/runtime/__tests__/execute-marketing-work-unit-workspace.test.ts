@@ -107,7 +107,7 @@ describe("executeMarketingWorkUnitInWorkspace", () => {
       assembledAt: "2026-07-24T12:00:00.000Z",
       campaignWorkspaceEnabled: true,
       supabase: {} as import("@supabase/supabase-js").SupabaseClient,
-      getWorkspaceSnapshot: () => ({ workUnits: [unit], strategy: null }),
+      getWorkspaceSnapshot: () => ({ workUnits: [unit], strategy: null, creativeBriefByCampaignId: {} }),
       commitWorkspaceState: vi.fn(),
     });
 

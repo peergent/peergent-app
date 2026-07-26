@@ -15,6 +15,10 @@ import {
   buildMarketingContentTaskAppendix,
   MARKETING_CONTENT_BEHAVIORAL_INSTRUCTIONS,
 } from "@/lib/marketing-intelligence/content";
+import {
+  buildMarketingCreativeBriefTaskAppendix,
+  MARKETING_CREATIVE_BRIEF_BEHAVIORAL_INSTRUCTIONS,
+} from "@/lib/marketing-intelligence/creative-brief-generation";
 import type { BusinessBrainContextSlice } from "@/lib/intelligence/types/business-brain-context-slice";
 import type { CompanyDnaContextSlice } from "@/lib/intelligence/types/company-dna-context-slice";
 import type { ContextBundle, ContextLayerKey } from "@/lib/context-engine/types";
@@ -92,7 +96,14 @@ function buildSystemPrompt(
               ...MARKETING_CONTENT_BEHAVIORAL_INSTRUCTIONS,
               ANTI_FABRICATION_INSTRUCTION,
             ]
-          : [
+          : outputFormat === "marketing-creative-brief"
+            ? [
+                ...getSharedBehavioralInstructions(),
+                ...strategy.behavioralInstructions,
+                ...MARKETING_CREATIVE_BRIEF_BEHAVIORAL_INSTRUCTIONS,
+                ANTI_FABRICATION_INSTRUCTION,
+              ]
+            : [
               ...getSharedBehavioralInstructions(),
               ...strategy.behavioralInstructions,
               ANTI_FABRICATION_INSTRUCTION,
@@ -180,6 +191,19 @@ function buildTaskPromptFromScope(
         readiness.activity,
         readiness.normalizedContentType
       ),
+    ]);
+  }
+
+  if (options?.outputFormat === "marketing-creative-brief") {
+    if (!options.marketingStrategy) {
+      return joinParagraphs([
+        base,
+        "Error: Marketing Strategy is required to generate creative direction.",
+      ]);
+    }
+    return joinParagraphs([
+      base,
+      buildMarketingCreativeBriefTaskAppendix(options.marketingStrategy),
     ]);
   }
 

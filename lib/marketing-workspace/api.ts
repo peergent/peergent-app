@@ -43,6 +43,26 @@ export async function generateMarketingStrategy(
   return parseJson(response);
 }
 
+export async function generateMarketingCreativeBrief(
+  peerId: string,
+  strategy: MarketingStrategy,
+  campaignProject: { id: string; title: string; goal: string },
+  taskHint?: string
+): Promise<{ brief: import("@/lib/creative-brief").CreativeBrief; warnings: string[]; traceId: string }> {
+  const response = await fetch("/api/marketing-intelligence/strategy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      peerId,
+      taskHint,
+      artifact: "creative_brief",
+      strategy,
+      campaignProject,
+    }),
+  });
+  return parseJson(response);
+}
+
 export async function generateMarketingPlan(
   peerId: string,
   strategy: MarketingStrategy,

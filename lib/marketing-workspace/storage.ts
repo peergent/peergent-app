@@ -16,6 +16,7 @@ function normalizeStoredState(
 ): MarketingWorkspacePersistedState {
   const base: MarketingWorkspacePersistedState = {
     strategy: parsed.strategy,
+    creativeBriefByCampaignId: parsed.creativeBriefByCampaignId ?? {},
     plan: parsed.plan,
     drafts: parsed.drafts ?? [],
     publicationPackages: parsed.publicationPackages ?? [],

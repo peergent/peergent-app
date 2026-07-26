@@ -3,8 +3,17 @@ export { MarketingWorkUnitRuntimeError } from "./errors";
 export type { MarketingWorkUnitRuntimeErrorCode } from "./errors";
 export {
   CAMPAIGN_STRATEGY_WORK_UNIT_TITLE,
+  CREATIVE_DIRECTION_WORK_UNIT_TITLE,
+  findCampaignStrategyWorkUnit,
+  findCreativeDirectionWorkUnit,
   isCampaignStrategyWorkUnit,
+  isCampaignStrategyWorkUnitReviewReady,
+  isCreativeDirectionWorkUnit,
+  isCreativeDirectionWorkUnitReviewReady,
+  resolveMarketingWorkUnitKind,
 } from "./identify-work-unit";
+export { isCampaignStrategyCompleteForCreativeDirection } from "./campaign-strategy-dependency";
+export { CREATIVE_DIRECTION_EXECUTION_COMPLETE_NOTE } from "./execute-creative-direction-work-unit";
 export { validateCampaignStrategyWorkUnitOutput } from "./validate-campaign-strategy-output";
 export { mapMarketingStrategyToCampaignStrategyOutput } from "./map-campaign-strategy-output";
 export type {
@@ -16,6 +25,8 @@ export type {
   MarketingWorkUnitExecutionPhase,
   MarketingWorkUnitExecutionSuccess,
   MarketingWorkUnitFailureStage,
+  CreativeDirectionWorkUnitExecutionSuccess,
+  CampaignStrategyWorkUnitExecutionSuccess,
   UnsupportedWorkUnitResult,
 } from "./types";
 export {

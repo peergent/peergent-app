@@ -1,0 +1,130 @@
+"use client";
+
+import { useCallback, useId, useRef, useState } from "react";
+import { Palette } from "lucide-react";
+import type { MarketingStrategy } from "@/lib/marketing-intelligence";
+import type { MarketingWorkUnitExecutionResult } from "@/lib/peer-experience/marketing/runtime";
+import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
+import {
+  buildCreativeDirectionWorkUnitActionViewModel,
+  presentMarketingWorkUnitExecutionError,
+} from "../lib/campaign-creative-direction-work-unit-action-presenter";
+
+export type CampaignCreativeDirectionWorkUnitActionProps = {
+  projectId: string;
+  campaignsEnabled: boolean;
+  workUnits: readonly WorkUnit[];
+  strategy: MarketingStrategy | null;
+  executingWorkUnitId?: string | null;
+  onExecuteMarketingWorkUnit: (
+    workUnitId: string
+  ) => Promise<MarketingWorkUnitExecutionResult>;
+};
+
+export default function CampaignCreativeDirectionWorkUnitAction({
+  projectId,
+  campaignsEnabled,
+  workUnits,
+  strategy,
+  executingWorkUnitId,
+  onExecuteMarketingWorkUnit,
+}: CampaignCreativeDirectionWorkUnitActionProps) {
+  const feedbackId = useId();
+  const pendingRef = useRef(false);
+  const [localPending, setLocalPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const viewModel = buildCreativeDirectionWorkUnitActionViewModel({
+    campaignsEnabled,
+    projectId,
+    workUnits,
+    strategy,
+    executingWorkUnitId,
+    localPending,
+  });
+
+  const handleExecute = useCallback(async () => {
+    if (!viewModel || pendingRef.current || viewModel.primaryDisabled) {
+      return;
+    }
+    pendingRef.current = true;
+    setLocalPending(true);
+    setErrorMessage(null);
+    try {
+      const result = await onExecuteMarketingWorkUnit(viewModel.workUnitId);
+      if (!result.ok) {
+        setErrorMessage(presentMarketingWorkUnitExecutionError(result));
+      }
+    } catch {
+      setErrorMessage("Marketing Peer could not prepare creative direction. Please try again.");
+    } finally {
+      pendingRef.current = false;
+      setLocalPending(false);
+    }
+  }, [onExecuteMarketingWorkUnit, viewModel]);
+
+  if (!viewModel?.show) {
+    return null;
+  }
+
+  return (
+    <div
+      className="mw-section mw-glass mw-campaign-creative-direction-work-unit"
+      style={{ padding: 16, marginBottom: 12 }}
+      data-testid="mw-campaign-creative-direction-work-unit-action"
+    >
+      <div className="mw-section-title" style={{ marginBottom: 10 }}>
+        <Palette size={15} aria-hidden style={{ marginRight: 6, verticalAlign: "middle" }} />
+        Creative direction
+      </div>
+      <div className="mw-campaign-plan-compact-row">
+        <div className="mw-campaign-plan-compact-head">
+          <span className="mw-project-status mw-project-status--planning">
+            {viewModel.statusLabel}
+          </span>
+          <span className="mw-approval-title">{viewModel.workItemTitle}</span>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        {viewModel.completionLabel ? (
+          <p
+            className="mw-campaign-start-feedback mw-campaign-start-feedback--success"
+            role="status"
+            data-testid="mw-campaign-creative-direction-complete"
+          >
+            {viewModel.completionLabel}
+          </p>
+        ) : viewModel.blockedReason ? (
+          <p className="mw-kn-helper" role="status" data-testid="mw-campaign-creative-direction-blocked">
+            {viewModel.blockedReason}
+          </p>
+        ) : viewModel.showPrimaryAction ? (
+          <button
+            type="button"
+            className="mw-btn-primary pg-focus-premium"
+            disabled={viewModel.primaryDisabled}
+            aria-disabled={viewModel.primaryDisabled}
+            data-testid="mw-campaign-creative-direction-execute-button"
+            onClick={() => void handleExecute()}
+          >
+            {viewModel.primaryLabel}
+          </button>
+        ) : null}
+      </div>
+
+      {errorMessage ? (
+        <p
+          id={feedbackId}
+          className="mw-campaign-start-feedback mw-campaign-start-feedback--error"
+          role="alert"
+          aria-live="polite"
+          style={{ marginTop: 8 }}
+          data-testid="mw-campaign-creative-direction-error"
+        >
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+}

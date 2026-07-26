@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { defaultContextEngine } from "@/lib/context-engine";
-import { generateMarketingStrategy as generateMarketingStrategyApi } from "@/lib/marketing-workspace/api";
+import type { CreativeBrief } from "@/lib/creative-brief";
+import {
+  generateMarketingCreativeBrief as generateMarketingCreativeBriefApi,
+  generateMarketingStrategy as generateMarketingStrategyApi,
+} from "@/lib/marketing-workspace/api";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { Database } from "@/lib/supabase/database.types";
@@ -57,10 +61,12 @@ export type ExecuteMarketingWorkUnitInWorkspaceArgs = {
   readonly getWorkspaceSnapshot: () => {
     readonly workUnits: readonly WorkUnit[];
     readonly strategy: MarketingStrategy | null;
+    readonly creativeBriefByCampaignId: Readonly<Record<string, CreativeBrief>>;
   };
   readonly commitWorkspaceState: (next: {
     readonly workUnits: readonly WorkUnit[];
     readonly strategy: MarketingStrategy | null;
+    readonly creativeBriefByCampaignId: Readonly<Record<string, CreativeBrief>>;
   }) => void;
 };
 
@@ -124,6 +130,7 @@ export async function executeMarketingWorkUnitInWorkspace(
       ...args.domainInput,
       workUnits: [...snapshot.workUnits],
       strategy: snapshot.strategy,
+      creativeBriefByCampaignId: snapshot.creativeBriefByCampaignId,
     },
     assembledAt: args.assembledAt,
     persistence: {
@@ -131,14 +138,27 @@ export async function executeMarketingWorkUnitInWorkspace(
         args.commitWorkspaceState({
           workUnits: args.getWorkspaceSnapshot().workUnits,
           strategy,
+          creativeBriefByCampaignId: args.getWorkspaceSnapshot().creativeBriefByCampaignId,
+        });
+      },
+      saveCreativeBrief: ({ campaignId, brief }) => {
+        const current = args.getWorkspaceSnapshot();
+        args.commitWorkspaceState({
+          workUnits: current.workUnits,
+          strategy: current.strategy,
+          creativeBriefByCampaignId: {
+            ...current.creativeBriefByCampaignId,
+            [campaignId]: brief,
+          },
         });
       },
       updateWorkUnit: (unit) => {
-        const current = args.getWorkspaceSnapshot().workUnits;
-        const nextUnits = current.map((u) => (u.id === unit.id ? unit : u));
+        const current = args.getWorkspaceSnapshot();
+        const nextUnits = current.workUnits.map((u) => (u.id === unit.id ? unit : u));
         args.commitWorkspaceState({
           workUnits: nextUnits,
-          strategy: args.getWorkspaceSnapshot().strategy,
+          strategy: current.strategy,
+          creativeBriefByCampaignId: current.creativeBriefByCampaignId,
         });
         return unit;
       },
@@ -152,6 +172,28 @@ export async function executeMarketingWorkUnitInWorkspace(
           taskHint,
           peerId: args.domainInput.peerId,
         }),
+      generateCreativeBrief: async ({ contextPackage, strategy, project, taskHint }) => {
+        try {
+          const { brief, warnings, traceId } = await generateMarketingCreativeBriefApi(
+            args.domainInput.peerId,
+            strategy,
+            {
+              id: project.id,
+              title: project.title,
+              goal: project.goal,
+            },
+            taskHint
+          );
+          return { success: true as const, brief, warnings, traceId };
+        } catch (error) {
+          return {
+            success: false as const,
+            error: error instanceof Error ? error.message : "Creative direction generation failed.",
+            warnings: [],
+            traceId: contextPackage.traceId,
+          };
+        }
+      },
     },
   });
 
