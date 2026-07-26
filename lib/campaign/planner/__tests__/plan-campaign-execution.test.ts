@@ -63,6 +63,60 @@ describe("planCampaignExecution", () => {
     expect(plan.workPackages.some((p) => p.type === "review")).toBe(true);
   });
 
+  it("does not add generic channel placeholder when a concrete deliverable exists for that channel", () => {
+    const plan = planCampaignExecution(
+      buildSource({
+        explicitChannels: ["LinkedIn", "Email"],
+        explicitDeliverables: [
+          { channel: "LinkedIn", deliverableType: "social_post", title: "Social post — LinkedIn" },
+          { channel: "Email", deliverableType: "email", title: "Email — Email" },
+        ],
+      })
+    );
+    const content = plan.workPackages.filter((p) => p.type === "content_creation");
+    expect(content.filter((p) => p.deliverableType === "generic")).toHaveLength(0);
+    expect(content).toHaveLength(2);
+    expect(content.some((p) => p.channel === "LinkedIn" && p.deliverableType === "social_post")).toBe(
+      true
+    );
+    expect(content.some((p) => p.channel === "Email" && p.deliverableType === "email")).toBe(true);
+  });
+
+  it("keeps generic channel placeholder when no concrete deliverable exists for that channel", () => {
+    const plan = planCampaignExecution(
+      buildSource({
+        explicitChannels: ["LinkedIn"],
+        explicitDeliverables: [
+          { channel: "Email", deliverableType: "email", title: "Email — Email" },
+        ],
+      })
+    );
+    const content = plan.workPackages.filter((p) => p.type === "content_creation");
+    expect(content.some((p) => p.channel === "LinkedIn" && p.deliverableType === "generic")).toBe(
+      true
+    );
+    expect(content.some((p) => p.channel === "Email" && p.deliverableType === "email")).toBe(true);
+    expect(content.filter((p) => p.deliverableType === "generic")).toHaveLength(1);
+  });
+
+  it("includes campaign concept once without per-channel generic duplicates", () => {
+    const plan = planCampaignExecution(
+      buildSource({
+        explicitChannels: ["LinkedIn", "Email"],
+        explicitDeliverables: [
+          { channel: "Campaign", deliverableType: "campaign_concept", title: "Campaign concept" },
+          { channel: "LinkedIn", deliverableType: "social_post", title: "Social post — LinkedIn" },
+        ],
+      })
+    );
+    const content = plan.workPackages.filter((p) => p.type === "content_creation");
+    const concepts = content.filter((p) => p.deliverableType === "campaign_concept");
+    expect(concepts).toHaveLength(1);
+    expect(concepts[0]?.channel).toBe("Campaign");
+    expect(content.filter((p) => p.deliverableType === "generic")).toHaveLength(1);
+    expect(content.some((p) => p.channel === "Email" && p.deliverableType === "generic")).toBe(true);
+  });
+
   it("blocked decision creates blocked plan and blocked content packages", () => {
     const plan = planCampaignExecution(
       buildSource({

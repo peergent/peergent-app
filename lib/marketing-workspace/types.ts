@@ -5,6 +5,8 @@ import type {
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
 import type { CreativeBrief } from "@/lib/creative-brief";
+import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
+import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import type { KnowledgeSectionId } from "@/lib/knowledge";
 import type { PublicationPackage } from "@/lib/peer-workflow";
 import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
@@ -18,6 +20,8 @@ import type { ActivityFeedItem, ConversationMessage } from "./experience/types";
 export type MarketingWorkspacePersistedState = {
   strategy?: MarketingStrategy;
   creativeBriefByCampaignId?: Record<string, CreativeBrief>;
+  linkedinPostByWorkUnitId?: Record<string, MarketingLinkedInPost>;
+  emailByWorkUnitId?: Record<string, MarketingEmailCampaign>;
   plan?: MarketingPlan;
   drafts: MarketingContentDraft[];
   publicationPackages?: PublicationPackage[];

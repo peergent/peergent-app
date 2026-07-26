@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CUSTOMER_SAFE_EXECUTION_MESSAGES,
+  buildMarketingWorkUnitExecutionDiagnosticPayload,
   customerSafeExecutionMessage,
   logMarketingWorkUnitExecutionFailure,
 } from "../marketing-work-unit-runtime-diagnostics";
@@ -30,30 +31,39 @@ describe("marketing-work-unit-runtime-diagnostics", () => {
 
   it("logs structured diagnostics in development without secrets", () => {
     vi.stubEnv("NODE_ENV", "development");
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
     logMarketingWorkUnitExecutionFailure({
       failureStage: "build_context",
       code: "ContextUnavailable",
       workUnitId: "wu-1",
       projectId: "proj-1",
+      runtimeKind: "email_campaign",
       internalMessage: "Peer not found",
       error: new Error("Peer not found"),
     });
 
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    const [label, payload] = errorSpy.mock.calls[0] ?? [];
-    expect(label).toBe("[MarketingWorkUnitRuntime]");
-    expect(payload).toMatchObject({
-      area: "marketing_work_unit_runtime",
-      failureStage: "build_context",
-      code: "ContextUnavailable",
-      workUnitId: "wu-1",
+    const output = logSpy.mock.calls.map((call) => call.join(" ")).join("\n");
+    expect(output).toContain("Marketing Runtime Failure");
+    expect(output).toContain("code: ContextUnavailable");
+    expect(output).toContain("failureStage: build_context");
+    expect(output).toContain("runtimeKind: email_campaign");
+    expect(output).toContain("internalMessage: Peer not found");
+    expect(output).toContain("errorMessage: Peer not found");
+    expect(output).not.toMatch(/prompt|ContextPackage|access_token|cookie|secret/i);
+  });
+
+  it("buildMarketingWorkUnitExecutionDiagnosticPayload never serializes to empty object", () => {
+    const payload = buildMarketingWorkUnitExecutionDiagnosticPayload({
+      failureStage: "generate_email_campaign",
+      code: "AIRuntimeFailure",
+      workUnitId: "wu-email",
       projectId: "proj-1",
-      internalMessage: "Peer not found",
+      runtimeKind: "email_campaign",
+      internalMessage: "Request failed.",
     });
-    const serialized = JSON.stringify(payload);
-    expect(serialized).not.toMatch(/prompt|ContextPackage|access_token|cookie|secret/i);
+    expect(JSON.stringify(payload)).not.toBe("{}");
+    expect(payload.failureStage).toBe("generate_email_campaign");
   });
 
   it("does not log in production", () => {

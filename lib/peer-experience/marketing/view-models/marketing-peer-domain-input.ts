@@ -28,6 +28,12 @@ export type MarketingPeerDomainInput = {
   understanding: MarketingUnderstanding | null;
   strategy: MarketingStrategy | null;
   creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
+  linkedinPostByWorkUnitId?: Readonly<
+    Record<string, import("@/lib/marketing-intelligence/linkedin-post-generation").MarketingLinkedInPost>
+  >;
+  emailByWorkUnitId?: Readonly<
+    Record<string, import("@/lib/marketing-intelligence/email-generation").MarketingEmailCampaign>
+  >;
   plan: MarketingPlan | null;
   drafts: MarketingContentDraft[];
   publicationPackages: PublicationPackage[];

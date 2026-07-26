@@ -17,6 +17,8 @@ function normalizeStoredState(
   const base: MarketingWorkspacePersistedState = {
     strategy: parsed.strategy,
     creativeBriefByCampaignId: parsed.creativeBriefByCampaignId ?? {},
+    linkedinPostByWorkUnitId: parsed.linkedinPostByWorkUnitId ?? {},
+    emailByWorkUnitId: parsed.emailByWorkUnitId ?? {},
     plan: parsed.plan,
     drafts: parsed.drafts ?? [],
     publicationPackages: parsed.publicationPackages ?? [],
@@ -123,14 +125,24 @@ export function patchMarketingWorkspaceState(
   const next: MarketingWorkspacePersistedState = {
     ...stored,
     ...patch,
+    strategy: patch.strategy !== undefined ? patch.strategy : stored.strategy,
+    plan: patch.plan !== undefined ? patch.plan : stored.plan,
+    creativeBriefByCampaignId:
+      patch.creativeBriefByCampaignId ?? stored.creativeBriefByCampaignId ?? {},
+    linkedinPostByWorkUnitId:
+      patch.linkedinPostByWorkUnitId ?? stored.linkedinPostByWorkUnitId ?? {},
+    emailByWorkUnitId: patch.emailByWorkUnitId ?? stored.emailByWorkUnitId ?? {},
     drafts: patch.drafts ?? stored.drafts,
     publicationPackages: patch.publicationPackages ?? stored.publicationPackages,
     activityFeed: patch.activityFeed ?? stored.activityFeed,
     conversation: patch.conversation ?? stored.conversation,
     workUnits: patch.workUnits ?? stored.workUnits ?? [],
+    projects: patch.projects ?? stored.projects ?? [],
+    responsibilities: patch.responsibilities ?? stored.responsibilities ?? [],
     automations: patch.automations ?? stored.automations ?? [],
     insightRotation: patch.insightRotation ?? stored.insightRotation,
     metrics: patch.metrics ?? stored.metrics ?? [],
+    approvalOverlays: patch.approvalOverlays ?? stored.approvalOverlays ?? {},
   };
   saveMarketingWorkspaceState(peerId, next);
   return next;

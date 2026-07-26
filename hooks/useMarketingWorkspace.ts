@@ -7,6 +7,8 @@ import type {
   MarketingStrategy,
   MarketingUnderstanding,
 } from "@/lib/marketing-intelligence";
+import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
+import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import type { CreativeBrief } from "@/lib/creative-brief";
 import { isDraftablePlanActivity } from "@/lib/marketing-intelligence";
 import {
@@ -129,6 +131,12 @@ export function useMarketingWorkspace(
   const [creativeBriefByCampaignId, setCreativeBriefByCampaignId] = useState<
     Record<string, CreativeBrief>
   >({});
+  const [linkedinPostByWorkUnitId, setLinkedinPostByWorkUnitId] = useState<
+    Record<string, MarketingLinkedInPost>
+  >({});
+  const [emailByWorkUnitId, setEmailByWorkUnitId] = useState<
+    Record<string, MarketingEmailCampaign>
+  >({});
   const [plan, setPlan] = useState<MarketingPlan | null>(null);
   const [drafts, setDrafts] = useState<MarketingContentDraft[]>([]);
   const [publicationPackages, setPublicationPackages] = useState<PublicationPackage[]>([]);
@@ -172,12 +180,16 @@ export function useMarketingWorkspace(
   const workUnitsRef = useRef(workUnits);
   const strategyRef = useRef(strategy);
   const creativeBriefByCampaignIdRef = useRef(creativeBriefByCampaignId);
+  const linkedinPostByWorkUnitIdRef = useRef(linkedinPostByWorkUnitId);
+  const emailByWorkUnitIdRef = useRef(emailByWorkUnitId);
   const workUnitExecutionInFlightRef = useRef<string | null>(null);
 
   projectsRef.current = projects;
   workUnitsRef.current = workUnits;
   strategyRef.current = strategy;
   creativeBriefByCampaignIdRef.current = creativeBriefByCampaignId;
+  linkedinPostByWorkUnitIdRef.current = linkedinPostByWorkUnitId;
+  emailByWorkUnitIdRef.current = emailByWorkUnitId;
 
   pageStateRef.current = pageState;
   generatingRef.current = generating;
@@ -186,6 +198,8 @@ export function useMarketingWorkspace(
     (patch: {
       strategy?: MarketingStrategy | null;
       creativeBriefByCampaignId?: Record<string, CreativeBrief>;
+      linkedinPostByWorkUnitId?: Record<string, MarketingLinkedInPost>;
+      emailByWorkUnitId?: Record<string, MarketingEmailCampaign>;
       plan?: MarketingPlan | null;
       drafts?: MarketingContentDraft[];
       publicationPackages?: PublicationPackage[];
@@ -206,6 +220,12 @@ export function useMarketingWorkspace(
           : {}),
         ...(patch.creativeBriefByCampaignId !== undefined
           ? { creativeBriefByCampaignId: patch.creativeBriefByCampaignId }
+          : {}),
+        ...(patch.linkedinPostByWorkUnitId !== undefined
+          ? { linkedinPostByWorkUnitId: patch.linkedinPostByWorkUnitId }
+          : {}),
+        ...(patch.emailByWorkUnitId !== undefined
+          ? { emailByWorkUnitId: patch.emailByWorkUnitId }
           : {}),
         ...(patch.plan !== undefined ? { plan: patch.plan ?? undefined } : {}),
         ...(patch.drafts !== undefined ? { drafts: patch.drafts } : {}),
@@ -306,6 +326,8 @@ export function useMarketingWorkspace(
       const stored = loadMarketingWorkspaceState(peerId);
       setStrategy(stored.strategy ?? null);
       setCreativeBriefByCampaignId(stored.creativeBriefByCampaignId ?? {});
+      setLinkedinPostByWorkUnitId(stored.linkedinPostByWorkUnitId ?? {});
+      setEmailByWorkUnitId(stored.emailByWorkUnitId ?? {});
       setPlan(stored.plan ?? null);
       setDrafts(stored.drafts ?? []);
       setPublicationPackages(stored.publicationPackages ?? []);
@@ -1696,6 +1718,8 @@ export function useMarketingWorkspace(
           understanding,
           strategy: strategyRef.current,
           creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
+          linkedinPostByWorkUnitId: linkedinPostByWorkUnitIdRef.current,
+          emailByWorkUnitId: emailByWorkUnitIdRef.current,
           plan,
           drafts,
           publicationPackages,
@@ -1725,16 +1749,32 @@ export function useMarketingWorkspace(
             workUnits: workUnitsRef.current,
             strategy: strategyRef.current,
             creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
+            linkedinPostByWorkUnitId: linkedinPostByWorkUnitIdRef.current,
+          emailByWorkUnitId: emailByWorkUnitIdRef.current,
           }),
           commitWorkspaceState: (next) => {
             const nextUnits = [...next.workUnits];
+            const nextBriefs = { ...next.creativeBriefByCampaignId };
+            const nextPosts = { ...next.linkedinPostByWorkUnitId };
+            const nextEmails = { ...next.emailByWorkUnitId };
+
+            workUnitsRef.current = nextUnits;
+            strategyRef.current = next.strategy;
+            creativeBriefByCampaignIdRef.current = nextBriefs;
+            linkedinPostByWorkUnitIdRef.current = nextPosts;
+            emailByWorkUnitIdRef.current = nextEmails;
+
             setWorkUnits(nextUnits);
             setStrategy(next.strategy);
-            setCreativeBriefByCampaignId({ ...next.creativeBriefByCampaignId });
+            setCreativeBriefByCampaignId(nextBriefs);
+            setLinkedinPostByWorkUnitId(nextPosts);
+            setEmailByWorkUnitId(nextEmails);
             persistState({
               workUnits: nextUnits,
               strategy: next.strategy ?? undefined,
-              creativeBriefByCampaignId: { ...next.creativeBriefByCampaignId },
+              creativeBriefByCampaignId: nextBriefs,
+              linkedinPostByWorkUnitId: nextPosts,
+              emailByWorkUnitId: nextEmails,
             });
           },
         });
@@ -1747,6 +1787,10 @@ export function useMarketingWorkspace(
 
           if (result.kind === "campaign_strategy") {
             setStrategy(result.strategy);
+            persistState({
+              strategy: result.strategy,
+              workUnits: nextUnits,
+            });
             if (!result.idempotent) {
               const project = projectsRef.current.find(
                 (p) => p.id === result.workUnit.projectId
@@ -1760,20 +1804,65 @@ export function useMarketingWorkspace(
                 )
               );
             }
-          } else if (!result.idempotent) {
-            const projectId = result.workUnit.projectId;
-            if (projectId) {
-              setCreativeBriefByCampaignId((prev) => ({
-                ...prev,
-                [projectId]: result.brief,
-              }));
+          } else if (result.kind === "creative_direction") {
+            const briefProjectId = result.workUnit.projectId;
+            if (briefProjectId) {
+              const nextBriefs = {
+                ...creativeBriefByCampaignIdRef.current,
+                [briefProjectId]: result.brief,
+              };
+              setCreativeBriefByCampaignId(nextBriefs);
+              persistState({
+                creativeBriefByCampaignId: nextBriefs,
+                workUnits: nextUnits,
+              });
             }
+            if (!result.idempotent) {
+              const project = projectsRef.current.find((p) => p.id === result.workUnit.projectId);
+              logActivity(
+                createActivity(
+                  "strategy_completed",
+                  "Creative direction executed",
+                  result.output.campaignConcept.slice(0, 140),
+                  { relatedObject: project?.title ?? result.workUnit.title }
+                )
+              );
+            }
+          } else if (result.kind === "linkedin_post" && !result.idempotent) {
+            const nextPosts = {
+              ...linkedinPostByWorkUnitIdRef.current,
+              [result.workUnitId]: result.post,
+            };
+            setLinkedinPostByWorkUnitId(nextPosts);
+            persistState({
+              linkedinPostByWorkUnitId: nextPosts,
+              workUnits: nextUnits,
+            });
             const project = projectsRef.current.find((p) => p.id === result.workUnit.projectId);
             logActivity(
               createActivity(
-                "strategy_completed",
-                "Creative direction executed",
-                result.output.campaignConcept.slice(0, 140),
+                "draft_generated",
+                "LinkedIn post executed",
+                result.output.hook.slice(0, 140),
+                { relatedObject: project?.title ?? result.workUnit.title }
+              )
+            );
+          } else if (result.kind === "email_campaign" && !result.idempotent) {
+            const nextEmails = {
+              ...emailByWorkUnitIdRef.current,
+              [result.workUnitId]: result.email,
+            };
+            setEmailByWorkUnitId(nextEmails);
+            persistState({
+              emailByWorkUnitId: nextEmails,
+              workUnits: nextUnits,
+            });
+            const project = projectsRef.current.find((p) => p.id === result.workUnit.projectId);
+            logActivity(
+              createActivity(
+                "draft_generated",
+                "Email prepared.",
+                result.output.subject.slice(0, 140),
                 { relatedObject: project?.title ?? result.workUnit.title }
               )
             );
@@ -1858,6 +1947,9 @@ export function useMarketingWorkspace(
     understanding,
     profileCounts,
     strategy,
+    creativeBriefByCampaignId,
+    linkedinPostByWorkUnitId,
+    emailByWorkUnitId,
     plan,
     drafts,
     publicationPackages,

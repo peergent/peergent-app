@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { generateMarketingStrategy } from "@/lib/marketing-intelligence/strategy";
 import { generateMarketingCreativeBrief } from "@/lib/marketing-intelligence/creative-brief-generation";
+import { generateMarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
+import { generateMarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence";
+import type { CreativeBrief } from "@/lib/creative-brief";
 import type { AIRuntimeOptions } from "@/lib/ai-runtime";
 import { defaultContextEngine } from "@/lib/context-engine";
 import { assembleMarketingDecision } from "@/lib/marketing-decision";
@@ -19,8 +22,10 @@ type GenerateStrategyBody = {
   peerId: string;
   taskHint?: string;
   options?: AIRuntimeOptions;
-  artifact?: "strategy" | "creative_brief";
+  artifact?: "strategy" | "creative_brief" | "linkedin_post" | "email_campaign";
   strategy?: MarketingStrategy;
+  creativeBrief?: CreativeBrief;
+  workUnitId?: string;
   campaignProject?: {
     id: string;
     title: string;
@@ -118,6 +123,164 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         brief: result.brief,
+        traceId: result.traceId,
+        warnings: result.warnings,
+      });
+    }
+
+    if (body.artifact === "linkedin_post") {
+      if (!body.strategy?.summary?.trim()) {
+        return NextResponse.json(
+          { error: "Campaign strategy is required before LinkedIn post generation." },
+          { status: 400 }
+        );
+      }
+      if (!body.creativeBrief?.campaignGoal.summary?.trim()) {
+        return NextResponse.json(
+          { error: "Creative direction is required before LinkedIn post generation." },
+          { status: 400 }
+        );
+      }
+      if (!body.workUnitId?.trim()) {
+        return NextResponse.json({ error: "workUnitId is required." }, { status: 400 });
+      }
+
+      const campaignProject: MarketingProject = body.campaignProject?.id
+        ? {
+            ...createMarketingCampaignProject({
+              peerId: body.peerId.trim(),
+              ownerLabel: "Campaign",
+              name: body.campaignProject.title,
+              goalLabel: body.campaignProject.goal,
+              description: body.strategy.summary,
+              primaryGoalId: "brand_awareness",
+            }),
+            id: body.campaignProject.id,
+            title: body.campaignProject.title,
+            goal: body.campaignProject.goal,
+          }
+        : createMarketingCampaignProject({
+            peerId: body.peerId.trim(),
+            ownerLabel: "Campaign",
+            name: body.strategy.summary.slice(0, 80) || "Campaign",
+            goalLabel: "LinkedIn post",
+            description: body.strategy.summary,
+            primaryGoalId: "brand_awareness",
+          });
+
+      const decision = assembleMarketingDecision(
+        buildMarketingDecisionSourceForCampaign({
+          contextPackage,
+          project: campaignProject,
+          strategy: body.strategy,
+          plan: null,
+          responsibilities: [],
+        })
+      );
+
+      const result = await generateMarketingLinkedInPost({
+        contextPackage,
+        strategy: body.strategy,
+        creativeBrief: body.creativeBrief,
+        decision,
+        project: campaignProject,
+        workUnitId: body.workUnitId.trim(),
+        taskHint,
+        runtimeOptions: body.options,
+      });
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: result.error,
+            traceId: result.traceId,
+            warnings: result.warnings,
+          },
+          { status: result.error.includes("Marketing peer") ? 400 : 422 }
+        );
+      }
+
+      return NextResponse.json({
+        post: result.post,
+        traceId: result.traceId,
+        warnings: result.warnings,
+      });
+    }
+
+    if (body.artifact === "email_campaign") {
+      if (!body.strategy?.summary?.trim()) {
+        return NextResponse.json(
+          { error: "Campaign strategy is required before email campaign generation." },
+          { status: 400 }
+        );
+      }
+      if (!body.creativeBrief?.campaignGoal.summary?.trim()) {
+        return NextResponse.json(
+          { error: "Creative direction is required before email campaign generation." },
+          { status: 400 }
+        );
+      }
+      if (!body.workUnitId?.trim()) {
+        return NextResponse.json({ error: "workUnitId is required." }, { status: 400 });
+      }
+
+      const campaignProject: MarketingProject = body.campaignProject?.id
+        ? {
+            ...createMarketingCampaignProject({
+              peerId: body.peerId.trim(),
+              ownerLabel: "Campaign",
+              name: body.campaignProject.title,
+              goalLabel: body.campaignProject.goal,
+              description: body.strategy.summary,
+              primaryGoalId: "brand_awareness",
+            }),
+            id: body.campaignProject.id,
+            title: body.campaignProject.title,
+            goal: body.campaignProject.goal,
+          }
+        : createMarketingCampaignProject({
+            peerId: body.peerId.trim(),
+            ownerLabel: "Campaign",
+            name: body.strategy.summary.slice(0, 80) || "Campaign",
+            goalLabel: "Email campaign",
+            description: body.strategy.summary,
+            primaryGoalId: "brand_awareness",
+          });
+
+      const decision = assembleMarketingDecision(
+        buildMarketingDecisionSourceForCampaign({
+          contextPackage,
+          project: campaignProject,
+          strategy: body.strategy,
+          plan: null,
+          responsibilities: [],
+        })
+      );
+
+      const result = await generateMarketingEmailCampaign({
+        contextPackage,
+        strategy: body.strategy,
+        creativeBrief: body.creativeBrief,
+        decision,
+        project: campaignProject,
+        workUnitId: body.workUnitId.trim(),
+        taskHint,
+        runtimeOptions: body.options,
+      });
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: result.error,
+            traceId: result.traceId,
+            warnings: result.warnings,
+          },
+          { status: result.error.includes("Marketing peer") ? 400 : 422 }
+        );
+      }
+
+      return NextResponse.json({
+        email: result.email,
         traceId: result.traceId,
         warnings: result.warnings,
       });

@@ -123,6 +123,9 @@ export default function ProjectDetailTab({
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
           executingWorkUnitId={executingWorkUnitId}
           campaignStrategy={domainInput.strategy}
+          creativeBriefByCampaignId={domainInput.creativeBriefByCampaignId}
+          linkedinPostByWorkUnitId={domainInput.linkedinPostByWorkUnitId}
+          emailByWorkUnitId={domainInput.emailByWorkUnitId}
         />
       </>
     );

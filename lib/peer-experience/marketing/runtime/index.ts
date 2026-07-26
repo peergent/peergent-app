@@ -6,14 +6,27 @@ export {
   CREATIVE_DIRECTION_WORK_UNIT_TITLE,
   findCampaignStrategyWorkUnit,
   findCreativeDirectionWorkUnit,
+  findLinkedInPostWorkUnits,
+  findEmailCampaignWorkUnits,
   isCampaignStrategyWorkUnit,
   isCampaignStrategyWorkUnitReviewReady,
   isCreativeDirectionWorkUnit,
   isCreativeDirectionWorkUnitReviewReady,
+  isLinkedInPostWorkUnit,
+  isLinkedInPostWorkUnitReviewReady,
+  isEmailCampaignWorkUnit,
+  isEmailCampaignWorkUnitReviewReady,
+  isGenericChannelPlaceholderWorkUnit,
   resolveMarketingWorkUnitKind,
 } from "./identify-work-unit";
 export { isCampaignStrategyCompleteForCreativeDirection } from "./campaign-strategy-dependency";
+export {
+  areLinkedInPostDependenciesMet,
+  LINKEDIN_POST_DEPENDENCY_BLOCKED_MESSAGE,
+} from "./linkedin-post-dependencies";
 export { CREATIVE_DIRECTION_EXECUTION_COMPLETE_NOTE } from "./execute-creative-direction-work-unit";
+export { EMAIL_CAMPAIGN_EXECUTION_COMPLETE_NOTE } from "./execute-email-work-unit";
+export { LINKEDIN_POST_EXECUTION_COMPLETE_NOTE } from "./execute-linkedin-post-work-unit";
 export { validateCampaignStrategyWorkUnitOutput } from "./validate-campaign-strategy-output";
 export { mapMarketingStrategyToCampaignStrategyOutput } from "./map-campaign-strategy-output";
 export type {
@@ -26,6 +39,8 @@ export type {
   MarketingWorkUnitExecutionSuccess,
   MarketingWorkUnitFailureStage,
   CreativeDirectionWorkUnitExecutionSuccess,
+  LinkedInPostWorkUnitExecutionSuccess,
+  EmailCampaignWorkUnitExecutionSuccess,
   CampaignStrategyWorkUnitExecutionSuccess,
   UnsupportedWorkUnitResult,
 } from "./types";

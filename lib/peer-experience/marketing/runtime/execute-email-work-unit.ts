@@ -1,9 +1,7 @@
 import { ContextEngineError } from "@/lib/context-engine/core/errors";
-import { defaultContextEngine } from "@/lib/context-engine";
 import { assembleMarketingDecision } from "@/lib/marketing-decision";
-import { generateMarketingStrategy } from "@/lib/marketing-intelligence/strategy/generate-marketing-strategy";
+import { generateMarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import {
-  recordWorkUnitNote,
   revertWorkUnitFromFailedExecution,
   transitionWorkUnit,
 } from "@/lib/peer-workflow/work-unit-engine";
@@ -14,46 +12,35 @@ import {
 
 import { assembleCampaignForMarketingProject } from "../view-models/build-project-campaign-projection";
 import { buildMarketingCampaignViewModelSourceFromDomainInput } from "../view-models/build-marketing-campaigns-view-model";
-import { buildCampaignStrategyTaskHint } from "./build-campaign-strategy-task-hint";
+import { buildEmailCampaignTaskHint } from "./build-email-campaign-task-hint";
 import { buildMarketingDecisionSourceForCampaign } from "./build-marketing-decision-source-for-campaign";
-import {
-  defaultGenerateCreativeBriefDep,
-  executeCreativeDirectionWorkUnit,
-} from "./execute-creative-direction-work-unit";
-import {
-  defaultGenerateEmailCampaignDep,
-  executeEmailCampaignWorkUnit,
-} from "./execute-email-work-unit";
-import {
-  defaultGenerateLinkedInPostDep,
-  executeLinkedInPostWorkUnit,
-} from "./execute-linkedin-post-work-unit";
 import type { MarketingWorkUnitRuntimeErrorCode } from "./errors";
-import { isCampaignStrategyWorkUnit, resolveMarketingWorkUnitKind } from "./identify-work-unit";
-import { mapMarketingStrategyToCampaignStrategyOutput } from "./map-campaign-strategy-output";
+import {
+  areLinkedInPostDependenciesMet,
+  LINKEDIN_POST_DEPENDENCY_BLOCKED_MESSAGE,
+} from "./linkedin-post-dependencies";
+import { resolveContentExecutionArtifacts } from "./resolve-content-execution-artifacts";
 import {
   customerSafeExecutionMessage,
   logMarketingWorkUnitExecutionFailure,
 } from "./marketing-work-unit-runtime-diagnostics";
-import { resolveCreativeBriefForCampaignStrategy } from "./resolve-creative-brief-for-campaign-strategy";
-import { validateCampaignStrategyWorkUnitOutput } from "./validate-campaign-strategy-output";
+import {
+  mapEmailCampaignToWorkUnitOutput,
+  validateEmailCampaignWorkUnitOutput,
+} from "./validate-email-campaign-output";
 import type {
   ExecuteMarketingWorkUnitInput,
-  ExecuteMarketingWorkUnitResult,
   MarketingWorkUnitExecutionFailure,
   MarketingWorkUnitFailureStage,
   MarketingWorkUnitRuntimeDeps,
 } from "./types";
 
-export const CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE =
-  "Campaign strategy execution completed";
-
-const EXECUTION_FAILED_PREFIX = "Campaign strategy execution failed:";
+export const EMAIL_CAMPAIGN_EXECUTION_COMPLETE_NOTE = "Email campaign execution completed";
 
 async function persistWorkUnit(
   persistence: ExecuteMarketingWorkUnitInput["persistence"],
   unit: import("@/lib/peer-workflow/work-unit").WorkUnit
-): Promise<import("@/lib/peer-workflow/work-unit").WorkUnit> {
+) {
   return Promise.resolve(persistence.updateWorkUnit(unit));
 }
 
@@ -64,7 +51,7 @@ function lifecycleIndex(stage: WorkLifecycleStage): number {
 function ensurePlanningStage(unit: import("@/lib/peer-workflow/work-unit").WorkUnit) {
   let next = unit;
   while (lifecycleIndex(next.status) < lifecycleIndex("planning")) {
-    next = transitionWorkUnit(next, "planning", "planning_started", "Campaign strategy planned");
+    next = transitionWorkUnit(next, "planning", "planning_started", "Email campaign planned");
   }
   return next;
 }
@@ -76,7 +63,7 @@ function markExecuting(unit: import("@/lib/peer-workflow/work-unit").WorkUnit) {
       next,
       "creating",
       "creation_started",
-      "Executing campaign strategy"
+      "Executing email campaign"
     );
   }
   return next;
@@ -89,10 +76,8 @@ function markCompleted(unit: import("@/lib/peer-workflow/work-unit").WorkUnit) {
       next,
       "review_ready",
       "review_ready",
-      CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE
+      EMAIL_CAMPAIGN_EXECUTION_COMPLETE_NOTE
     );
-  } else {
-    next = recordWorkUnitNote(next, CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE);
   }
   return next;
 }
@@ -101,36 +86,16 @@ function restoreAfterFailedExecution(
   unit: import("@/lib/peer-workflow/work-unit").WorkUnit,
   internalMessage: string
 ) {
-  const note = `${EXECUTION_FAILED_PREFIX} ${internalMessage}`;
   if (unit.status === "creating") {
     return revertWorkUnitFromFailedExecution(unit, internalMessage);
   }
-  return recordWorkUnitNote(unit, note);
+  return unit;
 }
 
-function hasCompletedStrategyExecution(unit: import("@/lib/peer-workflow/work-unit").WorkUnit): boolean {
-  return unit.eventLog.some((e) => e.note.includes(CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE));
-}
-
-function resolveDeps(
-  overrides?: Partial<MarketingWorkUnitRuntimeDeps>
-): MarketingWorkUnitRuntimeDeps {
-  return {
-    buildContext: overrides?.buildContext ?? ((request) => defaultContextEngine.buildContext(request)),
-    generateStrategy:
-      overrides?.generateStrategy ??
-      ((input) =>
-        generateMarketingStrategy({
-          contextPackage: input.contextPackage,
-          taskHint: input.taskHint,
-        })),
-    generateCreativeBrief:
-      overrides?.generateCreativeBrief ?? defaultGenerateCreativeBriefDep(),
-    generateLinkedInPost:
-      overrides?.generateLinkedInPost ?? defaultGenerateLinkedInPostDep(),
-    generateEmailCampaign:
-      overrides?.generateEmailCampaign ?? defaultGenerateEmailCampaignDep(),
-  };
+function hasCompletedEmailCampaignExecution(
+  unit: import("@/lib/peer-workflow/work-unit").WorkUnit
+): boolean {
+  return unit.eventLog.some((e) => e.note.includes(EMAIL_CAMPAIGN_EXECUTION_COMPLETE_NOTE));
 }
 
 function executionFailure(
@@ -143,6 +108,7 @@ function executionFailure(
     phase: MarketingWorkUnitExecutionFailure["phase"];
     workUnit?: import("@/lib/peer-workflow/work-unit").WorkUnit;
     error?: unknown;
+    customerMessage?: string;
   }
 ): MarketingWorkUnitExecutionFailure {
   logMarketingWorkUnitExecutionFailure({
@@ -150,13 +116,15 @@ function executionFailure(
     code: input.code,
     workUnitId: input.workUnitId,
     projectId: input.projectId,
+    campaignId: input.projectId,
+    runtimeKind: "email_campaign",
     internalMessage: input.internalMessage,
     error: input.error,
   });
   return {
     ok: false,
     code: input.code,
-    message: customerSafeExecutionMessage(input.code),
+    message: input.customerMessage ?? customerSafeExecutionMessage(input.code),
     workUnitId: input.workUnitId,
     phase: input.phase,
     failureStage: input.failureStage,
@@ -164,101 +132,70 @@ function executionFailure(
   };
 }
 
-/**
- * Executes exactly one eligible Marketing Work Unit (Campaign Strategy only).
- * No loops, schedulers, or campaign-wide execution.
- */
-export async function executeMarketingWorkUnit(
-  input: ExecuteMarketingWorkUnitInput
-): Promise<ExecuteMarketingWorkUnitResult> {
+export async function executeEmailCampaignWorkUnit(
+  input: ExecuteMarketingWorkUnitInput,
+  unit: import("@/lib/peer-workflow/work-unit").WorkUnit,
+  deps: MarketingWorkUnitRuntimeDeps
+) {
   const { workUnitId, organizationId, userId, domainInput, persistence } = input;
-  const deps = resolveDeps(input.deps);
+  const projectId = unit.projectId!.trim();
+  const project = domainInput.projects.find((p) => p.id === projectId)!;
 
-  const unit = domainInput.workUnits.find((u) => u.id === workUnitId);
-  if (!unit) {
-    return executionFailure({
-      workUnitId,
-      code: "ContextUnavailable",
-      failureStage: "resolve_work_unit",
-      internalMessage: "Work unit not found.",
-      phase: "planning",
-    });
-  }
-
-  const runtimeKind = resolveMarketingWorkUnitKind(unit);
-  if (runtimeKind === "creative_direction") {
-    return executeCreativeDirectionWorkUnit(input, unit, deps);
-  }
-  if (runtimeKind === "linkedin_post") {
-    return executeLinkedInPostWorkUnit(input, unit, deps);
-  }
-  if (runtimeKind === "email_campaign") {
-    return executeEmailCampaignWorkUnit(input, unit, deps);
-  }
-
-  if (!isCampaignStrategyWorkUnit(unit)) {
-    logMarketingWorkUnitExecutionFailure({
-      failureStage: "resolve_work_unit",
-      code: "UnsupportedWorkUnit",
-      workUnitId,
-      projectId: unit.projectId ?? undefined,
-      internalMessage: "Work unit type is not supported by runtime.",
-    });
-    return {
-      ok: false,
-      code: "UnsupportedWorkUnit",
-      message: "This work unit type is not supported by the Marketing Peer runtime yet.",
-      workUnitId,
-      failureStage: "resolve_work_unit",
-    };
-  }
-
-  const projectId = unit.projectId?.trim();
-  if (!projectId) {
-    return executionFailure({
-      workUnitId,
-      code: "ContextUnavailable",
-      failureStage: "resolve_project",
-      internalMessage: "Campaign strategy work must be linked to a marketing project.",
-      phase: "planning",
-      workUnit: unit,
-    });
-  }
-
-  const project = domainInput.projects.find((p) => p.id === projectId);
-  if (!project) {
+  if (
+    !areLinkedInPostDependenciesMet({
+      projectId,
+      workUnits: domainInput.workUnits,
+      strategy: domainInput.strategy,
+      creativeBriefByCampaignId: domainInput.creativeBriefByCampaignId,
+    })
+  ) {
     return executionFailure({
       workUnitId,
       projectId,
       code: "ContextUnavailable",
       failureStage: "resolve_project",
-      internalMessage: "Marketing project not found for this work unit.",
+      internalMessage: LINKEDIN_POST_DEPENDENCY_BLOCKED_MESSAGE,
+      phase: "planning",
+      workUnit: unit,
+      customerMessage: LINKEDIN_POST_DEPENDENCY_BLOCKED_MESSAGE,
+    });
+  }
+
+  const artifacts = resolveContentExecutionArtifacts({
+    projectId,
+    workUnits: domainInput.workUnits,
+    strategy: domainInput.strategy,
+    creativeBriefByCampaignId: domainInput.creativeBriefByCampaignId,
+  });
+  if (!artifacts.ok) {
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "ContextUnavailable",
+      failureStage: "resolve_project",
+      internalMessage: artifacts.internalMessage,
       phase: "planning",
       workUnit: unit,
     });
   }
+  const { strategy, creativeBrief } = artifacts;
 
-  if (hasCompletedStrategyExecution(unit) && domainInput.strategy) {
-    const output = mapMarketingStrategyToCampaignStrategyOutput({
-      project,
-      strategy: domainInput.strategy,
-      decision: null,
-    });
+  const existingEmail = domainInput.emailByWorkUnitId?.[workUnitId];
+  if (hasCompletedEmailCampaignExecution(unit) && existingEmail) {
     return {
-      ok: true,
+      ok: true as const,
       workUnitId,
-      kind: "campaign_strategy",
-      phase: "completed",
-      output,
-      strategy: domainInput.strategy,
+      kind: "email_campaign" as const,
+      phase: "completed" as const,
+      output: mapEmailCampaignToWorkUnitOutput(existingEmail),
+      email: existingEmail,
       workUnit: unit,
-      warnings: [],
+      warnings: [] as readonly string[],
       idempotent: true,
     };
   }
 
   let workingUnit = markExecuting(unit);
-
   try {
     workingUnit = await persistWorkUnit(persistence, workingUnit);
   } catch (error) {
@@ -280,8 +217,6 @@ export async function executeMarketingWorkUnit(
   });
 
   let campaign;
-  let taskHint: string;
-
   try {
     campaign = assembleCampaignForMarketingProject(project, vmSource);
   } catch (error) {
@@ -309,7 +244,7 @@ export async function executeMarketingWorkUnit(
       organizationId,
       peerId: domainInput.peerId,
       userId,
-      taskHint: `Campaign strategy for ${project.title}`,
+      taskHint: `Email campaign for ${project.title}`,
     });
   } catch (error) {
     const internalMessage =
@@ -335,7 +270,7 @@ export async function executeMarketingWorkUnit(
   const decisionSource = buildMarketingDecisionSourceForCampaign({
     contextPackage,
     project,
-    strategy: domainInput.strategy,
+    strategy,
     plan: domainInput.plan,
     responsibilities: domainInput.responsibilities,
   });
@@ -360,43 +295,27 @@ export async function executeMarketingWorkUnit(
     });
   }
 
-  const briefResult = resolveCreativeBriefForCampaignStrategy({
-    contextPackage,
+  const taskHint = buildEmailCampaignTaskHint({
     project,
+    campaign,
     decision,
+    strategy,
+    creativeBrief,
+    workUnit: unit,
   });
 
-  try {
-    taskHint = buildCampaignStrategyTaskHint({
-      project,
-      campaign,
-      decision,
-      ...(briefResult.brief ? { brief: briefResult.brief } : {}),
-    });
-  } catch (error) {
-    workingUnit = restoreAfterFailedExecution(
-      workingUnit,
-      error instanceof Error ? error.message : "Campaign strategy task hint failed."
-    );
-    await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
-    return executionFailure({
-      workUnitId,
-      projectId,
-      code: "PromptBuildFailure",
-      failureStage: "assemble_brief",
-      internalMessage:
-        error instanceof Error ? error.message : "Campaign strategy task hint could not be built.",
-      phase: "failed",
-      workUnit: workingUnit,
-      error,
-    });
-  }
-
-  const generation = await deps.generateStrategy({ contextPackage, taskHint });
+  const generation = await deps.generateEmailCampaign({
+    contextPackage,
+    strategy,
+    creativeBrief,
+    decision,
+    project,
+    workUnitId,
+    taskHint,
+  });
 
   if (!generation.success) {
-    const internalMessage =
-      generation.error || "AI runtime failed to produce campaign strategy.";
+    const internalMessage = generation.error || "AI runtime failed to produce email campaign.";
     const code = internalMessage.toLowerCase().includes("understanding")
       ? "ContextUnavailable"
       : internalMessage.toLowerCase().includes("marketing peer")
@@ -408,20 +327,14 @@ export async function executeMarketingWorkUnit(
       workUnitId,
       projectId,
       code,
-      failureStage: "generate_strategy",
+      failureStage: "generate_email_campaign",
       internalMessage,
       phase: "failed",
       workUnit: workingUnit,
     });
   }
 
-  const output = mapMarketingStrategyToCampaignStrategyOutput({
-    project,
-    strategy: generation.strategy,
-    decision,
-  });
-
-  const validation = validateCampaignStrategyWorkUnitOutput(output);
+  const validation = validateEmailCampaignWorkUnitOutput(generation.email);
   if (!validation.valid) {
     const internalMessage = validation.errors.join(" ");
     workingUnit = restoreAfterFailedExecution(workingUnit, internalMessage);
@@ -437,17 +350,35 @@ export async function executeMarketingWorkUnit(
     });
   }
 
-  try {
-    await Promise.resolve(persistence.saveStrategy(generation.strategy));
-  } catch (error) {
-    workingUnit = restoreAfterFailedExecution(workingUnit, "Strategy could not be saved.");
+  const output = mapEmailCampaignToWorkUnitOutput(generation.email);
+
+  if (!persistence.saveEmailCampaign) {
+    workingUnit = restoreAfterFailedExecution(workingUnit, "Email campaign persistence unavailable.");
     await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
     return executionFailure({
       workUnitId,
       projectId,
       code: "PersistenceFailure",
-      failureStage: "save_strategy",
-      internalMessage: "Strategy could not be saved to the marketing workspace.",
+      failureStage: "save_email_campaign",
+      internalMessage: "Email could not be saved to the marketing workspace.",
+      phase: "failed",
+      workUnit: workingUnit,
+    });
+  }
+
+  try {
+    await Promise.resolve(
+      persistence.saveEmailCampaign({ workUnitId, email: generation.email })
+    );
+  } catch (error) {
+    workingUnit = restoreAfterFailedExecution(workingUnit, "Email could not be saved.");
+    await persistWorkUnit(persistence, workingUnit).catch(() => undefined);
+    return executionFailure({
+      workUnitId,
+      projectId,
+      code: "PersistenceFailure",
+      failureStage: "save_email_campaign",
+      internalMessage: "Email could not be saved to the marketing workspace.",
       phase: "failed",
       workUnit: workingUnit,
       error,
@@ -463,7 +394,7 @@ export async function executeMarketingWorkUnit(
       projectId,
       code: "PersistenceFailure",
       failureStage: "update_work_unit",
-      internalMessage: "Strategy was generated but the work unit could not be marked complete.",
+      internalMessage: "Email was generated but the work unit could not be marked complete.",
       phase: "failed",
       workUnit: workingUnit,
       error,
@@ -471,14 +402,41 @@ export async function executeMarketingWorkUnit(
   }
 
   return {
-    ok: true,
+    ok: true as const,
     workUnitId,
-    kind: "campaign_strategy",
-    phase: "completed",
+    kind: "email_campaign" as const,
+    phase: "completed" as const,
     output,
-    strategy: generation.strategy,
+    email: generation.email,
     workUnit: workingUnit,
-    warnings: [...briefResult.warnings, ...generation.warnings],
+    warnings: generation.warnings,
     idempotent: false,
   };
+}
+
+export function defaultGenerateEmailCampaignDep(): MarketingWorkUnitRuntimeDeps["generateEmailCampaign"] {
+  return (genInput) =>
+    generateMarketingEmailCampaign({
+      contextPackage: genInput.contextPackage,
+      strategy: genInput.strategy,
+      creativeBrief: genInput.creativeBrief,
+      decision: genInput.decision,
+      project: genInput.project,
+      workUnitId: genInput.workUnitId,
+      taskHint: genInput.taskHint,
+    }).then((result) =>
+      result.success
+        ? {
+            success: true as const,
+            email: result.email,
+            warnings: result.warnings,
+            traceId: result.traceId,
+          }
+        : {
+            success: false as const,
+            error: result.error,
+            warnings: result.warnings,
+            traceId: result.traceId,
+          }
+    );
 }

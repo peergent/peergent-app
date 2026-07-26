@@ -19,6 +19,14 @@ import {
   buildMarketingCreativeBriefTaskAppendix,
   MARKETING_CREATIVE_BRIEF_BEHAVIORAL_INSTRUCTIONS,
 } from "@/lib/marketing-intelligence/creative-brief-generation";
+import {
+  buildMarketingLinkedInPostTaskAppendix,
+  MARKETING_LINKEDIN_POST_BEHAVIORAL_INSTRUCTIONS,
+} from "@/lib/marketing-intelligence/linkedin-post-generation";
+import {
+  buildMarketingEmailCampaignTaskAppendix,
+  MARKETING_EMAIL_CAMPAIGN_BEHAVIORAL_INSTRUCTIONS,
+} from "@/lib/marketing-intelligence/email-generation";
 import type { BusinessBrainContextSlice } from "@/lib/intelligence/types/business-brain-context-slice";
 import type { CompanyDnaContextSlice } from "@/lib/intelligence/types/company-dna-context-slice";
 import type { ContextBundle, ContextLayerKey } from "@/lib/context-engine/types";
@@ -103,7 +111,21 @@ function buildSystemPrompt(
                 ...MARKETING_CREATIVE_BRIEF_BEHAVIORAL_INSTRUCTIONS,
                 ANTI_FABRICATION_INSTRUCTION,
               ]
-            : [
+            : outputFormat === "marketing-linkedin-post"
+              ? [
+                  ...getSharedBehavioralInstructions(),
+                  ...strategy.behavioralInstructions,
+                  ...MARKETING_LINKEDIN_POST_BEHAVIORAL_INSTRUCTIONS,
+                  ANTI_FABRICATION_INSTRUCTION,
+                ]
+              : outputFormat === "marketing-email-campaign"
+                ? [
+                    ...getSharedBehavioralInstructions(),
+                    ...strategy.behavioralInstructions,
+                    ...MARKETING_EMAIL_CAMPAIGN_BEHAVIORAL_INSTRUCTIONS,
+                    ANTI_FABRICATION_INSTRUCTION,
+                  ]
+                : [
               ...getSharedBehavioralInstructions(),
               ...strategy.behavioralInstructions,
               ANTI_FABRICATION_INSTRUCTION,
@@ -129,7 +151,11 @@ function buildTaskPromptFromScope(
   taskHint?: string,
   options?: Pick<
     PromptBuilderOptions,
-    "outputFormat" | "marketingStrategy" | "marketingPlan" | "planActivityReference"
+    | "outputFormat"
+    | "marketingStrategy"
+    | "marketingPlan"
+    | "planActivityReference"
+    | "marketingCreativeBrief"
   > & {
     marketingUnderstanding?: MarketingUnderstandingContextSlice;
     contextPackage?: ContextPackage;
@@ -204,6 +230,50 @@ function buildTaskPromptFromScope(
     return joinParagraphs([
       base,
       buildMarketingCreativeBriefTaskAppendix(options.marketingStrategy),
+    ]);
+  }
+
+  if (options?.outputFormat === "marketing-linkedin-post") {
+    if (!options.marketingStrategy) {
+      return joinParagraphs([
+        base,
+        "Error: Marketing Strategy is required to generate a LinkedIn post.",
+      ]);
+    }
+    if (!options.marketingCreativeBrief) {
+      return joinParagraphs([
+        base,
+        "Error: Creative direction is required to generate a LinkedIn post.",
+      ]);
+    }
+    return joinParagraphs([
+      base,
+      buildMarketingLinkedInPostTaskAppendix({
+        strategy: options.marketingStrategy,
+        creativeBrief: options.marketingCreativeBrief,
+      }),
+    ]);
+  }
+
+  if (options?.outputFormat === "marketing-email-campaign") {
+    if (!options.marketingStrategy) {
+      return joinParagraphs([
+        base,
+        "Error: Marketing Strategy is required to generate a marketing email.",
+      ]);
+    }
+    if (!options.marketingCreativeBrief) {
+      return joinParagraphs([
+        base,
+        "Error: Creative direction is required to generate a marketing email.",
+      ]);
+    }
+    return joinParagraphs([
+      base,
+      buildMarketingEmailCampaignTaskAppendix({
+        strategy: options.marketingStrategy,
+        creativeBrief: options.marketingCreativeBrief,
+      }),
     ]);
   }
 
@@ -295,6 +365,7 @@ export function buildPrompt(
       marketingStrategy: options.marketingStrategy,
       marketingPlan: options.marketingPlan,
       planActivityReference: options.planActivityReference,
+      marketingCreativeBrief: options.marketingCreativeBrief,
       contextPackage,
     }
   );

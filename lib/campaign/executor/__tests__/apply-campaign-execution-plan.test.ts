@@ -213,6 +213,60 @@ describe("applyCampaignExecutionPlan", () => {
     expect(contentCreates).toHaveLength(0);
   });
 
+  it("emits one CREATE_WORK_UNIT per concrete deliverable without generic channel duplicates", () => {
+    const source = executorSource({
+      explicitChannels: ["LinkedIn", "Email"],
+      explicitDeliverables: [
+        { channel: "LinkedIn", deliverableType: "social_post", title: "Social post — LinkedIn" },
+        { channel: "Email", deliverableType: "email", title: "Email — Email" },
+      ],
+    });
+    const contentPkgIds = new Set(
+      source.executionPlan.workPackages
+        .filter((p) => p.type === "content_creation")
+        .map((p) => p.id)
+    );
+    expect(contentPkgIds.size).toBe(2);
+    const result = applyCampaignExecutionPlan(source);
+    const creates = result.operations.filter(
+      (o) =>
+        o.type === "CREATE_WORK_UNIT" &&
+        o.sourceWorkPackageId != null &&
+        contentPkgIds.has(o.sourceWorkPackageId)
+    );
+    expect(creates).toHaveLength(2);
+    const titles = creates.map((o) => (o.type === "CREATE_WORK_UNIT" ? o.payload.title : ""));
+    expect(titles).not.toContain("LinkedIn deliverable");
+    expect(titles).not.toContain("Email deliverable");
+  });
+
+  it("rerun stays idempotent without duplicate creates for concrete deliverables", () => {
+    const base = executorSource({
+      explicitChannels: ["LinkedIn", "Email"],
+      explicitDeliverables: [
+        { channel: "LinkedIn", deliverableType: "social_post", title: "Social post — LinkedIn" },
+        { channel: "Email", deliverableType: "email", title: "Email — Email" },
+      ],
+    });
+    const first = applyCampaignExecutionPlan(base);
+    const second = applyCampaignExecutionPlan(base);
+    const contentPkgIds = new Set(
+      base.executionPlan.workPackages
+        .filter((p) => p.type === "content_creation")
+        .map((p) => p.id)
+    );
+    const contentCreates = (ops: typeof first.operations) =>
+      ops.filter(
+        (o) =>
+          o.type === "CREATE_WORK_UNIT" &&
+          o.sourceWorkPackageId != null &&
+          contentPkgIds.has(o.sourceWorkPackageId)
+      );
+    expect(contentCreates(first.operations)).toHaveLength(2);
+    expect(contentCreates(second.operations)).toHaveLength(2);
+    expect(first.operations.map((o) => o.id)).toEqual(second.operations.map((o) => o.id));
+  });
+
   it("preserves in-progress matched work units without recreate", () => {
     const source = executorSource({
       explicitDeliverables: [{ channel: "LinkedIn", deliverableType: "linkedin_post" }],

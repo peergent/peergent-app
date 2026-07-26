@@ -1,10 +1,14 @@
 import type { CreativeBrief } from "@/lib/creative-brief";
+import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
+import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import type { ContextPackage } from "@/lib/intelligence";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 
 import type { MarketingPeerDomainInput } from "../view-models/marketing-peer-domain-input";
 import type { CreativeDirectionWorkUnitOutput } from "./validate-creative-direction-output";
+import type { LinkedInPostWorkUnitOutput } from "./validate-linkedin-post-output";
+import type { EmailCampaignWorkUnitOutput } from "./validate-email-campaign-output";
 
 export type CampaignStrategyWorkUnitOutput = {
   readonly title: string;
@@ -29,9 +33,13 @@ export type MarketingWorkUnitFailureStage =
   | "assemble_brief"
   | "generate_strategy"
   | "generate_creative_brief"
+  | "generate_linkedin_post"
+  | "generate_email_campaign"
   | "validate_output"
   | "save_strategy"
   | "save_creative_brief"
+  | "save_linkedin_post"
+  | "save_email_campaign"
   | "update_work_unit";
 
 export type MarketingPeerRuntimePersistencePort = {
@@ -39,6 +47,14 @@ export type MarketingPeerRuntimePersistencePort = {
   readonly saveCreativeBrief?: (input: {
     campaignId: string;
     brief: CreativeBrief;
+  }) => void | Promise<void>;
+  readonly saveLinkedInPost?: (input: {
+    workUnitId: string;
+    post: MarketingLinkedInPost;
+  }) => void | Promise<void>;
+  readonly saveEmailCampaign?: (input: {
+    workUnitId: string;
+    email: MarketingEmailCampaign;
   }) => void | Promise<void>;
   readonly updateWorkUnit: (unit: WorkUnit) => WorkUnit | Promise<WorkUnit>;
 };
@@ -65,6 +81,30 @@ export type MarketingWorkUnitRuntimeDeps = {
     taskHint?: string;
   }) => Promise<
     | { success: true; brief: CreativeBrief; warnings: string[]; traceId: string }
+    | { success: false; error: string; warnings: string[]; traceId: string }
+  >;
+  readonly generateLinkedInPost: (input: {
+    contextPackage: ContextPackage;
+    strategy: MarketingStrategy;
+    creativeBrief: CreativeBrief;
+    decision: import("@/lib/marketing-decision").MarketingDecisionRecord;
+    project: import("../projects/types").MarketingProject;
+    workUnitId: string;
+    taskHint?: string;
+  }) => Promise<
+    | { success: true; post: MarketingLinkedInPost; warnings: string[]; traceId: string }
+    | { success: false; error: string; warnings: string[]; traceId: string }
+  >;
+  readonly generateEmailCampaign: (input: {
+    contextPackage: ContextPackage;
+    strategy: MarketingStrategy;
+    creativeBrief: CreativeBrief;
+    decision: import("@/lib/marketing-decision").MarketingDecisionRecord;
+    project: import("../projects/types").MarketingProject;
+    workUnitId: string;
+    taskHint?: string;
+  }) => Promise<
+    | { success: true; email: MarketingEmailCampaign; warnings: string[]; traceId: string }
     | { success: false; error: string; warnings: string[]; traceId: string }
   >;
 };
@@ -125,9 +165,35 @@ export type CreativeDirectionWorkUnitExecutionSuccess = {
   readonly idempotent: boolean;
 };
 
+export type LinkedInPostWorkUnitExecutionSuccess = {
+  readonly ok: true;
+  readonly workUnitId: string;
+  readonly kind: "linkedin_post";
+  readonly phase: "completed";
+  readonly output: LinkedInPostWorkUnitOutput;
+  readonly post: MarketingLinkedInPost;
+  readonly workUnit: WorkUnit;
+  readonly warnings: readonly string[];
+  readonly idempotent: boolean;
+};
+
+export type EmailCampaignWorkUnitExecutionSuccess = {
+  readonly ok: true;
+  readonly workUnitId: string;
+  readonly kind: "email_campaign";
+  readonly phase: "completed";
+  readonly output: EmailCampaignWorkUnitOutput;
+  readonly email: MarketingEmailCampaign;
+  readonly workUnit: WorkUnit;
+  readonly warnings: readonly string[];
+  readonly idempotent: boolean;
+};
+
 export type MarketingWorkUnitExecutionSuccess =
   | CampaignStrategyWorkUnitExecutionSuccess
-  | CreativeDirectionWorkUnitExecutionSuccess;
+  | CreativeDirectionWorkUnitExecutionSuccess
+  | LinkedInPostWorkUnitExecutionSuccess
+  | EmailCampaignWorkUnitExecutionSuccess;
 
 export type ExecuteMarketingWorkUnitResult =
   | MarketingWorkUnitExecutionSuccess

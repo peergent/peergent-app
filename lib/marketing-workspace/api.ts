@@ -9,7 +9,10 @@ import type {
 async function parseJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T & { error?: string };
   if (!response.ok) {
-    throw new Error((data as { error?: string }).error ?? "Request failed.");
+    const message = (data as { error?: string }).error ?? "Request failed.";
+    const error = new Error(message) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -58,6 +61,62 @@ export async function generateMarketingCreativeBrief(
       artifact: "creative_brief",
       strategy,
       campaignProject,
+    }),
+  });
+  return parseJson(response);
+}
+
+export async function generateMarketingLinkedInPost(
+  peerId: string,
+  strategy: MarketingStrategy,
+  creativeBrief: import("@/lib/creative-brief").CreativeBrief,
+  campaignProject: { id: string; title: string; goal: string },
+  workUnitId: string,
+  taskHint?: string
+): Promise<{
+  post: import("@/lib/marketing-intelligence/linkedin-post-generation").MarketingLinkedInPost;
+  warnings: string[];
+  traceId: string;
+}> {
+  const response = await fetch("/api/marketing-intelligence/strategy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      peerId,
+      taskHint,
+      artifact: "linkedin_post",
+      strategy,
+      creativeBrief,
+      campaignProject,
+      workUnitId,
+    }),
+  });
+  return parseJson(response);
+}
+
+export async function generateMarketingEmailCampaign(
+  peerId: string,
+  strategy: MarketingStrategy,
+  creativeBrief: import("@/lib/creative-brief").CreativeBrief,
+  campaignProject: { id: string; title: string; goal: string },
+  workUnitId: string,
+  taskHint?: string
+): Promise<{
+  email: import("@/lib/marketing-intelligence/email-generation").MarketingEmailCampaign;
+  warnings: string[];
+  traceId: string;
+}> {
+  const response = await fetch("/api/marketing-intelligence/strategy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      peerId,
+      taskHint,
+      artifact: "email_campaign",
+      strategy,
+      creativeBrief,
+      campaignProject,
+      workUnitId,
     }),
   });
   return parseJson(response);

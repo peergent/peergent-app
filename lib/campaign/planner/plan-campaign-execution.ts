@@ -20,6 +20,11 @@ import type {
   CampaignPlannerSource,
   CampaignPlannerWorkUnitSummary,
 } from "./types/campaign-planner-source";
+import {
+  campaignContentTargetKey,
+  channelHasConcreteContentTarget,
+  normalizeCampaignContentKeyPart,
+} from "./content-target-identity";
 
 export class CampaignPlannerError extends Error {
   readonly code: string;
@@ -79,7 +84,7 @@ type MutablePackage = Omit<
 };
 
 function normalizeKeyPart(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return normalizeCampaignContentKeyPart(value);
 }
 
 function packageId(campaignId: string, type: CampaignWorkPackageType, suffix = ""): string {
@@ -272,7 +277,11 @@ function collectContentTargets(source: CampaignPlannerSource): CampaignPlannerEx
   const seen = new Set<string>();
 
   const add = (item: CampaignPlannerExplicitDeliverable) => {
-    const key = `${normalizeKeyPart(item.channel)}|${normalizeKeyPart(item.deliverableType)}|${normalizeKeyPart(item.planActivityReference ?? item.title ?? "")}`;
+    const key = campaignContentTargetKey(
+      item.channel,
+      item.deliverableType,
+      item.planActivityReference ?? item.title ?? ""
+    );
     if (seen.has(key)) return;
     seen.add(key);
     targets.push(item);
@@ -282,7 +291,9 @@ function collectContentTargets(source: CampaignPlannerSource): CampaignPlannerEx
     add(d);
   }
 
+  // Channel-only fallback: one generic placeholder per channel when setup has no concrete deliverable for it.
   for (const channel of source.explicitChannels ?? []) {
+    if (channelHasConcreteContentTarget(channel, targets)) continue;
     add({ channel, deliverableType: "generic", title: `${channel} deliverable` });
   }
 
@@ -697,11 +708,7 @@ function contentPackageKey(
   deliverableType: string,
   planActivityReference?: string | null
 ): string {
-  return [
-    normalizeKeyPart(channel),
-    normalizeKeyPart(deliverableType),
-    normalizeKeyPart(planActivityReference ?? ""),
-  ].join("|");
+  return campaignContentTargetKey(channel, deliverableType, planActivityReference ?? "");
 }
 
 function workUnitContentKey(unit: CampaignPlannerWorkUnitSummary): string {

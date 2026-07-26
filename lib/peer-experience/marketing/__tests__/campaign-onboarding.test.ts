@@ -130,6 +130,53 @@ describe("planner source after onboarding", () => {
     const plan = planCampaignExecution(source);
     expect(plan.gaps.some((g) => g.id === "gap-channels-deliverables")).toBe(false);
   });
+
+  it("does not plan duplicate generic placeholders when concrete LinkedIn and Email deliverables are paired", () => {
+    let project = wizardProject();
+    project = applyCampaignOnboardingToProject(
+      project,
+      {
+        audience: "Founders",
+        selectedChannels: ["linkedin", "email"],
+        customChannelLabels: [],
+        selectedDeliverables: ["social_post", "email"],
+        customDeliverableLabels: [],
+        timingDecision: "no_deadline",
+      },
+      assembledAt
+    );
+
+    const domainInput: MarketingPeerDomainInput = {
+      peerId: "peer-emma",
+      userName: "Alex",
+      peerName: "Emma",
+      campaignTitle: "Launch",
+      generating: null,
+      generatingActivity: null,
+      understanding: null,
+      strategy: null,
+      plan: null,
+      drafts: [],
+      publicationPackages: [],
+      activityFeed: [],
+      workUnits: [],
+      projects: [project],
+      responsibilities: [],
+      automations: [],
+      connections: [],
+    };
+
+    const source = buildCampaignPlannerSourceFromDomainInput({
+      projectId: project.id,
+      domainInput,
+      assembledAt,
+    });
+
+    const plan = planCampaignExecution(source);
+    const content = plan.workPackages.filter((p) => p.type === "content_creation");
+    expect(content.filter((p) => p.deliverableType === "generic")).toHaveLength(0);
+    expect(content).toHaveLength(2);
+  });
 });
 
 describe("onboarding UI visibility", () => {

@@ -22,6 +22,12 @@ import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
 import CampaignStrategyWorkUnitAction from "./CampaignStrategyWorkUnitAction";
 import CampaignCreativeDirectionWorkUnitAction from "./CampaignCreativeDirectionWorkUnitAction";
+import CampaignLinkedInPostWorkUnitAction from "./CampaignLinkedInPostWorkUnitAction";
+import CampaignEmailWorkUnitAction from "./CampaignEmailWorkUnitAction";
+import { findLinkedInPostWorkUnits, findEmailCampaignWorkUnits } from "@/lib/peer-experience/marketing/runtime";
+import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
+import type { CreativeBrief } from "@/lib/creative-brief";
+import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { MarketingWorkUnitExecutionResult } from "@/lib/peer-experience/marketing/runtime";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
@@ -71,6 +77,9 @@ export type CampaignDetailSectionsProps = {
   ) => Promise<MarketingWorkUnitExecutionResult>;
   executingWorkUnitId?: string | null;
   campaignStrategy?: import("@/lib/marketing-intelligence").MarketingStrategy | null;
+  creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
+  linkedinPostByWorkUnitId?: Readonly<Record<string, MarketingLinkedInPost>>;
+  emailByWorkUnitId?: Readonly<Record<string, MarketingEmailCampaign>>;
 };
 
 function statusChipClass(statusLabel: string): string {
@@ -101,7 +110,20 @@ export default function CampaignDetailSections({
   onExecuteMarketingWorkUnit,
   executingWorkUnitId,
   campaignStrategy = null,
+  creativeBriefByCampaignId = {},
+  linkedinPostByWorkUnitId = {},
+  emailByWorkUnitId = {},
 }: CampaignDetailSectionsProps) {
+  const linkedInPostWorkUnits = useMemo(
+    () => (projectId ? findLinkedInPostWorkUnits(projectId, workUnits) : []),
+    [projectId, workUnits]
+  );
+
+  const emailCampaignWorkUnits = useMemo(
+    () => (projectId ? findEmailCampaignWorkUnits(projectId, workUnits) : []),
+    [projectId, workUnits]
+  );
+
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
 
@@ -334,6 +356,40 @@ export default function CampaignDetailSections({
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
         />
       ) : null}
+
+      {projectId && onExecuteMarketingWorkUnit
+        ? linkedInPostWorkUnits.map((linkedinUnit) => (
+            <CampaignLinkedInPostWorkUnitAction
+              key={linkedinUnit.id}
+              projectId={projectId}
+              campaignsEnabled={campaignsEnabled}
+              workUnit={linkedinUnit}
+              workUnits={workUnits}
+              strategy={campaignStrategy}
+              creativeBriefByCampaignId={creativeBriefByCampaignId}
+              linkedinPostByWorkUnitId={linkedinPostByWorkUnitId}
+              executingWorkUnitId={executingWorkUnitId}
+              onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+            />
+          ))
+        : null}
+
+      {projectId && onExecuteMarketingWorkUnit
+        ? emailCampaignWorkUnits.map((emailUnit) => (
+            <CampaignEmailWorkUnitAction
+              key={emailUnit.id}
+              projectId={projectId}
+              campaignsEnabled={campaignsEnabled}
+              workUnit={emailUnit}
+              workUnits={workUnits}
+              strategy={campaignStrategy}
+              creativeBriefByCampaignId={creativeBriefByCampaignId}
+              emailByWorkUnitId={emailByWorkUnitId}
+              executingWorkUnitId={executingWorkUnitId}
+              onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+            />
+          ))
+        : null}
 
       <div className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <div className="mw-section-title" style={{ marginBottom: 10 }}>

@@ -7,22 +7,25 @@ import {
   isCampaignStrategyWorkUnitReviewReady,
 } from "./identify-work-unit";
 
+/**
+ * Strategy is satisfied for downstream autonomous work when the strategy work unit
+ * has reached review_ready (terminal for generation), or legacy completion signals apply.
+ * Persisted strategy text alone is used only when no strategy work unit exists.
+ */
 export function isCampaignStrategyCompleteForCreativeDirection(input: {
   projectId: string;
   workUnits: readonly WorkUnit[];
   strategy: MarketingStrategy | null;
 }): boolean {
-  if (!input.strategy?.summary?.trim()) {
-    return false;
-  }
   const strategyUnit = findCampaignStrategyWorkUnit(input.projectId, input.workUnits);
-  if (!strategyUnit) {
-    return true;
+  if (strategyUnit) {
+    if (isCampaignStrategyWorkUnitReviewReady(strategyUnit)) {
+      return true;
+    }
+    return strategyUnit.eventLog.some((e) =>
+      e.note.includes(CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE)
+    );
   }
-  if (isCampaignStrategyWorkUnitReviewReady(strategyUnit)) {
-    return true;
-  }
-  return strategyUnit.eventLog.some((e) =>
-    e.note.includes(CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE)
-  );
+
+  return Boolean(input.strategy?.summary?.trim());
 }
