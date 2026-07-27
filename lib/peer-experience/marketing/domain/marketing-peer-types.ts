@@ -270,6 +270,7 @@ export type MarketingProjectItem = {
   statusLabel: string;
   progress: number;
   startedAt: string;
+  updatedAt: string;
   startedLabel: string;
   nextStep?: string;
   campaignTypeLabel: string;

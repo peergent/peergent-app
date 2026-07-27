@@ -24,6 +24,7 @@ import {
 } from "../lib/build-project-card-steps";
 import CustomerCampaignExperience from "../components/CustomerCampaignExperience";
 import { buildCampaignExecutionPlanViewModelOrUnavailable } from "@/lib/peer-experience/marketing/campaign-planning/build-campaign-execution-plan-view-model";
+import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
 
 export type ProjectDetailTabProps = {
   peerId: string;
@@ -67,6 +68,7 @@ export default function ProjectDetailTab({
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
+  const customerLocalePreference = customerLocalePreferenceFromEnv();
   const project = domainInput.projects.find((p) => p.id === projectId);
   const vm = buildMarketingProjectDetailViewModel({ ...domainInput, projectId });
 
@@ -120,6 +122,7 @@ export default function ProjectDetailTab({
           onCompleteCampaignOnboarding={onCompleteCampaignOnboarding}
           onContinueCampaign={onContinueCampaign}
           campaignContinuationRunning={campaignContinuationRunning}
+          localePreference={customerLocalePreference}
         />
       </>
     );

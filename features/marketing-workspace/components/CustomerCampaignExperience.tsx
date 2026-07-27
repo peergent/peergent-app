@@ -7,7 +7,6 @@ import type { CampaignContinuationResult } from "@/lib/peer-experience/marketing
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
-import type { CampaignReviewItem } from "@/lib/peer-experience/marketing/campaign-review";
 import {
   buildCampaignCollaborationViewModel,
   findArtifactCollaboration,
@@ -24,6 +23,10 @@ import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/
 import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
+import {
+  getMarketingCampaignCopy,
+  resolveMarketingCampaignLocale,
+} from "@/lib/i18n/marketing-campaign-copy";
 import CampaignContinueCampaignAction from "./CampaignContinueCampaignAction";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
 import MarketingPeerCampaignOnboardingModal from "./MarketingPeerCampaignOnboardingModal";
@@ -31,7 +34,15 @@ import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
 import MarketingPeerOnboardingIncompleteCard from "./MarketingPeerOnboardingIncompleteCard";
 import { buildCampaignReviewBuildInput } from "../lib/build-campaign-review-input";
 import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
-import CampaignCollaborationPanel from "./CampaignCollaborationPanel";
+import CustomerDeliverableCard from "./CustomerDeliverableCard";
+import {
+  buildLocalizedCampaignHeader,
+  buildSimplifiedCustomerActivity,
+  collectAttentionItems,
+  collectPreparedOverviewItems,
+  currentPhasePresentation,
+  presentCampaignPhases,
+} from "../lib/customer-campaign-presenter";
 import {
   shouldHideStartCampaignDuringSetup,
   shouldShowMarketingPeerIncompleteSetup,
@@ -49,6 +60,7 @@ export type CustomerCampaignExperienceProps = {
   workUnits: readonly WorkUnit[];
   campaignsEnabled: boolean;
   executionPlan?: CampaignExecutionPlanViewModel | null;
+  localePreference?: string | null;
   onStartCampaignExecution?: (projectId: string) => Promise<CampaignExecutionWorkspaceResult>;
   onCompleteCampaignOnboarding?: (
     projectId: string,
@@ -57,56 +69,6 @@ export type CustomerCampaignExperienceProps = {
   onContinueCampaign?: (projectId: string) => Promise<CampaignContinuationResult>;
   campaignContinuationRunning?: boolean;
 };
-
-function ReviewItemCard({
-  peerId,
-  projectId,
-  item,
-  collaborationArtifact,
-}: {
-  peerId: string;
-  projectId: string;
-  item: CampaignReviewItem;
-  collaborationArtifact: ReturnType<typeof findArtifactCollaboration>;
-}) {
-  return (
-    <div className="mw-glass mw-customer-review-card" style={{ padding: 14 }}>
-      <p className="mw-kn-helper">{item.artifactTypeLabel}</p>
-      <p className="mw-approval-title">{item.title}</p>
-      <p className="mw-kn-helper">{item.shortSummary}</p>
-      <p className="mw-review-card-status">{item.decisionStatusLabel || item.statusLabel}</p>
-      {collaborationArtifact ? (
-        <p className="mw-kn-helper">
-          Version {collaborationArtifact.currentVersion}
-          {collaborationArtifact.lastUpdatedAt
-            ? ` · Updated ${formatShortDate(collaborationArtifact.lastUpdatedAt)}`
-            : ""}
-        </p>
-      ) : null}
-      <div className="mw-review-card-actions">
-        {item.preview ? (
-          <Link
-            href={getCampaignReviewItemHref(peerId, projectId, item.id)}
-            className="mw-section-link pg-focus-premium"
-          >
-            {item.inReviewQueue ? "Review" : "Open"}
-          </Link>
-        ) : null}
-        {collaborationArtifact ? (
-          <CampaignCollaborationPanel artifact={collaborationArtifact} mode="customer" />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function formatShortDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 export default function CustomerCampaignExperience({
   peerId,
@@ -118,6 +80,7 @@ export default function CustomerCampaignExperience({
   workUnits,
   campaignsEnabled,
   executionPlan,
+  localePreference,
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
   onContinueCampaign,
@@ -127,7 +90,10 @@ export default function CustomerCampaignExperience({
   const reviewCompleteBanner = searchParams.get("campaignReviewComplete") === "1";
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+
+  const locale = resolveMarketingCampaignLocale(localePreference);
+  const copy = useMemo(() => getMarketingCampaignCopy(locale), [locale]);
 
   const reviewInput = useMemo(
     () =>
@@ -157,14 +123,16 @@ export default function CustomerCampaignExperience({
     [reviewInput]
   );
 
-  const collaborationVm = useMemo(() => {
-    return buildCampaignCollaborationViewModel(
-      buildCampaignCollaborationBuildInput({
-        reviewBuildInput: reviewInput,
-        reviewVm,
-      })
-    );
-  }, [reviewInput, reviewVm]);
+  const collaborationVm = useMemo(
+    () =>
+      buildCampaignCollaborationViewModel(
+        buildCampaignCollaborationBuildInput({
+          reviewBuildInput: reviewInput,
+          reviewVm,
+        })
+      ),
+    [reviewInput, reviewVm]
+  );
 
   const onboardingCtx: CampaignOnboardingUiContext = useMemo(
     () => ({
@@ -204,63 +172,130 @@ export default function CustomerCampaignExperience({
   const getCollab = (workUnitId: string) =>
     findArtifactCollaboration(collaborationVm, workUnitId);
 
+  const attentionItems = useMemo(() => collectAttentionItems(reviewVm), [reviewVm]);
+  const preparedOverview = useMemo(
+    () => collectPreparedOverviewItems(reviewVm),
+    [reviewVm]
+  );
+
+  const header = useMemo(
+    () =>
+      buildLocalizedCampaignHeader(reviewVm, copy, {
+        continuationRunning: campaignContinuationRunning,
+        hideStartCampaign,
+        canStartCampaign: Boolean(onStartCampaignExecution),
+        canContinueCampaign: Boolean(onContinueCampaign),
+      }),
+    [
+      reviewVm,
+      copy,
+      campaignContinuationRunning,
+      hideStartCampaign,
+      onStartCampaignExecution,
+      onContinueCampaign,
+    ]
+  );
+
+  const phases = useMemo(
+    () => presentCampaignPhases(reviewVm.progress.phases, copy),
+    [reviewVm.progress.phases, copy]
+  );
+  const currentPhase = useMemo(() => currentPhasePresentation(phases), [phases]);
+
+  const activity = useMemo(
+    () => buildSimplifiedCustomerActivity(reviewVm, copy, campaignContinuationRunning),
+    [reviewVm, copy, campaignContinuationRunning]
+  );
+
   const firstReviewHref =
     reviewVm.reviewQueue[0] != null
       ? getCampaignReviewItemHref(peerId, projectId, reviewVm.reviewQueue[0].id)
       : null;
 
-  const needsChangesItems = reviewVm.allReviewItems.filter(
-    (i) => i.decisionStatus === "changes_requested" && i.preview
-  );
-  const needsDirectionItems = reviewVm.allReviewItems.filter(
-    (i) => i.decisionStatus === "rejected" && i.preview
-  );
-  const hasAttention =
-    reviewVm.reviewQueue.length > 0 ||
-    needsChangesItems.length > 0 ||
-    needsDirectionItems.length > 0;
+  const primaryHref =
+    header.key === "waiting_review" && firstReviewHref ? firstReviewHref : null;
+
+  const showPrimaryLink = Boolean(header.primaryActionLabel && primaryHref);
+  const showPrimarySetup =
+    header.key === "setup" && header.primaryActionLabel && onCompleteCampaignOnboarding;
+  const showPrimaryStart =
+    header.showStartCampaign && onStartCampaignExecution && header.primaryActionLabel;
+
+  const hasHeroPrimary = showPrimaryLink || showPrimarySetup || showPrimaryStart;
+
+  const showSecondaryContinue =
+    onContinueCampaign &&
+    campaignsEnabled &&
+    !hasHeroPrimary &&
+    header.key === "working";
+
+  const showSecondaryStart =
+    campaignsEnabled &&
+    onStartCampaignExecution &&
+    !hideStartCampaign &&
+    header.showStartCampaign &&
+    !hasHeroPrimary;
 
   return (
     <section className="mw-section mw-customer-campaign" data-testid="mw-customer-campaign">
       {reviewCompleteBanner ? (
         <div className="mw-review-complete-banner" role="status">
-          <strong>Campaign approved.</strong> Marketing Peer is continuing automatically.
+          {copy.campaignReviewCompleteBanner}
         </div>
       ) : null}
-      <div className="mw-glass mw-campaign-readiness" style={{ padding: 14, marginBottom: 16 }}>
-        <p className="mw-modal-label">Campaign readiness</p>
-        <p className="mw-review-card-status">{collaborationVm.publishReadiness.customerLabel}</p>
-        <p className="mw-kn-helper">{collaborationVm.publishReadiness.customerSummary}</p>
-      </div>
-      <div className="mw-glass mw-detail-hero" style={{ padding: 18, marginBottom: 16 }}>
+
+      <header className="mw-glass mw-campaign-hero" data-testid="mw-campaign-hero">
         <h1 className="mw-detail-title">{reviewVm.campaignTitle}</h1>
-        <p className="mw-project-status mw-project-status--planning" role="status">
-          {reviewVm.campaignStatusLabel}
+        <p className="mw-campaign-hero-status" role="status">
+          {header.statusLabel}
         </p>
-        <p className="mw-kn-helper" style={{ marginTop: 8 }}>
-          {reviewVm.progress.preparedCount} of {reviewVm.progress.totalCount} items prepared
+        <p className="mw-campaign-hero-explanation">{header.explanation}</p>
+        <p className="mw-campaign-hero-prep">
+          {copy.preparationProgress(
+            reviewVm.progress.preparedCount,
+            reviewVm.progress.totalCount
+          )}
         </p>
-        <div className="mw-project-track" style={{ marginTop: 10 }}>
-          <div
-            className="mw-project-fill"
-            style={{ width: `${reviewVm.progress.percent}%` }}
-          />
-        </div>
-        <p className="mw-kn-helper" style={{ marginTop: 12 }}>
-          {campaignContinuationRunning
-            ? "Marketing Peer is continuing your campaign…"
-            : reviewVm.customerSummary}
-        </p>
-        {firstReviewHref && reviewVm.primaryActionLabel ? (
-          <Link
-            href={firstReviewHref}
-            className="mw-btn-primary pg-focus-premium"
-            style={{ marginTop: 14, display: "inline-block", textDecoration: "none" }}
-          >
-            {reviewVm.primaryActionLabel}
-          </Link>
+        {currentPhase ? (
+          <p className="mw-kn-helper mw-campaign-hero-phase">
+            {copy.campaignPhaseLabel}: {currentPhase.label}
+            {currentPhase.state === "current"
+              ? ` · ${copy.currentPhaseExplanation(currentPhase.label)}`
+              : ""}
+          </p>
         ) : null}
-      </div>
+
+        {showPrimaryStart ? (
+            <CampaignStartCampaignAction
+              projectId={projectId}
+              campaignsEnabled={campaignsEnabled}
+              projectOrigin={projectOrigin}
+              workUnits={workUnits}
+              executionPlan={executionPlan}
+              approvalModeLabel={campaign.approvalModeLabel}
+              onStartCampaignExecution={onStartCampaignExecution}
+              buttonLabel={header.primaryActionLabel ?? copy.startCampaign}
+              className="mw-campaign-hero-cta"
+            />
+          ) : showPrimarySetup ? (
+            <button
+              type="button"
+              className="mw-btn-primary mw-campaign-hero-cta pg-focus-premium"
+              data-testid="mw-campaign-primary-cta"
+              onClick={() => setSetupModalOpen(true)}
+            >
+              {header.primaryActionLabel}
+            </button>
+          ) : showPrimaryLink && primaryHref ? (
+            <Link
+              href={primaryHref}
+              className="mw-btn-primary mw-campaign-hero-cta pg-focus-premium"
+              data-testid="mw-campaign-primary-cta"
+            >
+              {header.primaryActionLabel}
+            </Link>
+          ) : null}
+      </header>
 
       {showWelcomeCard ? (
         <MarketingPeerOnboardingCard
@@ -291,90 +326,73 @@ export default function CustomerCampaignExperience({
         />
       ) : null}
 
-      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 className="mw-section-title">Needs your attention</h2>
-        {!hasAttention ? (
-          <p className="mw-kn-helper">Nothing needs your attention right now.</p>
+      <section
+        className="mw-section mw-glass mw-campaign-attention"
+        aria-labelledby="mw-attention-heading"
+      >
+        <h2 id="mw-attention-heading" className="mw-section-title">
+          {copy.needsAttentionTitle}
+        </h2>
+        {attentionItems.length === 0 ? (
+          <p className="mw-kn-helper">{copy.nothingNeedsAttention}</p>
         ) : (
-          <div style={{ display: "grid", gap: 16 }}>
-            {reviewVm.reviewQueue.length > 0 ? (
-              <div>
-                <p className="mw-modal-label">Awaiting review</p>
-                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
-                  {reviewVm.reviewQueue.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      peerId={peerId}
-                      projectId={projectId}
-                      item={item}
-                      collaborationArtifact={getCollab(item.workUnitId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {needsChangesItems.length > 0 ? (
-              <div>
-                <p className="mw-modal-label">Changes requested</p>
-                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
-                  {needsChangesItems.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      peerId={peerId}
-                      projectId={projectId}
-                      item={item}
-                      collaborationArtifact={getCollab(item.workUnitId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {needsDirectionItems.length > 0 ? (
-              <div>
-                <p className="mw-modal-label">Needs direction</p>
-                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
-                  {needsDirectionItems.map((item) => (
-                    <ReviewItemCard
-                      key={item.id}
-                      peerId={peerId}
-                      projectId={projectId}
-                      item={item}
-                      collaborationArtifact={getCollab(item.workUnitId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
+          <div className="mw-customer-deliverable-grid">
+            {attentionItems.map((item) => (
+              <CustomerDeliverableCard
+                key={item.id}
+                peerId={peerId}
+                projectId={projectId}
+                item={item}
+                copy={copy}
+                collaborationArtifact={getCollab(item.workUnitId)}
+                compact
+              />
+            ))}
           </div>
         )}
       </section>
 
-      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 className="mw-section-title">Marketing Peer activity</h2>
-        <ul className="mw-campaign-meta">
-          <li>Current focus: {reviewVm.activitySummary.currentFocus}</li>
-          {reviewVm.activitySummary.recentlyCompleted ? (
-            <li>Recently completed: {reviewVm.activitySummary.recentlyCompleted}</li>
-          ) : null}
-          {reviewVm.activitySummary.upNext ? (
-            <li>Up next: {reviewVm.activitySummary.upNext}</li>
-          ) : null}
-        </ul>
-      </section>
+      {(activity.currentFocus || activity.latestUpdate || activity.nextStep) && (
+        <section className="mw-section mw-glass mw-campaign-activity">
+          <h2 className="mw-section-title">{copy.activityTitle}</h2>
+          <ul className="mw-campaign-activity-list">
+            {activity.currentFocus ? (
+              <li>
+                <span className="mw-campaign-activity-label">{copy.activityCurrentFocus}</span>
+                {activity.currentFocus}
+              </li>
+            ) : null}
+            {activity.latestUpdate ? (
+              <li>
+                <span className="mw-campaign-activity-label">{copy.activityLatest}</span>
+                {activity.latestUpdate}
+              </li>
+            ) : null}
+            {activity.nextStep ? (
+              <li>
+                <span className="mw-campaign-activity-label">{copy.activityNext}</span>
+                {activity.nextStep}
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      )}
 
-      {onContinueCampaign ? (
-        <CampaignContinueCampaignAction
-          projectId={projectId}
-          campaignsEnabled={campaignsEnabled}
-          orchestratorInput={orchestratorInput}
-          continuationRunning={campaignContinuationRunning}
-          manualExecutionDisabled={campaignContinuationRunning}
-          onContinueCampaign={onContinueCampaign}
-        />
+      {showSecondaryContinue ? (
+        <div className="mw-campaign-secondary-action">
+          <CampaignContinueCampaignAction
+            projectId={projectId}
+            campaignsEnabled={campaignsEnabled}
+            orchestratorInput={orchestratorInput}
+            continuationRunning={campaignContinuationRunning}
+            manualExecutionDisabled={campaignContinuationRunning}
+            onContinueCampaign={onContinueCampaign!}
+          />
+        </div>
       ) : null}
 
-      {campaignsEnabled && onStartCampaignExecution && !hideStartCampaign ? (
-        <div style={{ marginBottom: 12 }}>
+      {showSecondaryStart ? (
+        <div className="mw-campaign-secondary-action">
           <CampaignStartCampaignAction
             projectId={projectId}
             campaignsEnabled={campaignsEnabled}
@@ -382,92 +400,89 @@ export default function CustomerCampaignExperience({
             workUnits={workUnits}
             executionPlan={executionPlan}
             approvalModeLabel={campaign.approvalModeLabel}
-            onStartCampaignExecution={onStartCampaignExecution}
+            onStartCampaignExecution={onStartCampaignExecution!}
           />
         </div>
       ) : null}
 
-      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 className="mw-section-title">Prepared work</h2>
-        {reviewVm.preparedItems.length === 0 && reviewVm.reviewQueue.length === 0 ? (
-          <p className="mw-kn-helper">Prepared deliverables will appear here.</p>
+      <section className="mw-section mw-glass mw-campaign-prepared">
+        <h2 className="mw-section-title">{copy.preparedWorkTitle}</h2>
+        {preparedOverview.length === 0 ? (
+          <p className="mw-kn-helper">{copy.preparedWorkEmpty}</p>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            {[...reviewVm.reviewQueue, ...reviewVm.preparedItems]
-              .filter(
-                (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
-              )
-              .map((item) => (
-                <ReviewItemCard
-                  key={item.id}
-                  peerId={peerId}
-                  projectId={projectId}
-                  item={item}
-                  collaborationArtifact={getCollab(item.workUnitId)}
-                />
-              ))}
+          <div className="mw-customer-deliverable-grid">
+            {preparedOverview.map((item) => (
+              <CustomerDeliverableCard
+                key={item.id}
+                peerId={peerId}
+                projectId={projectId}
+                item={item}
+                copy={copy}
+                collaborationArtifact={getCollab(item.workUnitId)}
+              />
+            ))}
           </div>
         )}
       </section>
 
-      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 className="mw-section-title">{collaborationVm.publishTargets.customerHeading}</h2>
-        <ul className="mw-campaign-meta">
-          {collaborationVm.publishTargets.targets.map((target) => (
-            <li key={target.id}>
-              {target.label} — {target.description} (coming soon)
+      <section className="mw-section mw-glass mw-campaign-phases">
+        <h2 className="mw-section-title">{copy.campaignProgressTitle}</h2>
+        <ol className="mw-campaign-phase-list" aria-label={copy.campaignProgressTitle}>
+          {phases.map((phase) => (
+            <li
+              key={phase.id}
+              className={`mw-campaign-phase mw-campaign-phase--${phase.state}`}
+            >
+              <span className="mw-campaign-phase-name">{phase.label}</span>
+              <span className="mw-campaign-phase-state">{phase.stateLabel}</span>
             </li>
           ))}
-        </ul>
+        </ol>
+        <p className="mw-kn-helper mw-campaign-publish-note">{copy.publishingNotAvailableYet}</p>
       </section>
 
-      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 className="mw-section-title">Campaign progress</h2>
-        <nav aria-label="Campaign progress">
-          <ol className="mw-detail-phases">
-            {reviewVm.progress.phases.map((phase) => (
-              <li
-                key={phase.id}
-                className={`mw-detail-phase${phase.complete ? " mw-detail-phase--done" : ""}${phase.current ? " mw-detail-phase--current" : ""}`}
-              >
-                {phase.label}
-              </li>
-            ))}
-          </ol>
-        </nav>
-      </section>
-
-      <section className="mw-section" style={{ marginBottom: 24 }}>
+      <section className="mw-section mw-campaign-more">
         <button
           type="button"
-          className="mw-section-link pg-focus-premium"
-          onClick={() => setDetailsOpen((open) => !open)}
-          aria-expanded={detailsOpen}
+          className="mw-section-link pg-focus-premium mw-campaign-more-toggle"
+          onClick={() => setMoreInfoOpen((open) => !open)}
+          aria-expanded={moreInfoOpen}
         >
-          View campaign details
+          {copy.moreInformation}
         </button>
-        {detailsOpen ? (
-          <div className="mw-glass" style={{ padding: 16, marginTop: 12 }}>
+        {moreInfoOpen ? (
+          <div className="mw-glass mw-campaign-more-panel">
+            <h3 className="mw-modal-label">{copy.publishDestinationsTitle}</h3>
+            <ul className="mw-campaign-meta">
+              {collaborationVm.publishTargets.targets.map((target) => (
+                <li key={target.id}>
+                  {target.label} — {target.description} ({copy.publishComingSoon})
+                </li>
+              ))}
+            </ul>
+            <h3 className="mw-modal-label" style={{ marginTop: 16 }}>
+              {copy.campaignDetails}
+            </h3>
             <ul className="mw-campaign-meta">
               {campaign.audience.targetAudience.trim() ? (
-                <li>Audience: {campaign.audience.targetAudience.trim()}</li>
+                <li>{copy.audienceLabel(campaign.audience.targetAudience.trim())}</li>
               ) : null}
               {campaign.channels.length > 0 ? (
-                <li>Channels: {campaign.channels.join(", ")}</li>
+                <li>{copy.channelsLabel(campaign.channels.join(", "))}</li>
               ) : null}
-              <li>Approvals: {campaign.approvalModeLabel}</li>
+              <li>{copy.approvalsLabel(campaign.approvalModeLabel)}</li>
             </ul>
           </div>
         ) : null}
         {isMarketingCampaignInspectorEnabled() ? (
-          <p style={{ marginTop: 12 }}>
+          <p className="mw-campaign-dev-link">
             <Link href={getCampaignInspectorHref(peerId, projectId)} className="mw-section-link">
-              Technical details (development)
+              {copy.technicalDetailsDev}
             </Link>
           </p>
         ) : null}
-        <Link href={getProjectHref(peerId)} className="mw-section-link" style={{ display: "block", marginTop: 12 }}>
-          ← Back to projects
+        <Link href={getProjectHref(peerId)} className="mw-section-link mw-campaign-back">
+          ← {copy.backToProjects}
         </Link>
       </section>
     </section>

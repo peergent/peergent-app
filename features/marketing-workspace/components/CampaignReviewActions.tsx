@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { MarketingCampaignCopy } from "@/lib/i18n/marketing-campaign-copy";
 import type { CampaignReviewItem } from "@/lib/peer-experience/marketing/campaign-review";
 import type {
   CampaignReviewFeedback,
@@ -23,6 +24,7 @@ export type CampaignReviewActionsProps = {
   peerId: string;
   projectId: string;
   item: CampaignReviewItem;
+  copy: MarketingCampaignCopy;
   approvalMode?: CampaignApprovalMode;
   remainingQueueCount: number;
   nextInQueueItemId?: string | null;
@@ -42,6 +44,7 @@ export default function CampaignReviewActions({
   peerId,
   projectId,
   item,
+  copy,
   approvalMode,
   remainingQueueCount,
   nextInQueueItemId,
@@ -77,13 +80,13 @@ export default function CampaignReviewActions({
 
   const statusLine =
     item.decisionStatus === "awaiting_review" || item.inReviewQueue
-      ? "Ready for your review"
-      : item.decisionStatusLabel;
+      ? copy.readyForYourReview
+      : item.decisionStatus === "approved"
+        ? copy.approvedStatus
+        : item.decisionStatusLabel;
 
   const remainingLine =
-    remainingQueueCount > 0
-      ? `${remainingQueueCount} item${remainingQueueCount === 1 ? "" : "s"} remaining`
-      : null;
+    remainingQueueCount > 0 ? copy.itemsRemaining(remainingQueueCount) : null;
 
   const closeChanges = useCallback(() => {
     if (pending) return;
@@ -264,7 +267,7 @@ export default function CampaignReviewActions({
     return (
       <div className="mw-review-actions-sticky">
         <p className="mw-review-status" role="status">
-          Approved
+          {copy.approvedStatus}
         </p>
       </div>
     );
@@ -303,7 +306,7 @@ export default function CampaignReviewActions({
                 disabled={pending}
                 onClick={() => setApproveOpen(true)}
               >
-                Approve
+                {copy.approve}
               </button>
               <button
                 type="button"
@@ -311,15 +314,15 @@ export default function CampaignReviewActions({
                 disabled={pending}
                 onClick={() => setChangesOpen(true)}
               >
-                Request changes
+                {copy.requestChanges}
               </button>
               <button
                 type="button"
-                className="mw-btn-secondary"
+                className="mw-btn-secondary mw-btn-destructive"
                 disabled={pending}
                 onClick={() => setRejectOpen(true)}
               >
-                Reject
+                {copy.reject}
               </button>
             </>
           ) : null}
@@ -331,7 +334,7 @@ export default function CampaignReviewActions({
               disabled={pending}
               onClick={() => setApproveOpen(true)}
             >
-              Confirm prepared work
+              {copy.confirmPreparedWork}
             </button>
           ) : null}
 
@@ -342,13 +345,13 @@ export default function CampaignReviewActions({
               disabled={pending}
               onClick={() => void runRevise()}
             >
-              Let Marketing Peer revise this item
+              {copy.letPeerRevise}
             </button>
           ) : null}
 
           {item.decisionStatus === "rejected" ? (
             <Link href={getProjectHref(peerId, projectId)} className="mw-btn-secondary pg-focus-premium">
-              Return to campaign
+              {copy.returnToCampaign}
             </Link>
           ) : null}
         </div>

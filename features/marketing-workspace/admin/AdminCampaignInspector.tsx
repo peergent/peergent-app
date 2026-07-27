@@ -5,6 +5,7 @@ import { CampaignOrchestrator } from "@/lib/peer-experience/marketing/campaign-o
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
 import { buildCampaignCollaborationViewModel } from "@/lib/peer-experience/marketing/campaign-collaboration";
 import CampaignCollaborationPanel from "../components/CampaignCollaborationPanel";
+import { getMarketingCampaignCopy } from "@/lib/i18n/marketing-campaign-copy";
 import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
 import { campaignTitleForInspector } from "@/lib/peer-experience/marketing/campaign-review/resolve-campaign-project-context";
 import { isCampaignOnboardingComplete } from "@/lib/peer-experience/marketing/campaign-onboarding";
@@ -144,6 +145,8 @@ export default function AdminCampaignInspector(props: AdminCampaignInspectorProp
       buildCampaignCollaborationBuildInput({ reviewBuildInput: input, reviewVm })
     );
   }, [reviewVm, props]);
+
+  const adminCampaignCopy = useMemo(() => getMarketingCampaignCopy("en"), []);
 
   const projectUnits = useMemo(
     () => workUnitsForProject(props.projectId, [...props.domainInput.workUnits]),
@@ -401,7 +404,12 @@ export default function AdminCampaignInspector(props: AdminCampaignInspectorProp
               <summary>
                 {artifact.artifactTypeLabel} · v{artifact.currentVersion} · {artifact.workUnitId}
               </summary>
-              <CampaignCollaborationPanel artifact={artifact} mode="admin" />
+              <CampaignCollaborationPanel
+                artifact={artifact}
+                mode="admin"
+                copy={adminCampaignCopy}
+                variant="admin-inline"
+              />
               <JsonBlock label="Version history VM" value={artifact.versionHistory} />
               <JsonBlock label="Timeline VM" value={artifact.timeline} />
               {artifact.comparisonToPrevious ? (

@@ -20,6 +20,8 @@ export type CampaignStartCampaignActionProps = {
   executionPlan?: CampaignExecutionPlanViewModel | null;
   approvalModeLabel?: string;
   onStartCampaignExecution: (projectId: string) => Promise<CampaignExecutionWorkspaceResult>;
+  buttonLabel?: string;
+  className?: string;
 };
 
 export default function CampaignStartCampaignAction({
@@ -30,6 +32,8 @@ export default function CampaignStartCampaignAction({
   executionPlan,
   approvalModeLabel,
   onStartCampaignExecution,
+  buttonLabel: buttonLabelOverride,
+  className,
 }: CampaignStartCampaignActionProps) {
   const feedbackId = useId();
   const pendingRef = useRef(false);
@@ -93,7 +97,7 @@ export default function CampaignStartCampaignAction({
           : "mw-campaign-start-feedback mw-campaign-start-feedback--error";
 
   return (
-    <div className="mw-campaign-start" data-testid="mw-campaign-start-action">
+    <div className={`mw-campaign-start${className ? ` ${className}` : ""}`} data-testid="mw-campaign-start-action">
       <button
         type="button"
         className="mw-btn-primary pg-focus-premium"
@@ -105,7 +109,7 @@ export default function CampaignStartCampaignAction({
         }}
         data-testid="mw-campaign-start-button"
       >
-        {viewModel.buttonLabel}
+        {buttonLabelOverride ?? viewModel.buttonLabel}
       </button>
 
       {viewModel.helperText ? (

@@ -109,6 +109,7 @@ export function buildMarketingProjectsViewModel(
       statusLabel: projectStatusLabel(status),
       progress,
       startedAt: project.createdAt,
+      updatedAt: project.updatedAt ?? project.createdAt,
       startedLabel: formatRelativeTime(project.createdAt),
       nextStep: deriveProjectNextStep(status, input.workUnits, project.id),
       campaignTypeLabel: campaignTypeLabel(project.campaignType),
@@ -120,7 +121,7 @@ export function buildMarketingProjectsViewModel(
           : undefined,
     }))
     .sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
   const emptyMessages: Record<MarketingProjectFilter, string> = {

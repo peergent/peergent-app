@@ -9,6 +9,7 @@ import { buildMarketingCampaignDetailViewModel } from "@/lib/peer-experience/mar
 import { buildMarketingCampaignDetailSourceFromDomainInput } from "@/lib/peer-experience/marketing/view-models/build-project-campaign-projection";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import { pickCampaignReviewHandlers } from "@/features/marketing-workspace/lib/campaign-review-handlers";
+import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 
 function CampaignReviewBody({
@@ -38,6 +39,8 @@ function CampaignReviewBody({
     [workspace]
   );
 
+  const customerLocalePreference = customerLocalePreferenceFromEnv();
+
   if (!workspace.isWorkspaceReady) {
     return <p className="mw-empty-inline">Loading review…</p>;
   }
@@ -57,6 +60,7 @@ function CampaignReviewBody({
       campaignsEnabled={campaignsEnabled}
       campaignContinuationRunning={workspace.campaignContinuationRunning}
       reviewHandlers={reviewHandlers}
+      localePreference={customerLocalePreference}
     />
   );
 }

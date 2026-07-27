@@ -7,6 +7,14 @@ import {
   type CampaignReviewItem,
 } from "@/lib/peer-experience/marketing/campaign-review";
 import {
+  buildCampaignCollaborationViewModel,
+  findArtifactCollaboration,
+} from "@/lib/peer-experience/marketing/campaign-collaboration";
+import {
+  getMarketingCampaignCopy,
+  resolveMarketingCampaignLocale,
+} from "@/lib/i18n/marketing-campaign-copy";
+import {
   getCampaignReviewItemHref,
   getProjectHref,
 } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
@@ -15,7 +23,9 @@ import type { MarketingCampaignDetailViewModel } from "@/lib/peer-experience/mar
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import CustomerCampaignReviewPreview from "../components/CustomerCampaignReviewPreview";
 import CampaignReviewActions from "./CampaignReviewActions";
+import CampaignCollaborationPanel from "./CampaignCollaborationPanel";
 import { buildCampaignReviewBuildInput } from "../lib/build-campaign-review-input";
+import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
 import {
   assertCampaignReviewHandlers,
   type CampaignReviewWorkspaceHandlers,
@@ -30,6 +40,7 @@ export type CustomerCampaignReviewExperienceProps = {
   project: MarketingProject;
   campaignsEnabled: boolean;
   campaignContinuationRunning?: boolean;
+  localePreference?: string | null;
   reviewHandlers: CampaignReviewWorkspaceHandlers;
 };
 
@@ -49,8 +60,12 @@ export default function CustomerCampaignReviewExperience({
   project,
   campaignsEnabled,
   campaignContinuationRunning = false,
+  localePreference,
   reviewHandlers,
 }: CustomerCampaignReviewExperienceProps) {
+  const locale = resolveMarketingCampaignLocale(localePreference);
+  const copy = useMemo(() => getMarketingCampaignCopy(locale), [locale]);
+
   const reviewVm = useMemo(() => {
     const input = buildCampaignReviewBuildInput({
       peerId,
@@ -73,6 +88,37 @@ export default function CustomerCampaignReviewExperience({
     campaignContinuationRunning,
   ]);
 
+  const collaborationArtifact = useMemo(() => {
+    const item = findReviewItem(reviewVm.allReviewItems, reviewItemId);
+    if (!item) return null;
+    const collabVm = buildCampaignCollaborationViewModel(
+      buildCampaignCollaborationBuildInput({
+        reviewBuildInput: buildCampaignReviewBuildInput({
+          peerId,
+          projectId,
+          domainInput,
+          campaignDetail: campaign,
+          project,
+          campaignsEnabled,
+          continuationRunning: campaignContinuationRunning,
+          activeWorkUnitId: domainInput.activeWorkUnitId,
+        }),
+        reviewVm,
+      })
+    );
+    return findArtifactCollaboration(collabVm, item.workUnitId);
+  }, [
+    reviewVm,
+    reviewItemId,
+    peerId,
+    projectId,
+    domainInput,
+    campaign,
+    project,
+    campaignsEnabled,
+    campaignContinuationRunning,
+  ]);
+
   const handlersReady = assertCampaignReviewHandlers(reviewHandlers);
 
   const item = findReviewItem(reviewVm.allReviewItems, reviewItemId);
@@ -83,9 +129,9 @@ export default function CustomerCampaignReviewExperience({
   const queueIndex = queue.findIndex((i) => i.id === reviewItemId);
   const positionLabel =
     queue.length > 0 && queueIndex >= 0
-      ? `Review ${queueIndex + 1} of ${queue.length}`
+      ? copy.reviewPosition(queueIndex + 1, queue.length)
       : queue.length > 0
-        ? `Review queue · ${queue.length} items`
+        ? copy.reviewQueueSummary(queue.length)
         : null;
 
   const prev = queueIndex > 0 ? queue[queueIndex - 1] : null;
@@ -95,14 +141,16 @@ export default function CustomerCampaignReviewExperience({
   const remainingAfterApprove =
     item?.inReviewQueue && queueIndex >= 0 ? Math.max(0, queue.length - 1) : queue.length;
 
+  const campaignHref = getProjectHref(peerId, projectId);
+
   if (!item || !item.preview) {
     return (
       <section className="mw-section">
-        <Link href={getProjectHref(peerId, projectId)} className="mw-detail-back pg-focus-premium">
-          ← Back to campaign
+        <Link href={campaignHref} className="mw-detail-back pg-focus-premium">
+          ← {copy.reviewBackToCampaign}
         </Link>
         <p className="mw-empty-inline" style={{ marginTop: 16 }}>
-          This review item is not available yet.
+          {copy.reviewNotAvailable}
         </p>
       </section>
     );
@@ -111,11 +159,11 @@ export default function CustomerCampaignReviewExperience({
   if (!handlersReady) {
     return (
       <section className="mw-section">
-        <Link href={getProjectHref(peerId, projectId)} className="mw-detail-back pg-focus-premium">
-          ← Back to campaign
+        <Link href={campaignHref} className="mw-detail-back pg-focus-premium">
+          ← {copy.reviewBackToCampaign}
         </Link>
         <p className="mw-empty-inline" style={{ marginTop: 16 }}>
-          Review actions are still loading. Try again in a moment.
+          {copy.reviewActionsLoading}
         </p>
       </section>
     );
@@ -123,14 +171,14 @@ export default function CustomerCampaignReviewExperience({
 
   return (
     <section className="mw-section mw-customer-review-page" data-testid="mw-customer-review-page">
-      <Link href={getProjectHref(peerId, projectId)} className="mw-detail-back pg-focus-premium">
-        ← Back to campaign
+      <Link href={campaignHref} className="mw-detail-back pg-focus-premium">
+        ← {copy.reviewBackToCampaign}
       </Link>
 
       <header className="mw-review-page-header">
         <p className="mw-review-doc-eyebrow">{item.artifactTypeLabel}</p>
         <h1 className="mw-detail-title">{item.title}</h1>
-        <p className="mw-review-doc-byline">Prepared by Marketing Peer</p>
+        <p className="mw-review-doc-byline">{copy.reviewPreparedBy}</p>
       </header>
 
       <nav className="mw-review-nav" aria-label="Review item navigation">
@@ -139,11 +187,11 @@ export default function CustomerCampaignReviewExperience({
             href={getCampaignReviewItemHref(peerId, projectId, prev.id)}
             className="mw-review-nav-btn pg-focus-premium"
           >
-            ← Previous
+            ← {copy.reviewPrevious}
           </Link>
         ) : (
           <span className="mw-review-nav-btn mw-review-nav-btn--disabled" aria-disabled>
-            ← Previous
+            ← {copy.reviewPrevious}
           </span>
         )}
         {positionLabel ? (
@@ -158,11 +206,11 @@ export default function CustomerCampaignReviewExperience({
             href={getCampaignReviewItemHref(peerId, projectId, next.id)}
             className="mw-review-nav-btn pg-focus-premium"
           >
-            Next →
+            {copy.reviewNext} →
           </Link>
         ) : (
           <span className="mw-review-nav-btn mw-review-nav-btn--disabled" aria-disabled>
-            Next →
+            {copy.reviewNext} →
           </span>
         )}
       </nav>
@@ -171,10 +219,22 @@ export default function CustomerCampaignReviewExperience({
         <CustomerCampaignReviewPreview preview={item.preview} />
       </div>
 
+      {collaborationArtifact ? (
+        <div className="mw-review-history-disclosure">
+          <CampaignCollaborationPanel
+            artifact={collaborationArtifact}
+            mode="customer"
+            copy={copy}
+            variant="disclosure"
+          />
+        </div>
+      ) : null}
+
       <CampaignReviewActions
         peerId={peerId}
         projectId={projectId}
         item={item}
+        copy={copy}
         approvalMode={project.campaignSetup?.approvalMode}
         remainingQueueCount={remainingAfterApprove}
         nextInQueueItemId={nextInQueueId}

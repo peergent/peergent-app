@@ -2240,6 +2240,233 @@
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 
+/* Sprint 27 — customer campaign UX */
+.mw-campaign-hero {
+  padding: 20px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+}
+
+.mw-campaign-hero-status {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.mw-campaign-hero-explanation {
+  margin: 0 0 8px;
+  line-height: 1.5;
+  max-width: 42rem;
+}
+
+.mw-campaign-hero-prep {
+  font-size: 0.9rem;
+  opacity: 0.88;
+  margin: 0;
+}
+
+.mw-campaign-hero-phase {
+  margin-top: 8px;
+}
+
+.mw-campaign-hero-cta {
+  margin-top: 16px;
+  display: inline-flex;
+}
+
+.mw-customer-deliverable-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.mw-customer-deliverable-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mw-customer-deliverable-card--compact .mw-customer-deliverable-summary {
+  display: none;
+}
+
+.mw-customer-deliverable-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mw-customer-deliverable-type {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  margin: 0;
+}
+
+.mw-customer-deliverable-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.mw-customer-deliverable-summary {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.mw-customer-deliverable-meta {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.mw-customer-deliverable-action {
+  align-self: flex-start;
+  margin-top: 8px;
+  text-decoration: none;
+  display: inline-flex;
+}
+
+.mw-deliverable-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  white-space: nowrap;
+}
+
+.mw-deliverable-badge--ready_for_review {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.mw-deliverable-badge--approved {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.mw-deliverable-badge--changes_requested {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.mw-deliverable-badge--rejected {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.mw-deliverable-badge--updating {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.mw-campaign-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.mw-campaign-activity-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+  margin-bottom: 2px;
+}
+
+.mw-campaign-phase-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mw-campaign-phase {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mw-campaign-phase--current {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.mw-campaign-phase-state {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.mw-campaign-publish-note {
+  margin-top: 12px;
+}
+
+.mw-collab-disclosure {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 12px 12px;
+}
+
+.mw-collab-disclosure-summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 500;
+  list-style: none;
+}
+
+.mw-collab-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mw-collab-disclosure-body {
+  padding-top: 4px;
+}
+
+.mw-review-history-disclosure {
+  margin: 16px 0;
+  max-width: 48rem;
+}
+
+.mw-btn-destructive {
+  opacity: 0.92;
+}
+
+.mw-project-search {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.mw-project-search-input {
+  max-width: 320px;
+}
+
+.mw-projects-grid--compact .mw-project-card {
+  padding: 14px 16px;
+}
+
+.mw-campaign-secondary-action {
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
 .mw-review-feedback-chips {
   display: flex;
   flex-wrap: wrap;

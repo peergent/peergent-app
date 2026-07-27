@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import {
@@ -69,6 +69,7 @@ export default function ProjectsTab({
 }: ProjectsTabProps) {
   const searchParams = useSearchParams();
   const filter = (searchParams.get("filter") as MarketingProjectFilter) ?? "active";
+  const [searchQuery, setSearchQuery] = useState("");
 
   const scheduled = useMemo(() => scheduledDraftIds(domainInput.approvalOverlays), [domainInput.approvalOverlays]);
 
@@ -76,6 +77,12 @@ export default function ProjectsTab({
     () => buildMarketingProjectsViewModel({ ...domainInput, filter }),
     [domainInput, filter]
   );
+
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return vm.items;
+    return vm.items.filter((item) => item.title.toLowerCase().includes(q));
+  }, [vm.items, searchQuery]);
 
   return (
     <>
@@ -140,11 +147,27 @@ export default function ProjectsTab({
         ))}
       </div>
 
-      {vm.items.length === 0 ? (
-        <p className="mw-empty-inline">{vm.emptyMessage}</p>
+      {campaignsEnabled ? (
+        <label className="mw-project-search">
+          <span className="sr-only">Search campaigns</span>
+          <input
+            type="search"
+            className="mw-modal-input mw-project-search-input"
+            placeholder="Search campaigns"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            data-testid="mw-project-search"
+          />
+        </label>
+      ) : null}
+
+      {filteredItems.length === 0 ? (
+        <p className="mw-empty-inline">
+          {searchQuery.trim() ? "No campaigns match your search." : vm.emptyMessage}
+        </p>
       ) : (
-        <div className="mw-projects-grid">
-          {vm.items.map((item) => {
+        <div className="mw-projects-grid mw-projects-grid--compact">
+          {filteredItems.map((item) => {
             const project = domainInput.projects.find((p) => p.id === item.id)!;
             const status = deriveProjectStatus(
               project,
@@ -177,11 +200,12 @@ export default function ProjectsTab({
                 <div className="mw-project-track">
                   <div className="mw-project-fill" style={{ width: `${progress}%` }} />
                 </div>
-                {project.goal && (
+                {project.goal && !campaignsEnabled ? (
                   <p className="mw-project-goal">
                     Goal: <strong>{project.goal}</strong>
                   </p>
-                )}
+                ) : null}
+                {!campaignsEnabled ? (
                 <div className="mw-project-steps">
                   {steps.slice(0, 5).map((step) => (
                     <div
@@ -195,9 +219,12 @@ export default function ProjectsTab({
                     </div>
                   ))}
                 </div>
+                ) : null}
+                {!campaignsEnabled ? (
                 <p className="mw-project-remaining">
                   {remaining <= 1 ? "1 step left" : `${remaining} steps left`}
                 </p>
+                ) : null}
               </Link>
             );
           })}
