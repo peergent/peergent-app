@@ -45,6 +45,37 @@ export type SimplifiedActivity = {
   nextStep: string | null;
 };
 
+export type PeerPresenceKey =
+  | "working"
+  | "waiting_for_you"
+  | "caught_up"
+  | "preparing"
+  | "thinking"
+  | "needs_review";
+
+export type PeerPresencePresentation = {
+  key: PeerPresenceKey;
+  presenceLabel: string;
+  narrative: string;
+  primaryActionLabel: string | null;
+  showStartCampaign: boolean;
+  headerKey: CustomerCampaignHeaderKey;
+};
+
+export type WorkingNowPresentation = {
+  show: boolean;
+  currently: string | null;
+  latestCompleted: string | null;
+  next: string | null;
+};
+
+export type EngagementJourneyPresentation = {
+  preparation: string;
+  currentStage: string | null;
+  whatsNext: string | null;
+  phases: readonly PhasePresentation[];
+};
+
 export function mapVmStatusToHeaderKey(vm: CampaignReviewViewModel): CustomerCampaignHeaderKey {
   const label = vm.campaignStatusLabel;
   if (label === "Waiting for your review") return "waiting_review";
@@ -285,6 +316,174 @@ export function buildSimplifiedCustomerActivity(
         : null;
 
   return { currentFocus, latestUpdate, nextStep };
+}
+
+export function buildPeerPresencePresentation(
+  vm: CampaignReviewViewModel,
+  copy: MarketingCampaignCopy,
+  campaignTitle: string,
+  options: {
+    continuationRunning: boolean;
+    hideStartCampaign: boolean;
+    canStartCampaign: boolean;
+  }
+): PeerPresencePresentation {
+  const header = buildLocalizedCampaignHeader(vm, copy, {
+    continuationRunning: options.continuationRunning,
+    hideStartCampaign: options.hideStartCampaign,
+    canStartCampaign: options.canStartCampaign,
+    canContinueCampaign: false,
+  });
+
+  const inProgress = vm.allReviewItems.find((i) => i.status === "in_progress");
+  let key: PeerPresenceKey;
+  let narrative: string;
+
+  if (header.key === "waiting_review" || vm.reviewQueue.length > 0) {
+    key = "needs_review";
+    narrative = copy.narrativeWaitingForYou(vm.reviewQueue.length || 1);
+  } else if (header.key === "setup") {
+    key = "preparing";
+    narrative = copy.narrativeNeedsSetup;
+  } else if (header.key === "ready_to_start") {
+    key = "preparing";
+    narrative = copy.narrativeReadyWhenYouAre;
+  } else if (header.key === "prepared") {
+    key = "caught_up";
+    narrative = copy.narrativeCaughtUp;
+  } else if (inProgress) {
+    key = options.continuationRunning ? "working" : "preparing";
+    narrative = copy.narrativeWorkingOn(inProgress.artifactTypeLabel);
+  } else if (options.continuationRunning) {
+    key = "working";
+    narrative = copy.narrativePreparingCampaign(campaignTitle);
+  } else if (vm.allReviewItems.some((i) => i.decisionStatus === "changes_requested")) {
+    key = "waiting_for_you";
+    narrative = copy.narrativeWaitingForYou(1);
+  } else {
+    key = "thinking";
+    narrative = copy.narrativeThinking;
+  }
+
+  const presenceLabel = presenceLabelForKey(key, copy);
+
+  return {
+    key,
+    presenceLabel,
+    narrative,
+    primaryActionLabel: header.primaryActionLabel,
+    showStartCampaign: header.showStartCampaign,
+    headerKey: header.key,
+  };
+}
+
+function presenceLabelForKey(
+  key: PeerPresenceKey,
+  copy: MarketingCampaignCopy
+): string {
+  switch (key) {
+    case "working":
+      return copy.presenceWorking;
+    case "waiting_for_you":
+      return copy.presenceWaitingForYou;
+    case "caught_up":
+      return copy.presenceCaughtUp;
+    case "preparing":
+      return copy.presencePreparing;
+    case "thinking":
+      return copy.presenceThinking;
+    case "needs_review":
+      return copy.presenceNeedsReview;
+  }
+}
+
+export function buildWorkingNowPresentation(
+  vm: CampaignReviewViewModel,
+  copy: MarketingCampaignCopy,
+  continuationRunning: boolean
+): WorkingNowPresentation {
+  const inProgress = vm.allReviewItems.find((i) => i.status === "in_progress");
+  const show =
+    Boolean(inProgress) ||
+    continuationRunning ||
+    vm.campaignStatusLabel === "Marketing Peer is working" ||
+    vm.upcomingItems.length > 0;
+
+  if (!show && vm.reviewQueue.length === 0 && mapVmStatusToHeaderKey(vm) === "prepared") {
+    return { show: false, currently: null, latestCompleted: null, next: null };
+  }
+
+  let currently: string | null = null;
+  if (inProgress) {
+    currently = copy.peerWorkingOnArtifact(inProgress.artifactTypeLabel);
+  } else if (continuationRunning) {
+    currently = copy.workingNowCurrently(copy.phaseStrategy);
+  }
+
+  const latestApproved = [...vm.allReviewItems]
+    .filter((i) => i.decisionStatus === "approved" && i.decidedAt)
+    .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? ""))[0];
+
+  const latestCompleted = latestApproved
+    ? copy.deliverableApproved(latestApproved.artifactTypeLabel)
+    : null;
+
+  const upNext = vm.upcomingItems[0];
+  let next: string | null = null;
+  if (upNext) {
+    next = upNext.artifactTypeLabel;
+  } else if (vm.reviewQueue.length > 0) {
+    next = copy.readyForYourReview;
+  } else if (continuationRunning) {
+    next = copy.peerPreparingNext.replace("Marketing Peer ", "").replace(/^is /, "");
+  }
+
+  return {
+    show: show || Boolean(currently || latestCompleted || next),
+    currently,
+    latestCompleted,
+    next,
+  };
+}
+
+export function buildEngagementJourneyPresentation(
+  vm: CampaignReviewViewModel,
+  copy: MarketingCampaignCopy
+): EngagementJourneyPresentation {
+  const phases = presentCampaignPhases(vm.progress.phases, copy);
+  const current = currentPhasePresentation(phases);
+  const nextPhase = phases.find(
+    (p) => p.state === "upcoming" && p.id !== "publish" && p.id !== "measure"
+  );
+
+  return {
+    preparation: copy.engagementPreparationValue(
+      vm.progress.preparedCount,
+      vm.progress.totalCount
+    ),
+    currentStage: current?.label ?? null,
+    whatsNext:
+      nextPhase?.label ??
+      (current?.id === "review" && vm.reviewQueue.length === 0
+        ? copy.publishingNotAvailableYet
+        : null),
+    phases: phases.filter((p) => p.id !== "measure" || p.state !== "not_available"),
+  };
+}
+
+export function collectPreparedCompletedItems(
+  vm: CampaignReviewViewModel
+): CampaignReviewItem[] {
+  const attentionIds = new Set(collectAttentionItems(vm).map((i) => i.id));
+  return vm.allReviewItems.filter((i) => {
+    if (!i.preview || attentionIds.has(i.id)) return false;
+    if (i.decisionStatus === "approved") return true;
+    if (i.inReviewQueue || i.decisionStatus === "awaiting_review") return false;
+    if (i.decisionStatus === "changes_requested" || i.decisionStatus === "rejected") {
+      return false;
+    }
+    return i.status === "prepared";
+  });
 }
 
 function activityLineForItem(item: CampaignReviewItem, copy: MarketingCampaignCopy): string {

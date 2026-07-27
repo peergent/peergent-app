@@ -95,6 +95,31 @@ export type MarketingCampaignCopy = {
   relativeHoursAgo: (hours: number) => string;
   relativeYesterday: string;
   relativeDaysAgo: (days: number) => string;
+  presenceWorking: string;
+  presenceWaitingForYou: string;
+  presenceCaughtUp: string;
+  presencePreparing: string;
+  presenceThinking: string;
+  presenceNeedsReview: string;
+  waitingOnYouTitle: string;
+  workingNowTitle: string;
+  workingNowCurrently: (label: string) => string;
+  workingNowLatestPrefix: string;
+  workingNowNextPrefix: string;
+  narrativePreparingCampaign: (campaignTitle: string) => string;
+  narrativeWaitingForYou: (count: number) => string;
+  narrativeWorkingOn: (label: string) => string;
+  narrativeCaughtUp: string;
+  narrativeNeedsSetup: string;
+  narrativeReadyWhenYouAre: string;
+  narrativeThinking: string;
+  engagementPreparationLabel: string;
+  engagementPreparationValue: (prepared: number, total: number) => string;
+  engagementCurrentLabel: string;
+  engagementNextLabel: string;
+  preparedReadyTitle: string;
+  peerRoleMarketing: string;
+  peerWorkingOnArtifact: (artifactLabel: string) => string;
 };
 
 const en: MarketingCampaignCopy = {
@@ -196,6 +221,34 @@ const en: MarketingCampaignCopy = {
   relativeHoursAgo: (hours) => `${hours}h ago`,
   relativeYesterday: "Yesterday",
   relativeDaysAgo: (days) => `${days}d ago`,
+  presenceWorking: "Working",
+  presenceWaitingForYou: "Waiting for you",
+  presenceCaughtUp: "Caught up",
+  presencePreparing: "Preparing",
+  presenceThinking: "Thinking",
+  presenceNeedsReview: "Needs your review",
+  waitingOnYouTitle: "Waiting on you",
+  workingNowTitle: "Working now",
+  workingNowCurrently: (label) => `Currently working on ${label.toLowerCase()}.`,
+  workingNowLatestPrefix: "Latest completed",
+  workingNowNextPrefix: "Next",
+  narrativePreparingCampaign: (title) => `I'm preparing your ${title} campaign.`,
+  narrativeWaitingForYou: (count) =>
+    count === 1
+      ? "I've finished something and I'm waiting for your decision."
+      : `I've prepared ${count} items and I'm waiting for your decision.`,
+  narrativeWorkingOn: (label) => `I'm currently working on the ${label.toLowerCase()}.`,
+  narrativeCaughtUp: "I've completed everything I can for now.",
+  narrativeNeedsSetup: "I need a little more setup before I can begin.",
+  narrativeReadyWhenYouAre: "I'm ready to begin whenever you are.",
+  narrativeThinking: "I'm thinking through the next step for your campaign.",
+  engagementPreparationLabel: "Preparation",
+  engagementPreparationValue: (prepared, total) => `${prepared} of ${total} ready`,
+  engagementCurrentLabel: "Current stage",
+  engagementNextLabel: "What's next",
+  preparedReadyTitle: "Ready to view",
+  peerRoleMarketing: "Marketing Peer",
+  peerWorkingOnArtifact: (artifactLabel) => `Currently writing the ${artifactLabel.toLowerCase()}.`,
 };
 
 const nl: MarketingCampaignCopy = {
@@ -300,6 +353,34 @@ const nl: MarketingCampaignCopy = {
   relativeHoursAgo: (hours) => `${hours} u geleden`,
   relativeYesterday: "Gisteren",
   relativeDaysAgo: (days) => `${days} d geleden`,
+  presenceWorking: "Bezig",
+  presenceWaitingForYou: "Wacht op jou",
+  presenceCaughtUp: "Alles bij",
+  presencePreparing: "Voorbereiden",
+  presenceThinking: "Nadenken",
+  presenceNeedsReview: "Jouw beoordeling nodig",
+  waitingOnYouTitle: "Wacht op jou",
+  workingNowTitle: "Nu bezig",
+  workingNowCurrently: (label) => `Bezig met ${label.toLowerCase()}.`,
+  workingNowLatestPrefix: "Laatst afgerond",
+  workingNowNextPrefix: "Daarna",
+  narrativePreparingCampaign: (title) => `Ik bereid je ${title}-campagne voor.`,
+  narrativeWaitingForYou: (count) =>
+    count === 1
+      ? "Ik heb iets afgerond en wacht op jouw beslissing."
+      : `Ik heb ${count} onderdelen klaargezet en wacht op jouw beslissing.`,
+  narrativeWorkingOn: (label) => `Ik werk nu aan ${label.toLowerCase()}.`,
+  narrativeCaughtUp: "Ik heb alles afgerond wat ik nu kan.",
+  narrativeNeedsSetup: "Ik heb nog wat instellingen nodig voordat ik kan beginnen.",
+  narrativeReadyWhenYouAre: "Ik kan beginnen wanneer jij er klaar voor bent.",
+  narrativeThinking: "Ik bedenk de volgende stap voor je campagne.",
+  engagementPreparationLabel: "Voorbereiding",
+  engagementPreparationValue: (prepared, total) => `${prepared} van ${total} klaar`,
+  engagementCurrentLabel: "Huidige fase",
+  engagementNextLabel: "Wat volgt",
+  preparedReadyTitle: "Klaar om te bekijken",
+  peerRoleMarketing: "Marketing Peer",
+  peerWorkingOnArtifact: (artifactLabel) => `Bezig met ${artifactLabel.toLowerCase()}.`,
 };
 
 const COPY: Record<MarketingCampaignLocale, MarketingCampaignCopy> = { en, nl };

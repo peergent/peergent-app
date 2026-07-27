@@ -4,7 +4,9 @@ import { getMarketingCampaignCopy } from "@/lib/i18n/marketing-campaign-copy";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
 import {
   buildLocalizedCampaignHeader,
+  buildPeerPresencePresentation,
   collectAttentionItems,
+  collectPreparedCompletedItems,
   collectPreparedOverviewItems,
   deliverableActionLabel,
   deliverableBadgeKey,
@@ -169,5 +171,55 @@ describe("customer campaign presenter", () => {
     } as never;
     expect(deliverableBadgeKey(item)).toBe("approved");
     expect(deliverableActionLabel(item, copy)).toBe(copy.viewDeliverable);
+  });
+
+  it("builds peer presence narrative for waiting review", () => {
+    const vm = minimalVm({
+      peerId: "p",
+      peerName: "Emma",
+      projectId: "proj",
+      project: {
+        id: "proj",
+        peerId: "p",
+        title: "Launch",
+        goal: "Grow",
+        campaignType: "product_launch",
+        createdAt: "2026-07-01T12:00:00.000Z",
+        updatedAt: "2026-07-24T12:00:00.000Z",
+        ownerLabel: "You",
+        rawRequest: "Launch",
+        campaignSetup: { approvalMode: "approval_before_publication" },
+      },
+      campaignDetail: {
+        id: "proj",
+        title: "Launch",
+        status: "planning",
+        statusLabel: "Planning",
+        goal: { businessObjective: "Grow" },
+        audience: { targetAudience: "" },
+        channels: [],
+        timeline: { summary: "" },
+        approvalModeLabel: "Approve",
+        approvalQueue: { pendingCount: 0 },
+        deliverableSummary: "",
+        progress: 0,
+        progressKnown: true,
+        linkedContent: [],
+        activitySummary: [],
+      } as never,
+      workUnits: [],
+      strategy: { summary: "S", generatedAt: "2026-07-24T12:00:00.000Z" } as never,
+      campaignsEnabled: true,
+      onboardingComplete: true,
+      hasExecutionWork: true,
+      approvalMode: "approval_before_publication",
+    });
+    const presence = buildPeerPresencePresentation(vm, copy, "Launch", {
+      continuationRunning: false,
+      hideStartCampaign: false,
+      canStartCampaign: true,
+    });
+    expect(presence.key).toBe("needs_review");
+    expect(presence.narrative).toContain("waiting");
   });
 });

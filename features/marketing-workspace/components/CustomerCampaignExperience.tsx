@@ -7,10 +7,7 @@ import type { CampaignContinuationResult } from "@/lib/peer-experience/marketing
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
-import {
-  buildCampaignCollaborationViewModel,
-  findArtifactCollaboration,
-} from "@/lib/peer-experience/marketing/campaign-collaboration";
+import { buildCampaignCollaborationViewModel } from "@/lib/peer-experience/marketing/campaign-collaboration";
 import { isMarketingCampaignInspectorEnabled } from "@/lib/peer-experience/marketing/campaign-inspector-guard";
 import {
   getCampaignInspectorHref,
@@ -27,21 +24,23 @@ import {
   getMarketingCampaignCopy,
   resolveMarketingCampaignLocale,
 } from "@/lib/i18n/marketing-campaign-copy";
-import CampaignContinueCampaignAction from "./CampaignContinueCampaignAction";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
 import MarketingPeerCampaignOnboardingModal from "./MarketingPeerCampaignOnboardingModal";
 import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
 import MarketingPeerOnboardingIncompleteCard from "./MarketingPeerOnboardingIncompleteCard";
+import MarketingPeerPresenceHeader from "./MarketingPeerPresenceHeader";
+import CustomerWaitingRow from "./CustomerWaitingRow";
+import CustomerPreparedRow from "./CustomerPreparedRow";
+import CustomerWorkingNowBlock from "./CustomerWorkingNowBlock";
+import CustomerEngagementJourney from "./CustomerEngagementJourney";
 import { buildCampaignReviewBuildInput } from "../lib/build-campaign-review-input";
 import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
-import CustomerDeliverableCard from "./CustomerDeliverableCard";
 import {
-  buildLocalizedCampaignHeader,
-  buildSimplifiedCustomerActivity,
+  buildEngagementJourneyPresentation,
+  buildPeerPresencePresentation,
+  buildWorkingNowPresentation,
   collectAttentionItems,
-  collectPreparedOverviewItems,
-  currentPhasePresentation,
-  presentCampaignPhases,
+  collectPreparedCompletedItems,
 } from "../lib/customer-campaign-presenter";
 import {
   shouldHideStartCampaignDuringSetup,
@@ -83,7 +82,6 @@ export default function CustomerCampaignExperience({
   localePreference,
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
-  onContinueCampaign,
   campaignContinuationRunning = false,
 }: CustomerCampaignExperienceProps) {
   const searchParams = useSearchParams();
@@ -159,32 +157,18 @@ export default function CustomerCampaignExperience({
   const showIncompleteSetup = shouldShowMarketingPeerIncompleteSetup(onboardingCtx);
   const hideStartCampaign = shouldHideStartCampaignDuringSetup(onboardingCtx);
 
-  const orchestratorInput = useMemo(
-    () => ({
-      projectId,
-      workUnits,
-      strategy: domainInput.strategy,
-      creativeBriefByCampaignId: domainInput.creativeBriefByCampaignId,
-    }),
-    [projectId, workUnits, domainInput.strategy, domainInput.creativeBriefByCampaignId]
-  );
-
-  const getCollab = (workUnitId: string) =>
-    findArtifactCollaboration(collaborationVm, workUnitId);
-
   const attentionItems = useMemo(() => collectAttentionItems(reviewVm), [reviewVm]);
-  const preparedOverview = useMemo(
-    () => collectPreparedOverviewItems(reviewVm),
+  const preparedItems = useMemo(
+    () => collectPreparedCompletedItems(reviewVm),
     [reviewVm]
   );
 
-  const header = useMemo(
+  const presence = useMemo(
     () =>
-      buildLocalizedCampaignHeader(reviewVm, copy, {
+      buildPeerPresencePresentation(reviewVm, copy, reviewVm.campaignTitle, {
         continuationRunning: campaignContinuationRunning,
         hideStartCampaign,
         canStartCampaign: Boolean(onStartCampaignExecution),
-        canContinueCampaign: Boolean(onContinueCampaign),
       }),
     [
       reviewVm,
@@ -192,19 +176,17 @@ export default function CustomerCampaignExperience({
       campaignContinuationRunning,
       hideStartCampaign,
       onStartCampaignExecution,
-      onContinueCampaign,
     ]
   );
 
-  const phases = useMemo(
-    () => presentCampaignPhases(reviewVm.progress.phases, copy),
-    [reviewVm.progress.phases, copy]
-  );
-  const currentPhase = useMemo(() => currentPhasePresentation(phases), [phases]);
-
-  const activity = useMemo(
-    () => buildSimplifiedCustomerActivity(reviewVm, copy, campaignContinuationRunning),
+  const workingNow = useMemo(
+    () => buildWorkingNowPresentation(reviewVm, copy, campaignContinuationRunning),
     [reviewVm, copy, campaignContinuationRunning]
+  );
+
+  const journey = useMemo(
+    () => buildEngagementJourneyPresentation(reviewVm, copy),
+    [reviewVm, copy]
   );
 
   const firstReviewHref =
@@ -213,89 +195,61 @@ export default function CustomerCampaignExperience({
       : null;
 
   const primaryHref =
-    header.key === "waiting_review" && firstReviewHref ? firstReviewHref : null;
+    presence.headerKey === "waiting_review" && firstReviewHref ? firstReviewHref : null;
 
-  const showPrimaryLink = Boolean(header.primaryActionLabel && primaryHref);
-  const showPrimarySetup =
-    header.key === "setup" && header.primaryActionLabel && onCompleteCampaignOnboarding;
-  const showPrimaryStart =
-    header.showStartCampaign && onStartCampaignExecution && header.primaryActionLabel;
-
-  const hasHeroPrimary = showPrimaryLink || showPrimarySetup || showPrimaryStart;
-
-  const showSecondaryContinue =
-    onContinueCampaign &&
-    campaignsEnabled &&
-    !hasHeroPrimary &&
-    header.key === "working";
-
-  const showSecondaryStart =
-    campaignsEnabled &&
-    onStartCampaignExecution &&
-    !hideStartCampaign &&
-    header.showStartCampaign &&
-    !hasHeroPrimary;
+  const primaryAction =
+    presence.showStartCampaign && onStartCampaignExecution ? (
+      <CampaignStartCampaignAction
+        projectId={projectId}
+        campaignsEnabled={campaignsEnabled}
+        projectOrigin={projectOrigin}
+        workUnits={workUnits}
+        executionPlan={executionPlan}
+        approvalModeLabel={campaign.approvalModeLabel}
+        onStartCampaignExecution={onStartCampaignExecution}
+        buttonLabel={presence.primaryActionLabel ?? copy.startCampaign}
+        className="mw-peer-presence-cta-btn"
+      />
+    ) : presence.headerKey === "setup" &&
+      presence.primaryActionLabel &&
+      onCompleteCampaignOnboarding ? (
+      <button
+        type="button"
+        className="mw-btn-primary pg-focus-premium pg-press"
+        data-testid="mw-campaign-primary-cta"
+        onClick={() => setSetupModalOpen(true)}
+      >
+        {presence.primaryActionLabel}
+      </button>
+    ) : primaryHref && presence.primaryActionLabel ? (
+      <Link
+        href={primaryHref}
+        className="mw-btn-primary pg-focus-premium pg-press"
+        data-testid="mw-campaign-primary-cta"
+      >
+        {presence.primaryActionLabel}
+      </Link>
+    ) : null;
 
   return (
-    <section className="mw-section mw-customer-campaign" data-testid="mw-customer-campaign">
+    <section
+      className="mw-section mw-customer-campaign mw-digital-employee"
+      data-testid="mw-customer-campaign"
+    >
       {reviewCompleteBanner ? (
-        <div className="mw-review-complete-banner" role="status">
+        <div className="mw-review-complete-banner pg-animate-in" role="status">
           {copy.campaignReviewCompleteBanner}
         </div>
       ) : null}
 
-      <header className="mw-glass mw-campaign-hero" data-testid="mw-campaign-hero">
-        <h1 className="mw-detail-title">{reviewVm.campaignTitle}</h1>
-        <p className="mw-campaign-hero-status" role="status">
-          {header.statusLabel}
-        </p>
-        <p className="mw-campaign-hero-explanation">{header.explanation}</p>
-        <p className="mw-campaign-hero-prep">
-          {copy.preparationProgress(
-            reviewVm.progress.preparedCount,
-            reviewVm.progress.totalCount
-          )}
-        </p>
-        {currentPhase ? (
-          <p className="mw-kn-helper mw-campaign-hero-phase">
-            {copy.campaignPhaseLabel}: {currentPhase.label}
-            {currentPhase.state === "current"
-              ? ` · ${copy.currentPhaseExplanation(currentPhase.label)}`
-              : ""}
-          </p>
-        ) : null}
-
-        {showPrimaryStart ? (
-            <CampaignStartCampaignAction
-              projectId={projectId}
-              campaignsEnabled={campaignsEnabled}
-              projectOrigin={projectOrigin}
-              workUnits={workUnits}
-              executionPlan={executionPlan}
-              approvalModeLabel={campaign.approvalModeLabel}
-              onStartCampaignExecution={onStartCampaignExecution}
-              buttonLabel={header.primaryActionLabel ?? copy.startCampaign}
-              className="mw-campaign-hero-cta"
-            />
-          ) : showPrimarySetup ? (
-            <button
-              type="button"
-              className="mw-btn-primary mw-campaign-hero-cta pg-focus-premium"
-              data-testid="mw-campaign-primary-cta"
-              onClick={() => setSetupModalOpen(true)}
-            >
-              {header.primaryActionLabel}
-            </button>
-          ) : showPrimaryLink && primaryHref ? (
-            <Link
-              href={primaryHref}
-              className="mw-btn-primary mw-campaign-hero-cta pg-focus-premium"
-              data-testid="mw-campaign-primary-cta"
-            >
-              {header.primaryActionLabel}
-            </Link>
-          ) : null}
-      </header>
+      <MarketingPeerPresenceHeader
+        peerName={domainInput.peerName}
+        campaignTitle={reviewVm.campaignTitle}
+        presenceKey={presence.key}
+        presenceLabel={presence.presenceLabel}
+        narrative={presence.narrative}
+        primaryAction={primaryAction}
+      />
 
       {showWelcomeCard ? (
         <MarketingPeerOnboardingCard
@@ -326,133 +280,64 @@ export default function CustomerCampaignExperience({
         />
       ) : null}
 
-      <section
-        className="mw-section mw-glass mw-campaign-attention"
-        aria-labelledby="mw-attention-heading"
-      >
-        <h2 id="mw-attention-heading" className="mw-section-title">
-          {copy.needsAttentionTitle}
-        </h2>
-        {attentionItems.length === 0 ? (
-          <p className="mw-kn-helper">{copy.nothingNeedsAttention}</p>
-        ) : (
-          <div className="mw-customer-deliverable-grid">
+      {attentionItems.length > 0 ? (
+        <section className="mw-waiting-on-you" aria-labelledby="mw-waiting-heading">
+          <h2 id="mw-waiting-heading" className="mw-section-title-minimal">
+            {copy.waitingOnYouTitle}
+          </h2>
+          <div className="mw-waiting-row-list">
             {attentionItems.map((item) => (
-              <CustomerDeliverableCard
+              <CustomerWaitingRow
                 key={item.id}
                 peerId={peerId}
                 projectId={projectId}
                 item={item}
                 copy={copy}
-                collaborationArtifact={getCollab(item.workUnitId)}
-                compact
+                updatedAt={item.updatedAt ?? item.decidedAt}
               />
             ))}
           </div>
-        )}
-      </section>
-
-      {(activity.currentFocus || activity.latestUpdate || activity.nextStep) && (
-        <section className="mw-section mw-glass mw-campaign-activity">
-          <h2 className="mw-section-title">{copy.activityTitle}</h2>
-          <ul className="mw-campaign-activity-list">
-            {activity.currentFocus ? (
-              <li>
-                <span className="mw-campaign-activity-label">{copy.activityCurrentFocus}</span>
-                {activity.currentFocus}
-              </li>
-            ) : null}
-            {activity.latestUpdate ? (
-              <li>
-                <span className="mw-campaign-activity-label">{copy.activityLatest}</span>
-                {activity.latestUpdate}
-              </li>
-            ) : null}
-            {activity.nextStep ? (
-              <li>
-                <span className="mw-campaign-activity-label">{copy.activityNext}</span>
-                {activity.nextStep}
-              </li>
-            ) : null}
-          </ul>
         </section>
-      )}
-
-      {showSecondaryContinue ? (
-        <div className="mw-campaign-secondary-action">
-          <CampaignContinueCampaignAction
-            projectId={projectId}
-            campaignsEnabled={campaignsEnabled}
-            orchestratorInput={orchestratorInput}
-            continuationRunning={campaignContinuationRunning}
-            manualExecutionDisabled={campaignContinuationRunning}
-            onContinueCampaign={onContinueCampaign!}
-          />
-        </div>
       ) : null}
 
-      {showSecondaryStart ? (
-        <div className="mw-campaign-secondary-action">
-          <CampaignStartCampaignAction
-            projectId={projectId}
-            campaignsEnabled={campaignsEnabled}
-            projectOrigin={projectOrigin}
-            workUnits={workUnits}
-            executionPlan={executionPlan}
-            approvalModeLabel={campaign.approvalModeLabel}
-            onStartCampaignExecution={onStartCampaignExecution!}
-          />
-        </div>
-      ) : null}
+      <CustomerWorkingNowBlock
+        peerName={domainInput.peerName}
+        copy={copy}
+        working={workingNow}
+      />
 
-      <section className="mw-section mw-glass mw-campaign-prepared">
-        <h2 className="mw-section-title">{copy.preparedWorkTitle}</h2>
-        {preparedOverview.length === 0 ? (
-          <p className="mw-kn-helper">{copy.preparedWorkEmpty}</p>
-        ) : (
-          <div className="mw-customer-deliverable-grid">
-            {preparedOverview.map((item) => (
-              <CustomerDeliverableCard
+      {preparedItems.length > 0 ? (
+        <section className="mw-prepared-ready" aria-labelledby="mw-prepared-heading">
+          <h2 id="mw-prepared-heading" className="mw-section-title-minimal">
+            {copy.preparedReadyTitle}
+          </h2>
+          <div className="mw-prepared-row-list">
+            {preparedItems.map((item) => (
+              <CustomerPreparedRow
                 key={item.id}
                 peerId={peerId}
                 projectId={projectId}
                 item={item}
                 copy={copy}
-                collaborationArtifact={getCollab(item.workUnitId)}
               />
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      ) : null}
 
-      <section className="mw-section mw-glass mw-campaign-phases">
-        <h2 className="mw-section-title">{copy.campaignProgressTitle}</h2>
-        <ol className="mw-campaign-phase-list" aria-label={copy.campaignProgressTitle}>
-          {phases.map((phase) => (
-            <li
-              key={phase.id}
-              className={`mw-campaign-phase mw-campaign-phase--${phase.state}`}
-            >
-              <span className="mw-campaign-phase-name">{phase.label}</span>
-              <span className="mw-campaign-phase-state">{phase.stateLabel}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="mw-kn-helper mw-campaign-publish-note">{copy.publishingNotAvailableYet}</p>
-      </section>
+      <CustomerEngagementJourney copy={copy} journey={journey} />
 
-      <section className="mw-section mw-campaign-more">
+      <footer className="mw-campaign-footer">
         <button
           type="button"
-          className="mw-section-link pg-focus-premium mw-campaign-more-toggle"
+          className="mw-section-link pg-focus-premium"
           onClick={() => setMoreInfoOpen((open) => !open)}
           aria-expanded={moreInfoOpen}
         >
           {copy.moreInformation}
         </button>
         {moreInfoOpen ? (
-          <div className="mw-glass mw-campaign-more-panel">
-            <h3 className="mw-modal-label">{copy.publishDestinationsTitle}</h3>
+          <div className="mw-campaign-more-panel">
             <ul className="mw-campaign-meta">
               {collaborationVm.publishTargets.targets.map((target) => (
                 <li key={target.id}>
@@ -460,10 +345,7 @@ export default function CustomerCampaignExperience({
                 </li>
               ))}
             </ul>
-            <h3 className="mw-modal-label" style={{ marginTop: 16 }}>
-              {copy.campaignDetails}
-            </h3>
-            <ul className="mw-campaign-meta">
+            <ul className="mw-campaign-meta" style={{ marginTop: 12 }}>
               {campaign.audience.targetAudience.trim() ? (
                 <li>{copy.audienceLabel(campaign.audience.targetAudience.trim())}</li>
               ) : null}
@@ -475,16 +357,14 @@ export default function CustomerCampaignExperience({
           </div>
         ) : null}
         {isMarketingCampaignInspectorEnabled() ? (
-          <p className="mw-campaign-dev-link">
-            <Link href={getCampaignInspectorHref(peerId, projectId)} className="mw-section-link">
-              {copy.technicalDetailsDev}
-            </Link>
-          </p>
+          <Link href={getCampaignInspectorHref(peerId, projectId)} className="mw-section-link">
+            {copy.technicalDetailsDev}
+          </Link>
         ) : null}
-        <Link href={getProjectHref(peerId)} className="mw-section-link mw-campaign-back">
+        <Link href={getProjectHref(peerId)} className="mw-section-link">
           ← {copy.backToProjects}
         </Link>
-      </section>
+      </footer>
     </section>
   );
 }
