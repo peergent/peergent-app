@@ -20,6 +20,7 @@ import { presentCampaignDetailHero } from "../lib/campaign-detail-hero-presenter
 import type { CampaignExecutionPlanViewModel } from "@/lib/peer-experience/marketing/campaign-planning/campaign-execution-plan-view-model";
 import CampaignExecutionPlanSection from "./CampaignExecutionPlanSection";
 import CampaignStartCampaignAction from "./CampaignStartCampaignAction";
+import CampaignContinueCampaignAction from "./CampaignContinueCampaignAction";
 import CampaignStrategyWorkUnitAction from "./CampaignStrategyWorkUnitAction";
 import CampaignCreativeDirectionWorkUnitAction from "./CampaignCreativeDirectionWorkUnitAction";
 import CampaignLinkedInPostWorkUnitAction from "./CampaignLinkedInPostWorkUnitAction";
@@ -34,6 +35,7 @@ import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProjectOrigin } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
+import type { CampaignContinuationResult } from "@/lib/peer-experience/marketing/campaign-continuation";
 import MarketingPeerCampaignOnboardingModal from "./MarketingPeerCampaignOnboardingModal";
 import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
 import MarketingPeerOnboardingIncompleteCard from "./MarketingPeerOnboardingIncompleteCard";
@@ -75,6 +77,8 @@ export type CampaignDetailSectionsProps = {
   onExecuteMarketingWorkUnit?: (
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
+  onContinueCampaign?: (projectId: string) => Promise<CampaignContinuationResult>;
+  campaignContinuationRunning?: boolean;
   executingWorkUnitId?: string | null;
   campaignStrategy?: import("@/lib/marketing-intelligence").MarketingStrategy | null;
   creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
@@ -108,6 +112,8 @@ export default function CampaignDetailSections({
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
   onExecuteMarketingWorkUnit,
+  onContinueCampaign,
+  campaignContinuationRunning = false,
   executingWorkUnitId,
   campaignStrategy = null,
   creativeBriefByCampaignId = {},
@@ -193,6 +199,21 @@ export default function CampaignDetailSections({
   );
   const hasDeliverableContent =
     contentItems.length > 0 || supplementalLinked.length > 0;
+
+  const continuationOrchestratorInput = useMemo(
+    () =>
+      projectId
+        ? {
+            projectId,
+            workUnits,
+            strategy: campaignStrategy,
+            creativeBriefByCampaignId,
+          }
+        : null,
+    [projectId, workUnits, campaignStrategy, creativeBriefByCampaignId]
+  );
+
+  const manualExecutionDisabled = campaignContinuationRunning;
 
   return (
     <section
@@ -336,12 +357,27 @@ export default function CampaignDetailSections({
         <CampaignExecutionPlanSection plan={executionPlan} />
       ) : null}
 
+      {projectId &&
+      onContinueCampaign &&
+      continuationOrchestratorInput &&
+      campaignsEnabled ? (
+        <CampaignContinueCampaignAction
+          projectId={projectId}
+          campaignsEnabled={campaignsEnabled}
+          orchestratorInput={continuationOrchestratorInput}
+          continuationRunning={campaignContinuationRunning}
+          manualExecutionDisabled={manualExecutionDisabled}
+          onContinueCampaign={onContinueCampaign}
+        />
+      ) : null}
+
       {projectId && onExecuteMarketingWorkUnit ? (
         <CampaignStrategyWorkUnitAction
           projectId={projectId}
           campaignsEnabled={campaignsEnabled}
           workUnits={workUnits}
           executingWorkUnitId={executingWorkUnitId}
+          manualExecutionDisabled={manualExecutionDisabled}
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
         />
       ) : null}
@@ -353,6 +389,7 @@ export default function CampaignDetailSections({
           workUnits={workUnits}
           strategy={campaignStrategy}
           executingWorkUnitId={executingWorkUnitId}
+          manualExecutionDisabled={manualExecutionDisabled}
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
         />
       ) : null}
@@ -369,6 +406,7 @@ export default function CampaignDetailSections({
               creativeBriefByCampaignId={creativeBriefByCampaignId}
               linkedinPostByWorkUnitId={linkedinPostByWorkUnitId}
               executingWorkUnitId={executingWorkUnitId}
+              manualExecutionDisabled={manualExecutionDisabled}
               onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
             />
           ))
@@ -386,6 +424,7 @@ export default function CampaignDetailSections({
               creativeBriefByCampaignId={creativeBriefByCampaignId}
               emailByWorkUnitId={emailByWorkUnitId}
               executingWorkUnitId={executingWorkUnitId}
+              manualExecutionDisabled={manualExecutionDisabled}
               onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
             />
           ))

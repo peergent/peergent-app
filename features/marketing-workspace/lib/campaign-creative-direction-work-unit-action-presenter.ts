@@ -82,6 +82,7 @@ export function buildCreativeDirectionWorkUnitActionViewModel(input: {
   strategy: MarketingStrategy | null;
   executingWorkUnitId?: string | null;
   localPending?: boolean;
+  manualExecutionDisabled?: boolean;
 }): CreativeDirectionWorkUnitActionViewModel | null {
   if (!input.campaignsEnabled) {
     return null;
@@ -113,7 +114,11 @@ export function buildCreativeDirectionWorkUnitActionViewModel(input: {
     primaryLabel: isExecuting
       ? "Marketing Peer is preparing creative direction..."
       : "Let Marketing Peer prepare creative direction",
-    primaryDisabled: isExecuting || reviewReady || Boolean(blockedReason),
+    primaryDisabled:
+      isExecuting ||
+      reviewReady ||
+      Boolean(blockedReason) ||
+      Boolean(input.manualExecutionDisabled),
     blockedReason,
     completionLabel: reviewReady ? "Creative direction ready for review" : null,
     isExecuting,

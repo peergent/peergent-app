@@ -95,6 +95,7 @@ export function buildLinkedInPostWorkUnitActionViewModel(input: {
   linkedinPostByWorkUnitId?: Readonly<Record<string, MarketingLinkedInPost>>;
   executingWorkUnitId?: string | null;
   localPending?: boolean;
+  manualExecutionDisabled?: boolean;
 }): LinkedInPostWorkUnitActionViewModel | null {
   if (!input.campaignsEnabled) {
     return null;
@@ -131,7 +132,11 @@ export function buildLinkedInPostWorkUnitActionViewModel(input: {
     primaryLabel: isExecuting
       ? "Marketing Peer is writing your LinkedIn post..."
       : "Let Marketing Peer prepare LinkedIn post",
-    primaryDisabled: isExecuting || reviewReady || Boolean(blockedReason),
+    primaryDisabled:
+      isExecuting ||
+      reviewReady ||
+      Boolean(blockedReason) ||
+      Boolean(input.manualExecutionDisabled),
     blockedReason,
     completionLabel: reviewReady ? "LinkedIn post ready for review" : null,
     isExecuting,

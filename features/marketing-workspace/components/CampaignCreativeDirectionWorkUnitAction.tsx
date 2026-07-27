@@ -16,6 +16,7 @@ export type CampaignCreativeDirectionWorkUnitActionProps = {
   workUnits: readonly WorkUnit[];
   strategy: MarketingStrategy | null;
   executingWorkUnitId?: string | null;
+  manualExecutionDisabled?: boolean;
   onExecuteMarketingWorkUnit: (
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
@@ -27,6 +28,7 @@ export default function CampaignCreativeDirectionWorkUnitAction({
   workUnits,
   strategy,
   executingWorkUnitId,
+  manualExecutionDisabled,
   onExecuteMarketingWorkUnit,
 }: CampaignCreativeDirectionWorkUnitActionProps) {
   const feedbackId = useId();
@@ -41,6 +43,7 @@ export default function CampaignCreativeDirectionWorkUnitAction({
     strategy,
     executingWorkUnitId,
     localPending,
+    manualExecutionDisabled,
   });
 
   const handleExecute = useCallback(async () => {

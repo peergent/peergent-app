@@ -73,6 +73,7 @@ export function buildCampaignStrategyWorkUnitActionViewModel(input: {
   workUnits: readonly WorkUnit[];
   executingWorkUnitId?: string | null;
   localPending?: boolean;
+  manualExecutionDisabled?: boolean;
 }): CampaignStrategyWorkUnitActionViewModel | null {
   if (!input.campaignsEnabled) {
     return null;
@@ -99,7 +100,8 @@ export function buildCampaignStrategyWorkUnitActionViewModel(input: {
     primaryLabel: isExecuting
       ? "Marketing Peer is preparing strategy..."
       : "Let Marketing Peer prepare strategy",
-    primaryDisabled: isExecuting || reviewReady,
+    primaryDisabled:
+      isExecuting || reviewReady || Boolean(input.manualExecutionDisabled),
     completionLabel: reviewReady ? "Strategy ready for review" : null,
     isExecuting,
   };

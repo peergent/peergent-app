@@ -21,6 +21,7 @@ export type CampaignLinkedInPostWorkUnitActionProps = {
   creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
   linkedinPostByWorkUnitId?: Readonly<Record<string, MarketingLinkedInPost>>;
   executingWorkUnitId?: string | null;
+  manualExecutionDisabled?: boolean;
   onExecuteMarketingWorkUnit: (
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
@@ -72,6 +73,7 @@ export default function CampaignLinkedInPostWorkUnitAction({
   creativeBriefByCampaignId,
   linkedinPostByWorkUnitId,
   executingWorkUnitId,
+  manualExecutionDisabled,
   onExecuteMarketingWorkUnit,
 }: CampaignLinkedInPostWorkUnitActionProps) {
   const feedbackId = useId();
@@ -89,6 +91,7 @@ export default function CampaignLinkedInPostWorkUnitAction({
     linkedinPostByWorkUnitId,
     executingWorkUnitId,
     localPending,
+    manualExecutionDisabled,
   });
 
   const handleExecute = useCallback(async () => {

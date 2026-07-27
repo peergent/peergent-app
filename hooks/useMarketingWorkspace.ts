@@ -96,6 +96,10 @@ import {
   marketingWorkUnitExecutionResultFromError,
   type MarketingWorkUnitExecutionResult,
 } from "@/lib/peer-experience/marketing/runtime";
+import {
+  runCampaignContinuation,
+  type CampaignContinuationResult,
+} from "@/lib/peer-experience/marketing/campaign-continuation";
 import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
 import { resolveCampaignTitle } from "@/lib/peer-experience/marketing/resolve-campaign-title";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
@@ -183,6 +187,8 @@ export function useMarketingWorkspace(
   const linkedinPostByWorkUnitIdRef = useRef(linkedinPostByWorkUnitId);
   const emailByWorkUnitIdRef = useRef(emailByWorkUnitId);
   const workUnitExecutionInFlightRef = useRef<string | null>(null);
+  const campaignContinuationInFlightRef = useRef(false);
+  const [campaignContinuationRunning, setCampaignContinuationRunning] = useState(false);
 
   projectsRef.current = projects;
   workUnitsRef.current = workUnits;
@@ -1677,7 +1683,10 @@ export function useMarketingWorkspace(
   );
 
   const handleExecuteMarketingWorkUnit = useCallback(
-    async (workUnitId: string): Promise<MarketingWorkUnitExecutionResult> => {
+    async (
+      workUnitId: string,
+      options?: { fromCampaignContinuation?: boolean }
+    ): Promise<MarketingWorkUnitExecutionResult> => {
       const assembledAt = new Date().toISOString();
 
       if (!peerId) {
@@ -1685,6 +1694,18 @@ export function useMarketingWorkspace(
           ok: false,
           code: "WorkspaceUnavailable",
           message: "Workspace unavailable.",
+          workUnitId,
+        };
+      }
+
+      if (
+        !options?.fromCampaignContinuation &&
+        campaignContinuationInFlightRef.current
+      ) {
+        return {
+          ok: false,
+          code: "ExecutionInProgress",
+          message: "Marketing Peer is continuing your campaign...",
           workUnitId,
         };
       }
@@ -1940,6 +1961,57 @@ export function useMarketingWorkspace(
     ]
   );
 
+  const handleContinueCampaign = useCallback(
+    async (projectId: string): Promise<CampaignContinuationResult> => {
+      if (campaignContinuationInFlightRef.current) {
+        return {
+          ok: false,
+          projectId,
+          completedWorkUnits: [],
+          stopReason: "execution_failed",
+          stopMessage: "Campaign continuation is already in progress.",
+          iterations: 0,
+        };
+      }
+
+      if (workUnitExecutionInFlightRef.current) {
+        return {
+          ok: false,
+          projectId,
+          completedWorkUnits: [],
+          stopReason: "execution_failed",
+          stopMessage: "Another work unit is already executing.",
+          iterations: 0,
+        };
+      }
+
+      campaignContinuationInFlightRef.current = true;
+      setCampaignContinuationRunning(true);
+
+      try {
+        return await runCampaignContinuation(projectId, {
+          getOrchestratorInput: (campaignProjectId) => ({
+            projectId: campaignProjectId,
+            workUnits: workUnitsRef.current,
+            strategy: strategyRef.current,
+            creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
+          }),
+          executeWorkUnit: (workUnitId) =>
+            handleExecuteMarketingWorkUnit(workUnitId, {
+              fromCampaignContinuation: true,
+            }),
+          getApprovalMode: (campaignProjectId) =>
+            projectsRef.current.find((p) => p.id === campaignProjectId)
+              ?.campaignSetup?.approvalMode,
+        });
+      } finally {
+        campaignContinuationInFlightRef.current = false;
+        setCampaignContinuationRunning(false);
+      }
+    },
+    [handleExecuteMarketingWorkUnit]
+  );
+
   return {
     peer,
     pageState,
@@ -1980,6 +2052,8 @@ export function useMarketingWorkspace(
     handleCompleteCampaignOnboarding,
     handleStartCampaignExecution,
     handleExecuteMarketingWorkUnit,
+    handleContinueCampaign,
+    campaignContinuationRunning,
     activeDelegation,
     syncedWorkUnits,
     projects,

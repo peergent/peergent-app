@@ -95,6 +95,7 @@ export function buildEmailCampaignWorkUnitActionViewModel(input: {
   emailByWorkUnitId?: Readonly<Record<string, MarketingEmailCampaign>>;
   executingWorkUnitId?: string | null;
   localPending?: boolean;
+  manualExecutionDisabled?: boolean;
 }): EmailCampaignWorkUnitActionViewModel | null {
   if (!input.campaignsEnabled) {
     return null;
@@ -131,7 +132,11 @@ export function buildEmailCampaignWorkUnitActionViewModel(input: {
     primaryLabel: isExecuting
       ? "Marketing Peer is writing your email..."
       : "Let Marketing Peer prepare email",
-    primaryDisabled: isExecuting || reviewReady || Boolean(blockedReason),
+    primaryDisabled:
+      isExecuting ||
+      reviewReady ||
+      Boolean(blockedReason) ||
+      Boolean(input.manualExecutionDisabled),
     blockedReason,
     completionLabel: reviewReady ? "Email ready for review" : null,
     isExecuting,

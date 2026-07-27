@@ -50,6 +50,19 @@ export {
   logMarketingWorkUnitExecutionFailure,
 } from "./marketing-work-unit-runtime-diagnostics";
 export {
+  CampaignOrchestrator,
+  type BlockedWorkUnit,
+  type CampaignExecutionPlan,
+  type CampaignOrchestratorInput,
+  type MarketingWorkUnit,
+} from "../campaign-orchestrator";
+export {
+  CampaignContinuationRunner,
+  runCampaignContinuation,
+  formatCampaignContinuationSummary,
+  type CampaignContinuationResult,
+} from "../campaign-continuation";
+export {
   executeMarketingWorkUnitInWorkspace,
   marketingWorkUnitExecutionResultFromError,
   MarketingWorkUnitExecutionFeatureDisabledError,

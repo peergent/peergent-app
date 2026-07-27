@@ -45,6 +45,12 @@ export type ProjectDetailTabProps = {
   ) => Promise<
     import("@/lib/peer-experience/marketing/runtime").MarketingWorkUnitExecutionResult
   >;
+  onContinueCampaign?: (
+    projectId: string
+  ) => Promise<
+    import("@/lib/peer-experience/marketing/campaign-continuation").CampaignContinuationResult
+  >;
+  campaignContinuationRunning?: boolean;
   executingWorkUnitId?: string | null;
 };
 
@@ -55,6 +61,8 @@ export default function ProjectDetailTab({
   onStartCampaignExecution,
   onCompleteCampaignOnboarding,
   onExecuteMarketingWorkUnit,
+  onContinueCampaign,
+  campaignContinuationRunning,
   executingWorkUnitId,
 }: ProjectDetailTabProps) {
   const searchParams = useSearchParams();
@@ -121,6 +129,8 @@ export default function ProjectDetailTab({
           onStartCampaignExecution={onStartCampaignExecution}
           onCompleteCampaignOnboarding={onCompleteCampaignOnboarding}
           onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
+          onContinueCampaign={onContinueCampaign}
+          campaignContinuationRunning={campaignContinuationRunning}
           executingWorkUnitId={executingWorkUnitId}
           campaignStrategy={domainInput.strategy}
           creativeBriefByCampaignId={domainInput.creativeBriefByCampaignId}

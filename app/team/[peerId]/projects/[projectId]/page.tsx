@@ -20,6 +20,8 @@ function ProjectDetailPageInner() {
           onStartCampaignExecution={workspace.handleStartCampaignExecution}
           onCompleteCampaignOnboarding={workspace.handleCompleteCampaignOnboarding}
           onExecuteMarketingWorkUnit={workspace.handleExecuteMarketingWorkUnit}
+          onContinueCampaign={workspace.handleContinueCampaign}
+          campaignContinuationRunning={workspace.campaignContinuationRunning}
           executingWorkUnitId={workspace.activeWorkUnitId}
         />
       )}

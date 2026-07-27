@@ -21,6 +21,7 @@ export type CampaignEmailWorkUnitActionProps = {
   creativeBriefByCampaignId?: Readonly<Record<string, CreativeBrief>>;
   emailByWorkUnitId?: Readonly<Record<string, MarketingEmailCampaign>>;
   executingWorkUnitId?: string | null;
+  manualExecutionDisabled?: boolean;
   onExecuteMarketingWorkUnit: (
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
@@ -82,6 +83,7 @@ export default function CampaignEmailWorkUnitAction({
   creativeBriefByCampaignId,
   emailByWorkUnitId,
   executingWorkUnitId,
+  manualExecutionDisabled,
   onExecuteMarketingWorkUnit,
 }: CampaignEmailWorkUnitActionProps) {
   const feedbackId = useId();
@@ -99,6 +101,7 @@ export default function CampaignEmailWorkUnitAction({
     emailByWorkUnitId,
     executingWorkUnitId,
     localPending,
+    manualExecutionDisabled,
   });
 
   const handleExecute = useCallback(async () => {
