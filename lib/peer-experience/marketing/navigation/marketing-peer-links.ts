@@ -104,6 +104,19 @@ export function getProjectReviewHref(
   return `/team/${peerId}/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
 }
 
+/** Customer review surface for a prepared campaign artifact (review item id = work unit id). */
+export function getCampaignReviewItemHref(
+  peerId: string,
+  projectId: string,
+  reviewItemId: string
+): string {
+  return `/team/${peerId}/projects/${encodeURIComponent(projectId)}/review/${encodeURIComponent(reviewItemId)}`;
+}
+
+export function getCampaignInspectorHref(peerId: string, projectId: string): string {
+  return `/team/${peerId}/projects/${encodeURIComponent(projectId)}/inspector`;
+}
+
 export function parseProjectSearchParams(searchParams: URLSearchParams): {
   section: string | null;
   deliverableId: string | null;

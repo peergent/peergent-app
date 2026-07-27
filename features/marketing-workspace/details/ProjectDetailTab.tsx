@@ -22,7 +22,7 @@ import {
   buildProjectCardSteps,
   remainingProjectSteps,
 } from "../lib/build-project-card-steps";
-import CampaignDetailSections from "../components/CampaignDetailSections";
+import CustomerCampaignExperience from "../components/CustomerCampaignExperience";
 import { buildCampaignExecutionPlanViewModelOrUnavailable } from "@/lib/peer-experience/marketing/campaign-planning/build-campaign-execution-plan-view-model";
 
 export type ProjectDetailTabProps = {
@@ -106,36 +106,20 @@ export default function ProjectDetailTab({
         <Link href={getProjectHref(peerId)} className="mw-detail-back pg-focus-premium">
           {campaignWizardDetailBackLabel()}
         </Link>
-        <CampaignDetailSections
-          campaign={campaignDetail}
-          projectActivity={vm.timeline}
-          executionPlan={executionPlan}
-          campaignMeta={{
-            ownerLabel: vm.ownerLabel,
-            campaignTypeLabel: vm.campaignTypeLabel,
-            createdAt: vm.createdAt,
-          }}
-          contentItems={vm.contentItems}
-          contentPeerId={peerId}
+        <CustomerCampaignExperience
           peerId={peerId}
-          questions={exp.questions}
-          peerName={domainInput.peerName}
-          conversation={exp.conversation}
-          campaignsEnabled={campaignsEnabled}
           projectId={projectId}
+          domainInput={domainInput}
+          campaign={campaignDetail}
+          project={project!}
           projectOrigin={project?.origin}
           workUnits={domainInput.workUnits}
-          project={project}
+          campaignsEnabled={campaignsEnabled}
+          executionPlan={executionPlan}
           onStartCampaignExecution={onStartCampaignExecution}
           onCompleteCampaignOnboarding={onCompleteCampaignOnboarding}
-          onExecuteMarketingWorkUnit={onExecuteMarketingWorkUnit}
           onContinueCampaign={onContinueCampaign}
           campaignContinuationRunning={campaignContinuationRunning}
-          executingWorkUnitId={executingWorkUnitId}
-          campaignStrategy={domainInput.strategy}
-          creativeBriefByCampaignId={domainInput.creativeBriefByCampaignId}
-          linkedinPostByWorkUnitId={domainInput.linkedinPostByWorkUnitId}
-          emailByWorkUnitId={domainInput.emailByWorkUnitId}
         />
       </>
     );

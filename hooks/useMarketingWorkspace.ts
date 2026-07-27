@@ -2015,6 +2015,7 @@ export function useMarketingWorkspace(
   return {
     peer,
     pageState,
+    isWorkspaceReady: pageState === "success",
     errorMessage,
     understanding,
     profileCounts,
