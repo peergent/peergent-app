@@ -3,6 +3,9 @@ import Link from "next/link";
 import { useMemo, useCallback } from "react";
 import { CampaignOrchestrator } from "@/lib/peer-experience/marketing/campaign-orchestrator";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
+import { buildCampaignCollaborationViewModel } from "@/lib/peer-experience/marketing/campaign-collaboration";
+import CampaignCollaborationPanel from "../components/CampaignCollaborationPanel";
+import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
 import { campaignTitleForInspector } from "@/lib/peer-experience/marketing/campaign-review/resolve-campaign-project-context";
 import { isCampaignOnboardingComplete } from "@/lib/peer-experience/marketing/campaign-onboarding";
 import { getProjectHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
@@ -124,6 +127,23 @@ export default function AdminCampaignInspector(props: AdminCampaignInspectorProp
     });
     return buildCampaignReviewViewModel(input);
   }, [props]);
+
+  const collaborationVm = useMemo(() => {
+    if (!reviewVm || !props.campaign) return null;
+    const input = buildCampaignReviewBuildInput({
+      peerId: props.peerId,
+      projectId: props.projectId,
+      domainInput: props.domainInput,
+      campaignDetail: props.campaign,
+      project: props.project,
+      campaignsEnabled: props.campaignsEnabled,
+      continuationRunning: props.campaignContinuationRunning,
+      activeWorkUnitId: props.executingWorkUnitId,
+    });
+    return buildCampaignCollaborationViewModel(
+      buildCampaignCollaborationBuildInput({ reviewBuildInput: input, reviewVm })
+    );
+  }, [reviewVm, props]);
 
   const projectUnits = useMemo(
     () => workUnitsForProject(props.projectId, [...props.domainInput.workUnits]),
@@ -354,6 +374,44 @@ export default function AdminCampaignInspector(props: AdminCampaignInspectorProp
           <p className="mw-kn-helper">Campaign detail VM unavailable — review summary omitted.</p>
         )}
       </InspectorSection>
+
+      {collaborationVm ? (
+        <InspectorSection title="Collaboration & publish readiness">
+          <p className="mw-modal-label">Readiness diagnostics</p>
+          <p className="mw-kn-helper">
+            {collaborationVm.publishReadiness.customerLabel} ({collaborationVm.publishReadiness.status})
+          </p>
+          <ul className="mw-campaign-meta">
+            {collaborationVm.publishReadiness.diagnostics.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <h3 className="mw-modal-label" style={{ marginTop: 12 }}>
+            Publish targets (architecture)
+          </h3>
+          <ul className="mw-campaign-meta">
+            {collaborationVm.publishTargets.targets.map((t) => (
+              <li key={t.id}>
+                {t.label} · linked: {t.linkedArtifactTypes.join(", ") || "—"}
+              </li>
+            ))}
+          </ul>
+          {collaborationVm.artifacts.map((artifact) => (
+            <details key={artifact.workUnitId} style={{ marginTop: 12 }}>
+              <summary>
+                {artifact.artifactTypeLabel} · v{artifact.currentVersion} · {artifact.workUnitId}
+              </summary>
+              <CampaignCollaborationPanel artifact={artifact} mode="admin" />
+              <JsonBlock label="Version history VM" value={artifact.versionHistory} />
+              <JsonBlock label="Timeline VM" value={artifact.timeline} />
+              {artifact.comparisonToPrevious ? (
+                <JsonBlock label="Comparison VM" value={artifact.comparisonToPrevious} />
+              ) : null}
+              <JsonBlock label="Feedback history VM" value={artifact.feedbackHistory} />
+            </details>
+          ))}
+        </InspectorSection>
+      ) : null}
 
       <InspectorSection title="Runtime / diagnostics">
         <ul className="mw-campaign-meta">

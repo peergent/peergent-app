@@ -8,6 +8,10 @@ import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/mar
 import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
 import type { CampaignReviewItem } from "@/lib/peer-experience/marketing/campaign-review";
+import {
+  buildCampaignCollaborationViewModel,
+  findArtifactCollaboration,
+} from "@/lib/peer-experience/marketing/campaign-collaboration";
 import { isMarketingCampaignInspectorEnabled } from "@/lib/peer-experience/marketing/campaign-inspector-guard";
 import {
   getCampaignInspectorHref,
@@ -26,6 +30,8 @@ import MarketingPeerCampaignOnboardingModal from "./MarketingPeerCampaignOnboard
 import MarketingPeerOnboardingCard from "./MarketingPeerOnboardingCard";
 import MarketingPeerOnboardingIncompleteCard from "./MarketingPeerOnboardingIncompleteCard";
 import { buildCampaignReviewBuildInput } from "../lib/build-campaign-review-input";
+import { buildCampaignCollaborationBuildInput } from "../lib/build-campaign-collaboration-input";
+import CampaignCollaborationPanel from "./CampaignCollaborationPanel";
 import {
   shouldHideStartCampaignDuringSetup,
   shouldShowMarketingPeerIncompleteSetup,
@@ -56,28 +62,50 @@ function ReviewItemCard({
   peerId,
   projectId,
   item,
+  collaborationArtifact,
 }: {
   peerId: string;
   projectId: string;
   item: CampaignReviewItem;
+  collaborationArtifact: ReturnType<typeof findArtifactCollaboration>;
 }) {
   return (
     <div className="mw-glass mw-customer-review-card" style={{ padding: 14 }}>
       <p className="mw-kn-helper">{item.artifactTypeLabel}</p>
       <p className="mw-approval-title">{item.title}</p>
       <p className="mw-kn-helper">{item.shortSummary}</p>
-      <p className="mw-kn-helper">{item.statusLabel}</p>
-      {item.preview ? (
-        <Link
-          href={getCampaignReviewItemHref(peerId, projectId, item.id)}
-          className="mw-section-link pg-focus-premium"
-          style={{ marginTop: 10, display: "inline-block" }}
-        >
-          Review
-        </Link>
+      <p className="mw-review-card-status">{item.decisionStatusLabel || item.statusLabel}</p>
+      {collaborationArtifact ? (
+        <p className="mw-kn-helper">
+          Version {collaborationArtifact.currentVersion}
+          {collaborationArtifact.lastUpdatedAt
+            ? ` · Updated ${formatShortDate(collaborationArtifact.lastUpdatedAt)}`
+            : ""}
+        </p>
       ) : null}
+      <div className="mw-review-card-actions">
+        {item.preview ? (
+          <Link
+            href={getCampaignReviewItemHref(peerId, projectId, item.id)}
+            className="mw-section-link pg-focus-premium"
+          >
+            {item.inReviewQueue ? "Review" : "Open"}
+          </Link>
+        ) : null}
+        {collaborationArtifact ? (
+          <CampaignCollaborationPanel artifact={collaborationArtifact} mode="customer" />
+        ) : null}
+      </div>
     </div>
   );
+}
+
+function formatShortDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 }
 
 export default function CustomerCampaignExperience({
@@ -129,6 +157,15 @@ export default function CustomerCampaignExperience({
     [reviewInput]
   );
 
+  const collaborationVm = useMemo(() => {
+    return buildCampaignCollaborationViewModel(
+      buildCampaignCollaborationBuildInput({
+        reviewBuildInput: reviewInput,
+        reviewVm,
+      })
+    );
+  }, [reviewInput, reviewVm]);
+
   const onboardingCtx: CampaignOnboardingUiContext = useMemo(
     () => ({
       campaignsEnabled,
@@ -164,6 +201,9 @@ export default function CustomerCampaignExperience({
     [projectId, workUnits, domainInput.strategy, domainInput.creativeBriefByCampaignId]
   );
 
+  const getCollab = (workUnitId: string) =>
+    findArtifactCollaboration(collaborationVm, workUnitId);
+
   const firstReviewHref =
     reviewVm.reviewQueue[0] != null
       ? getCampaignReviewItemHref(peerId, projectId, reviewVm.reviewQueue[0].id)
@@ -187,6 +227,11 @@ export default function CustomerCampaignExperience({
           <strong>Campaign approved.</strong> Marketing Peer is continuing automatically.
         </div>
       ) : null}
+      <div className="mw-glass mw-campaign-readiness" style={{ padding: 14, marginBottom: 16 }}>
+        <p className="mw-modal-label">Campaign readiness</p>
+        <p className="mw-review-card-status">{collaborationVm.publishReadiness.customerLabel}</p>
+        <p className="mw-kn-helper">{collaborationVm.publishReadiness.customerSummary}</p>
+      </div>
       <div className="mw-glass mw-detail-hero" style={{ padding: 18, marginBottom: 16 }}>
         <h1 className="mw-detail-title">{reviewVm.campaignTitle}</h1>
         <p className="mw-project-status mw-project-status--planning" role="status">
@@ -257,7 +302,13 @@ export default function CustomerCampaignExperience({
                 <p className="mw-modal-label">Awaiting review</p>
                 <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
                   {reviewVm.reviewQueue.map((item) => (
-                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                    <ReviewItemCard
+                      key={item.id}
+                      peerId={peerId}
+                      projectId={projectId}
+                      item={item}
+                      collaborationArtifact={getCollab(item.workUnitId)}
+                    />
                   ))}
                 </div>
               </div>
@@ -267,7 +318,13 @@ export default function CustomerCampaignExperience({
                 <p className="mw-modal-label">Changes requested</p>
                 <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
                   {needsChangesItems.map((item) => (
-                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                    <ReviewItemCard
+                      key={item.id}
+                      peerId={peerId}
+                      projectId={projectId}
+                      item={item}
+                      collaborationArtifact={getCollab(item.workUnitId)}
+                    />
                   ))}
                 </div>
               </div>
@@ -277,7 +334,13 @@ export default function CustomerCampaignExperience({
                 <p className="mw-modal-label">Needs direction</p>
                 <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
                   {needsDirectionItems.map((item) => (
-                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                    <ReviewItemCard
+                      key={item.id}
+                      peerId={peerId}
+                      projectId={projectId}
+                      item={item}
+                      collaborationArtifact={getCollab(item.workUnitId)}
+                    />
                   ))}
                 </div>
               </div>
@@ -335,10 +398,27 @@ export default function CustomerCampaignExperience({
                 (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
               )
               .map((item) => (
-                <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                <ReviewItemCard
+                  key={item.id}
+                  peerId={peerId}
+                  projectId={projectId}
+                  item={item}
+                  collaborationArtifact={getCollab(item.workUnitId)}
+                />
               ))}
           </div>
         )}
+      </section>
+
+      <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
+        <h2 className="mw-section-title">{collaborationVm.publishTargets.customerHeading}</h2>
+        <ul className="mw-campaign-meta">
+          {collaborationVm.publishTargets.targets.map((target) => (
+            <li key={target.id}>
+              {target.label} — {target.description} (coming soon)
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
