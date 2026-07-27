@@ -13,6 +13,11 @@ import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MetricSnapshot } from "@/lib/metrics/types";
 import type { InsightRotationState } from "@/lib/peer-experience/marketing/build-insights-engine";
 import type { ApprovalDeliverableOverlay } from "@/lib/peer-experience/marketing/approval/approval-overlay";
+import type {
+  CampaignArtifactVersionMap,
+  CampaignReviewDecisionHistoryMap,
+  CampaignReviewDecisionMap,
+} from "@/lib/peer-experience/marketing/campaign-review-decisions";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { MarketingResponsibility } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { ActivityFeedItem, ConversationMessage } from "./experience/types";
@@ -34,6 +39,9 @@ export type MarketingWorkspacePersistedState = {
   insightRotation?: InsightRotationState;
   metrics?: MetricSnapshot[];
   approvalOverlays?: Record<string, ApprovalDeliverableOverlay>;
+  campaignReviewDecisionByWorkUnitId?: CampaignReviewDecisionMap;
+  campaignReviewDecisionHistoryByWorkUnitId?: CampaignReviewDecisionHistoryMap;
+  campaignArtifactVersionByWorkUnitId?: CampaignArtifactVersionMap;
   lastUpdated?: string;
 };
 

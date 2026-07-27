@@ -58,6 +58,17 @@ export async function runCampaignContinuation(
   let iterations = 0;
 
   while (iterations < CAMPAIGN_CONTINUATION_MAX_ITERATIONS) {
+    if (deps.hasPendingRequiredReview?.(projectId)) {
+      return {
+        ok: true,
+        projectId,
+        completedWorkUnits,
+        stopReason: "review_required",
+        stopMessage: campaignContinuationStopMessage("review_required"),
+        iterations,
+      };
+    }
+
     const orchestratorInput = deps.getOrchestratorInput(projectId);
     const plan = CampaignOrchestrator.plan(orchestratorInput);
     const next = pickNextExecutableWorkUnit(plan.executableWorkUnits);

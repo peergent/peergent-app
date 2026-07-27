@@ -156,7 +156,7 @@ export async function executeCreativeDirectionWorkUnit(
   }
 
   const existingBrief = domainInput.creativeBriefByCampaignId?.[projectId];
-  if (hasCompletedCreativeDirectionExecution(unit) && existingBrief) {
+  if (hasCompletedCreativeDirectionExecution(unit) && existingBrief && !input.executionOptions?.forceRegenerate) {
     return {
       ok: true as const,
       workUnitId,
@@ -277,13 +277,17 @@ export async function executeCreativeDirectionWorkUnit(
     decision,
     strategy,
   });
+  const taskHintWithFeedback =
+    input.executionOptions?.reviewFeedbackTaskHint?.trim()
+      ? `${taskHint}\n${input.executionOptions.reviewFeedbackTaskHint.trim()}`
+      : taskHint;
 
   const generation = await deps.generateCreativeBrief({
     contextPackage,
     strategy,
     decision,
     project,
-    taskHint,
+    taskHint: taskHintWithFeedback,
   });
 
   if (!generation.success) {

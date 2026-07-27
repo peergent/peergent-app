@@ -76,6 +76,10 @@ export type ExecuteMarketingWorkUnitInWorkspaceArgs = {
     readonly linkedinPostByWorkUnitId: Readonly<Record<string, MarketingLinkedInPost>>;
     readonly emailByWorkUnitId: Readonly<Record<string, MarketingEmailCampaign>>;
   }) => void;
+  readonly executionOptions?: {
+    readonly forceRegenerate?: boolean;
+    readonly reviewFeedbackTaskHint?: string;
+  };
 };
 
 async function generateStrategyForWorkspace(input: {
@@ -134,6 +138,7 @@ export async function executeMarketingWorkUnitInWorkspace(
     workUnitId: args.workUnitId,
     organizationId: args.organizationId,
     userId: args.userId,
+    executionOptions: args.executionOptions,
     domainInput: {
       ...args.domainInput,
       workUnits: [...snapshot.workUnits],

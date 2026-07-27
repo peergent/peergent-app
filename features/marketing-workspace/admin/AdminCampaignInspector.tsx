@@ -314,6 +314,30 @@ export default function AdminCampaignInspector(props: AdminCampaignInspectorProp
               ))}
             </ul>
             <h3 className="mw-modal-label" style={{ marginTop: 8 }}>
+              Review decisions
+            </h3>
+            <JsonBlock
+              label="Current decisions by work unit"
+              value={props.domainInput.campaignReviewDecisionByWorkUnitId ?? {}}
+            />
+            <JsonBlock
+              label="Decision history by work unit"
+              value={props.domainInput.campaignReviewDecisionHistoryByWorkUnitId ?? {}}
+            />
+            <JsonBlock
+              label="Artifact versions by work unit"
+              value={props.domainInput.campaignArtifactVersionByWorkUnitId ?? {}}
+            />
+            <ul className="mw-campaign-meta">
+              {reviewVm.allReviewItems.map((item) => (
+                <li key={`decision-${item.id}`}>
+                  {item.workUnitId} · v{item.artifactVersion} · {item.decisionStatus} · blocked:{" "}
+                  {item.continuationBlocked ? "yes" : "no"} · revision:{" "}
+                  {item.canRequestRevision ? "ready" : "no"}
+                </li>
+              ))}
+            </ul>
+            <h3 className="mw-modal-label" style={{ marginTop: 8 }}>
               Review-ready without preview artifact
             </h3>
             <ul className="mw-campaign-meta">

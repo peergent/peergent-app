@@ -100,6 +100,19 @@ import {
   runCampaignContinuation,
   type CampaignContinuationResult,
 } from "@/lib/peer-experience/marketing/campaign-continuation";
+import {
+  approveCampaignReviewItem,
+  hasPendingRequiredCampaignReview,
+  rejectCampaignReviewItem,
+  requestCampaignReviewChanges,
+  reviseCampaignReviewItem,
+} from "@/lib/peer-experience/marketing/campaign-review-decisions/campaign-review-workspace-handlers";
+import type {
+  CampaignReviewDecision,
+  CampaignReviewFeedback,
+  CampaignReviewRejectionReason,
+  CampaignReviewDecisionResult,
+} from "@/lib/peer-experience/marketing/campaign-review-decisions";
 import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
 import { resolveCampaignTitle } from "@/lib/peer-experience/marketing/resolve-campaign-title";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
@@ -167,6 +180,14 @@ export function useMarketingWorkspace(
   });
   const [storedMetrics, setStoredMetrics] = useState<MetricSnapshot[]>([]);
   const [approvalOverlays, setApprovalOverlays] = useState<Record<string, ApprovalDeliverableOverlay>>({});
+  const [campaignReviewDecisionByWorkUnitId, setCampaignReviewDecisionByWorkUnitId] = useState<
+    Record<string, CampaignReviewDecision>
+  >({});
+  const [campaignReviewDecisionHistoryByWorkUnitId, setCampaignReviewDecisionHistoryByWorkUnitId] =
+    useState<Record<string, readonly CampaignReviewDecision[]>>({});
+  const [campaignArtifactVersionByWorkUnitId, setCampaignArtifactVersionByWorkUnitId] = useState<
+    Record<string, number>
+  >({});
   const [approvalPublishMessage, setApprovalPublishMessage] = useState<string | null>(null);
   const [activeWorkUnitId, setActiveWorkUnitId] = useState<string | null>(null);
   const [selectedWorkUnitId, setSelectedWorkUnitId] = useState<string | null>(null);
@@ -186,8 +207,17 @@ export function useMarketingWorkspace(
   const creativeBriefByCampaignIdRef = useRef(creativeBriefByCampaignId);
   const linkedinPostByWorkUnitIdRef = useRef(linkedinPostByWorkUnitId);
   const emailByWorkUnitIdRef = useRef(emailByWorkUnitId);
+  const campaignReviewDecisionByWorkUnitIdRef = useRef(campaignReviewDecisionByWorkUnitId);
+  const campaignReviewDecisionHistoryByWorkUnitIdRef = useRef(
+    campaignReviewDecisionHistoryByWorkUnitId
+  );
+  const campaignArtifactVersionByWorkUnitIdRef = useRef(campaignArtifactVersionByWorkUnitId);
   const workUnitExecutionInFlightRef = useRef<string | null>(null);
   const campaignContinuationInFlightRef = useRef(false);
+  const campaignReviewActionInFlightRef = useRef<string | null>(null);
+  const handleContinueCampaignRef = useRef<
+    ((projectId: string) => Promise<CampaignContinuationResult>) | null
+  >(null);
   const [campaignContinuationRunning, setCampaignContinuationRunning] = useState(false);
 
   projectsRef.current = projects;
@@ -196,6 +226,10 @@ export function useMarketingWorkspace(
   creativeBriefByCampaignIdRef.current = creativeBriefByCampaignId;
   linkedinPostByWorkUnitIdRef.current = linkedinPostByWorkUnitId;
   emailByWorkUnitIdRef.current = emailByWorkUnitId;
+  campaignReviewDecisionByWorkUnitIdRef.current = campaignReviewDecisionByWorkUnitId;
+  campaignReviewDecisionHistoryByWorkUnitIdRef.current =
+    campaignReviewDecisionHistoryByWorkUnitId;
+  campaignArtifactVersionByWorkUnitIdRef.current = campaignArtifactVersionByWorkUnitId;
 
   pageStateRef.current = pageState;
   generatingRef.current = generating;
@@ -218,6 +252,12 @@ export function useMarketingWorkspace(
       insightRotation?: InsightRotationState;
       metrics?: MetricSnapshot[];
       approvalOverlays?: Record<string, ApprovalDeliverableOverlay>;
+      campaignReviewDecisionByWorkUnitId?: Record<string, CampaignReviewDecision>;
+      campaignReviewDecisionHistoryByWorkUnitId?: Record<
+        string,
+        readonly CampaignReviewDecision[]
+      >;
+      campaignArtifactVersionByWorkUnitId?: Record<string, number>;
     }) => {
       if (!peerId) return;
       patchMarketingWorkspaceState(peerId, {
@@ -250,6 +290,18 @@ export function useMarketingWorkspace(
         ...(patch.metrics !== undefined ? { metrics: patch.metrics } : {}),
         ...(patch.approvalOverlays !== undefined
           ? { approvalOverlays: patch.approvalOverlays }
+          : {}),
+        ...(patch.campaignReviewDecisionByWorkUnitId !== undefined
+          ? { campaignReviewDecisionByWorkUnitId: patch.campaignReviewDecisionByWorkUnitId }
+          : {}),
+        ...(patch.campaignReviewDecisionHistoryByWorkUnitId !== undefined
+          ? {
+              campaignReviewDecisionHistoryByWorkUnitId:
+                patch.campaignReviewDecisionHistoryByWorkUnitId,
+            }
+          : {}),
+        ...(patch.campaignArtifactVersionByWorkUnitId !== undefined
+          ? { campaignArtifactVersionByWorkUnitId: patch.campaignArtifactVersionByWorkUnitId }
           : {}),
       });
     },
@@ -352,6 +404,11 @@ export function useMarketingWorkspace(
       );
       setStoredMetrics(stored.metrics ?? []);
       setApprovalOverlays(stored.approvalOverlays ?? {});
+      setCampaignReviewDecisionByWorkUnitId(stored.campaignReviewDecisionByWorkUnitId ?? {});
+      setCampaignReviewDecisionHistoryByWorkUnitId(
+        stored.campaignReviewDecisionHistoryByWorkUnitId ?? {}
+      );
+      setCampaignArtifactVersionByWorkUnitId(stored.campaignArtifactVersionByWorkUnitId ?? {});
 
       setGenerating("understanding");
       const [understandingResult, profileResult] = await Promise.all([
@@ -1685,7 +1742,11 @@ export function useMarketingWorkspace(
   const handleExecuteMarketingWorkUnit = useCallback(
     async (
       workUnitId: string,
-      options?: { fromCampaignContinuation?: boolean }
+      options?: {
+        fromCampaignContinuation?: boolean;
+        forceRegenerate?: boolean;
+        reviewFeedbackTaskHint?: string;
+      }
     ): Promise<MarketingWorkUnitExecutionResult> => {
       const assembledAt = new Date().toISOString();
 
@@ -1752,6 +1813,10 @@ export function useMarketingWorkspace(
           connections: loadIntegrationConnections(organizationId),
           storedMetrics,
           approvalOverlays,
+          campaignReviewDecisionByWorkUnitId: campaignReviewDecisionByWorkUnitIdRef.current,
+          campaignReviewDecisionHistoryByWorkUnitId:
+            campaignReviewDecisionHistoryByWorkUnitIdRef.current,
+          campaignArtifactVersionByWorkUnitId: campaignArtifactVersionByWorkUnitIdRef.current,
           insightRotation,
           selectedWorkUnitId,
           activeWorkUnitId: workUnitId,
@@ -1766,6 +1831,10 @@ export function useMarketingWorkspace(
           assembledAt,
           campaignWorkspaceEnabled: isMarketingCampaignWorkspaceEnabled(),
           supabase,
+          executionOptions: {
+            forceRegenerate: options?.forceRegenerate,
+            reviewFeedbackTaskHint: options?.reviewFeedbackTaskHint,
+          },
           getWorkspaceSnapshot: () => ({
             workUnits: workUnitsRef.current,
             strategy: strategyRef.current,
@@ -1961,6 +2030,147 @@ export function useMarketingWorkspace(
     ]
   );
 
+  const commitCampaignReviewState = useCallback(
+    (patch: {
+      campaignReviewDecisionByWorkUnitId?: Record<string, CampaignReviewDecision>;
+      campaignReviewDecisionHistoryByWorkUnitId?: Record<
+        string,
+        readonly CampaignReviewDecision[]
+      >;
+      campaignArtifactVersionByWorkUnitId?: Record<string, number>;
+      workUnits?: WorkUnit[];
+      activityFeed?: ActivityFeedItem[];
+    }) => {
+      if (patch.campaignReviewDecisionByWorkUnitId !== undefined) {
+        campaignReviewDecisionByWorkUnitIdRef.current = patch.campaignReviewDecisionByWorkUnitId;
+        setCampaignReviewDecisionByWorkUnitId(patch.campaignReviewDecisionByWorkUnitId);
+      }
+      if (patch.campaignReviewDecisionHistoryByWorkUnitId !== undefined) {
+        campaignReviewDecisionHistoryByWorkUnitIdRef.current =
+          patch.campaignReviewDecisionHistoryByWorkUnitId;
+        setCampaignReviewDecisionHistoryByWorkUnitId(
+          patch.campaignReviewDecisionHistoryByWorkUnitId
+        );
+      }
+      if (patch.campaignArtifactVersionByWorkUnitId !== undefined) {
+        campaignArtifactVersionByWorkUnitIdRef.current = patch.campaignArtifactVersionByWorkUnitId;
+        setCampaignArtifactVersionByWorkUnitId(patch.campaignArtifactVersionByWorkUnitId);
+      }
+      if (patch.workUnits !== undefined) {
+        workUnitsRef.current = patch.workUnits;
+        setWorkUnits(patch.workUnits);
+      }
+      if (patch.activityFeed !== undefined) {
+        setActivityFeed(patch.activityFeed);
+      }
+      persistState({
+        ...(patch.campaignReviewDecisionByWorkUnitId !== undefined
+          ? { campaignReviewDecisionByWorkUnitId: patch.campaignReviewDecisionByWorkUnitId }
+          : {}),
+        ...(patch.campaignReviewDecisionHistoryByWorkUnitId !== undefined
+          ? {
+              campaignReviewDecisionHistoryByWorkUnitId:
+                patch.campaignReviewDecisionHistoryByWorkUnitId,
+            }
+          : {}),
+        ...(patch.campaignArtifactVersionByWorkUnitId !== undefined
+          ? { campaignArtifactVersionByWorkUnitId: patch.campaignArtifactVersionByWorkUnitId }
+          : {}),
+        ...(patch.workUnits !== undefined ? { workUnits: patch.workUnits } : {}),
+        ...(patch.activityFeed !== undefined ? { activityFeed: patch.activityFeed } : {}),
+      });
+    },
+    [persistState]
+  );
+
+  const buildReviewHandlerDeps = useCallback(
+    () => ({
+      getSnapshot: () => ({
+        peerId: peerId ?? "",
+        organizationId,
+        userId: organizationId,
+        projects: projectsRef.current,
+        workUnits: workUnitsRef.current,
+        domainInput: {
+          peerId: peerId ?? "",
+          organizationId,
+          userName: "You",
+          peerName: peer?.name ?? "Marketing",
+          campaignTitle: resolveCampaignTitle(plan, strategyRef.current),
+          generating,
+          generatingActivity,
+          understanding,
+          strategy: strategyRef.current,
+          creativeBriefByCampaignId: creativeBriefByCampaignIdRef.current,
+          linkedinPostByWorkUnitId: linkedinPostByWorkUnitIdRef.current,
+          emailByWorkUnitId: emailByWorkUnitIdRef.current,
+          plan,
+          drafts,
+          publicationPackages,
+          activityFeed,
+          workUnits: workUnitsRef.current,
+          projects: projectsRef.current,
+          responsibilities,
+          automations,
+          connections: loadIntegrationConnections(organizationId),
+          storedMetrics,
+          approvalOverlays,
+          campaignReviewDecisionByWorkUnitId: campaignReviewDecisionByWorkUnitIdRef.current,
+          campaignReviewDecisionHistoryByWorkUnitId:
+            campaignReviewDecisionHistoryByWorkUnitIdRef.current,
+          campaignArtifactVersionByWorkUnitId: campaignArtifactVersionByWorkUnitIdRef.current,
+          insightRotation,
+          selectedWorkUnitId,
+          activeWorkUnitId,
+          selectedDraftId,
+        } satisfies MarketingPeerDomainInput,
+      }),
+      commit: commitCampaignReviewState,
+      logActivity: (item: ActivityFeedItem) => {
+        setActivityFeed((prev) => {
+          const next = prependActivity(prev, item);
+          persistState({ activityFeed: next });
+          return next;
+        });
+      },
+      createActivity,
+      executeWorkUnit: handleExecuteMarketingWorkUnit,
+      continueCampaign: (projectId: string) =>
+        handleContinueCampaignRef.current?.(projectId) ?? Promise.resolve({
+          ok: false,
+          projectId,
+          completedWorkUnits: [],
+          stopReason: "execution_failed",
+          stopMessage: "Campaign continuation is unavailable.",
+          iterations: 0,
+        }),
+      reviewActionInFlight: campaignReviewActionInFlightRef,
+    }),
+    [
+      peerId,
+      organizationId,
+      peer,
+      plan,
+      generating,
+      generatingActivity,
+      understanding,
+      drafts,
+      publicationPackages,
+      activityFeed,
+      responsibilities,
+      automations,
+      storedMetrics,
+      approvalOverlays,
+      insightRotation,
+      selectedWorkUnitId,
+      activeWorkUnitId,
+      selectedDraftId,
+      commitCampaignReviewState,
+      persistState,
+      handleExecuteMarketingWorkUnit,
+    ]
+  );
+
   const handleContinueCampaign = useCallback(
     async (projectId: string): Promise<CampaignContinuationResult> => {
       if (campaignContinuationInFlightRef.current) {
@@ -2003,13 +2213,58 @@ export function useMarketingWorkspace(
           getApprovalMode: (campaignProjectId) =>
             projectsRef.current.find((p) => p.id === campaignProjectId)
               ?.campaignSetup?.approvalMode,
+          hasPendingRequiredReview: (campaignProjectId) =>
+            hasPendingRequiredCampaignReview(buildReviewHandlerDeps().getSnapshot(), campaignProjectId),
         });
       } finally {
         campaignContinuationInFlightRef.current = false;
         setCampaignContinuationRunning(false);
       }
     },
-    [handleExecuteMarketingWorkUnit]
+    [handleExecuteMarketingWorkUnit, buildReviewHandlerDeps]
+  );
+
+  handleContinueCampaignRef.current = handleContinueCampaign;
+
+  const handleApproveCampaignReviewItem = useCallback(
+    async (input: {
+      projectId: string;
+      workUnitId: string;
+      autoContinue?: boolean;
+    }): Promise<CampaignReviewDecisionResult> => {
+      return approveCampaignReviewItem(buildReviewHandlerDeps(), input);
+    },
+    [buildReviewHandlerDeps]
+  );
+
+  const handleRequestCampaignReviewChanges = useCallback(
+    (input: {
+      projectId: string;
+      workUnitId: string;
+      feedback: CampaignReviewFeedback;
+    }): CampaignReviewDecisionResult => {
+      return requestCampaignReviewChanges(buildReviewHandlerDeps(), input);
+    },
+    [buildReviewHandlerDeps]
+  );
+
+  const handleRejectCampaignReviewItem = useCallback(
+    (input: {
+      projectId: string;
+      workUnitId: string;
+      rejectionReason: CampaignReviewRejectionReason;
+      message?: string;
+    }): CampaignReviewDecisionResult => {
+      return rejectCampaignReviewItem(buildReviewHandlerDeps(), input);
+    },
+    [buildReviewHandlerDeps]
+  );
+
+  const handleReviseCampaignReviewItem = useCallback(
+    async (input: { projectId: string; workUnitId: string }) => {
+      return reviseCampaignReviewItem(buildReviewHandlerDeps(), input);
+    },
+    [buildReviewHandlerDeps]
   );
 
   return {
@@ -2055,6 +2310,13 @@ export function useMarketingWorkspace(
     handleExecuteMarketingWorkUnit,
     handleContinueCampaign,
     campaignContinuationRunning,
+    campaignReviewDecisionByWorkUnitId,
+    campaignReviewDecisionHistoryByWorkUnitId,
+    campaignArtifactVersionByWorkUnitId,
+    handleApproveCampaignReviewItem,
+    handleRequestCampaignReviewChanges,
+    handleRejectCampaignReviewItem,
+    handleReviseCampaignReviewItem,
     activeDelegation,
     syncedWorkUnits,
     projects,

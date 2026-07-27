@@ -1,0 +1,486 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { CampaignReviewItem } from "@/lib/peer-experience/marketing/campaign-review";
+import type {
+  CampaignReviewFeedback,
+  CampaignReviewRejectionReason,
+} from "@/lib/peer-experience/marketing/campaign-review-decisions";
+import { getCampaignReviewItemHref, getProjectHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
+import MwModal from "./MwModal";
+import type { CampaignReviewWorkspaceHandlers } from "../lib/campaign-review-handlers";
+import {
+  approveModalTitleForItem,
+  approvePrimaryButtonLabel,
+  CUSTOMER_REJECTION_OPTIONS,
+  customerFeedbackOptionsForArtifact,
+} from "../lib/campaign-review-feedback-ui";
+
+export type CampaignReviewActionsProps = {
+  peerId: string;
+  projectId: string;
+  item: CampaignReviewItem;
+  approvalMode?: CampaignApprovalMode;
+  remainingQueueCount: number;
+  nextInQueueItemId?: string | null;
+  reviewHandlers: CampaignReviewWorkspaceHandlers;
+};
+
+function chipKey(id: string, label: string): string {
+  return `${id}::${label}`;
+}
+
+function messageFromSelectedLabels(labels: readonly string[]): string {
+  if (labels.length === 0) return "";
+  return labels.map((label) => `• ${label}`).join("\n");
+}
+
+export default function CampaignReviewActions({
+  peerId,
+  projectId,
+  item,
+  approvalMode,
+  remainingQueueCount,
+  nextInQueueItemId,
+  reviewHandlers,
+}: CampaignReviewActionsProps) {
+  const router = useRouter();
+  const feedbackId = useId();
+  const approveTriggerRef = useRef<HTMLButtonElement>(null);
+  const pendingRef = useRef(false);
+
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const chipOptions = useMemo(
+    () => customerFeedbackOptionsForArtifact(item.artifactType),
+    [item.artifactType]
+  );
+
+  const [selectedChipKeys, setSelectedChipKeys] = useState<string[]>([]);
+  const [changeMessage, setChangeMessage] = useState("");
+  const [changeError, setChangeError] = useState<string | null>(null);
+
+  const [rejectReason, setRejectReason] = useState<CampaignReviewRejectionReason | "">("");
+  const [rejectMessage, setRejectMessage] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
+
+  const showOptionalApproval = approvalMode === "no_approval_required";
+  const canReviewNow = item.inReviewQueue || item.decisionStatus === "awaiting_review";
+
+  const statusLine =
+    item.decisionStatus === "awaiting_review" || item.inReviewQueue
+      ? "Ready for your review"
+      : item.decisionStatusLabel;
+
+  const remainingLine =
+    remainingQueueCount > 0
+      ? `${remainingQueueCount} item${remainingQueueCount === 1 ? "" : "s"} remaining`
+      : null;
+
+  const closeChanges = useCallback(() => {
+    if (pending) return;
+    setChangesOpen(false);
+    setChangeError(null);
+    approveTriggerRef.current?.focus();
+  }, [pending]);
+
+  const navigateAfterDecision = useCallback(() => {
+    if (nextInQueueItemId) {
+      router.push(getCampaignReviewItemHref(peerId, projectId, nextInQueueItemId));
+      return;
+    }
+    router.push(`${getProjectHref(peerId, projectId)}?campaignReviewComplete=1`);
+  }, [nextInQueueItemId, peerId, projectId, router]);
+
+  const runApprove = useCallback(async () => {
+    const onApprove = reviewHandlers.handleApproveCampaignReviewItem;
+    if (typeof onApprove !== "function") {
+      setErrorMessage("Review actions are unavailable. Refresh and try again.");
+      return;
+    }
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    setErrorMessage(null);
+    try {
+      const autoContinue = approvalMode === "approval_before_generation";
+      const result = await onApprove({
+        projectId,
+        workUnitId: item.workUnitId,
+        autoContinue,
+      });
+      if (!result.ok) {
+        setErrorMessage(result.message);
+        return;
+      }
+      setStatusMessage(
+        autoContinue && result.campaignCanContinue
+          ? "Approved. Marketing Peer is continuing your campaign…"
+          : result.message
+      );
+      setApproveOpen(false);
+      if (result.status === "approved" || result.status === "already_decided") {
+        navigateAfterDecision();
+      }
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  }, [
+    approvalMode,
+    item.workUnitId,
+    navigateAfterDecision,
+    projectId,
+    reviewHandlers,
+  ]);
+
+  const toggleChip = useCallback(
+    (key: string) => {
+      setSelectedChipKeys((prev) => {
+        const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+        const labels = chipOptions
+          .filter((opt) => next.includes(chipKey(opt.id, opt.label)))
+          .map((opt) => opt.label);
+        setChangeMessage(messageFromSelectedLabels(labels));
+        return next;
+      });
+    },
+    [chipOptions]
+  );
+
+  const submitChanges = useCallback(() => {
+    const onRequestChanges = reviewHandlers.handleRequestCampaignReviewChanges;
+    if (typeof onRequestChanges !== "function") {
+      setChangeError("Review actions are unavailable. Refresh and try again.");
+      return;
+    }
+    if (pendingRef.current) return;
+
+    const categories = [
+      ...new Set(
+        chipOptions
+          .filter((opt) => selectedChipKeys.includes(chipKey(opt.id, opt.label)))
+          .map((opt) => opt.id)
+      ),
+    ] as NonNullable<CampaignReviewFeedback["categories"]>;
+
+    const message = changeMessage.trim();
+    if (categories.length === 0 && !message) {
+      setChangeError("Choose at least one suggestion or describe what should change.");
+      return;
+    }
+
+    pendingRef.current = true;
+    setPending(true);
+    setChangeError(null);
+    const result = onRequestChanges({
+      projectId,
+      workUnitId: item.workUnitId,
+      feedback: {
+        categories,
+        message: message || undefined,
+      },
+    });
+    pendingRef.current = false;
+    setPending(false);
+    if (!result.ok) {
+      setChangeError(result.message);
+      return;
+    }
+    setStatusMessage(result.message);
+    setChangesOpen(false);
+    setSelectedChipKeys([]);
+    setChangeMessage("");
+    approveTriggerRef.current?.focus();
+  }, [
+    changeMessage,
+    chipOptions,
+    item.workUnitId,
+    projectId,
+    reviewHandlers,
+    selectedChipKeys,
+  ]);
+
+  const submitReject = useCallback(() => {
+    const onReject = reviewHandlers.handleRejectCampaignReviewItem;
+    if (typeof onReject !== "function") {
+      setRejectError("Review actions are unavailable. Refresh and try again.");
+      return;
+    }
+    if (pendingRef.current) return;
+    if (!rejectReason) {
+      setRejectError("Choose a reason to continue.");
+      return;
+    }
+    pendingRef.current = true;
+    setPending(true);
+    setRejectError(null);
+    const result = onReject({
+      projectId,
+      workUnitId: item.workUnitId,
+      rejectionReason: rejectReason,
+      message: rejectMessage.trim() || undefined,
+    });
+    pendingRef.current = false;
+    setPending(false);
+    if (!result.ok) {
+      setRejectError(result.message);
+      return;
+    }
+    setStatusMessage(result.message);
+    setRejectOpen(false);
+    approveTriggerRef.current?.focus();
+  }, [item.workUnitId, projectId, rejectMessage, rejectReason, reviewHandlers]);
+
+  const runRevise = useCallback(async () => {
+    const onRevise = reviewHandlers.handleReviseCampaignReviewItem;
+    if (typeof onRevise !== "function") {
+      setErrorMessage("Review actions are unavailable. Refresh and try again.");
+      return;
+    }
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    setErrorMessage(null);
+    try {
+      const result = await onRevise({ projectId, workUnitId: item.workUnitId });
+      setStatusMessage(result.message);
+      if (!result.ok) setErrorMessage(result.message);
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  }, [item.workUnitId, projectId, reviewHandlers]);
+
+  if (!canReviewNow && !item.canRequestRevision && item.decisionStatus === "approved") {
+    return (
+      <div className="mw-review-actions-sticky">
+        <p className="mw-review-status" role="status">
+          Approved
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mw-review-actions-sticky" aria-label="Review actions">
+      <div className="mw-review-actions-inner mw-glass">
+        {statusMessage ? (
+          <p className="mw-review-status" role="status" aria-live="polite">
+            {statusMessage}
+          </p>
+        ) : null}
+        {errorMessage ? (
+          <p className="mw-review-error" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <p className="mw-review-actions-status">{statusLine}</p>
+        {remainingLine && canReviewNow ? (
+          <p className="mw-review-actions-remaining">{remainingLine}</p>
+        ) : null}
+
+        {item.feedbackSummary ? (
+          <p className="mw-kn-helper mw-review-actions-feedback">{item.feedbackSummary}</p>
+        ) : null}
+
+        <div className="mw-review-actions-toolbar">
+          {canReviewNow && !showOptionalApproval ? (
+            <>
+              <button
+                ref={approveTriggerRef}
+                type="button"
+                className="mw-btn-primary"
+                disabled={pending}
+                onClick={() => setApproveOpen(true)}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                className="mw-btn-secondary"
+                disabled={pending}
+                onClick={() => setChangesOpen(true)}
+              >
+                Request changes
+              </button>
+              <button
+                type="button"
+                className="mw-btn-secondary"
+                disabled={pending}
+                onClick={() => setRejectOpen(true)}
+              >
+                Reject
+              </button>
+            </>
+          ) : null}
+
+          {showOptionalApproval && canReviewNow ? (
+            <button
+              type="button"
+              className="mw-btn-secondary"
+              disabled={pending}
+              onClick={() => setApproveOpen(true)}
+            >
+              Confirm prepared work
+            </button>
+          ) : null}
+
+          {item.canRequestRevision ? (
+            <button
+              type="button"
+              className="mw-btn-primary"
+              disabled={pending}
+              onClick={() => void runRevise()}
+            >
+              Let Marketing Peer revise this item
+            </button>
+          ) : null}
+
+          {item.decisionStatus === "rejected" ? (
+            <Link href={getProjectHref(peerId, projectId)} className="mw-btn-secondary pg-focus-premium">
+              Return to campaign
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
+      <MwModal
+        open={approveOpen}
+        onClose={() => !pending && setApproveOpen(false)}
+        title={approveModalTitleForItem(item.artifactTypeLabel)}
+        subtitle="Marketing Peer will continue preparing the next campaign deliverables. You can revisit past decisions from Version History when it is available."
+      >
+        <div className="mw-modal-actions">
+          <button
+            type="button"
+            className="mw-modal-secondary"
+            disabled={pending}
+            onClick={() => setApproveOpen(false)}
+          >
+            Cancel
+          </button>
+          <button type="button" className="mw-btn-primary" disabled={pending} onClick={() => void runApprove()}>
+            {approvePrimaryButtonLabel(item.artifactTypeLabel)}
+          </button>
+        </div>
+      </MwModal>
+
+      <MwModal
+        open={changesOpen}
+        onClose={closeChanges}
+        title="Request changes"
+        subtitle="Tell Marketing Peer what you would like changed."
+        closeOnEscape={!pending}
+      >
+        <div className="mw-modal-body">
+          <p id={feedbackId} className="mw-modal-label">
+            Quick feedback
+          </p>
+          <div className="mw-review-feedback-chips" role="group" aria-labelledby={feedbackId}>
+            {chipOptions.map((opt) => {
+              const key = chipKey(opt.id, opt.label);
+              const selected = selectedChipKeys.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={selected ? "mw-review-chip is-selected" : "mw-review-chip"}
+                  aria-pressed={selected}
+                  disabled={pending}
+                  onClick={() => toggleChip(key)}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="mw-modal-label" htmlFor={`${feedbackId}-message`} style={{ marginTop: 16 }}>
+            Tell Marketing Peer what you would like changed
+          </label>
+          <textarea
+            id={`${feedbackId}-message`}
+            className="mw-modal-input"
+            rows={4}
+            value={changeMessage}
+            disabled={pending}
+            onChange={(e) => setChangeMessage(e.target.value)}
+          />
+          {changeError ? (
+            <p className="mw-review-error" role="alert">
+              {changeError}
+            </p>
+          ) : null}
+        </div>
+        <div className="mw-modal-actions">
+          <button type="button" className="mw-modal-secondary" disabled={pending} onClick={closeChanges}>
+            Cancel
+          </button>
+          <button type="button" className="mw-btn-primary" disabled={pending} onClick={submitChanges}>
+            Submit feedback
+          </button>
+        </div>
+      </MwModal>
+
+      <MwModal
+        open={rejectOpen}
+        onClose={() => !pending && setRejectOpen(false)}
+        title="Reject this item"
+        subtitle="Rejecting stops campaign progress. Marketing Peer will wait until you manually start a new revision."
+        closeOnEscape={!pending}
+      >
+        <div className="mw-modal-body">
+          <fieldset className="mw-review-reject-reasons">
+            <legend className="mw-modal-label">Reason (required)</legend>
+            {CUSTOMER_REJECTION_OPTIONS.map((opt) => (
+              <label key={opt.id} className="mw-review-reject-option">
+                <input
+                  type="radio"
+                  name="reject-reason"
+                  value={opt.id}
+                  checked={rejectReason === opt.id}
+                  disabled={pending}
+                  onChange={() => setRejectReason(opt.id)}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </fieldset>
+          <label className="mw-modal-label" htmlFor={`${feedbackId}-reject-details`} style={{ marginTop: 12 }}>
+            Optional details
+          </label>
+          <textarea
+            id={`${feedbackId}-reject-details`}
+            className="mw-modal-input"
+            rows={3}
+            value={rejectMessage}
+            disabled={pending}
+            onChange={(e) => setRejectMessage(e.target.value)}
+          />
+          {rejectError ? (
+            <p className="mw-review-error" role="alert">
+              {rejectError}
+            </p>
+          ) : null}
+        </div>
+        <div className="mw-modal-actions">
+          <button type="button" className="mw-modal-secondary" disabled={pending} onClick={() => setRejectOpen(false)}>
+            Cancel
+          </button>
+          <button type="button" className="mw-btn-primary" disabled={pending} onClick={submitReject}>
+            Reject item
+          </button>
+        </div>
+      </MwModal>
+    </div>
+  );
+}

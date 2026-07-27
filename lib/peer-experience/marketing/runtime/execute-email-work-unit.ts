@@ -181,7 +181,7 @@ export async function executeEmailCampaignWorkUnit(
   const { strategy, creativeBrief } = artifacts;
 
   const existingEmail = domainInput.emailByWorkUnitId?.[workUnitId];
-  if (hasCompletedEmailCampaignExecution(unit) && existingEmail) {
+  if (hasCompletedEmailCampaignExecution(unit) && existingEmail && !input.executionOptions?.forceRegenerate) {
     return {
       ok: true as const,
       workUnitId,
@@ -303,6 +303,10 @@ export async function executeEmailCampaignWorkUnit(
     creativeBrief,
     workUnit: unit,
   });
+  const taskHintWithFeedback =
+    input.executionOptions?.reviewFeedbackTaskHint?.trim()
+      ? `${taskHint}\n${input.executionOptions.reviewFeedbackTaskHint.trim()}`
+      : taskHint;
 
   const generation = await deps.generateEmailCampaign({
     contextPackage,
@@ -311,7 +315,7 @@ export async function executeEmailCampaignWorkUnit(
     decision,
     project,
     workUnitId,
-    taskHint,
+    taskHint: taskHintWithFeedback,
   });
 
   if (!generation.success) {

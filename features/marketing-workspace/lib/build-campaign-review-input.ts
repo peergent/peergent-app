@@ -35,5 +35,9 @@ export function buildCampaignReviewBuildInput(input: {
     ),
     continuationRunning: input.continuationRunning,
     activeWorkUnitId: input.activeWorkUnitId,
+    campaignReviewDecisionByWorkUnitId: input.domainInput.campaignReviewDecisionByWorkUnitId,
+    campaignReviewDecisionHistoryByWorkUnitId:
+      input.domainInput.campaignReviewDecisionHistoryByWorkUnitId,
+    campaignArtifactVersionByWorkUnitId: input.domainInput.campaignArtifactVersionByWorkUnitId,
   };
 }

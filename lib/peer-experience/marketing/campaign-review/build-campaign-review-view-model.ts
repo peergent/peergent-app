@@ -24,6 +24,10 @@ import {
   isCustomerReviewRelevant,
   resolveCampaignCustomerStatus,
 } from "./campaign-review-status";
+import {
+  mergeDecisionIntoReviewItem,
+  overlayReviewDecisionOnItem,
+} from "./resolve-review-item-decision";
 import type {
   CampaignReviewBuildInput,
   CampaignReviewItem,
@@ -31,6 +35,27 @@ import type {
   CampaignReviewProgressPhase,
   CampaignReviewViewModel,
 } from "./campaign-review-types";
+
+function finalizeReviewItem(input: {
+  base: Omit<
+    CampaignReviewItem,
+    | "decisionStatus"
+    | "decisionStatusLabel"
+    | "currentDecision"
+    | "artifactVersion"
+    | "decidedAt"
+    | "feedbackSummary"
+    | "inReviewQueue"
+    | "continuationBlocked"
+    | "canRequestRevision"
+  >;
+  buildInput: CampaignReviewBuildInput;
+  reviewReady: boolean;
+  hasArtifact: boolean;
+}): CampaignReviewItem {
+  const overlay = overlayReviewDecisionOnItem(input);
+  return mergeDecisionIntoReviewItem(input.base, overlay);
+}
 
 const ARTIFACT_ORDER: Record<
   CampaignReviewItem["artifactType"],
@@ -75,24 +100,29 @@ function buildStrategyItem(input: CampaignReviewBuildInput): CampaignReviewItem 
     status = reviewRequired ? "awaiting_review" : "prepared";
   } else if (hasArtifact || unit.eventLog.length > 1) status = "in_progress";
 
-  return {
-    id: unit.id,
-    workUnitId: unit.id,
-    artifactType: "campaign_strategy",
-    artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.campaign_strategy,
-    title: input.project.title
-      ? `${input.project.title} — Strategy`
-      : "Campaign strategy",
-    shortSummary: shortSummaryFromPreview(preview),
-    status,
-    statusLabel: customerStatusLabelForReviewItem(status),
-    preparedByLabel: input.peerName,
-    preview,
-    reviewRequired,
-    blockingNextWork: reviewRequired,
-    createdAt: unit.startedAt ?? null,
-    updatedAt: unit.updatedAt ?? null,
-  };
+  return finalizeReviewItem({
+    buildInput: input,
+    reviewReady,
+    hasArtifact,
+    base: {
+      id: unit.id,
+      workUnitId: unit.id,
+      artifactType: "campaign_strategy",
+      artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.campaign_strategy,
+      title: input.project.title
+        ? `${input.project.title} — Strategy`
+        : "Campaign strategy",
+      shortSummary: shortSummaryFromPreview(preview),
+      status,
+      statusLabel: customerStatusLabelForReviewItem(status),
+      preparedByLabel: input.peerName,
+      preview,
+      reviewRequired,
+      blockingNextWork: reviewRequired,
+      createdAt: unit.startedAt ?? null,
+      updatedAt: unit.updatedAt ?? null,
+    },
+  });
 }
 
 function buildCreativeItem(input: CampaignReviewBuildInput): CampaignReviewItem | null {
@@ -124,22 +154,27 @@ function buildCreativeItem(input: CampaignReviewBuildInput): CampaignReviewItem 
 
   if (blocked && !reviewReady) status = "blocked";
 
-  return {
-    id: unit.id,
-    workUnitId: unit.id,
-    artifactType: "creative_direction",
-    artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.creative_direction,
-    title: "Creative direction",
-    shortSummary: shortSummaryFromPreview(preview),
-    status,
-    statusLabel: customerStatusLabelForReviewItem(status),
-    preparedByLabel: input.peerName,
-    preview,
-    reviewRequired,
-    blockingNextWork: false,
-    createdAt: unit.startedAt ?? null,
-    updatedAt: unit.updatedAt ?? null,
-  };
+  return finalizeReviewItem({
+    buildInput: input,
+    reviewReady,
+    hasArtifact,
+    base: {
+      id: unit.id,
+      workUnitId: unit.id,
+      artifactType: "creative_direction",
+      artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.creative_direction,
+      title: "Creative direction",
+      shortSummary: shortSummaryFromPreview(preview),
+      status,
+      statusLabel: customerStatusLabelForReviewItem(status),
+      preparedByLabel: input.peerName,
+      preview,
+      reviewRequired,
+      blockingNextWork: false,
+      createdAt: unit.startedAt ?? null,
+      updatedAt: unit.updatedAt ?? null,
+    },
+  });
 }
 
 function buildLinkedInItem(
@@ -172,22 +207,27 @@ function buildLinkedInItem(
     status = "blocked";
   }
 
-  return {
-    id: unit.id,
-    workUnitId: unit.id,
-    artifactType: "linkedin_post",
-    artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.linkedin_post,
-    title: unit.title,
-    shortSummary: shortSummaryFromPreview(preview),
-    status,
-    statusLabel: customerStatusLabelForReviewItem(status),
-    preparedByLabel: input.peerName,
-    preview,
-    reviewRequired,
-    blockingNextWork: false,
-    createdAt: unit.startedAt ?? null,
-    updatedAt: unit.updatedAt ?? null,
-  };
+  return finalizeReviewItem({
+    buildInput: input,
+    reviewReady,
+    hasArtifact,
+    base: {
+      id: unit.id,
+      workUnitId: unit.id,
+      artifactType: "linkedin_post",
+      artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.linkedin_post,
+      title: unit.title,
+      shortSummary: shortSummaryFromPreview(preview),
+      status,
+      statusLabel: customerStatusLabelForReviewItem(status),
+      preparedByLabel: input.peerName,
+      preview,
+      reviewRequired,
+      blockingNextWork: false,
+      createdAt: unit.startedAt ?? null,
+      updatedAt: unit.updatedAt ?? null,
+    },
+  });
 }
 
 function buildEmailItem(
@@ -220,22 +260,27 @@ function buildEmailItem(
     status = "blocked";
   }
 
-  return {
-    id: unit.id,
-    workUnitId: unit.id,
-    artifactType: "email_campaign",
-    artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.email_campaign,
-    title: unit.title,
-    shortSummary: shortSummaryFromPreview(preview),
-    status,
-    statusLabel: customerStatusLabelForReviewItem(status),
-    preparedByLabel: input.peerName,
-    preview,
-    reviewRequired,
-    blockingNextWork: false,
-    createdAt: unit.startedAt ?? null,
-    updatedAt: unit.updatedAt ?? null,
-  };
+  return finalizeReviewItem({
+    buildInput: input,
+    reviewReady,
+    hasArtifact,
+    base: {
+      id: unit.id,
+      workUnitId: unit.id,
+      artifactType: "email_campaign",
+      artifactTypeLabel: CAMPAIGN_REVIEW_ARTIFACT_TYPE_LABELS.email_campaign,
+      title: unit.title,
+      shortSummary: shortSummaryFromPreview(preview),
+      status,
+      statusLabel: customerStatusLabelForReviewItem(status),
+      preparedByLabel: input.peerName,
+      preview,
+      reviewRequired,
+      blockingNextWork: false,
+      createdAt: unit.startedAt ?? null,
+      updatedAt: unit.updatedAt ?? null,
+    },
+  });
 }
 
 function buildProgressPhases(
@@ -347,9 +392,7 @@ export function buildCampaignReviewViewModel(
   }
 
   const allReviewItems = sortReviewItems(items);
-  const reviewQueue = allReviewItems.filter(
-    (i) => i.status === "awaiting_review" && i.preview
-  );
+  const reviewQueue = allReviewItems.filter((i) => i.inReviewQueue && i.preview);
   const preparedItems = allReviewItems.filter(
     (i) => i.status === "prepared" && i.preview
   );

@@ -6,6 +6,13 @@ import type { CreativeBrief } from "@/lib/creative-brief";
 import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
 import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
 import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
+import type {
+  CampaignArtifactVersionMap,
+  CampaignReviewDecision,
+  CampaignReviewDecisionHistoryMap,
+  CampaignReviewDecisionMap,
+} from "../campaign-review-decisions";
+import type { CampaignReviewItemDecisionStatus } from "../campaign-review-decisions/campaign-review-decision-status";
 
 export type CampaignReviewArtifactType =
   | "campaign_strategy"
@@ -78,6 +85,15 @@ export type CampaignReviewItem = {
   readonly shortSummary: string;
   readonly status: CampaignReviewItemStatus;
   readonly statusLabel: string;
+  readonly decisionStatus: CampaignReviewItemDecisionStatus;
+  readonly decisionStatusLabel: string;
+  readonly currentDecision: CampaignReviewDecision | null;
+  readonly artifactVersion: number;
+  readonly decidedAt: string | null;
+  readonly feedbackSummary: string | null;
+  readonly inReviewQueue: boolean;
+  readonly continuationBlocked: boolean;
+  readonly canRequestRevision: boolean;
   readonly preparedByLabel: string;
   readonly preview: CampaignReviewItemPreview | null;
   readonly reviewRequired: boolean;
@@ -141,4 +157,7 @@ export type CampaignReviewBuildInput = {
   readonly hasExecutionWork: boolean;
   readonly continuationRunning?: boolean;
   readonly activeWorkUnitId?: string | null;
+  readonly campaignReviewDecisionByWorkUnitId?: CampaignReviewDecisionMap;
+  readonly campaignReviewDecisionHistoryByWorkUnitId?: CampaignReviewDecisionHistoryMap;
+  readonly campaignArtifactVersionByWorkUnitId?: CampaignArtifactVersionMap;
 };

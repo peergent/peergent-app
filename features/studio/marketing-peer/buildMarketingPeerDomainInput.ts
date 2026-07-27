@@ -37,6 +37,10 @@ export function buildMarketingPeerDomainInput(input: {
     connections: input.connections,
     storedMetrics: workspace.storedMetrics,
     approvalOverlays: workspace.approvalOverlays,
+    campaignReviewDecisionByWorkUnitId: workspace.campaignReviewDecisionByWorkUnitId,
+    campaignReviewDecisionHistoryByWorkUnitId:
+      workspace.campaignReviewDecisionHistoryByWorkUnitId,
+    campaignArtifactVersionByWorkUnitId: workspace.campaignArtifactVersionByWorkUnitId,
     insightRotation: workspace.insightRotation,
     selectedWorkUnitId: workspace.selectedWorkUnitId,
     activeWorkUnitId: workspace.activeWorkUnitId,

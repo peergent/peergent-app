@@ -173,7 +173,7 @@ export async function executeLinkedInPostWorkUnit(
   }
 
   const existingPost = domainInput.linkedinPostByWorkUnitId?.[workUnitId];
-  if (hasCompletedLinkedInPostExecution(unit) && existingPost) {
+  if (hasCompletedLinkedInPostExecution(unit) && existingPost && !input.executionOptions?.forceRegenerate) {
     return {
       ok: true as const,
       workUnitId,
@@ -296,6 +296,10 @@ export async function executeLinkedInPostWorkUnit(
     creativeBrief,
     workUnit: unit,
   });
+  const taskHintWithFeedback =
+    input.executionOptions?.reviewFeedbackTaskHint?.trim()
+      ? `${taskHint}\n${input.executionOptions.reviewFeedbackTaskHint.trim()}`
+      : taskHint;
 
   const generation = await deps.generateLinkedInPost({
     contextPackage,
@@ -304,7 +308,7 @@ export async function executeLinkedInPostWorkUnit(
     decision,
     project,
     workUnitId,
-    taskHint,
+    taskHint: taskHintWithFeedback,
   });
 
   if (!generation.success) {

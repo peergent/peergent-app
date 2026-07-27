@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { CampaignContinuationResult } from "@/lib/peer-experience/marketing/campaign-continuation";
 import type { CampaignExecutionWorkspaceResult } from "@/lib/peer-experience/marketing/campaign-execution";
 import type { CampaignOnboardingInput, CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
@@ -94,6 +95,8 @@ export default function CustomerCampaignExperience({
   onContinueCampaign,
   campaignContinuationRunning = false,
 }: CustomerCampaignExperienceProps) {
+  const searchParams = useSearchParams();
+  const reviewCompleteBanner = searchParams.get("campaignReviewComplete") === "1";
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -166,8 +169,24 @@ export default function CustomerCampaignExperience({
       ? getCampaignReviewItemHref(peerId, projectId, reviewVm.reviewQueue[0].id)
       : null;
 
+  const needsChangesItems = reviewVm.allReviewItems.filter(
+    (i) => i.decisionStatus === "changes_requested" && i.preview
+  );
+  const needsDirectionItems = reviewVm.allReviewItems.filter(
+    (i) => i.decisionStatus === "rejected" && i.preview
+  );
+  const hasAttention =
+    reviewVm.reviewQueue.length > 0 ||
+    needsChangesItems.length > 0 ||
+    needsDirectionItems.length > 0;
+
   return (
     <section className="mw-section mw-customer-campaign" data-testid="mw-customer-campaign">
+      {reviewCompleteBanner ? (
+        <div className="mw-review-complete-banner" role="status">
+          <strong>Campaign approved.</strong> Marketing Peer is continuing automatically.
+        </div>
+      ) : null}
       <div className="mw-glass mw-detail-hero" style={{ padding: 18, marginBottom: 16 }}>
         <h1 className="mw-detail-title">{reviewVm.campaignTitle}</h1>
         <p className="mw-project-status mw-project-status--planning" role="status">
@@ -184,7 +203,7 @@ export default function CustomerCampaignExperience({
         </div>
         <p className="mw-kn-helper" style={{ marginTop: 12 }}>
           {campaignContinuationRunning
-            ? "Marketing Peer is continuing your campaign..."
+            ? "Marketing Peer is continuing your campaign…"
             : reviewVm.customerSummary}
         </p>
         {firstReviewHref && reviewVm.primaryActionLabel ? (
@@ -229,19 +248,41 @@ export default function CustomerCampaignExperience({
 
       <section className="mw-section mw-glass" style={{ padding: 16, marginBottom: 12 }}>
         <h2 className="mw-section-title">Needs your attention</h2>
-        {reviewVm.reviewQueue.length > 0 ? (
-          <>
-            <p className="mw-kn-helper" role="status">
-              {reviewVm.attentionMessage}
-            </p>
-            <div className="mw-customer-review-grid" style={{ marginTop: 12, display: "grid", gap: 12 }}>
-              {reviewVm.reviewQueue.map((item) => (
-                <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
-              ))}
-            </div>
-          </>
-        ) : (
+        {!hasAttention ? (
           <p className="mw-kn-helper">Nothing needs your attention right now.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 16 }}>
+            {reviewVm.reviewQueue.length > 0 ? (
+              <div>
+                <p className="mw-modal-label">Awaiting review</p>
+                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
+                  {reviewVm.reviewQueue.map((item) => (
+                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {needsChangesItems.length > 0 ? (
+              <div>
+                <p className="mw-modal-label">Changes requested</p>
+                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
+                  {needsChangesItems.map((item) => (
+                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {needsDirectionItems.length > 0 ? (
+              <div>
+                <p className="mw-modal-label">Needs direction</p>
+                <div className="mw-customer-review-grid" style={{ marginTop: 8, display: "grid", gap: 12 }}>
+                  {needsDirectionItems.map((item) => (
+                    <ReviewItemCard key={item.id} peerId={peerId} projectId={projectId} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         )}
       </section>
 

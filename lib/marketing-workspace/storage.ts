@@ -35,6 +35,12 @@ function normalizeStoredState(
     },
     metrics: parsed.metrics ?? [],
     approvalOverlays: parsed.approvalOverlays ?? {},
+    campaignReviewDecisionByWorkUnitId:
+      parsed.campaignReviewDecisionByWorkUnitId ?? {},
+    campaignReviewDecisionHistoryByWorkUnitId:
+      parsed.campaignReviewDecisionHistoryByWorkUnitId ?? {},
+    campaignArtifactVersionByWorkUnitId:
+      parsed.campaignArtifactVersionByWorkUnitId ?? {},
     lastUpdated: parsed.lastUpdated,
   };
 
@@ -143,6 +149,18 @@ export function patchMarketingWorkspaceState(
     insightRotation: patch.insightRotation ?? stored.insightRotation,
     metrics: patch.metrics ?? stored.metrics ?? [],
     approvalOverlays: patch.approvalOverlays ?? stored.approvalOverlays ?? {},
+    campaignReviewDecisionByWorkUnitId:
+      patch.campaignReviewDecisionByWorkUnitId ??
+      stored.campaignReviewDecisionByWorkUnitId ??
+      {},
+    campaignReviewDecisionHistoryByWorkUnitId:
+      patch.campaignReviewDecisionHistoryByWorkUnitId ??
+      stored.campaignReviewDecisionHistoryByWorkUnitId ??
+      {},
+    campaignArtifactVersionByWorkUnitId:
+      patch.campaignArtifactVersionByWorkUnitId ??
+      stored.campaignArtifactVersionByWorkUnitId ??
+      {},
   };
   saveMarketingWorkspaceState(peerId, next);
   return next;

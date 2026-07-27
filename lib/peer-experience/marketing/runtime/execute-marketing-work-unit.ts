@@ -238,7 +238,11 @@ export async function executeMarketingWorkUnit(
     });
   }
 
-  if (hasCompletedStrategyExecution(unit) && domainInput.strategy) {
+  if (
+    hasCompletedStrategyExecution(unit) &&
+    domainInput.strategy &&
+    !input.executionOptions?.forceRegenerate
+  ) {
     const output = mapMarketingStrategyToCampaignStrategyOutput({
       project,
       strategy: domainInput.strategy,
@@ -392,7 +396,13 @@ export async function executeMarketingWorkUnit(
     });
   }
 
-  const generation = await deps.generateStrategy({ contextPackage, taskHint });
+  const generation = await deps.generateStrategy({
+    contextPackage,
+    taskHint:
+      input.executionOptions?.reviewFeedbackTaskHint?.trim()
+        ? `${taskHint}\n${input.executionOptions.reviewFeedbackTaskHint.trim()}`
+        : taskHint,
+  });
 
   if (!generation.success) {
     const internalMessage =

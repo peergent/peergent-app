@@ -8,17 +8,21 @@ import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marke
 import { buildMarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-campaign-detail-view-model";
 import { buildMarketingCampaignDetailSourceFromDomainInput } from "@/lib/peer-experience/marketing/view-models/build-project-campaign-projection";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
+import { pickCampaignReviewHandlers } from "@/features/marketing-workspace/lib/campaign-review-handlers";
+import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 
 function CampaignReviewBody({
   peerId,
   projectId,
   reviewItemId,
   domainInput,
+  workspace,
 }: {
   peerId: string;
   projectId: string;
   reviewItemId: string;
   domainInput: MarketingPeerDomainInput;
+  workspace: ReturnType<typeof useMarketingWorkspace>;
 }) {
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
   const project = domainInput.projects.find((p) => p.id === projectId);
@@ -28,6 +32,15 @@ function CampaignReviewBody({
     const source = buildMarketingCampaignDetailSourceFromDomainInput(domainInput, projectId);
     return buildMarketingCampaignDetailViewModel(source);
   }, [campaignsEnabled, domainInput, project, projectId]);
+
+  const reviewHandlers = useMemo(
+    () => pickCampaignReviewHandlers(workspace),
+    [workspace]
+  );
+
+  if (!workspace.isWorkspaceReady) {
+    return <p className="mw-empty-inline">Loading review…</p>;
+  }
 
   if (!project || !campaignDetail) {
     return <p className="mw-empty-inline">This campaign could not be found.</p>;
@@ -42,6 +55,8 @@ function CampaignReviewBody({
       campaign={campaignDetail}
       project={project}
       campaignsEnabled={campaignsEnabled}
+      campaignContinuationRunning={workspace.campaignContinuationRunning}
+      reviewHandlers={reviewHandlers}
     />
   );
 }
@@ -54,12 +69,13 @@ function CampaignReviewPageInner() {
 
   return (
     <MarketingPeerPageFrame activeTab="work">
-      {({ domainInput }) => (
+      {({ domainInput, workspace }) => (
         <CampaignReviewBody
           peerId={peerId}
           projectId={projectId}
           reviewItemId={reviewItemId}
           domainInput={domainInput}
+          workspace={workspace}
         />
       )}
     </MarketingPeerPageFrame>

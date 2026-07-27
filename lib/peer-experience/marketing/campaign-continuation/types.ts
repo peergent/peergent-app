@@ -34,6 +34,7 @@ export type CampaignContinuationRunnerDeps = {
     workUnitId: string
   ) => Promise<MarketingWorkUnitExecutionResult>;
   readonly getApprovalMode?: (projectId: string) => CampaignApprovalMode | undefined;
+  readonly hasPendingRequiredReview?: (projectId: string) => boolean;
 };
 
 export const CAMPAIGN_CONTINUATION_MAX_ITERATIONS = 100;

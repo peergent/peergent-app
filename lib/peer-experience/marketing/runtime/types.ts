@@ -117,6 +117,10 @@ export type ExecuteMarketingWorkUnitInput = {
   readonly assembledAt: string;
   readonly persistence: MarketingPeerRuntimePersistencePort;
   readonly deps?: Partial<MarketingWorkUnitRuntimeDeps>;
+  readonly executionOptions?: {
+    readonly forceRegenerate?: boolean;
+    readonly reviewFeedbackTaskHint?: string;
+  };
 };
 
 export type UnsupportedWorkUnitResult = {
