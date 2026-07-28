@@ -41,3 +41,11 @@ Legacy repo docs (`PEERGENT_PRODUCT_BLUEPRINT.md`, `PEERGENT_DESIGN_BIBLE.md`, `
 ## Implementation entry point
 
 All engineering work follows **[../IMPLEMENTATION.md](../IMPLEMENTATION.md)**.
+
+## Colleague experience & long-term roadmap (Sprint 29A)
+
+Product architecture and multi-year vision (does not override this blueprint index):
+
+- **[../product/README.md](../product/README.md)** — index  
+- **[../product/PEERGENT_COLLEAGUE_EXPERIENCE_ARCHITECTURE.md](../product/PEERGENT_COLLEAGUE_EXPERIENCE_ARCHITECTURE.md)** — HQ, Command Center, Peer workspace IA  
+- **[../product/PEERGENT_MASTER_ROADMAP.md](../product/PEERGENT_MASTER_ROADMAP.md)** — phases A–H  

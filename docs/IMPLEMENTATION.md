@@ -9,6 +9,8 @@
 
 When uncertain: **do not redesign**. Re-read the blueprints. Implement with engineering excellence.
 
+**Colleague IA & long-term product phases:** see [product/README.md](./product/README.md) (Sprint 29A — subordinate to Constitution and Product Bible).
+
 If implementation is hard, solve the engineering problem — never change UX to make code easier.
 
 ---
