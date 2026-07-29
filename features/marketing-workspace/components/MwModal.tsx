@@ -38,7 +38,9 @@ export default function MwModal({
   const lastFocus = useRef<HTMLElement | null>(null);
   const focusSessionRef = useRef(createModalFocusSession());
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {

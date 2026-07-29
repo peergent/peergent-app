@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from "lucide-react";
@@ -44,28 +44,33 @@ export default function V17CustomerShell({ children }: V17CustomerShellProps) {
   const pathname = usePathname();
   const { organizationId } = useAccount();
   const [collapsed, setCollapsed] = useState(false);
-  const [peers, setPeers] = useState<PeerRow[]>([]);
+  const [fetchedPeers, setFetchedPeers] = useState<PeerRow[]>([]);
   const localePreference = customerLocalePreferenceFromEnv();
   const copy = getV17CommandCenterCopy(localePreference);
   const localeTag = localePreference === "en" ? "en" : "nl";
 
-  const loadPeers = useCallback(async () => {
-    if (!organizationId) {
-      setPeers([]);
-      return;
-    }
-    try {
-      const supabase = createClient();
-      const rows = await fetchOrganizationPeers(supabase, organizationId);
-      setPeers(selectCanonicalCustomerPeers(rows));
-    } catch {
-      setPeers([]);
-    }
-  }, [organizationId]);
+  // Derived rather than stored, so peers from a previous organization can never
+  // linger on screen while the next fetch is in flight.
+  const peers = organizationId ? fetchedPeers : [];
 
   useEffect(() => {
-    void loadPeers();
-  }, [loadPeers]);
+    if (!organizationId) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const supabase = createClient();
+        const rows = await fetchOrganizationPeers(supabase, organizationId);
+        if (!cancelled) setFetchedPeers(selectCanonicalCustomerPeers(rows));
+      } catch {
+        if (!cancelled) setFetchedPeers([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
 
   return (
     <div className="pg-v17">

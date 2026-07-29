@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
-import type { PeerWorkspaceCopy } from "@/lib/i18n/peer-workspace-copy";
+import type {
+  PeerWorkspaceCopy,
+  PeerWorkspaceCopyTextKey,
+} from "@/lib/i18n/peer-workspace-copy";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import V17KnowledgeSettingsView from "@/features/customer-v17/settings/V17KnowledgeSettingsView";
 import { buildV17KnowledgeSettingsViewModel } from "@/lib/customer-v17/build-v17-knowledge-settings-view-model";
@@ -22,7 +25,7 @@ export type PeerSettingsHubProps = {
 
 const INDEX: Array<{
   id: string;
-  copyKey: keyof PeerWorkspaceCopy;
+  copyKey: PeerWorkspaceCopyTextKey;
   href: (peerId: string) => string;
 }> = [
   {

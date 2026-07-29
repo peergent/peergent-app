@@ -11,20 +11,31 @@ const peer = {
   id: "peer-1",
   name: "Emma",
   role: "Marketing",
+  website: "",
+  objective: "",
   status: "active" as const,
 };
 
 function minimalDomain(peerId: string): MarketingPeerDomainInput {
   return {
     peerId,
+    userName: "Pilot",
+    peerName: "Emma",
+    campaignTitle: "Summer",
+    generating: null,
+    generatingActivity: null,
+    understanding: null,
+    strategy: null,
+    plan: null,
     projects: [],
     workUnits: [],
     drafts: [],
+    publicationPackages: [],
     responsibilities: [],
     connections: [],
     activityFeed: [],
     automations: [],
-  } as MarketingPeerDomainInput;
+  };
 }
 
 describe("Sprint 29C.4 interactions", () => {
@@ -70,9 +81,15 @@ describe("Sprint 29C.4 interactions", () => {
     domain.projects = [
       {
         id: "p1",
+        peerId: "emma",
         title: "Launch",
-        type: "campaign",
-      } as MarketingPeerDomainInput["projects"][number],
+        goal: "Grow awareness",
+        campaignType: "product_launch",
+        createdAt: "2026-07-28T00:00:00.000Z",
+        updatedAt: "2026-07-28T00:00:00.000Z",
+        ownerLabel: "Pilot",
+        rawRequest: "",
+      },
     ];
     const model = buildV17ResultsViewModel({
       domainInput: domain,

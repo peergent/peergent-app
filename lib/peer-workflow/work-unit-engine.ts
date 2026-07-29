@@ -105,6 +105,12 @@ export function transitionWorkUnit(
   };
 }
 
+/**
+ * Marks the event-log note written when an execution fails and is rolled back.
+ * Presence derives "Needs help" from this, so keep it in sync with any consumer.
+ */
+export const WORK_UNIT_FAILED_EXECUTION_NOTE_PREFIX = "Execution rolled back for retry:";
+
 /** Roll back from failed in-flight execution so the customer can retry explicitly. */
 export function revertWorkUnitFromFailedExecution(unit: WorkUnit, note: string): WorkUnit {
   if (unit.cancelled) return unit;
@@ -116,7 +122,7 @@ export function revertWorkUnitFromFailedExecution(unit: WorkUnit, note: string):
     event: "planning_started",
     fromStage: unit.status,
     toStage: "planning",
-    note: `Execution rolled back for retry: ${trimmed}`,
+    note: `${WORK_UNIT_FAILED_EXECUTION_NOTE_PREFIX} ${trimmed}`,
   };
   return {
     ...unit,

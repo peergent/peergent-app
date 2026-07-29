@@ -10,7 +10,12 @@ import { buildMarketingPeerWorkspacePresence } from "../build-marketing-peer-pre
 import { buildMarketingPeerWorkingOnViewModel } from "../build-marketing-peer-sections";
 import { getMarketingCampaignCopy } from "@/lib/i18n/marketing-campaign-copy";
 import { getPeerWorkspaceCopy } from "@/lib/i18n/peer-workspace-copy";
-import type { MarketingPeerDomainInput } from "../view-models/marketing-peer-domain-input";
+import { detectSafeFailure } from "../detect-safe-failure";
+import {
+  createWorkUnit,
+  revertWorkUnitFromFailedExecution,
+} from "@/lib/peer-workflow/work-unit-engine";
+import type { MarketingPeerDomainInput } from "../../view-models/marketing-peer-domain-input";
 
 const baseInput: MarketingPeerDomainInput = {
   peerId: "peer-emma",
@@ -19,7 +24,20 @@ const baseInput: MarketingPeerDomainInput = {
   campaignTitle: "Summer",
   generating: null,
   generatingActivity: null,
-  understanding: { available: true, completeness: 80, gaps: [], summary: "", lastUpdated: "" },
+  understanding: {
+    available: true,
+    sparse: false,
+    completeness: 80,
+    gaps: [],
+    brand: { values: [], toneOfVoice: {}, keyMessages: [] },
+    products: [],
+    services: [],
+    customerSegments: [],
+    competitors: [],
+    goals: [],
+    existingContent: [],
+    assembledAt: "2026-07-28T00:00:00.000Z",
+  },
   strategy: null,
   plan: null,
   drafts: [],
@@ -132,7 +150,7 @@ describe("done deduplication", () => {
             peerId: "peer-emma",
             title: "Launch",
             goal: "g",
-            campaignType: "launch",
+            campaignType: "product_launch",
             createdAt: now,
             updatedAt: now,
             ownerLabel: "u",
@@ -149,5 +167,128 @@ describe("done deduplication", () => {
     if (strategyOutcomes[0]?.summary) {
       expect(isRawInternalStatus(strategyOutcomes[0].summary)).toBe(false);
     }
+  });
+});
+
+const INTERNAL_FAILURE_MESSAGE =
+  "OpenAI responses call threw TypeError at validateOutput (stack redacted)";
+
+function failedWorkUnit(overrides?: { cancelled?: boolean; projectId?: string }) {
+  const unit = createWorkUnit({
+    peerId: "peer-emma",
+    role: "Marketing",
+    title: "the LinkedIn post for Summer",
+    deliverableKind: "linkedin",
+    channel: "linkedin",
+    objective: null,
+    audience: null,
+    needsVisual: false,
+    recurrence: "once",
+    rawRequest: "",
+    projectId: overrides?.projectId ?? "p1",
+  });
+  const failed = revertWorkUnitFromFailedExecution(unit, INTERNAL_FAILURE_MESSAGE);
+  return { ...failed, cancelled: overrides?.cancelled ?? false };
+}
+
+describe("detectSafeFailure", () => {
+  it("returns null when nothing has failed", () => {
+    expect(detectSafeFailure([])).toBeNull();
+  });
+
+  it("detects a genuine rolled-back execution", () => {
+    const signal = detectSafeFailure([failedWorkUnit()]);
+    expect(signal).not.toBeNull();
+    expect(signal?.workTitle).toBe("the LinkedIn post for Summer");
+    expect(signal?.projectId).toBe("p1");
+  });
+
+  it("never surfaces the internal failure message", () => {
+    const signal = detectSafeFailure([failedWorkUnit()]);
+    expect(JSON.stringify(signal)).not.toContain("OpenAI");
+    expect(JSON.stringify(signal)).not.toContain("TypeError");
+  });
+
+  it("ignores cancelled work the customer ended deliberately", () => {
+    expect(detectSafeFailure([failedWorkUnit({ cancelled: true })])).toBeNull();
+  });
+
+  it("treats a failure as resolved once the Peer progressed afterwards", () => {
+    const failed = failedWorkUnit();
+    const progressed = {
+      ...failed,
+      eventLog: [
+        ...failed.eventLog,
+        {
+          id: "evt-after",
+          at: new Date(Date.now() + 1000).toISOString(),
+          event: "planning_started" as const,
+          fromStage: "planning" as const,
+          toStage: "creating" as const,
+          note: "Retry started.",
+        },
+      ],
+    };
+    expect(detectSafeFailure([progressed])).toBeNull();
+  });
+});
+
+describe("presence: needs help (Failed safely)", () => {
+  it("emits needs_help and outranks waiting for you", () => {
+    const presence = buildMarketingPeerWorkspacePresence({
+      domainInput: { ...baseInput, workUnits: [failedWorkUnit()] },
+      campaignCopy: getMarketingCampaignCopy("en"),
+      workspaceCopy: getPeerWorkspaceCopy("en"),
+      // A pending decision must NOT win over a real failure (priority §4).
+      attentionCount: 3,
+      waitingPrimaryHref: null,
+      locale: "en",
+    });
+    expect(presence.state).toBe("needs_help");
+    expect(presence.stateLabel).toBe("Needs help");
+    expect(presence.showLiveIndicator).toBe(false);
+    expect(presence.primaryActionHref).toBeTruthy();
+    expect(presence.primaryActionLabel).toBe("See what happened");
+  });
+
+  it("reassures that work is preserved without leaking internals", () => {
+    const presence = buildMarketingPeerWorkspacePresence({
+      domainInput: { ...baseInput, workUnits: [failedWorkUnit()] },
+      campaignCopy: getMarketingCampaignCopy("en"),
+      workspaceCopy: getPeerWorkspaceCopy("en"),
+      attentionCount: 0,
+      waitingPrimaryHref: null,
+      locale: "en",
+    });
+    expect(presence.narrative).toContain("Nothing is lost");
+    expect(presence.narrative).not.toContain("OpenAI");
+    expect(presence.narrative).not.toContain("TypeError");
+    expect(isRawInternalStatus(presence.narrative)).toBe(false);
+  });
+
+  it("uses Dutch copy for the failure state", () => {
+    const presence = buildMarketingPeerWorkspacePresence({
+      domainInput: { ...baseInput, workUnits: [failedWorkUnit()] },
+      campaignCopy: getMarketingCampaignCopy("nl"),
+      workspaceCopy: getPeerWorkspaceCopy("nl"),
+      attentionCount: 0,
+      waitingPrimaryHref: null,
+      locale: "nl",
+    });
+    expect(presence.state).toBe("needs_help");
+    expect(presence.stateLabel).toBe("Hulp nodig");
+    expect(presence.narrative).toContain("niets verloren");
+  });
+
+  it("does not classify ordinary idle waiting as failure", () => {
+    const presence = buildMarketingPeerWorkspacePresence({
+      domainInput: baseInput,
+      campaignCopy: getMarketingCampaignCopy("en"),
+      workspaceCopy: getPeerWorkspaceCopy("en"),
+      attentionCount: 2,
+      waitingPrimaryHref: null,
+      locale: "en",
+    });
+    expect(presence.state).toBe("waiting_for_you");
   });
 });

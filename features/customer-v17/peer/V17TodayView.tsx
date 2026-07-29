@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import type { V17TodayViewModel } from "@/lib/customer-v17/build-v17-today-view-model";
 import { v17PeerAccentClass } from "@/lib/customer-v17/peer-accent";
 

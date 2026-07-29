@@ -1,7 +1,6 @@
 import {
   buildCommandCenterViewModel,
   CC_FLAT_SPARKLINE,
-  CC_MISSING_VALUE,
   type CcServicePerformance,
   type CommandCenterViewModel,
 } from "@/lib/home/build-command-center-view-model";

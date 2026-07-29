@@ -31,6 +31,8 @@ export type PeerWorkspaceCopy = {
   presenceNeedsHelp: string;
   narrativeBlockedKnowledge: string;
   narrativeNeedsHelp: string;
+  narrativeNeedsHelpFor: (workTitle: string) => string;
+  needsHelpCta: string;
   workingOnNext: string;
   workingOnUpcoming: string;
   workingOnNowLabel: string;
@@ -43,6 +45,14 @@ export type PeerWorkspaceCopy = {
   attentionPrimaryCta: string;
   breadcrumbTeam: string;
 };
+
+/**
+ * Copy keys whose value is a plain string, so they can be rendered directly.
+ * Excludes templated entries like `narrativeNeedsHelpFor`, which must be called.
+ */
+export type PeerWorkspaceCopyTextKey = {
+  [K in keyof PeerWorkspaceCopy]: PeerWorkspaceCopy[K] extends string ? K : never;
+}[keyof PeerWorkspaceCopy];
 
 const en: PeerWorkspaceCopy = {
   navToday: "Today",
@@ -74,7 +84,10 @@ const en: PeerWorkspaceCopy = {
   narrativeBlockedKnowledge:
     "I need a bit more business context before I can continue confidently.",
   narrativeNeedsHelp:
-    "Something didn't finish as expected. Take a look when you can.",
+    "Something didn't finish as expected. Nothing is lost — I've paused until you take a look.",
+  narrativeNeedsHelpFor: (workTitle: string) =>
+    `I couldn't finish ${workTitle}. Nothing is lost — I've paused and kept your work safe until you take a look.`,
+  needsHelpCta: "See what happened",
   workingOnNext: "What happens next",
   workingOnUpcoming: "Up next",
   workingOnNowLabel: "Current focus",
@@ -119,7 +132,10 @@ const nl: PeerWorkspaceCopy = {
   narrativeBlockedKnowledge:
     "Ik heb nog wat bedrijfscontext nodig voordat ik zelfverzekerd verder kan.",
   narrativeNeedsHelp:
-    "Iets is niet afgerond zoals verwacht. Kijk wanneer het jou uitkomt.",
+    "Iets is niet afgerond zoals verwacht. Er is niets verloren — ik heb gepauzeerd tot je kijkt.",
+  narrativeNeedsHelpFor: (workTitle: string) =>
+    `Ik kon ${workTitle} niet afronden. Er is niets verloren — ik heb gepauzeerd en je werk veilig bewaard tot je kijkt.`,
+  needsHelpCta: "Bekijk wat er gebeurde",
   workingOnNext: "Wat er daarna gebeurt",
   workingOnUpcoming: "Hierna",
   workingOnNowLabel: "Nu bezig",

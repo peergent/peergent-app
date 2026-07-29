@@ -15,6 +15,7 @@ import {
 import { buildAllMarketingApprovalQueue } from "../view-models/build-marketing-activity-mappers";
 import { deriveProjectStatus } from "../projects/project-engine";
 import type { MarketingPeerDomainInput } from "../view-models/marketing-peer-domain-input";
+import { detectSafeFailure } from "./detect-safe-failure";
 import type { CustomerPeerPresenceViewModel } from "./peer-presence-types";
 
 function activeWorkUnit(input: MarketingPeerDomainInput) {
@@ -92,6 +93,29 @@ export function buildMarketingPeerWorkspacePresence(
 
   const waitingHref =
     waitingPrimaryHref ?? marketingPeerSectionHref(peerId, "waiting_for_me");
+
+  // Priority 1 (PEERGENT_PRESENCE_MODEL.md §4): a genuine failure outranks
+  // everything else, so a real breakage never hides behind a calm state.
+  const safeFailure = detectSafeFailure(domainInput.workUnits);
+  if (safeFailure) {
+    return {
+      state: "needs_help",
+      presentationKey: "needs_review",
+      stateLabel: workspaceCopy.presenceNeedsHelp,
+      narrative: safeFailure.workTitle
+        ? workspaceCopy.narrativeNeedsHelpFor(safeFailure.workTitle)
+        : workspaceCopy.narrativeNeedsHelp,
+      primaryActionHref: safeFailure.projectId
+        ? getProjectHref(peerId, safeFailure.projectId)
+        : marketingPeerSectionHref(peerId, "work"),
+      primaryActionLabel: workspaceCopy.needsHelpCta,
+      lastMeaningfulUpdateLabel: formatUpdatedLabel(
+        formatRelativeTime(safeFailure.failedAt),
+        locale
+      ),
+      showLiveIndicator: false,
+    };
+  }
 
   if (waitingCount > 0) {
     return {

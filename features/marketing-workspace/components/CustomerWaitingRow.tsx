@@ -11,18 +11,24 @@ import {
   deliverableBadgeLabel,
 } from "../lib/customer-campaign-presenter";
 
-function iconForItem(item: CampaignReviewItem) {
+/** Returns the icon element directly so no component is constructed during render. */
+function renderItemIcon(item: CampaignReviewItem) {
+  const iconProps = {
+    size: 18,
+    className: "mw-waiting-row-icon",
+    "aria-hidden": true,
+  } as const;
+
   switch (item.artifactType) {
-    case "campaign_strategy":
-      return FileText;
     case "creative_direction":
-      return Palette;
+      return <Palette {...iconProps} />;
     case "linkedin_post":
-      return Megaphone;
+      return <Megaphone {...iconProps} />;
     case "email_campaign":
-      return Mail;
+      return <Mail {...iconProps} />;
+    case "campaign_strategy":
     default:
-      return FileText;
+      return <FileText {...iconProps} />;
   }
 }
 
@@ -41,7 +47,6 @@ export default function CustomerWaitingRow({
   copy,
   updatedAt,
 }: CustomerWaitingRowProps) {
-  const Icon = iconForItem(item);
   const badgeKey = deliverableBadgeKey(item);
   const badge = deliverableBadgeLabel(badgeKey, copy);
   const relative =
@@ -49,7 +54,7 @@ export default function CustomerWaitingRow({
 
   return (
     <div className="mw-waiting-row pg-hover-lift" data-testid="mw-waiting-row">
-      <Icon size={18} className="mw-waiting-row-icon" aria-hidden />
+      {renderItemIcon(item)}
       <div className="mw-waiting-row-body">
         <p className="mw-waiting-row-title">{item.title}</p>
         <p className="mw-waiting-row-meta">

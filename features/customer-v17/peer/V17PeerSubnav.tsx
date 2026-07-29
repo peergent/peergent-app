@@ -7,7 +7,10 @@ import {
   resolveActiveMarketingPeerCustomerSection,
   type MarketingPeerCustomerSectionId,
 } from "@/lib/peer-experience/marketing/navigation/marketing-peer-sections";
-import type { PeerWorkspaceCopy } from "@/lib/i18n/peer-workspace-copy";
+import type {
+  PeerWorkspaceCopy,
+  PeerWorkspaceCopyTextKey,
+} from "@/lib/i18n/peer-workspace-copy";
 
 export type V17PeerSubnavProps = {
   peerId: string;
@@ -15,7 +18,7 @@ export type V17PeerSubnavProps = {
   waitingCount?: number;
 };
 
-const LABELS: Record<MarketingPeerCustomerSectionId, keyof PeerWorkspaceCopy> = {
+const LABELS: Record<MarketingPeerCustomerSectionId, PeerWorkspaceCopyTextKey> = {
   today: "navToday",
   work: "navWork",
   results: "navResults",
