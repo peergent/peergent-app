@@ -286,11 +286,10 @@ describe("Start campaign wiring", () => {
     expect(detail.match(/<CampaignStartCampaignAction/g)?.length).toBe(1);
   });
 
-  it("ProjectDetailTab forwards workspace props to campaign sections", () => {
+  it("ProjectDetailTab renders v17 campaign detail from domain and review VMs", () => {
     const tab = read("features/marketing-workspace/details/ProjectDetailTab.tsx");
-    expect(tab).toContain("onStartCampaignExecution");
-    expect(tab).toContain("campaignsEnabled={campaignsEnabled}");
-    expect(tab).toContain("workUnits={domainInput.workUnits}");
-    expect(tab).toContain("projectOrigin={project?.origin}");
+    expect(tab).toContain("buildV17CampaignDetailViewModel");
+    expect(tab).toContain("buildCampaignReviewViewModel");
+    expect(tab).toContain("V17CampaignDetailView");
   });
 });

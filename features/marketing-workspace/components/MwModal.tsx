@@ -17,6 +17,8 @@ export type MwModalProps = {
   maxWidth?: number;
   closeOnEscape?: boolean;
   closeOnOverlayClick?: boolean;
+  variant?: "default" | "v17";
+  closeAriaLabel?: string;
 };
 
 export default function MwModal({
@@ -28,6 +30,8 @@ export default function MwModal({
   maxWidth = 540,
   closeOnEscape = true,
   closeOnOverlayClick = true,
+  variant = "default",
+  closeAriaLabel = "Close",
 }: MwModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -76,7 +80,7 @@ export default function MwModal({
 
   return createPortal(
     <div
-      className="mw-modal-overlay mw-modal-overlay--open"
+      className={`mw-modal-overlay mw-modal-overlay--open${variant === "v17" ? " v17-modal-overlay" : ""}`}
       role="presentation"
       onClick={(e) => {
         if (closeOnOverlayClick && e.target === e.currentTarget) onClose();
@@ -84,7 +88,7 @@ export default function MwModal({
     >
       <div
         ref={panelRef}
-        className="mw-modal-box"
+        className={`mw-modal-box${variant === "v17" ? " v17-modal-panel" : ""}`}
         style={{ maxWidth }}
         role="dialog"
         aria-modal="true"
@@ -97,7 +101,7 @@ export default function MwModal({
             </h2>
             {subtitle && <p className="mw-modal-subtitle">{subtitle}</p>}
           </div>
-          <button type="button" className="mw-modal-close pg-focus-premium" onClick={onClose} aria-label="Close">
+          <button type="button" className="mw-modal-close pg-focus-premium" onClick={onClose} aria-label={closeAriaLabel}>
             <X size={14} aria-hidden />
           </button>
         </div>

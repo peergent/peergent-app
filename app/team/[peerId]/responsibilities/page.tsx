@@ -1,35 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useState } from "react";
-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import ResponsibilitiesTab, {
-  toggleResponsibilityEnabled,
-} from "@/features/marketing-workspace/tabs/ResponsibilitiesTab";
+type Props = {
+  params: Promise<{ peerId: string }>;
+};
 
-export default function TeamPeerResponsibilitiesPage() {
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-
-  return (
-    <MarketingPeerPageFrame activeTab="responsibilities">
-      {({ domainInput, workspace }) => (
-        <ResponsibilitiesTab
-          domainInput={domainInput}
-          approvingId={approvingId}
-          onToggleOwnership={(responsibilityId, enabled) => {
-            workspace.updateResponsibilities(
-              toggleResponsibilityEnabled(workspace.responsibilities, responsibilityId, enabled)
-            );
-          }}
-          onApprovePlan={async (responsibilityId) => {
-            setApprovingId(responsibilityId);
-            try {
-              await workspace.handleApproveResponsibilityPlan(responsibilityId);
-            } finally {
-              setApprovingId(null);
-            }
-          }}
-        />
-      )}
-    </MarketingPeerPageFrame>
-  );
+export default async function ResponsibilitiesRedirectPage({ params }: Props) {
+  const { peerId } = await params;
+  redirect(`/team/${peerId}/settings?section=responsibilities`);
 }

@@ -12,7 +12,7 @@ function ResponsibilityDetailPageInner() {
   const [approving, setApproving] = useState(false);
 
   return (
-    <MarketingPeerPageFrame activeTab="responsibilities">
+    <MarketingPeerPageFrame activeTab="settings">
       {({ domainInput, workspace }) => (
         <ResponsibilityDetailTab
           peerId={peerId}

@@ -115,10 +115,10 @@ describe("Campaign detail onboarding integration", () => {
     expect(detail).toContain("onCompleteCampaignOnboarding");
   });
 
-  it("legacy ProjectDetailTab path unchanged for non-wizard projects", () => {
+  it("ProjectDetailTab uses v17 customer campaign detail", () => {
     const tab = read("features/marketing-workspace/details/ProjectDetailTab.tsx");
-    expect(tab).toContain("shouldRenderCampaignWizardDetailView");
-    expect(tab).toMatch(/if \(showCampaignExperience && campaignDetail\)/);
+    expect(tab).toContain("V17CampaignDetailView");
+    expect(tab).toContain("buildV17CampaignDetailViewModel");
   });
 });
 

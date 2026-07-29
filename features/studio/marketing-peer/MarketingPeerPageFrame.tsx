@@ -7,17 +7,19 @@ import { useParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { useAccount } from "@/components/account/AccountProvider";
-import { PgAlcove, PgAppShell } from "@/components/design-system";
+import V17CustomerShell from "@/features/customer-v17/shell/V17CustomerShell";
+import { PgAlcove } from "@/components/design-system";
 import StudioLoadingShell from "@/features/studio/StudioLoadingShell";
 import EmmaDelegation from "@/features/studio/emma-workspace/sections/EmmaDelegation";
 import MarketingWorkspaceLayout from "@/features/marketing-workspace/MarketingWorkspaceLayout";
 import { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 import { loadIntegrationConnections } from "@/lib/integrations/connection-store";
+import type { MarketingPeerSectionId } from "@/lib/peer-experience/marketing/navigation/marketing-peer-sections";
 import type { MarketingPeerTabId } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
 import { buildMarketingPeerDomainInput } from "./buildMarketingPeerDomainInput";
 
 export type MarketingPeerPageFrameProps = {
-  activeTab: MarketingPeerTabId;
+  activeTab: MarketingPeerTabId | MarketingPeerSectionId;
   children: (ctx: {
     peerId: string;
     domainInput: ReturnType<typeof buildMarketingPeerDomainInput>;
@@ -71,9 +73,8 @@ export default function MarketingPeerPageFrame({
     )?.id;
 
   return (
-    <main className="min-h-screen bg-[var(--pg-color-canvas)] text-[var(--pg-color-text-primary)]">
-      <PgAppShell contentClassName="relative flex min-h-screen flex-col">
-        {workspace.pageState === "loading" && <StudioLoadingShell />}
+    <V17CustomerShell>
+      {workspace.pageState === "loading" && <StudioLoadingShell />}
 
         {workspace.pageState === "error" && (
           <div className="p-5 md:p-8">
@@ -127,8 +128,6 @@ export default function MarketingPeerPageFrame({
           <MarketingWorkspaceLayout
             peer={workspace.peer}
             domainInput={domainInput}
-            activeTab={activeTab}
-            userInitial={userInitial}
             onMessage={() => setAssignOpen(true)}
             onPause={() => {
               if (activeWorkUnitId) {
@@ -162,7 +161,6 @@ export default function MarketingPeerPageFrame({
             />
           )}
         </PgAlcove>
-      </PgAppShell>
-    </main>
+    </V17CustomerShell>
   );
 }

@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peergent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+    --ease: cubic-bezier(.16,1,.3,1);
+    --spring: cubic-bezier(.34,1.4,.4,1);
+    --marketing:#4C6EF5;
+    --sales:#C9822E;
+    --support:#1FA184;
+  }
+  html[data-theme="dark"]{
+    --bg-wash: linear-gradient(175deg, #0C0D18 0%, #08090F 42%, #0A0A12 78%, #0D0B14 100%);
+    --panel: rgba(255,255,255,0.032);
+    --panel-hover: rgba(255,255,255,0.052);
+    --line: rgba(255,255,255,0.08);
+    --line-soft: rgba(255,255,255,0.055);
+    --ink:#F4F5FA;
+    --ink-soft:#9497AC;
+    --ink-faint:#565A6E;
+    --blue:#5B7CFA;
+    --indigo:#7C8CF8;
+    --grad: linear-gradient(135deg, var(--blue), var(--indigo));
+    --grad-soft: linear-gradient(135deg, rgba(91,124,250,0.16), rgba(124,140,248,0.10));
+    --attention:#EFAA53;
+    --attention-text:#EFAA53;
+    --attention-soft: rgba(239,170,83,0.10);
+    --attention-line: rgba(239,170,83,0.30);
+    --attention-shadow: 0 12px 30px -14px rgba(239,170,83,0.28);
+    --attention-shadow-hover: 0 18px 40px -14px rgba(239,170,83,0.4);
+    --success-text:#8FE6CE;
+    --success-soft: rgba(56,201,163,0.10);
+    --success-line: rgba(56,201,163,0.32);
+    --glass: rgba(20,21,32,0.46);
+    --glass-strong: rgba(24,25,38,0.62);
+    --shadow-ambient: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px -12px rgba(0,0,0,0.55);
+    --shadow-key: 0 20px 60px -20px rgba(91,124,250,0.35);
+    --brand-glow: rgba(91,124,250,0.35);
+    --btn-shadow: 0 3px 12px rgba(91,124,250,0.28);
+    --btn-shadow-hover: 0 8px 22px rgba(91,124,250,0.42);
+    --avatar-bg: linear-gradient(160deg, #1A1D29, #12141C);
+    --ring-bg:#20232F;
+    --bg-solid:#0A0A12;
+    --voice: #E8ECFF;
+    --shimmer-a: rgba(255,255,255,0.045);
+    --shimmer-b: rgba(255,255,255,0.09);
+    --status-tag-color: #C9D0FF;
+    --orb1: radial-gradient(circle, rgba(91,124,250,0.55), transparent 70%);
+    --orb2: radial-gradient(circle, rgba(76,140,245,0.5), transparent 70%);
+    --orb3: radial-gradient(circle, rgba(239,170,83,0.16), transparent 70%);
+    --orb4: radial-gradient(circle, rgba(56,201,163,0.16), transparent 70%);
+    --orb5: radial-gradient(circle, rgba(255,255,255,0.05), transparent 70%);
+    --orb-opacity:.6;
+    --dot-color: rgba(255,255,255,0.09);
+    --vignette-grad: radial-gradient(ellipse 95% 85% at 50% 38%, transparent 45%, rgba(0,0,0,0.4) 100%);
+    --grain-opacity:.05;
+    color-scheme: dark;
+  }
+  html[data-theme="light"]{
+    --purple-accent: #8B5CF6;
+    --title-grad: linear-gradient(120deg, var(--blue), var(--purple-accent));
+    --bg-wash: linear-gradient(165deg, #FFFFFF 0%, #FBFAFE 28%, #F5F1FB 58%, #F8F6FC 82%, #FDFCFE 100%);
+    --panel: rgba(20,22,42,0.028);
+    --panel-hover: rgba(20,22,42,0.05);
+    --line: rgba(20,22,42,0.11);
+    --line-soft: rgba(20,22,42,0.075);
+    --ink:#14151F;
+    --ink-soft:#585C70;
+    --ink-faint:#9DA0B2;
+    --blue:#3E5FEE;
+    --indigo:#6470E8;
+    --grad: linear-gradient(135deg, var(--blue), var(--indigo));
+    --grad-soft: linear-gradient(135deg, rgba(62,95,238,0.12), rgba(100,112,232,0.09));
+    --attention:#C9822E;
+    --attention-text:#A8691E;
+    --attention-soft: rgba(201,130,46,0.10);
+    --attention-line: rgba(201,130,46,0.32);
+    --attention-shadow: 0 10px 24px -14px rgba(201,130,46,0.22);
+    --attention-shadow-hover: 0 14px 30px -14px rgba(201,130,46,0.3);
+    --success-text:#0E8F6C;
+    --success-soft: rgba(14,143,108,0.09);
+    --success-line: rgba(14,143,108,0.28);
+    --glass: rgba(255,255,255,0.58);
+    --glass-strong: rgba(255,255,255,0.78);
+    --shadow-ambient: 0 1px 2px rgba(20,22,50,0.05), 0 14px 32px -18px rgba(20,22,50,0.16);
+    --shadow-key: 0 20px 50px -24px rgba(62,95,238,0.22);
+    --brand-glow: rgba(62,95,238,0.28);
+    --btn-shadow: 0 3px 12px rgba(62,95,238,0.22);
+    --btn-shadow-hover: 0 8px 20px rgba(62,95,238,0.3);
+    --avatar-bg: linear-gradient(160deg, #FFFFFF, #EEF0F7);
+    --ring-bg:#EEF0F7;
+    --bg-solid:#FAF9FE;
+    --voice: #34306E;
+    --shimmer-a: rgba(20,22,42,0.05);
+    --shimmer-b: rgba(20,22,42,0.11);
+    --status-tag-color: #4552C4;
+    --orb1: radial-gradient(circle, rgba(168,120,244,0.22), transparent 70%);
+    --orb2: radial-gradient(circle, rgba(99,102,241,0.15), transparent 70%);
+    --orb3: radial-gradient(circle, rgba(201,130,46,0.07), transparent 70%);
+    --orb4: radial-gradient(circle, rgba(31,161,132,0.08), transparent 70%);
+    --orb5: radial-gradient(circle, rgba(182,140,250,0.10), transparent 70%);
+    --orb-opacity:.42;
+    --dot-color: rgba(20,22,42,0.09);
+    --vignette-grad: radial-gradient(ellipse 95% 85% at 50% 38%, transparent 55%, rgba(20,22,50,0.045) 100%);
+    --grain-opacity:.03;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  html{transition:background .3s var(--ease);}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+    .orb{display:none !important;}
+  }
+  body{
+    background:var(--bg-wash);
+    color:var(--ink);
+    font-family:'Manrope',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+    transition:color .3s var(--ease);
+  }
+  .mesh{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:var(--orb-opacity);transition:opacity .4s var(--ease);}
+  .orb.o1{width:640px;height:640px;top:-220px;right:-140px;background:var(--orb1);
+    animation:drift1 26s ease-in-out infinite alternate;}
+  .orb.o2{width:540px;height:540px;bottom:-200px;left:-160px;background:var(--orb2);
+    animation:drift2 32s ease-in-out infinite alternate;}
+  .orb.o3{width:380px;height:380px;top:38%;left:34%;background:var(--orb3);
+    animation:drift3 22s ease-in-out infinite alternate;}
+  .orb.o4{width:420px;height:420px;bottom:8%;right:6%;background:var(--orb4);
+    animation:drift4 28s ease-in-out infinite alternate;}
+  .orb.o5{width:300px;height:300px;top:6%;left:44%;background:var(--orb5);
+    animation:drift3 18s ease-in-out infinite alternate-reverse;}
+  @keyframes drift1{from{transform:translate(0,0) scale(1);}to{transform:translate(-60px,40px) scale(1.08);}}
+  @keyframes drift2{from{transform:translate(0,0) scale(1);}to{transform:translate(50px,-30px) scale(1.05);}}
+  @keyframes drift3{from{transform:translate(0,0);}to{transform:translate(30px,20px);}}
+  @keyframes drift4{from{transform:translate(0,0) scale(1);}to{transform:translate(-40px,-25px) scale(1.1);}}
+
+  .dot-grid{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--dot-color) 1px, transparent 1px);
+    background-size:28px 28px;
+    -webkit-mask-image:radial-gradient(ellipse 62% 55% at 50% 28%, black 0%, transparent 78%);
+    mask-image:radial-gradient(ellipse 62% 55% at 50% 28%, black 0%, transparent 78%);
+    opacity:.55;
+  }
+  .vignette{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:var(--vignette-grad);
+  }
+  .grain{
+    position:fixed;inset:0;z-index:3;pointer-events:none;opacity:var(--grain-opacity);mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .app{display:flex; min-height:100vh; position:relative; z-index:1;}
+
+  /* Light theme: titles carry the brand blue-to-purple gradient */
+  html[data-theme="light"] .brand-word,
+  html[data-theme="light"] .hq-hero h1,
+  html[data-theme="light"] h2.section-title.page-title,
+  html[data-theme="light"] .peer-name{
+    background:var(--title-grad);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+
+  /* ================= RAIL ================= */
+  .rail{
+    width:232px; flex-shrink:0;
+    border-right:1px solid var(--line-soft);
+    padding:28px 16px; display:flex; flex-direction:column; gap:30px;
+    background:var(--glass);
+    backdrop-filter:blur(24px) saturate(140%);
+    -webkit-backdrop-filter:blur(24px) saturate(140%);
+    transition:width .28s var(--ease), padding .28s var(--ease);
+    position:relative;
+  }
+  .rail.collapsed{width:76px;padding:28px 14px;}
+  .rail.collapsed .brand-word,
+  .rail.collapsed .theme-toggle,
+  .rail.collapsed .nav-label,
+  .rail.collapsed .label,
+  .rail.collapsed .rail-foot{display:none;}
+  .rail.collapsed .brand{justify-content:center;padding:2px 0 6px;}
+  .rail.collapsed .nav-item{justify-content:center;padding:8px;}
+  .rail.collapsed .nav-group{align-items:center;}
+
+  .collapse-btn{
+    position:absolute;top:30px;right:-11px;width:22px;height:22px;border-radius:50%;
+    background:var(--glass-strong);border:1px solid var(--line);color:var(--ink-faint);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;
+    backdrop-filter:blur(10px);transition:color .16s var(--ease), transform .28s var(--ease);
+  }
+  .collapse-btn:hover{color:var(--ink);}
+  .collapse-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .28s var(--ease);}
+  .rail.collapsed .collapse-btn svg{transform:rotate(180deg);}
+  .brand{display:flex;align-items:center;gap:9px;padding:2px 6px 6px;}
+  .mark{width:25px;height:25px;border-radius:7px;background:var(--grad);position:relative;flex-shrink:0;
+    box-shadow:0 3px 14px var(--brand-glow);}
+  .mark svg{position:absolute;inset:0;width:100%;height:100%;}
+  .brand-word{font-weight:800;font-size:16px;letter-spacing:-0.01em;}
+
+  .theme-toggle{
+    display:flex;align-items:center;gap:2px;margin-left:auto;
+    background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r-pill);padding:2px;
+  }
+  .theme-toggle button{
+    width:24px;height:24px;border-radius:50%;border:none;background:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-faint);
+    transition:background .16s var(--ease), color .16s var(--ease);
+  }
+  .theme-toggle button svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .theme-toggle button.active{background:var(--grad-soft);color:var(--ink);}
+
+  .nav-group{display:flex;flex-direction:column;gap:1px;}
+  .nav-label{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;
+    letter-spacing:0.09em;color:var(--ink-faint);padding:12px 10px 6px;
+  }
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+    font-size:13.5px;color:var(--ink-soft);cursor:pointer;border:none;background:none;
+    text-align:left;width:100%;font-family:'Manrope',sans-serif;
+    transition:background .16s var(--ease), color .16s var(--ease);
+  }
+  .nav-item:hover{background:var(--panel);color:var(--ink);}
+  .nav-item.active{background:var(--grad-soft);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px rgba(91,124,250,0.22);}
+
+  .ring{
+    width:20px;height:20px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Manrope',sans-serif;font-weight:700;font-size:9px;color:var(--ink);
+    background:var(--ring-bg);
+  }
+  .ring.working{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--blue), 0 0 14px 1px rgba(91,124,250,0.5);}
+  .ring.waiting{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--attention), 0 0 14px 1px rgba(239,170,83,0.5);}
+  .ring.calm{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--ink-faint); opacity:.75;}
+  .ring.pulse::after{
+    content:"";position:absolute;
+  }
+  .ring-wrap{position:relative;display:inline-flex;}
+  .ring-wrap.pulse .pulse-ring{
+    position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--blue);
+    animation:pulse 2.2s var(--ease) infinite;
+  }
+  @keyframes pulse{
+    0%{opacity:.55;transform:scale(0.85);}
+    70%{opacity:0;transform:scale(1.35);}
+    100%{opacity:0;transform:scale(1.35);}
+  }
+
+  .rail-foot{margin-top:auto;font-size:10.5px;color:var(--ink-faint);line-height:1.6;}
+
+  /* ================= MAIN ================= */
+  .main{flex:1;display:flex;justify-content:flex-start;padding:54px 56px 130px 56px;}
+  .col{width:100%;max-width:none;}
+  .view{display:none;}
+  .view.active{display:block;animation:viewIn .38s var(--ease);}
+  @keyframes viewIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .stagger > *{animation:itemIn .42s var(--ease) both;}
+  .stagger > *:nth-child(1){animation-delay:.02s;}
+  .stagger > *:nth-child(2){animation-delay:.07s;}
+  .stagger > *:nth-child(3){animation-delay:.12s;}
+  .stagger > *:nth-child(4){animation-delay:.17s;}
+  @keyframes itemIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;
+    letter-spacing:0.09em;color:var(--ink-faint);margin-bottom:16px;
+  }
+  svg.icon{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---- HQ ---- */
+  .hq-hero{margin-bottom:48px;position:relative;}
+  .hq-hero h1{font-weight:800;font-size:40px;line-height:1.18;margin:0 0 14px;max-width:480px;letter-spacing:-0.03em;
+    animation:heroIn .6s var(--ease) both;}
+  .hq-hero .sub{color:var(--ink-faint);font-size:12.5px;letter-spacing:.01em;animation:heroIn .6s var(--ease) .06s both;}
+  @keyframes heroIn{from{opacity:0;transform:translateY(8px);filter:blur(4px);}to{opacity:1;transform:translateY(0);filter:blur(0);}}
+
+  .hq-list{display:flex;flex-direction:column;gap:9px;}
+  .hq-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 14px 14px 17px;border:1px solid var(--line-soft);border-radius:var(--r-lg);
+    background:var(--panel);cursor:pointer;position:relative;overflow:hidden;
+    transition:border-color .16s var(--ease), background .16s var(--ease), transform .2s var(--ease), box-shadow .2s var(--ease);
+  }
+  .hq-row::before{
+    content:"";position:absolute;left:0;top:12%;bottom:12%;width:2.5px;border-radius:3px;
+    background:var(--peer-solid, var(--ink-faint));
+  }
+  .hq-row:hover{border-color:var(--line);background:var(--panel-hover);transform:translateY(-1px);
+    box-shadow:var(--shadow-ambient);}
+  .hq-row:active{transform:translateY(0) scale(.99);}
+  .hq-row.hq-marketing{ --peer-solid:#4C6EF5; }
+  .hq-row.hq-sales{ --peer-solid:#C9822E; }
+  .hq-row.hq-support{ --peer-solid:#1FA184; }
+  .hq-left{display:flex;align-items:center;gap:12px;}
+  .hq-name{font-weight:600;font-size:13.5px;}
+  .hq-status{color:var(--ink-soft);font-size:12.5px;margin-top:1px;}
+  .hq-right{display:flex;align-items:center;gap:10px;color:var(--ink-faint);}
+  .pill{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.04em;
+    background:var(--attention-soft);color:var(--attention-text);padding:4px 8px;border-radius:var(--r-pill);
+    border:1px solid var(--attention-line);
+  }
+
+  .hq-cta{
+    margin-top:28px;display:flex;justify-content:space-between;align-items:center;
+    padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--panel);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:var(--shadow-ambient);
+  }
+  .hq-cta .t{font-size:13px;color:var(--ink-soft);}
+  .btn{
+    position:relative;overflow:hidden;
+    font-weight:600;font-size:12.5px;background:var(--grad);color:#fff;border:none;
+    padding:9px 15px;border-radius:9px;cursor:pointer;
+    box-shadow:var(--btn-shadow);
+    transition:transform .3s var(--spring), box-shadow .2s var(--ease), filter .2s var(--ease);
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn::after{
+    content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+    background:linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+    transform:skewX(-20deg);transition:left .55s var(--ease);
+  }
+  .btn:hover::after{left:120%;}
+  .btn:hover{transform:translateY(-1px) scale(1.015);box-shadow:var(--btn-shadow-hover);filter:brightness(1.05);}
+  .btn:active{transform:translateY(0) scale(.95);}
+  .btn.ghost{background:none;color:var(--ink);border:1px solid var(--line);box-shadow:none;}
+  .btn.ghost:hover{border-color:var(--ink-faint);transform:none;box-shadow:none;}
+
+  /* ---- Command Center ---- */
+  h2.section-title{font-weight:700;font-size:16px;margin:0 0 4px;letter-spacing:-0.01em;}
+  h2.section-title.page-title{font-size:27px;font-weight:800;letter-spacing:-0.025em;margin-bottom:6px;}
+  .section-sub{color:var(--ink-faint);font-size:12.5px;margin-bottom:22px;}
+  .cc-block{margin-bottom:30px;}
+  .cc-block:first-of-type{margin-bottom:38px;}
+  .cc-block:last-of-type{margin-bottom:0;}
+  .cc-block-head{
+    display:flex;align-items:center;gap:7px;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-faint);margin-bottom:11px;
+  }
+  .cc-block-head.attn{color:var(--attention-text);}
+
+  .decision{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 18px;border:1px solid var(--attention-line); border-left:2.5px solid var(--attention);
+    background:var(--attention-soft);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border-radius:var(--r-lg);margin-bottom:8px;
+    box-shadow:var(--shadow-ambient);
+    transition:transform .25s var(--ease), opacity .3s var(--ease), box-shadow .2s var(--ease);
+  }
+  .decision:hover{box-shadow:var(--shadow-ambient), 0 18px 36px -26px rgba(20,22,50,0.3);}
+  .decision .txt{font-size:13.5px;}
+  .decision .txt b{display:block;font-weight:600;margin-bottom:2px;}
+  .decision .txt span{color:var(--ink-soft);font-size:12px;}
+  .decision.leaving{transform:scale(.94) !important;opacity:0;}
+
+  .line-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-top:1px solid var(--line-soft);font-size:13px;
+  }
+  .line-item:last-child{border-bottom:1px solid var(--line-soft);}
+  .line-item .l{display:flex;align-items:center;gap:9px;color:var(--ink);}
+  .line-item .r{color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .dot.marketing{background:var(--marketing);} .dot.sales{background:var(--sales);} .dot.support{background:var(--support);}
+
+  .week-strip{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .week-card{padding:12px 15px;border-radius:var(--r-md);border:1px solid var(--line-soft);background:var(--panel);min-width:88px;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    transition:border-color .16s var(--ease), transform .25s var(--spring), box-shadow .2s var(--ease);}
+  .week-card:hover{border-color:var(--line);transform:translateY(-2px);box-shadow:var(--shadow-ambient);}
+  .week-strip .week-card:first-child{padding:16px 20px;min-width:112px;}
+  .week-strip .week-card:first-child .week-num{font-size:29px;}
+  .week-num{font-weight:800;font-size:19px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+    display:inline-block;transition:font-size .2s var(--ease);}
+  .week-num.pop, .stat-card .val.pop{animation:popIn .55s var(--spring) both;}
+  @keyframes popIn{from{opacity:0;transform:translateY(6px) scale(.85);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .week-label{font-size:10px;color:var(--ink-faint);margin-top:3px;}
+
+  /* -- Top stat grid (replaces the old plain week strip on Command Center) -- */
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:36px;}
+  .stat-grid.stat-grid-bleed{
+    margin:0 -22px; width:calc(100% + 44px);
+  }
+  .stat-card{
+    padding:16px 14px 15px 18px;border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    transition:border-color .16s var(--ease), transform .22s var(--spring), box-shadow .2s var(--ease);
+    min-width:0;
+  }
+  .stat-card:hover{border-color:var(--line);transform:translateY(-2px);box-shadow:var(--shadow-ambient);}
+  .stat-card .lbl{
+    display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:12px;
+    font-size:10.5px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .stat-card .val{font-weight:800;font-size:23px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;}
+  .stat-card .spark{display:block;margin-top:8px;}
+  .stat-card .spark path{fill:none;stroke:var(--attention);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* -- Task rows (Wacht op jou, with icon + dual actions) -- */
+  .decision-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+  .icon-box{
+    width:34px;height:34px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-box svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .icon-box.i-marketing{background:rgba(76,110,245,0.14);color:#4C6EF5;}
+  .icon-box.i-sales{background:rgba(201,130,46,0.16);color:#C9822E;}
+  .icon-box.i-support{background:rgba(31,161,132,0.14);color:#1FA184;}
+  .decision .actions{display:flex;gap:8px;flex-shrink:0;margin-left:12px;}
+  .btn.sm{padding:7px 12px;font-size:11.5px;box-shadow:none;}
+  .btn.sm.ghost:hover{box-shadow:none;}
+
+  /* -- Prestaties per Peer -- */
+  .perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .perf-card{
+    padding:17px 14px 16px 18px;border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    transition:border-color .16s var(--ease), transform .22s var(--spring);
+  }
+  .perf-card:hover{border-color:var(--line);transform:translateY(-2px);}
+  .perf-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .perf-name{font-size:12.5px;font-weight:700;}
+  .ring-pct{
+    width:38px;height:38px;border-radius:50%;position:relative;flex-shrink:0;
+    background:conic-gradient(var(--peer-solid) calc(var(--pct)*1%), var(--line) 0);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ring-pct-inner{
+    width:28px;height:28px;border-radius:50%;background:var(--bg-solid);
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:700;color:var(--ink);
+  }
+  .perf-card.p-marketing{ --peer-solid:#4C6EF5; }
+  .perf-card.p-sales{ --peer-solid:#C9822E; }
+  .perf-card.p-support{ --peer-solid:#1FA184; }
+  .perf-tasks{font-size:12px;color:var(--ink-soft);margin-bottom:8px;}
+  .perf-tasks b{color:var(--ink);font-weight:700;}
+  .perf-card .spark path{fill:none;stroke:var(--peer-solid); stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---- Peer header ---- */
+  .peer-header{margin-bottom:32px;}
+  .peer-top{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+  .avatar{
+    width:46px;height:46px;border-radius:13px;flex-shrink:0;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--avatar-bg);
+    font-weight:800;font-size:17px;color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .avatar{transition:box-shadow .3s var(--ease);}
+  .avatar.working{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--blue), 0 0 22px 2px rgba(91,124,250,0.45);}
+  .avatar.waiting{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--attention), 0 0 22px 2px rgba(239,170,83,0.45);}
+  .avatar.calm{box-shadow:0 0 0 2px var(--bg-solid), 0 0 0 3.5px var(--ink-faint);}
+  .avatar-wrap{position:relative;}
+  .avatar-wrap .pulse-ring{position:absolute;inset:-5px;border-radius:13px;border:1px solid var(--blue);animation:pulse 2.4s var(--ease) infinite;pointer-events:none;}
+  .peer-meta .peer-name{font-weight:800;font-size:19px;letter-spacing:-0.015em;}
+  .peer-meta .peer-status{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;}
+
+  .brief{
+    position:relative;
+    padding:22px 24px;border:1px solid var(--line-soft);border-radius:var(--r-lg);
+    border-top:2px solid var(--peer-solid, var(--blue));
+    background:var(--glass);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    box-shadow:var(--shadow-ambient);
+    transition:transform .25s var(--ease), box-shadow .25s var(--ease), background .3s var(--ease);
+  }
+  .brief:hover{transform:translateY(-2px);box-shadow:var(--shadow-ambient), 0 22px 44px -26px rgba(20,22,50,0.35);}
+  .brief-tag{
+    display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--peer-solid, var(--blue));
+  }
+  .brief-tag .dot{width:5px;height:5px;border-radius:50%;background:var(--peer-solid, var(--blue));}
+  .brief-marketing{ --peer-solid:#4C6EF5; }
+  .brief-sales{ --peer-solid:#C9822E; }
+  .brief-support{ --peer-solid:#1FA184; }
+  .brief-focus{font-family:'Manrope',sans-serif;font-style:italic;font-weight:500;font-size:18.5px;line-height:1.6;color:var(--voice);margin:0 0 10px;max-width:92%;}
+  .brief-meta{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px;}
+
+  .subnav{display:flex;gap:22px;margin:26px 0 24px;border-bottom:1px solid var(--line-soft);}
+  .subnav button{
+    background:none;border:none;padding:9px 1px;font-size:12.5px;color:var(--ink-faint);
+    cursor:pointer;border-bottom:2px solid transparent;font-family:'Manrope',sans-serif;
+    transition:color .16s var(--ease), border-color .16s var(--ease);
+  }
+  .subnav button:hover{color:var(--ink-soft);}
+  .subnav button.active{color:var(--ink);border-color:var(--blue);font-weight:600;}
+
+  .peer-sub-view{display:none;}
+  .peer-sub-view.active{display:block;animation:viewIn .3s var(--ease);}
+
+  .today-block{margin-bottom:24px;}
+  .today-block:first-of-type{margin-bottom:34px;}
+  .today-block:last-of-type{margin-bottom:0;}
+  .today-block-title{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-faint);margin-bottom:11px;
+  }
+  .today-block-title.attn{color:var(--attention-text);}
+  .done-row{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:14px;font-weight:500;color:var(--ink);}
+  .done-row .ico{color:var(--blue);flex-shrink:0;}
+  .see-all{
+    font-size:12px;color:var(--ink-soft);background:none;border:none;padding:6px 0 0;
+    font-family:'Manrope',sans-serif;cursor:pointer;display:flex;align-items:center;gap:4px;
+  }
+  .see-all:hover{color:var(--ink);}
+  .next-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-faint);padding:4px 0;}
+  .next-row .ico{color:var(--ink-faint);flex-shrink:0;}
+
+  .empty-toggle{
+    display:flex;align-items:center;gap:10px;margin-bottom:22px;padding:9px 13px;
+    border:1px dashed var(--line);border-radius:var(--r-md);font-size:11.5px;color:var(--ink-faint);
+  }
+  .switch{width:30px;height:17px;border-radius:100px;background:var(--line);position:relative;cursor:pointer;flex-shrink:0;transition:background .2s var(--ease);}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform .2s var(--ease);}
+  .switch.on{background:var(--grad);}
+  .switch.on::after{transform:translateX(13px);}
+
+  .calm-state{padding:8px 0 6px;}
+  .calm-state .brief-focus{font-size:16px;}
+
+  /* ---- Werk / Resultaten / Instellingen ---- */
+  .work-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 14px;margin-bottom:6px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--panel);
+    font-size:13px;backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    transition:border-color .16s var(--ease), transform .22s var(--spring);
+  }
+  .work-row:hover{border-color:var(--line);transform:translateX(2px);}
+  .work-row .name{font-weight:600;}
+  .work-row .meta{color:var(--ink-faint);font-size:11.5px;font-family:'IBM Plex Mono',monospace;margin-top:1px;}
+  .status-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;border-radius:6px;
+    background:var(--grad-soft);color:var(--status-tag-color);white-space:nowrap;
+  }
+
+  .result-line{font-weight:600;font-size:16px;margin:0 0 18px;max-width:420px;color:var(--ink);}
+  .result-grid{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .settings-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 15px;margin-bottom:6px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--panel);
+    cursor:pointer;backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    transition:border-color .16s var(--ease), transform .22s var(--spring);
+  }
+  .settings-row:hover{border-color:var(--line);transform:translateX(2px);}
+  .settings-row .name{font-size:13.5px;font-weight:600;}
+  .settings-row .desc{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+
+  .skills-card{
+    padding:16px 16px 14px;border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);margin-bottom:14px;
+  }
+  .skills-card .h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+  .skills-card .name{font-size:13.5px;font-weight:600;}
+  .skills-card .note{font-size:11.5px;color:var(--ink-faint);margin-bottom:12px;}
+  .skill-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{
+    font-size:11.5px;padding:5px 10px;border-radius:var(--r-pill);
+    background:var(--panel-hover);border:1px solid var(--line-soft);color:var(--ink-soft);
+  }
+  .chip.more{color:var(--ink-faint);border-style:dashed;}
+
+  /* ================= MICRO-INTERACTIONS ================= */
+
+  /* -- Loading / skeleton -- */
+  .skeleton-wrap{display:none;}
+  .is-loading .skeleton-wrap{display:block;}
+  .is-loading .peer-header, .is-loading .subnav, .is-loading .peer-sub-view{opacity:0;pointer-events:none;}
+  .sk-row{height:14px;border-radius:6px;margin-bottom:10px;
+    background:linear-gradient(90deg, var(--shimmer-a) 25%, var(--shimmer-b) 37%, var(--shimmer-a) 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.5s ease-in-out infinite;
+  }
+  @keyframes shimmer{0%{background-position:100% 0;}100%{background-position:0 0;}}
+  .sk-avatar{width:46px;height:46px;border-radius:13px;margin-bottom:18px;
+    background:linear-gradient(90deg, var(--shimmer-a) 25%, var(--shimmer-b) 37%, var(--shimmer-a) 63%);
+    background-size:400% 100%;animation:shimmer 1.5s ease-in-out infinite;}
+  .sk-w-40{width:40%;} .sk-w-70{width:70%;} .sk-w-100{width:100%;} .sk-w-55{width:55%;}
+  .sk-brief{height:76px;border-radius:var(--r-lg);
+    background:linear-gradient(90deg, var(--shimmer-a) 25%, var(--shimmer-b) 37%, var(--shimmer-a) 63%);
+    background-size:400% 100%;animation:shimmer 1.5s ease-in-out infinite;}
+
+  /* -- Status change flash -- */
+  .avatar-wrap, .ring-wrap{position:relative;}
+  .status-flash{
+    position:absolute;inset:-6px;border-radius:inherit;border:1.5px solid var(--blue);
+    opacity:0;pointer-events:none;
+  }
+  .status-flash.fire{animation:statusFlash .6s var(--ease);}
+  @keyframes statusFlash{
+    0%{opacity:.9;transform:scale(.9);}
+    100%{opacity:0;transform:scale(1.5);}
+  }
+
+  /* -- Decision appearing -- */
+  .decision.entering{animation:decisionIn .5s var(--spring) both;}
+  @keyframes decisionIn{
+    from{opacity:0;transform:translateY(-14px) scale(.96);}
+    60%{opacity:1;}
+    to{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .decision.highlight{box-shadow:0 0 0 2px var(--attention), var(--shadow-ambient);}
+
+  .link-btn{
+    background:none;border:1px dashed var(--line);color:var(--ink-soft);
+    font-size:11.5px;font-family:'Manrope',sans-serif;padding:8px 12px;border-radius:var(--r-pill);
+    cursor:pointer;transition:border-color .16s var(--ease), color .16s var(--ease);
+    display:inline-flex;align-items:center;gap:6px;margin-top:2px;
+  }
+  .link-btn:hover{border-color:var(--ink-faint);color:var(--ink);}
+
+  /* -- Success toast -- */
+  .toast{
+    display:none;align-items:center;gap:10px;
+    padding:11px 14px;border-radius:var(--r-md);
+    background:var(--success-soft);border:1px solid var(--success-line);color:var(--success-text);
+    font-size:12.5px;margin-bottom:8px;
+  }
+  .toast.show{display:flex;animation:toastIn .45s var(--spring) both;}
+  .toast.leave{animation:toastOut .35s var(--ease) forwards;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-6px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(-4px) scale(.97);}}
+  .toast .checkwrap{width:16px;height:16px;flex-shrink:0;}
+  .toast .checkwrap svg{width:16px;height:16px;stroke:var(--success-text);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .toast .checkwrap path{
+    stroke-dasharray:20; stroke-dashoffset:20;
+    animation:drawCheck .4s var(--ease) .15s forwards;
+  }
+  @keyframes drawCheck{to{stroke-dashoffset:0;}}
+
+  /* -- Empty state -- */
+  .empty-state{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:10px 0 6px;}
+  .empty-icon{
+    width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    background:var(--panel);border:1px solid var(--line-soft);color:var(--ink-faint);
+    animation:breathe 3.6s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.7;}50%{opacity:1;}}
+</style>
+</head>
+<body>
+<div class="mesh"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div><div class="orb o5"></div></div>
+<div class="dot-grid"></div>
+<div class="vignette"></div>
+<div class="grain"></div>
+<div class="app">
+
+  <nav class="rail">
+    <button class="collapse-btn" onclick="toggleSidebar()" aria-label="Zijbalk in-/uitklappen" title="In-/uitklappen">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 26 26" fill="none"><path d="M8 5v16M8 5c5 0 8 1.5 8 5.5S13 16 8 16" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="brand-word">Peergent</div>
+      <div class="theme-toggle">
+        <button id="theme-dark-btn" class="active" onclick="setTheme('dark')" aria-label="Donker thema" title="Donker">
+          <svg viewBox="0 0 24 24"><path d="M21 12.5A8.5 8.5 0 1111.5 3 7 7 0 0021 12.5z"/></svg>
+        </button>
+        <button id="theme-light-btn" onclick="setTheme('light')" aria-label="Licht thema" title="Licht">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Overzicht</div>
+      <button class="nav-item active" data-view="hq" title="HQ">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v9h14v-9"/></svg>
+        <span class="label">HQ</span>
+      </button>
+      <button class="nav-item" data-view="cc" title="Command Center">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="label">Command Center</span>
+      </button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Peers</div>
+      <button class="nav-item" data-view="marketing" title="Marketing Peer">
+        <span class="ring-wrap pulse"><span class="ring working">M</span><span class="pulse-ring"></span></span>
+        <span class="label">Marketing Peer</span>
+      </button>
+      <button class="nav-item" data-view="sales" title="Sales Peer">
+        <span class="ring waiting">S</span>
+        <span class="label">Sales Peer</span>
+      </button>
+      <button class="nav-item" data-view="support" title="Support Peer">
+        <span class="ring calm">S</span>
+        <span class="label">Support Peer</span>
+      </button>
+    </div>
+
+    <div class="rail-foot">Prototype v3 — verfijnde tokens, presence-rings en micro-interacties. Geen echte data.</div>
+  </nav>
+
+  <main class="main">
+    <div class="col">
+
+      <!-- ============ HQ ============ -->
+      <section class="view active" id="view-hq">
+        <div class="eyebrow">HQ</div>
+        <div class="hq-hero">
+          <h1>Alles onder controle. Je team is aan het werk.</h1>
+          <div class="sub">Dinsdag 28 juli — 3 collega's actief</div>
+        </div>
+
+        <div class="hq-list stagger">
+          <div class="hq-row hq-marketing" onclick="goTo('marketing')">
+            <div class="hq-left">
+              <span class="ring-wrap pulse"><span class="ring working">M</span><span class="pulse-ring"></span></span>
+              <div><div class="hq-name">Marketing Peer</div><div class="hq-status">bezig met de zomeractie</div></div>
+            </div>
+            <div class="hq-right"><svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+          </div>
+          <div class="hq-row hq-sales" onclick="goTo('sales')">
+            <div class="hq-left">
+              <span class="ring waiting">S</span>
+              <div><div class="hq-name">Sales Peer</div><div class="hq-status">wacht op jouw goedkeuring</div></div>
+            </div>
+            <div class="hq-right"><span class="pill">1 actie</span><svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+          </div>
+          <div class="hq-row hq-support" onclick="goTo('support')">
+            <div class="hq-left">
+              <span class="ring calm">S</span>
+              <div><div class="hq-name">Support Peer</div><div class="hq-status">rustig — geen bijzonderheden</div></div>
+            </div>
+            <div class="hq-right"><svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+          </div>
+        </div>
+
+        <div class="hq-cta">
+          <div class="t">Wil je de volledige briefing van vandaag zien?</div>
+          <button class="btn" onclick="goTo('cc')">Command Center<svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </section>
+
+      <!-- ============ COMMAND CENTER ============ -->
+      <section class="view" id="view-cc">
+        <div class="eyebrow">Live overzicht</div>
+        <h2 class="section-title page-title">Command Center</h2>
+        <div class="section-sub">Alles waar je team aan werkt, wat aandacht nodig heeft en de impact ervan — uitgelegd, niet geraden.</div>
+
+        <div class="cc-block">
+          <div class="cc-block-head">Nu bezig</div>
+          <div class="line-item"><div class="l"><span class="dot marketing"></span>Marketing — zomeractie-advertenties voorbereiden</div><div class="r">actief</div></div>
+          <div class="line-item"><div class="l"><span class="dot support"></span>Support — 3 tickets in behandeling</div><div class="r">actief</div></div>
+        </div>
+
+        <div class="cc-block">
+          <div class="cc-block-head">Vandaag afgerond</div>
+          <div class="line-item"><div class="l"><span class="dot marketing"></span>3 LinkedIn-posts, e-mailconcept</div><div class="r">Marketing</div></div>
+          <div class="line-item"><div class="l"><span class="dot support"></span>14 tickets opgelost</div><div class="r">Support</div></div>
+          <div class="line-item"><div class="l"><span class="dot sales"></span>2 opvolgmails, 1 afspraak</div><div class="r">Sales</div></div>
+        </div>
+
+        <div class="cc-block">
+          <div class="cc-block-head attn">Wacht op jou — <span id="cc-count">1</span></div>
+          <div class="toast" id="cc-toast"><span class="checkwrap"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Goedgekeurd — Sam gaat verder.</div>
+          <div id="cc-decision-list">
+            <div class="decision" id="cc-decision">
+              <div class="decision-main">
+                <div class="icon-box i-marketing"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div>
+                <div class="txt"><b>Campagneplan zomeractie goedkeuren</b><span>Marketing Peer · klaar om te versturen</span></div>
+              </div>
+              <div class="actions">
+                <button class="btn ghost sm">Bekijk</button>
+                <button class="btn sm" onclick="approve('cc-decision','cc-toast','cc-count')">Goedkeuren</button>
+              </div>
+            </div>
+          </div>
+          <button class="link-btn" onclick="simulateIncoming()">
+            <svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M12 5v14M5 12h14"/></svg>
+            Simuleer binnenkomende taak
+          </button>
+        </div>
+
+        <div class="cc-block">
+          <div class="cc-block-head">Prestaties per Peer — deze week</div>
+          <div class="perf-grid">
+            <div class="perf-card p-marketing">
+              <div class="perf-top">
+                <div class="perf-name">Marketing</div>
+                <div class="ring-pct" style="--pct:94;"><div class="ring-pct-inner">94%</div></div>
+              </div>
+              <div class="perf-tasks"><b>40</b> taken deze week</div>
+              <svg class="spark" viewBox="0 0 100 22" width="100%" height="22" preserveAspectRatio="none"><path d="M0 16 L20 14 L40 15 L60 8 L80 9 L100 3"/></svg>
+            </div>
+            <div class="perf-card p-sales">
+              <div class="perf-top">
+                <div class="perf-name">Sales</div>
+                <div class="ring-pct" style="--pct:76;"><div class="ring-pct-inner">76%</div></div>
+              </div>
+              <div class="perf-tasks"><b>12</b> taken deze week</div>
+              <svg class="spark" viewBox="0 0 100 22" width="100%" height="22" preserveAspectRatio="none"><path d="M0 14 L20 15 L40 11 L60 13 L80 7 L100 9"/></svg>
+            </div>
+            <div class="perf-card p-support">
+              <div class="perf-top">
+                <div class="perf-name">Support</div>
+                <div class="ring-pct" style="--pct:98;"><div class="ring-pct-inner">98%</div></div>
+              </div>
+              <div class="perf-tasks"><b>41</b> taken deze week</div>
+              <svg class="spark" viewBox="0 0 100 22" width="100%" height="22" preserveAspectRatio="none"><path d="M0 12 L20 13 L40 10 L60 11 L80 6 L100 5"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-block" style="margin-bottom:0;">
+          <div class="cc-block-head">Deze week onderbouwd</div>
+          <div class="stat-grid stat-grid-bleed stagger">
+            <div class="stat-card">
+              <div class="lbl">Taken afgerond</div>
+              <div class="val" data-count="41">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Tijd bespaard</div>
+              <div class="val">6,5u</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Omzet beïnvloed</div>
+              <div class="val">€4.240</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Goedkeuringen<span class="pill" id="cc-pill">1 wacht</span></div>
+              <div class="val" data-count="1">0</div>
+              <svg class="spark" viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"><path d="M0 20 L18 17 L36 19 L54 10 L72 12 L86 4 L100 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MARKETING PEER ============ -->
+      <section class="view" id="view-marketing">
+        <div class="eyebrow">Peer</div>
+
+        <div class="skeleton-wrap">
+          <div class="sk-avatar"></div>
+          <div class="sk-row sk-w-40"></div>
+          <div class="sk-brief" style="margin:14px 0 24px;"></div>
+          <div class="sk-row sk-w-100" style="height:12px;"></div>
+          <div class="sk-row sk-w-70" style="height:12px;"></div>
+          <div class="sk-row sk-w-55" style="height:12px;"></div>
+        </div>
+
+        <div class="peer-header">
+          <div class="peer-top">
+            <span class="avatar-wrap" id="mkt-avatar-wrap"><span class="avatar working" id="mkt-avatar">M</span><span class="pulse-ring" id="mkt-pulse"></span><span class="status-flash" id="mkt-flash"></span></span>
+            <div class="peer-meta">
+              <div class="peer-name">Marketing Peer</div>
+              <div class="peer-status" id="mkt-status">aan het werk</div>
+            </div>
+          </div>
+          <div class="brief brief-marketing" id="mkt-brief">
+            <div class="brief-tag"><span class="dot"></span>Marketing Peer</div>
+            <p class="brief-focus" id="mkt-focus">Focus ligt bij de zomeractie — onze grootste omzetkans deze maand. Zodra het campagneplan is goedgekeurd, ga ik live met de eerste advertenties.</p>
+            <div class="brief-meta" id="mkt-when"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Je hoort van me zodra de advertenties staan.</div>
+          </div>
+        </div>
+
+        <div class="subnav">
+          <button class="active" data-sub="mkt-vandaag">Vandaag</button>
+          <button data-sub="mkt-werk">Werk</button>
+          <button data-sub="mkt-resultaten">Resultaten</button>
+          <button data-sub="mkt-instellingen">Instellingen</button>
+        </div>
+
+        <div class="peer-sub-view active" id="mkt-vandaag">
+          <div class="empty-toggle">
+            <div class="switch" id="calm-switch" onclick="toggleCalm()"></div>
+            <span>Toon rustige dag (empty state)</span>
+          </div>
+
+          <div id="mkt-vandaag-content" class="stagger">
+            <div class="today-block">
+              <div class="today-block-title attn">Wacht op jou</div>
+              <div class="toast" id="mkt-toast"><span class="checkwrap"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Goedgekeurd — ik ga verder met de zomeractie.</div>
+              <div class="decision" id="mkt-decision">
+                <div class="txt"><b>Campagneplan goedkeuren</b><span>Zomeractie · klaar voor review</span></div>
+                <button class="btn" onclick="approve('mkt-decision', 'mkt-toast', null)">Goedkeuren</button>
+              </div>
+            </div>
+
+            <div class="today-block">
+              <div class="today-block-title">Vandaag gedaan</div>
+              <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Campagnestrategie afgerond</div>
+              <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Drie LinkedIn-posts geschreven</div>
+              <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>E-mailconcept voorbereid</div>
+              <button class="see-all">Bekijk alles<svg class="icon" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+
+            <div class="today-block">
+              <div class="today-block-title">Hierna</div>
+              <div class="next-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="3"/></svg></span>Landingspagina afronden</div>
+              <div class="next-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="3"/></svg></span>Advertenties voorbereiden</div>
+            </div>
+          </div>
+
+          <div id="mkt-calm-content" style="display:none;">
+            <div class="empty-state">
+              <div class="empty-icon"><svg class="icon" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 12.5A8.5 8.5 0 1111.5 3 7 7 0 0021 12.5z"/></svg></div>
+              <p class="brief-focus" style="margin:0;">Rustige dag. Ik houd de zomeractie in de gaten en kom terug zodra er iets is.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="peer-sub-view" id="mkt-werk">
+          <h2 class="section-title">Werk</h2>
+          <div class="section-sub">Alle campagnes van Marketing Peer.</div>
+          <div class="work-row"><div><div class="name">Zomeractie</div><div class="meta">gestart 21 juli</div></div><span class="status-tag">bezig</span></div>
+          <div class="work-row"><div><div class="name">Nieuwsbrief juli</div><div class="meta">verzonden 14 juli</div></div><span class="status-tag">afgerond</span></div>
+          <div class="work-row"><div><div class="name">Productlancering herfst</div><div class="meta">gepland vanaf 3 sept</div></div><span class="status-tag">gepland</span></div>
+        </div>
+
+        <div class="peer-sub-view" id="mkt-resultaten">
+          <h2 class="section-title">Resultaten</h2>
+          <p class="result-line">Deze week: 12 leads erbij, kosten per lead 18% lager.</p>
+          <div class="result-grid">
+            <div class="week-card"><div class="week-num" data-count="12">0</div><div class="week-label">nieuwe leads</div></div>
+            <div class="week-card"><div class="week-num">-18%</div><div class="week-label">kosten per lead</div></div>
+            <div class="week-card"><div class="week-num" data-count="3">0</div><div class="week-label">campagnes live</div></div>
+          </div>
+        </div>
+
+        <div class="peer-sub-view" id="mkt-instellingen">
+          <h2 class="section-title">Instellingen</h2>
+
+          <div class="skills-card">
+            <div class="h"><div class="name">Vaardigheden</div></div>
+            <div class="note">Groeit mee na verloop van tijd — geen nieuwe collega's, wel een sterkere Marketing Peer.</div>
+            <div class="skill-chips">
+              <span class="chip">SEO</span><span class="chip">Google Ads</span><span class="chip">Meta Ads</span>
+              <span class="chip">Social media</span><span class="chip">E-mailmarketing</span><span class="chip">Landingspagina's</span>
+              <span class="chip more">+ 4 meer</span>
+            </div>
+          </div>
+
+          <div class="settings-row"><div><div class="name">Merkkennis</div><div class="desc">Tone of voice, kleuren, claims en beeldstijl</div></div><svg class="icon" viewBox="0 0 24 24" style="color:var(--ink-faint);"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="settings-row"><div><div class="name">Koppelingen</div><div class="desc">Meta Ads, Google Ads, Klaviyo</div></div><svg class="icon" viewBox="0 0 24 24" style="color:var(--ink-faint);"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="settings-row"><div><div class="name">Verantwoordelijkheden</div><div class="desc">Welke campagnes en kanalen</div></div><svg class="icon" viewBox="0 0 24 24" style="color:var(--ink-faint);"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="settings-row"><div><div class="name">Zelfstandigheid</div><div class="desc">Wat mag zonder jouw goedkeuring</div></div><svg class="icon" viewBox="0 0 24 24" style="color:var(--ink-faint);"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+      </section>
+
+      <!-- ============ SALES PEER ============ -->
+      <section class="view" id="view-sales">
+        <div class="eyebrow">Peer</div>
+
+        <div class="skeleton-wrap">
+          <div class="sk-avatar"></div>
+          <div class="sk-row sk-w-40"></div>
+          <div class="sk-brief" style="margin:14px 0 24px;"></div>
+          <div class="sk-row sk-w-100" style="height:12px;"></div>
+          <div class="sk-row sk-w-70" style="height:12px;"></div>
+        </div>
+
+        <div class="peer-header">
+          <div class="peer-top">
+            <span class="avatar waiting">S</span>
+            <div class="peer-meta"><div class="peer-name">Sales Peer</div><div class="peer-status">wacht op jou</div></div>
+          </div>
+          <div class="brief brief-sales">
+            <div class="brief-tag"><span class="dot"></span>Sales Peer</div>
+            <p class="brief-focus">Ik werk de offerte voor Bakkerij De Molen af — een kans van €2.400 per maand. Ik wacht op jouw akkoord voordat ik 'm verstuur.</p>
+            <div class="brief-meta"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Je hoort van me zodra de offerte de deur uit is.</div>
+          </div>
+        </div>
+
+        <div class="subnav">
+          <button class="active" data-sub="sal-vandaag">Vandaag</button>
+          <button data-sub="sal-werk">Werk</button>
+          <button data-sub="sal-resultaten">Resultaten</button>
+        </div>
+
+        <div class="peer-sub-view active" id="sal-vandaag">
+          <div class="today-block">
+            <div class="today-block-title attn">Wacht op jou</div>
+            <div class="decision" id="sal-decision">
+              <div class="txt"><b>Offerte voor De Molen goedkeuren</b><span>€2.400 · maandabonnement</span></div>
+              <button class="btn" onclick="approve('sal-decision', null, null)">Goedkeuren</button>
+            </div>
+          </div>
+          <div class="today-block">
+            <div class="today-block-title">Vandaag gedaan</div>
+            <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>2 opvolgmails verstuurd</div>
+            <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>1 afspraak ingepland</div>
+          </div>
+          <div class="today-block">
+            <div class="today-block-title">Hierna</div>
+            <div class="next-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="3"/></svg></span>Follow-up bellen met lead uit vorige week</div>
+          </div>
+        </div>
+
+        <div class="peer-sub-view" id="sal-werk">
+          <h2 class="section-title">Werk</h2>
+          <div class="section-sub">Leads en deals van Sales Peer.</div>
+          <div class="work-row"><div><div class="name">Bakkerij De Molen</div><div class="meta">offerte verstuurd</div></div><span class="status-tag">in behandeling</span></div>
+          <div class="work-row"><div><div class="name">Studio Vorm</div><div class="meta">afspraak gepland</div></div><span class="status-tag">gepland</span></div>
+          <div class="work-row"><div><div class="name">Groenpartners BV</div><div class="meta">gewonnen 18 juli</div></div><span class="status-tag">gewonnen</span></div>
+        </div>
+
+        <div class="peer-sub-view" id="sal-resultaten">
+          <h2 class="section-title">Resultaten</h2>
+          <p class="result-line">Deze week: 6 nieuwe leads, 1 deal gewonnen.</p>
+          <div class="result-grid">
+            <div class="week-card"><div class="week-num" data-count="6">0</div><div class="week-label">nieuwe leads</div></div>
+            <div class="week-card"><div class="week-num">24%</div><div class="week-label">conversie</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SUPPORT PEER ============ -->
+      <section class="view" id="view-support">
+        <div class="eyebrow">Peer</div>
+
+        <div class="skeleton-wrap">
+          <div class="sk-avatar"></div>
+          <div class="sk-row sk-w-40"></div>
+          <div class="sk-brief" style="margin:14px 0 24px;"></div>
+          <div class="sk-row sk-w-100" style="height:12px;"></div>
+          <div class="sk-row sk-w-70" style="height:12px;"></div>
+        </div>
+
+        <div class="peer-header">
+          <div class="peer-top">
+            <span class="avatar calm">S</span>
+            <div class="peer-meta"><div class="peer-name">Support Peer</div><div class="peer-status">rustig</div></div>
+          </div>
+          <div class="brief brief-support">
+            <div class="brief-tag"><span class="dot"></span>Support Peer</div>
+            <p class="brief-focus">Rustige dag, op één escalatie na: een klant vraagt een terugbetaling buiten ons beleid. Dat leg ik liever aan jou voor dan dat ik het zelf beslis.</p>
+            <div class="brief-meta"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Ik wacht op jouw beslissing.</div>
+          </div>
+        </div>
+
+        <div class="subnav">
+          <button class="active" data-sub="sup-vandaag">Vandaag</button>
+          <button data-sub="sup-werk">Werk</button>
+          <button data-sub="sup-resultaten">Resultaten</button>
+        </div>
+
+        <div class="peer-sub-view active" id="sup-vandaag">
+          <div class="today-block">
+            <div class="today-block-title attn">Wacht op jou</div>
+            <div class="decision" id="sup-decision">
+              <div class="txt"><b>Escalatie: terugbetaling buiten beleid</b><span>Klant vraagt uitzondering</span></div>
+              <button class="btn" onclick="approve('sup-decision', null, null)">Bekijk</button>
+            </div>
+          </div>
+          <div class="today-block">
+            <div class="today-block-title">Vandaag gedaan</div>
+            <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>14 tickets opgelost</div>
+            <div class="done-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>Gem. reactietijd 4 minuten</div>
+          </div>
+          <div class="today-block">
+            <div class="today-block-title">Hierna</div>
+            <div class="next-row"><span class="ico"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="3"/></svg></span>Geen bijzonderheden verwacht</div>
+          </div>
+        </div>
+
+        <div class="peer-sub-view" id="sup-werk">
+          <h2 class="section-title">Werk</h2>
+          <div class="section-sub">Cases van Support Peer.</div>
+          <div class="work-row"><div><div class="name">Terugbetaling — order #8821</div><div class="meta">wacht op jou</div></div><span class="status-tag">escalatie</span></div>
+          <div class="work-row"><div><div class="name">14 tickets vandaag</div><div class="meta">gem. 4 min reactietijd</div></div><span class="status-tag">afgerond</span></div>
+        </div>
+
+        <div class="peer-sub-view" id="sup-resultaten">
+          <h2 class="section-title">Resultaten</h2>
+          <p class="result-line">Deze week: 41 tickets opgelost, klanttevredenheid 4,7/5.</p>
+          <div class="result-grid">
+            <div class="week-card"><div class="week-num" data-count="41">0</div><div class="week-label">tickets opgelost</div></div>
+            <div class="week-card"><div class="week-num">4,7</div><div class="week-label">klanttevredenheid</div></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  function toggleSidebar(){
+    document.querySelector('.rail').classList.toggle('collapsed');
+  }
+
+  function setTheme(mode){
+    document.documentElement.setAttribute('data-theme', mode);
+    document.getElementById('theme-dark-btn').classList.toggle('active', mode === 'dark');
+    document.getElementById('theme-light-btn').classList.toggle('active', mode === 'light');
+  }
+
+  function popNumbers(container){
+    if(!container) return;
+    container.querySelectorAll('.week-num, .stat-card .val').forEach((el,i)=>{
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.style.animationDelay = (i*0.05)+'s';
+      el.classList.add('pop');
+
+      const target = el.getAttribute('data-count');
+      if(target !== null){
+        const end = parseInt(target,10);
+        const dur = 650;
+        const start = performance.now() + i*60;
+        function frame(now){
+          const t = Math.min(1, Math.max(0, (now-start)/dur));
+          const eased = 1 - Math.pow(1-t, 3);
+          el.textContent = Math.round(eased*end);
+          if(t < 1) requestAnimationFrame(frame);
+          else el.textContent = end;
+        }
+        requestAnimationFrame(frame);
+      }
+    });
+  }
+
+  const PEER_VIEWS = ['marketing','sales','support'];
+
+  function goTo(view){
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const target = document.getElementById('view-' + view);
+    target.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('.nav-item[data-view="' + view + '"]').classList.add('active');
+
+    if(PEER_VIEWS.includes(view)){
+      target.classList.add('is-loading');
+      setTimeout(()=>{
+        target.classList.remove('is-loading');
+        popNumbers(target);
+      }, 420);
+    } else {
+      popNumbers(target);
+    }
+  }
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    btn.addEventListener('click', ()=> goTo(btn.dataset.view));
+  });
+  document.querySelectorAll('.subnav').forEach(subnav=>{
+    subnav.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const container = subnav.parentElement;
+        subnav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        container.querySelectorAll('.peer-sub-view').forEach(v=>v.classList.remove('active'));
+        const target = document.getElementById(btn.dataset.sub);
+        target.classList.add('active');
+        popNumbers(target);
+      });
+    });
+  });
+
+  function toggleCalm(){
+    const sw = document.getElementById('calm-switch');
+    const on = sw.classList.toggle('on');
+    document.getElementById('mkt-vandaag-content').style.display = on ? 'none' : 'block';
+    document.getElementById('mkt-calm-content').style.display = on ? 'block' : 'none';
+    document.getElementById('mkt-avatar').className = 'avatar ' + (on ? 'calm' : 'working');
+    document.getElementById('mkt-pulse').style.display = on ? 'none' : 'block';
+    document.getElementById('mkt-status').textContent = on ? 'rustig' : 'aan het werk';
+
+    const flash = document.getElementById('mkt-flash');
+    flash.classList.remove('fire');
+    void flash.offsetWidth;
+    flash.classList.add('fire');
+  }
+
+  function approve(decisionId, toastId, countId){
+    const el = document.getElementById(decisionId);
+    if(!el) return;
+    el.classList.add('leaving');
+    setTimeout(()=>{ el.style.display='none'; }, 280);
+    if(toastId){
+      const toast = document.getElementById(toastId);
+      toast.classList.remove('leave');
+      toast.classList.add('show');
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(()=>{
+        toast.classList.add('leave');
+        setTimeout(()=>{ toast.classList.remove('show','leave'); }, 350);
+      }, 2800);
+    }
+    if(countId){
+      document.getElementById(countId).textContent = '0';
+      const pill = document.getElementById('cc-pill');
+      if(pill) pill.textContent = '0 wachten';
+    }
+  }
+
+  let incomingCount = 0;
+  function simulateIncoming(){
+    incomingCount++;
+    const list = document.getElementById('cc-decision-list');
+    const id = 'cc-decision-new-' + incomingCount;
+    const wrap = document.createElement('div');
+    wrap.className = 'decision entering highlight';
+    wrap.id = id;
+    wrap.innerHTML = `<div class="decision-main">
+        <div class="icon-box i-support"><svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0116 0"/><path d="M4 13v4a2 2 0 002 2h1v-6H4z"/><path d="M20 13v4a2 2 0 01-2 2h-1v-6h3z"/></svg></div>
+        <div class="txt"><b>Support-escalatie: klant vraagt spoedreactie</b><span>Support Peer · zojuist binnengekomen</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost sm">Bekijk</button>
+        <button class="btn sm" onclick="approve('${id}', null, null)">Goedkeuren</button>
+      </div>`;
+    list.prepend(wrap);
+    attachTilt(wrap);
+    setTimeout(()=> wrap.classList.remove('highlight'), 1400);
+
+    const countEl = document.getElementById('cc-count');
+    const newCount = parseInt(countEl.textContent,10) + 1;
+    countEl.textContent = newCount;
+    const pill = document.getElementById('cc-pill');
+    if(pill) pill.textContent = newCount + ' wachten';
+  }
+
+  function attachTilt(el){
+    const max = 3.5;
+    el.addEventListener('mousemove', (e)=>{
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `perspective(700px) rotateX(${(-py*max).toFixed(2)}deg) rotateY(${(px*max).toFixed(2)}deg) translateY(-1px)`;
+    });
+    el.addEventListener('mouseleave', ()=>{ el.style.transform = ''; });
+  }
+  document.querySelectorAll('.decision, .brief').forEach(attachTilt);
+
+  popNumbers(document.getElementById('view-hq'));
+</script>
+</body>
+</html>

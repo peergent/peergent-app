@@ -3,7 +3,6 @@
 import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import CustomerCampaignReviewExperience from "@/features/marketing-workspace/components/CustomerCampaignReviewExperience";
 import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
 import { buildMarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-campaign-detail-view-model";
 import { buildMarketingCampaignDetailSourceFromDomainInput } from "@/lib/peer-experience/marketing/view-models/build-project-campaign-projection";
@@ -11,6 +10,11 @@ import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/v
 import { pickCampaignReviewHandlers } from "@/features/marketing-workspace/lib/campaign-review-handlers";
 import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
+import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
+import { buildCampaignReviewBuildInput } from "@/features/marketing-workspace/lib/build-campaign-review-input";
+import V17CampaignReviewView from "@/features/customer-v17/work/V17CampaignReviewView";
+import { getProjectHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+import { assertCampaignReviewHandlers } from "@/features/marketing-workspace/lib/campaign-review-handlers";
 
 function CampaignReviewBody({
   peerId,
@@ -34,33 +38,62 @@ function CampaignReviewBody({
     return buildMarketingCampaignDetailViewModel(source);
   }, [campaignsEnabled, domainInput, project, projectId]);
 
+  const reviewVm = useMemo(() => {
+    if (!campaignsEnabled || !project || !campaignDetail) return null;
+    const input = buildCampaignReviewBuildInput({
+      peerId,
+      projectId,
+      domainInput,
+      campaignDetail,
+      project,
+      campaignsEnabled,
+      continuationRunning: workspace.campaignContinuationRunning,
+      activeWorkUnitId: domainInput.activeWorkUnitId,
+    });
+    return buildCampaignReviewViewModel(input);
+  }, [campaignsEnabled, campaignDetail, domainInput, peerId, project, projectId, workspace.campaignContinuationRunning]);
+
   const reviewHandlers = useMemo(
     () => pickCampaignReviewHandlers(workspace),
     [workspace]
   );
 
   const customerLocalePreference = customerLocalePreferenceFromEnv();
+  const handlersReady = assertCampaignReviewHandlers(reviewHandlers);
 
   if (!workspace.isWorkspaceReady) {
-    return <p className="mw-empty-inline">Loading review…</p>;
+    return <p className="v17-page-support">Laden…</p>;
   }
 
-  if (!project || !campaignDetail) {
-    return <p className="mw-empty-inline">This campaign could not be found.</p>;
+  if (!project || !campaignDetail || !reviewVm) {
+    return <p className="v17-page-support">Deze campagne kon niet worden geladen.</p>;
+  }
+
+  const item =
+    reviewVm.allReviewItems.find(
+      (i) => i.id === reviewItemId || i.workUnitId === reviewItemId
+    ) ?? null;
+  const queue = reviewVm.reviewQueue.filter((i) => i.preview);
+
+  if (!item) {
+    return (
+      <div className="v17-review-page" data-testid="v17-campaign-review">
+        <p className="v17-page-support">Dit onderdeel kon niet worden geladen.</p>
+      </div>
+    );
   }
 
   return (
-    <CustomerCampaignReviewExperience
+    <V17CampaignReviewView
       peerId={peerId}
       projectId={projectId}
-      reviewItemId={reviewItemId}
-      domainInput={domainInput}
-      campaign={campaignDetail}
-      project={project}
-      campaignsEnabled={campaignsEnabled}
-      campaignContinuationRunning={workspace.campaignContinuationRunning}
-      reviewHandlers={reviewHandlers}
+      item={item}
+      queue={queue}
+      campaignHref={getProjectHref(peerId, projectId)}
+      approvalMode={project.campaignSetup?.approvalMode}
       localePreference={customerLocalePreference}
+      reviewHandlers={reviewHandlers}
+      handlersReady={handlersReady}
     />
   );
 }

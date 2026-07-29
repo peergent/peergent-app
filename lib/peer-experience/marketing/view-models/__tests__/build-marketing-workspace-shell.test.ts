@@ -75,16 +75,11 @@ describe("buildMarketingWorkspaceShellViewModel", () => {
 });
 
 describe("MARKETING_PEER_TABS order", () => {
-  it("includes Connections in approved order", () => {
+  it("includes four customer sections", () => {
     expect(MARKETING_PEER_TABS.map((t) => t.id)).toEqual([
-      "overview",
-      "review",
+      "today",
       "work",
-      "content",
-      "performance",
-      "connections",
-      "responsibilities",
-      "knowledge",
+      "results",
       "settings",
     ]);
   });

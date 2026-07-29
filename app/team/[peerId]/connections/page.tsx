@@ -1,21 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import ConnectionsTab from "@/features/marketing-workspace/tabs/ConnectionsTab";
+type Props = {
+  params: Promise<{ peerId: string }>;
+};
 
-function ConnectionsPageInner() {
-  return (
-    <MarketingPeerPageFrame activeTab="connections">
-      {({ domainInput }) => <ConnectionsTab domainInput={domainInput} />}
-    </MarketingPeerPageFrame>
-  );
-}
-
-export default function TeamPeerConnectionsPage() {
-  return (
-    <Suspense fallback={null}>
-      <ConnectionsPageInner />
-    </Suspense>
-  );
+export default async function ConnectionsRedirectPage({ params }: Props) {
+  const { peerId } = await params;
+  redirect(`/team/${peerId}/settings?section=connections`);
 }

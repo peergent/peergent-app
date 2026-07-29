@@ -1,12 +1,16 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import KnowledgeTab from "@/features/marketing-workspace/tabs/KnowledgeTab";
+type Props = {
+  params: Promise<{ peerId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default function TeamPeerKnowledgePage() {
-  return (
-    <MarketingPeerPageFrame activeTab="knowledge">
-      {({ domainInput }) => <KnowledgeTab domainInput={domainInput} />}
-    </MarketingPeerPageFrame>
-  );
+export default async function KnowledgeRedirectPage({ params, searchParams }: Props) {
+  const { peerId } = await params;
+  const sp = await searchParams;
+  const section = sp.section;
+  if (typeof section === "string") {
+    redirect(`/team/${peerId}/settings?section=${encodeURIComponent(section)}`);
+  }
+  redirect(`/team/${peerId}/settings?section=knowledge`);
 }

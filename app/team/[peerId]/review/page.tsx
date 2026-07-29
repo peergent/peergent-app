@@ -1,34 +1,22 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import ReviewTab from "@/features/marketing-workspace/tabs/ReviewTab";
+type Props = {
+  params: Promise<{ peerId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-function ReviewPageInner() {
-  return (
-    <MarketingPeerPageFrame activeTab="review">
-      {({ peerId, domainInput, workspace }) => (
-        <ReviewTab
-          peerId={peerId}
-          domainInput={domainInput}
-          onApprove={(draftId) => workspace.handleDraftStatus(draftId, "approved")}
-          onReject={(draftId) => workspace.handleDraftStatus(draftId, "rejected")}
-          onSaveContent={workspace.handleSaveApprovalContent}
-          onSaveMedia={workspace.handleSaveApprovalMedia}
-          onFeedback={workspace.handleApprovalFeedback}
-          onApproveAndSchedule={workspace.handleApproveAndSchedule}
-          onPublishNow={workspace.handlePublishNowApproval}
-          publishMessage={workspace.approvalPublishMessage}
-        />
-      )}
-    </MarketingPeerPageFrame>
-  );
-}
-
-export default function TeamPeerReviewPage() {
-  return (
-    <Suspense fallback={null}>
-      <ReviewPageInner />
-    </Suspense>
-  );
+export default async function TeamPeerReviewRedirectPage({ params, searchParams }: Props) {
+  const { peerId } = await params;
+  const sp = await searchParams;
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) qs.append(key, v);
+    } else {
+      qs.set(key, value);
+    }
+  }
+  const query = qs.toString();
+  redirect(query ? `/team/${peerId}/waiting?${query}` : `/team/${peerId}/waiting`);
 }

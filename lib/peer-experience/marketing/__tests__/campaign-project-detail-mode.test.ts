@@ -115,12 +115,12 @@ describe("campaign wizard project detail mode", () => {
     ).toBe(false);
   });
 
-  it("ProjectDetailTab gates legacy chrome behind campaign wizard mode helper", () => {
+  it("ProjectDetailTab uses v17 customer campaign presenter", () => {
     const src = read("features/marketing-workspace/details/ProjectDetailTab.tsx");
-    expect(src).toContain("shouldRenderCampaignWizardDetailView");
-    expect(src).toContain("showCampaignExperience");
-    expect(src).not.toMatch(/\{campaignDetail \?\s*\(\s*<CampaignDetailSections/);
-    expect(src).toMatch(/if \(showCampaignExperience && campaignDetail\)/);
+    expect(src).toContain("buildV17CampaignDetailViewModel");
+    expect(src).toContain("V17CampaignDetailView");
+    expect(src).toContain("buildCampaignReviewViewModel");
+    expect(src).not.toContain("CustomerCampaignExperience");
   });
 
   it("Campaign detail sections use campaign details wording not project details", () => {
@@ -140,10 +140,10 @@ describe("campaign wizard project detail mode", () => {
     );
   });
 
-  it("ProjectDetailTab builds execution plan only for campaign wizard experience", () => {
+  it("ProjectDetailTab builds review VM for v17 campaign detail", () => {
     const tab = read("features/marketing-workspace/details/ProjectDetailTab.tsx");
-    expect(tab).toContain("buildCampaignExecutionPlanViewModelOrUnavailable");
-    expect(tab).toContain("executionPlan={executionPlan}");
-    expect(tab).toMatch(/showCampaignExperience && campaignDetail[\s\S]*executionPlan/);
+    expect(tab).toContain("buildCampaignReviewBuildInput");
+    expect(tab).toContain("reviewVm");
+    expect(tab).toContain("V17CampaignDetailView");
   });
 });

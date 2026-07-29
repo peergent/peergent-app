@@ -326,7 +326,7 @@ describe("marketing campaign UI presenters", () => {
 
   it("preserves existing marketing workspace tabs when flag off", () => {
     expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("work");
-    expect(MARKETING_PEER_TABS).toHaveLength(9);
+    expect(MARKETING_PEER_TABS).toHaveLength(4);
   });
 
   it("does not nest next-action links inside linked campaign cards", () => {

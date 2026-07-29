@@ -1,21 +1,25 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
-import PerformanceTab from "@/features/marketing-workspace/tabs/PerformanceTab";
+type Props = {
+  params: Promise<{ peerId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-function PerformancePageInner() {
-  return (
-    <MarketingPeerPageFrame activeTab="performance">
-      {({ domainInput }) => <PerformanceTab domainInput={domainInput} />}
-    </MarketingPeerPageFrame>
-  );
-}
-
-export default function EmmaPerformancePage() {
-  return (
-    <Suspense fallback={null}>
-      <PerformancePageInner />
-    </Suspense>
-  );
+export default async function TeamPeerPerformanceRedirectPage({
+  params,
+  searchParams,
+}: Props) {
+  const { peerId } = await params;
+  const sp = await searchParams;
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) qs.append(key, v);
+    } else {
+      qs.set(key, value);
+    }
+  }
+  const query = qs.toString();
+  redirect(query ? `/team/${peerId}/results?${query}` : `/team/${peerId}/results`);
 }

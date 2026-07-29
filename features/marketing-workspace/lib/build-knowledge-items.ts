@@ -55,8 +55,8 @@ export function buildMarketingSkillsList(input: MarketingPeerDomainInput): Array
     }));
 }
 
-export function websiteScanHref(): string {
-  return "/website-intelligence";
+export function websiteScanHref(peerId: string): string {
+  return `/team/${encodeURIComponent(peerId)}/settings/website-intelligence`;
 }
 
 export function knowledgeSectionHref(peerId: string, section: string): string {

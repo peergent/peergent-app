@@ -12,6 +12,8 @@ import {
   type CreateCampaignFormValues,
 } from "../lib/create-campaign-form";
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
+import { getV17CreateCampaignCopy } from "@/lib/i18n/v17-create-campaign-copy";
+import { resolveCustomerLocalePreference } from "@/lib/i18n/resolve-customer-locale-preference";
 
 const APPROVAL_OPTIONS: readonly { value: CampaignApprovalMode; label: string }[] = [
   { value: "approval_before_publication", label: "Approve before publication" },
@@ -27,6 +29,8 @@ export type CreateCampaignModalProps = {
   ownerLabel: string;
   peerName: string;
   onCreate: (input: CreateMarketingCampaignProjectInput) => Promise<{ projectId: string }>;
+  presentation?: "default" | "v17";
+  localePreference?: string | null;
 };
 
 export default function CreateCampaignModal({
@@ -36,8 +40,13 @@ export default function CreateCampaignModal({
   ownerLabel,
   peerName,
   onCreate,
+  presentation = "default",
+  localePreference,
 }: CreateCampaignModalProps) {
   const formId = useId();
+  const isV17 = presentation === "v17";
+  const locale = resolveCustomerLocalePreference(localePreference);
+  const v17Copy = getV17CreateCampaignCopy(localePreference);
   const [values, setValues] = useState<CreateCampaignFormValues>(createEmptyCreateCampaignForm);
   const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateCreateCampaignForm>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +76,7 @@ export default function CreateCampaignModal({
       setFieldErrors({});
       onClose();
     } catch {
-      setSubmitError("We could not create this campaign. Try again in a moment.");
+      setSubmitError(isV17 ? v17Copy.submitError : "We could not create this campaign. Try again in a moment.");
     } finally {
       setSubmitting(false);
     }
@@ -77,18 +86,25 @@ export default function CreateCampaignModal({
     <MwModal
       open={open}
       onClose={handleClose}
-      title="Create campaign"
-      subtitle={`Set up a campaign for ${peerName}. No content will be generated yet.`}
+      title={isV17 ? v17Copy.title : "Create campaign"}
+      subtitle={
+        isV17 ? v17Copy.subtitle(peerName) : `Set up a campaign for ${peerName}. No content will be generated yet.`
+      }
       maxWidth={560}
       closeOnEscape={!submitting}
       closeOnOverlayClick={!submitting}
+      variant={isV17 ? "v17" : "default"}
     >
-      <form id={formId} onSubmit={(e) => void handleSubmit(e)} className="mw-create-campaign-form">
-        <p className="mw-modal-label">
-          Campaign name <span aria-hidden="true">*</span>
+      <form
+        id={formId}
+        onSubmit={(e) => void handleSubmit(e)}
+        className={isV17 ? "v17-create-campaign-form" : "mw-create-campaign-form"}
+      >
+        <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+          {isV17 ? v17Copy.nameLabel : "Campaign name"} <span aria-hidden="true">*</span>
         </p>
         <input
-          className="mw-modal-input"
+          className={isV17 ? "v17-field-input" : "mw-modal-input"}
           value={values.name}
           onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
           aria-required
@@ -102,20 +118,24 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <p className="mw-modal-label" style={{ marginTop: 16 }}>
-          Primary goal <span aria-hidden="true">*</span>
+        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+          {isV17 ? v17Copy.primaryGoalLabel : "Primary goal"} <span aria-hidden="true">*</span>
         </p>
-        <div className="mw-platform-chips" role="radiogroup" aria-label="Primary goal">
+        <div className={isV17 ? "v17-goal-grid" : "mw-platform-chips"} role="radiogroup" aria-label="Primary goal">
           {CREATE_CAMPAIGN_PRIMARY_GOALS.map((goal) => (
             <button
               key={goal.id}
               type="button"
-              className={`mw-platform-chip pg-focus-premium${values.primaryGoalId === goal.id ? " mw-platform-chip--active" : ""}`}
+              className={
+                isV17
+                  ? `v17-goal-chip pg-focus-premium${values.primaryGoalId === goal.id ? " is-active" : ""}`
+                  : `mw-platform-chip pg-focus-premium${values.primaryGoalId === goal.id ? " mw-platform-chip--active" : ""}`
+              }
               aria-pressed={values.primaryGoalId === goal.id}
               disabled={submitting}
               onClick={() => setValues((v) => ({ ...v, primaryGoalId: goal.id }))}
             >
-              {goal.label}
+              {isV17 ? v17Copy.goalLabels[goal.id] : goal.label}
             </button>
           ))}
         </div>
@@ -127,11 +147,11 @@ export default function CreateCampaignModal({
 
         {values.primaryGoalId === "custom" && (
           <>
-            <p className="mw-modal-label" style={{ marginTop: 12 }}>
-              Custom goal <span aria-hidden="true">*</span>
+            <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 12 }}>
+              {isV17 ? v17Copy.customGoalLabel : "Custom goal"} <span aria-hidden="true">*</span>
             </p>
             <input
-              className="mw-modal-input"
+              className={isV17 ? "v17-field-input" : "mw-modal-input"}
               value={values.customGoalText}
               onChange={(e) => setValues((v) => ({ ...v, customGoalText: e.target.value }))}
               disabled={submitting}
@@ -145,11 +165,12 @@ export default function CreateCampaignModal({
           </>
         )}
 
-        <p className="mw-modal-label" style={{ marginTop: 16 }}>
-          What do you want to achieve? <span aria-hidden="true">*</span>
+        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+          {isV17 ? v17Copy.descriptionLabel : "What do you want to achieve?"}{" "}
+          <span aria-hidden="true">*</span>
         </p>
         <textarea
-          className="mw-modal-input"
+          className={isV17 ? "v17-field-input" : "mw-modal-input"}
           rows={3}
           value={values.description}
           onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
@@ -163,32 +184,41 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <p className="mw-modal-label" style={{ marginTop: 16 }}>
-          Target audience <span className="mw-modal-label-hint">(optional)</span>
+        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+          {isV17 ? v17Copy.audienceLabel : "Target audience"}{" "}
+          {!isV17 ? (
+            <span className="mw-modal-label-hint">(optional)</span>
+          ) : (
+            <span className="v17-field-hint">({v17Copy.audienceHint})</span>
+          )}
         </p>
         <input
-          className="mw-modal-input"
+          className={isV17 ? "v17-field-input" : "mw-modal-input"}
           value={values.targetAudience}
           onChange={(e) => setValues((v) => ({ ...v, targetAudience: e.target.value }))}
           disabled={submitting}
         />
 
-        <div className="mw-create-campaign-dates" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div className="v17-form-row-dates" style={{ display: "flex", gap: 12, marginTop: 16 }}>
           <div style={{ flex: 1 }}>
-            <p className="mw-modal-label">Start date</p>
+            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+              {isV17 ? v17Copy.startDateLabel : "Start date"}
+            </p>
             <input
               type="date"
-              className="mw-modal-input"
+              className={isV17 ? "v17-field-input" : "mw-modal-input"}
               value={values.startDate}
               onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))}
               disabled={submitting}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <p className="mw-modal-label">Target end date</p>
+            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+              {isV17 ? v17Copy.endDateLabel : "Target end date"}
+            </p>
             <input
               type="date"
-              className="mw-modal-input"
+              className={isV17 ? "v17-field-input" : "mw-modal-input"}
               value={values.endDate}
               onChange={(e) => setValues((v) => ({ ...v, endDate: e.target.value }))}
               disabled={submitting}
@@ -202,14 +232,16 @@ export default function CreateCampaignModal({
           </div>
         </div>
 
-        <div className="mw-create-campaign-budget" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div className="v17-form-row-budget" style={{ display: "flex", gap: 12, marginTop: 16 }}>
           <div style={{ flex: 2 }}>
-            <p className="mw-modal-label">Budget</p>
+            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+              {isV17 ? v17Copy.budgetLabel : "Budget"}
+            </p>
             <input
               type="number"
               min={0}
               step="any"
-              className="mw-modal-input"
+              className={isV17 ? "v17-field-input" : "mw-modal-input"}
               value={values.budgetAmount}
               onChange={(e) => setValues((v) => ({ ...v, budgetAmount: e.target.value }))}
               disabled={submitting}
@@ -222,9 +254,11 @@ export default function CreateCampaignModal({
             )}
           </div>
           <div style={{ flex: 1 }}>
-            <p className="mw-modal-label">Currency</p>
+            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+              {isV17 ? v17Copy.currencyLabel : "Currency"}
+            </p>
             <input
-              className="mw-modal-input"
+              className={isV17 ? "v17-field-input" : "mw-modal-input"}
               value={values.budgetCurrency}
               onChange={(e) => setValues((v) => ({ ...v, budgetCurrency: e.target.value }))}
               disabled={submitting}
@@ -232,26 +266,30 @@ export default function CreateCampaignModal({
           </div>
         </div>
 
-        <p className="mw-modal-label" style={{ marginTop: 16 }}>
-          Approval mode
-        </p>
-        <select
-          className="mw-modal-input"
-          value={values.approvalMode}
-          onChange={(e) =>
-            setValues((v) => ({
-              ...v,
-              approvalMode: e.target.value as CampaignApprovalMode,
-            }))
-          }
-          disabled={submitting}
-        >
-          {APPROVAL_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        {!isV17 ? (
+          <>
+            <p className="mw-modal-label" style={{ marginTop: 16 }}>
+              Approval mode
+            </p>
+            <select
+              className="mw-modal-input"
+              value={values.approvalMode}
+              onChange={(e) =>
+                setValues((v) => ({
+                  ...v,
+                  approvalMode: e.target.value as CampaignApprovalMode,
+                }))
+              }
+              disabled={submitting}
+            >
+              {APPROVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
 
         {submitError && (
           <p className="mw-field-error" role="alert" style={{ marginTop: 12 }}>
@@ -259,15 +297,37 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <button
-          type="submit"
-          className="mw-btn-primary mw-btn-primary--full pg-focus-premium"
-          style={{ marginTop: 20 }}
-          disabled={submitting}
-          aria-busy={submitting}
-        >
-          {submitting ? "Creating campaign…" : "Create campaign"}
-        </button>
+        <div className={isV17 ? "v17-form-actions" : undefined}>
+          {isV17 ? (
+            <button
+              type="button"
+              className="v17-btn v17-btn--ghost pg-focus-premium"
+              onClick={handleClose}
+              disabled={submitting}
+            >
+              {v17Copy.cancel}
+            </button>
+          ) : null}
+          <button
+            type="submit"
+            className={
+              isV17
+                ? "v17-btn v17-btn--primary pg-focus-premium"
+                : "mw-btn-primary mw-btn-primary--full pg-focus-premium"
+            }
+            style={isV17 ? undefined : { marginTop: 20 }}
+            disabled={submitting}
+            aria-busy={submitting}
+          >
+            {submitting
+              ? isV17
+                ? "Bezig…"
+                : "Creating campaign…"
+              : isV17
+                ? v17Copy.submit
+                : "Create campaign"}
+          </button>
+        </div>
       </form>
     </MwModal>
   );

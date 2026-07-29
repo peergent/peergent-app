@@ -1,55 +1,70 @@
 import type { MarketingPerformanceFilters } from "../domain/marketing-peer-types";
+import {
+  MARKETING_PEER_SECTIONS,
+  marketingPeerSectionHref,
+  resolveActiveMarketingPeerSection,
+  type MarketingPeerSectionId,
+  type MarketingPeerTabId,
+} from "./marketing-peer-sections";
 
-export type MarketingPeerTabId =
-  | "overview"
-  | "review"
-  | "work"
-  | "content"
-  | "performance"
-  | "connections"
-  | "responsibilities"
-  | "knowledge"
-  | "settings"
-  | "projects";
+export type { MarketingPeerSectionId, MarketingPeerTabId } from "./marketing-peer-sections";
+export {
+  MARKETING_PEER_SECTIONS,
+  marketingPeerSectionHref,
+  resolveActiveMarketingPeerSection,
+  legacyTabToSection,
+} from "./marketing-peer-sections";
 
 export type MarketingPeerTab = {
-  id: MarketingPeerTabId;
+  id: MarketingPeerSectionId;
   label: string;
   href: (peerId: string) => string;
 };
 
+/** Primary customer navigation (English labels for tests and fallbacks). */
 export const MARKETING_PEER_TABS: MarketingPeerTab[] = [
-  { id: "overview", label: "Overview", href: (peerId) => `/team/${peerId}` },
-  { id: "review", label: "Review", href: (peerId) => `/team/${peerId}/review` },
-  { id: "work", label: "Projects", href: (peerId) => `/team/${peerId}/work` },
-  { id: "content", label: "Content", href: (peerId) => `/team/${peerId}/content` },
-  { id: "performance", label: "Performance", href: (peerId) => `/team/${peerId}/performance` },
-  { id: "connections", label: "Connections", href: (peerId) => `/team/${peerId}/connections` },
-  { id: "responsibilities", label: "Responsibilities", href: (peerId) => `/team/${peerId}/responsibilities` },
-  { id: "knowledge", label: "Knowledge", href: (peerId) => `/team/${peerId}/knowledge` },
+  { id: "today", label: "Today", href: (peerId) => `/team/${peerId}` },
+  { id: "work", label: "Work", href: (peerId) => `/team/${peerId}/work` },
+  { id: "results", label: "Results", href: (peerId) => `/team/${peerId}/results` },
   { id: "settings", label: "Settings", href: (peerId) => `/team/${peerId}/settings` },
 ];
 
-export function marketingPeerTabHref(peerId: string, tab: MarketingPeerTabId): string {
-  const match = MARKETING_PEER_TABS.find((t) => t.id === tab);
-  return match ? match.href(peerId) : `/team/${peerId}`;
+export const MARKETING_PEER_SECTIONS_NAV = MARKETING_PEER_SECTIONS;
+
+export function marketingPeerTabHref(
+  peerId: string,
+  tab: MarketingPeerTabId | MarketingPeerSectionId
+): string {
+  if (MARKETING_PEER_SECTIONS.some((s) => s.id === tab)) {
+    return marketingPeerSectionHref(peerId, tab as MarketingPeerSectionId);
+  }
+  const legacyMap: Partial<Record<MarketingPeerTabId, MarketingPeerSectionId>> = {
+    overview: "today",
+    working_on: "today",
+    waiting_for_me: "today",
+    done: "today",
+    review: "waiting_for_me",
+    content: "work",
+    performance: "results",
+    connections: "settings",
+    responsibilities: "settings",
+    knowledge: "settings",
+    projects: "work",
+  };
+  const section = legacyMap[tab as MarketingPeerTabId] ?? "today";
+  return marketingPeerSectionHref(peerId, section);
 }
 
-export function resolveActiveMarketingPeerTab(pathname: string, peerId: string): MarketingPeerTabId {
-  const base = `/team/${peerId}`;
-  if (pathname === base || pathname === `${base}/`) return "overview";
-  if (pathname.startsWith(`${base}/projects/`)) return "work";
-  for (const tab of MARKETING_PEER_TABS) {
-    if (tab.id === "overview") continue;
-    const href = tab.href(peerId);
-    if (pathname === href || pathname.startsWith(`${href}/`)) return tab.id;
-  }
-  return "overview";
+export function resolveActiveMarketingPeerTab(
+  pathname: string,
+  peerId: string
+): MarketingPeerSectionId {
+  return resolveActiveMarketingPeerSection(pathname, peerId);
 }
 
 /** Review deliverable deep link — supports deliverableId (preferred) and legacy draft param. */
 export function getReviewHref(peerId: string, deliverableId?: string, filter?: string): string {
-  const base = `/team/${peerId}/review`;
+  const base = `/team/${peerId}/waiting`;
   const params = new URLSearchParams();
   if (deliverableId) params.set("deliverableId", deliverableId);
   if (filter) params.set("filter", filter);
@@ -153,7 +168,7 @@ export function getContentHref(peerId: string, contentId?: string): string {
 }
 
 export function getPerformanceHref(peerId: string, filters?: MarketingPerformanceFilters): string {
-  const base = `/team/${peerId}/performance`;
+  const base = `/team/${peerId}/results`;
   if (!filters) return base;
   const params = new URLSearchParams();
   if (filters.contentId) params.set("contentId", filters.contentId);

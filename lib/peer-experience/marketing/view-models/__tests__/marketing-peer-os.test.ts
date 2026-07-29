@@ -90,21 +90,23 @@ const strategy: MarketingStrategy = {
 
 describe("marketing peer navigation", () => {
   it("resolves active tab per route", () => {
-    expect(resolveActiveMarketingPeerTab(`/team/${peerId}`, peerId)).toBe("overview");
+    expect(resolveActiveMarketingPeerTab(`/team/${peerId}`, peerId)).toBe("working_on");
     expect(resolveActiveMarketingPeerTab(`/team/${peerId}/connections`, peerId)).toBe(
-      "connections"
+      "settings"
     );
-    expect(resolveActiveMarketingPeerTab(`/team/${peerId}/review`, peerId)).toBe("review");
+    expect(resolveActiveMarketingPeerTab(`/team/${peerId}/review`, peerId)).toBe(
+      "waiting_for_me"
+    );
     expect(resolveActiveMarketingPeerTab(`/team/${peerId}/responsibilities`, peerId)).toBe(
-      "responsibilities"
+      "settings"
     );
     expect(
       resolveActiveMarketingPeerTab(`/team/${peerId}/responsibilities/resp-1`, peerId)
-    ).toBe("responsibilities");
+    ).toBe("settings");
   });
 
   it("builds deliverableId review deep links", () => {
-    expect(getReviewHref(peerId, "d1")).toBe(`/team/${peerId}/review?deliverableId=d1`);
+    expect(getReviewHref(peerId, "d1")).toBe(`/team/${peerId}/waiting?deliverableId=d1`);
     expect(parseReviewSearchParams(new URLSearchParams("deliverableId=d1")).deliverableId).toBe("d1");
     expect(parseReviewSearchParams(new URLSearchParams("draft=d1")).deliverableId).toBe("d1");
   });
@@ -206,7 +208,7 @@ describe("buildMarketingBrainInsights", () => {
     });
     const metricInsight = insights.find((i) => i.id.startsWith("brain-metric"));
     expect(metricInsight?.evidence?.currentValue).toBe("5000");
-    expect(metricInsight?.actions[0]?.href).toContain("/performance");
+    expect(metricInsight?.actions[0]?.href).toContain("/results");
   });
 
   it("routes review action for needs approval insight", () => {

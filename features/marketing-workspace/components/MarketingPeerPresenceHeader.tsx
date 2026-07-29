@@ -63,7 +63,7 @@ export default function MarketingPeerPresenceHeader({
           {presenceLabel}
         </span>
       </div>
-      <p className="mw-peer-presence-campaign">{campaignTitle}</p>
+      <p className="mw-peer-presence-campaign">{campaignTitle ? campaignTitle : null}</p>
       <p className="mw-peer-presence-narrative">{narrative}</p>
       {primaryAction ? (
         <div className="mw-peer-presence-action">{primaryAction}</div>

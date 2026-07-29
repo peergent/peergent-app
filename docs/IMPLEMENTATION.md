@@ -11,6 +11,10 @@ When uncertain: **do not redesign**. Re-read the blueprints. Implement with engi
 
 **Colleague IA & long-term product phases:** see [product/README.md](./product/README.md) (Sprint 29A — subordinate to Constitution and Product Bible).
 
+**Sprint 29B (Marketing Peer workspace):** six-section colleague shell at `/team/[peerId]` — see [architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md](./architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md). Phase A (colleague IA for Marketing) partially complete.
+
+**Sprint 29C (v17 customer experience):** v17 Command Center at `/home`, customer shell + four-section Peer workspace — see [architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md](./architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md). HQ preserved at `/hq`.
+
 If implementation is hard, solve the engineering problem — never change UX to make code easier.
 
 ---

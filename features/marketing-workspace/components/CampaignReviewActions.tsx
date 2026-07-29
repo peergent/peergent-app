@@ -20,6 +20,8 @@ import {
   customerFeedbackOptionsForArtifact,
 } from "../lib/campaign-review-feedback-ui";
 
+import { getV17ReviewModalCopy } from "@/lib/i18n/v17-review-modal-copy";
+
 export type CampaignReviewActionsProps = {
   peerId: string;
   projectId: string;
@@ -29,6 +31,8 @@ export type CampaignReviewActionsProps = {
   remainingQueueCount: number;
   nextInQueueItemId?: string | null;
   reviewHandlers: CampaignReviewWorkspaceHandlers;
+  presentation?: "default" | "v17";
+  localePreference?: string | null;
 };
 
 function chipKey(id: string, label: string): string {
@@ -49,7 +53,11 @@ export default function CampaignReviewActions({
   remainingQueueCount,
   nextInQueueItemId,
   reviewHandlers,
+  presentation = "default",
+  localePreference,
 }: CampaignReviewActionsProps) {
+  const isV17 = presentation === "v17";
+  const modalCopy = getV17ReviewModalCopy(localePreference);
   const router = useRouter();
   const feedbackId = useId();
   const approveTriggerRef = useRef<HTMLButtonElement>(null);
@@ -265,39 +273,48 @@ export default function CampaignReviewActions({
 
   if (!canReviewNow && !item.canRequestRevision && item.decisionStatus === "approved") {
     return (
-      <div className="mw-review-actions-sticky">
-        <p className="mw-review-status" role="status">
+      <div className={isV17 ? "v17-review-actions" : "mw-review-actions-sticky"}>
+        <p className={isV17 ? "v17-review-actions-status" : "mw-review-status"} role="status">
           {copy.approvedStatus}
         </p>
       </div>
     );
   }
 
-  return (
-    <div className="mw-review-actions-sticky" aria-label="Review actions">
-      <div className="mw-review-actions-inner mw-glass">
-        {statusMessage ? (
-          <p className="mw-review-status" role="status" aria-live="polite">
-            {statusMessage}
-          </p>
-        ) : null}
-        {errorMessage ? (
-          <p className="mw-review-error" role="alert">
-            {errorMessage}
-          </p>
-        ) : null}
-
-        <p className="mw-review-actions-status">{statusLine}</p>
-        {remainingLine && canReviewNow ? (
-          <p className="mw-review-actions-remaining">{remainingLine}</p>
-        ) : null}
-
-        {item.feedbackSummary ? (
-          <p className="mw-kn-helper mw-review-actions-feedback">{item.feedbackSummary}</p>
-        ) : null}
-
-        <div className="mw-review-actions-toolbar">
-          {canReviewNow && !showOptionalApproval ? (
+  const toolbar = (
+    <>
+      {canReviewNow && !showOptionalApproval ? (
+        <>
+          {isV17 ? (
+            <>
+              <button
+                type="button"
+                className="v17-btn v17-btn--ghost pg-focus-premium"
+                disabled={pending}
+                onClick={() => setChangesOpen(true)}
+              >
+                {copy.requestChanges}
+              </button>
+              <button
+                type="button"
+                className="v17-btn v17-btn--ghost v17-btn--destructive pg-focus-premium"
+                disabled={pending}
+                onClick={() => setRejectOpen(true)}
+              >
+                {copy.reject}
+              </button>
+              <button
+                ref={approveTriggerRef}
+                type="button"
+                className="v17-btn v17-btn--primary pg-focus-premium"
+                disabled={pending}
+                data-state={pending ? "loading" : undefined}
+                onClick={() => setApproveOpen(true)}
+              >
+                {pending ? "…" : copy.approve}
+              </button>
+            </>
+          ) : (
             <>
               <button
                 ref={approveTriggerRef}
@@ -325,55 +342,138 @@ export default function CampaignReviewActions({
                 {copy.reject}
               </button>
             </>
-          ) : null}
+          )}
+        </>
+      ) : null}
 
-          {showOptionalApproval && canReviewNow ? (
-            <button
-              type="button"
-              className="mw-btn-secondary"
-              disabled={pending}
-              onClick={() => setApproveOpen(true)}
-            >
-              {copy.confirmPreparedWork}
-            </button>
-          ) : null}
+      {showOptionalApproval && canReviewNow ? (
+        <button
+          type="button"
+          className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-btn-secondary"}
+          disabled={pending}
+          onClick={() => setApproveOpen(true)}
+        >
+          {copy.confirmPreparedWork}
+        </button>
+      ) : null}
 
-          {item.canRequestRevision ? (
-            <button
-              type="button"
-              className="mw-btn-primary"
-              disabled={pending}
-              onClick={() => void runRevise()}
-            >
-              {copy.letPeerRevise}
-            </button>
-          ) : null}
+      {item.canRequestRevision ? (
+        <button
+          type="button"
+          className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+          disabled={pending}
+          onClick={() => void runRevise()}
+        >
+          {copy.letPeerRevise}
+        </button>
+      ) : null}
 
-          {item.decisionStatus === "rejected" ? (
-            <Link href={getProjectHref(peerId, projectId)} className="mw-btn-secondary pg-focus-premium">
-              {copy.returnToCampaign}
-            </Link>
-          ) : null}
+      {item.decisionStatus === "rejected" ? (
+        <Link
+          href={getProjectHref(peerId, projectId)}
+          className={
+            isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-btn-secondary pg-focus-premium"
+          }
+        >
+          {copy.returnToCampaign}
+        </Link>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div
+      className={isV17 ? "v17-review-actions" : "mw-review-actions-sticky"}
+      aria-label="Review actions"
+      data-testid={isV17 ? "v17-review-actions" : "mw-review-actions"}
+    >
+      <div className={isV17 ? "v17-review-actions-inner" : "mw-review-actions-inner mw-glass"}>
+        {statusMessage ? (
+          <p
+            className={isV17 ? "v17-review-feedback v17-review-feedback--success" : "mw-review-status"}
+            role="status"
+            aria-live="polite"
+          >
+            {statusMessage}
+          </p>
+        ) : null}
+        {errorMessage ? (
+          <p
+            className={isV17 ? "v17-review-feedback v17-review-feedback--error" : "mw-review-error"}
+            role="alert"
+          >
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <div className={isV17 ? "v17-review-actions-row" : undefined}>
+          <div className={isV17 ? "v17-review-actions-meta" : undefined}>
+            <p className={isV17 ? "v17-review-actions-status" : "mw-review-actions-status"}>
+              {statusLine}
+            </p>
+            {remainingLine && canReviewNow ? (
+              <p className={isV17 ? "v17-review-actions-remaining" : "mw-review-actions-remaining"}>
+                {remainingLine}
+              </p>
+            ) : null}
+            {item.feedbackSummary ? (
+              <p
+                className={
+                  isV17 ? "v17-review-actions-feedback" : "mw-kn-helper mw-review-actions-feedback"
+                }
+              >
+                {item.feedbackSummary}
+              </p>
+            ) : null}
+          </div>
+
+          <div
+            className={
+              isV17 ? "v17-review-actions-toolbar" : "mw-review-actions-toolbar"
+            }
+          >
+            {toolbar}
+          </div>
         </div>
       </div>
 
       <MwModal
         open={approveOpen}
         onClose={() => !pending && setApproveOpen(false)}
-        title={approveModalTitleForItem(item.artifactTypeLabel)}
-        subtitle="Marketing Peer will continue preparing the next campaign deliverables. You can revisit past decisions from Version History when it is available."
+        title={
+          isV17
+            ? modalCopy.approveTitle(item.artifactTypeLabel)
+            : approveModalTitleForItem(item.artifactTypeLabel)
+        }
+        subtitle={
+          isV17
+            ? `${modalCopy.approveBody} ${modalCopy.approveNote}`
+            : "Marketing Peer will continue preparing the next campaign deliverables. You can revisit past decisions from Version History when it is available."
+        }
+        variant={isV17 ? "v17" : "default"}
+        closeOnEscape={!pending}
+        closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
-        <div className="mw-modal-actions">
+        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
           <button
             type="button"
-            className="mw-modal-secondary"
+            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
             disabled={pending}
             onClick={() => setApproveOpen(false)}
           >
-            Cancel
+            {isV17 ? modalCopy.cancel : "Cancel"}
           </button>
-          <button type="button" className="mw-btn-primary" disabled={pending} onClick={() => void runApprove()}>
-            {approvePrimaryButtonLabel(item.artifactTypeLabel)}
+          <button
+            type="button"
+            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            disabled={pending}
+            onClick={() => void runApprove()}
+          >
+            {pending
+              ? "…"
+              : isV17
+                ? modalCopy.approveConfirm
+                : approvePrimaryButtonLabel(item.artifactTypeLabel)}
           </button>
         </div>
       </MwModal>
@@ -381,9 +481,13 @@ export default function CampaignReviewActions({
       <MwModal
         open={changesOpen}
         onClose={closeChanges}
-        title="Request changes"
-        subtitle="Tell Marketing Peer what you would like changed."
+        title={isV17 ? modalCopy.requestChangesTitle : "Request changes"}
+        subtitle={
+          isV17 ? modalCopy.requestChangesSubtitle : "Tell Marketing Peer what you would like changed."
+        }
+        variant={isV17 ? "v17" : "default"}
         closeOnEscape={!pending}
+        closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
         <div className="mw-modal-body">
           <p id={feedbackId} className="mw-modal-label">
@@ -424,12 +528,22 @@ export default function CampaignReviewActions({
             </p>
           ) : null}
         </div>
-        <div className="mw-modal-actions">
-          <button type="button" className="mw-modal-secondary" disabled={pending} onClick={closeChanges}>
-            Cancel
+        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
+          <button
+            type="button"
+            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
+            disabled={pending}
+            onClick={closeChanges}
+          >
+            {isV17 ? modalCopy.cancel : "Cancel"}
           </button>
-          <button type="button" className="mw-btn-primary" disabled={pending} onClick={submitChanges}>
-            Submit feedback
+          <button
+            type="button"
+            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            disabled={pending}
+            onClick={submitChanges}
+          >
+            {isV17 ? modalCopy.requestChangesSubmit : "Submit feedback"}
           </button>
         </div>
       </MwModal>
@@ -437,9 +551,11 @@ export default function CampaignReviewActions({
       <MwModal
         open={rejectOpen}
         onClose={() => !pending && setRejectOpen(false)}
-        title="Reject this item"
-        subtitle="Rejecting stops campaign progress. Marketing Peer will wait until you manually start a new revision."
+        title={isV17 ? modalCopy.rejectTitle : "Reject this item"}
+        subtitle={isV17 ? modalCopy.rejectSubtitle : "Rejecting stops campaign progress. Marketing Peer will wait until you manually start a new revision."}
+        variant={isV17 ? "v17" : "default"}
         closeOnEscape={!pending}
+        closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
         <div className="mw-modal-body">
           <fieldset className="mw-review-reject-reasons">
@@ -475,12 +591,22 @@ export default function CampaignReviewActions({
             </p>
           ) : null}
         </div>
-        <div className="mw-modal-actions">
-          <button type="button" className="mw-modal-secondary" disabled={pending} onClick={() => setRejectOpen(false)}>
-            Cancel
+        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
+          <button
+            type="button"
+            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
+            disabled={pending}
+            onClick={() => setRejectOpen(false)}
+          >
+            {isV17 ? modalCopy.cancel : "Cancel"}
           </button>
-          <button type="button" className="mw-btn-primary" disabled={pending} onClick={submitReject}>
-            Reject item
+          <button
+            type="button"
+            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            disabled={pending}
+            onClick={submitReject}
+          >
+            {isV17 ? modalCopy.rejectSubmit : "Reject item"}
           </button>
         </div>
       </MwModal>

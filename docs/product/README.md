@@ -26,6 +26,14 @@ Documentation for **customer journey**, **colleague workspace IA**, **presence &
 | **[PEERGENT_COLLEAGUE_LANGUAGE.md](./PEERGENT_COLLEAGUE_LANGUAGE.md)** | Voice, tone, patterns, forbidden software language, domain examples (EN/NL) |
 | **[PEERGENT_INTERACTION_PRINCIPLES.md](./PEERGENT_INTERACTION_PRINCIPLES.md)** | Interaction rules, interruption levels, empty states, never-do list |
 
+## Sprint 29B — Marketing Peer workspace (implemented)
+
+Engineering note: [../architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md](../architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md) — colleague shell at `/team/[peerId]` (superseded for customer nav by Sprint 29C).
+
+## Sprint 29C — v17 customer experience (implemented)
+
+Engineering note: [../architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md](../architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md) — HQ preserved; Command Center at `/home`; four-section Peer workspace (Today, Work, Results, Settings); v17 shell and tokens.
+
 ## Related audits (engineering)
 
 - [../architecture/ADMIN_CUSTOMER_AUDIT.md](../architecture/ADMIN_CUSTOMER_AUDIT.md) — customer vs admin presenters

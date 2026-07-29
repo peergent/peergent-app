@@ -194,9 +194,8 @@ describe("marketing workspace campaigns section (presenter)", () => {
     expect(isMarketingCampaignWorkspaceEnabled()).toBe(true);
   });
 
-  it("preserves existing marketing workspace tabs", () => {
+  it("preserves work section in colleague navigation", () => {
     expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("work");
-    expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("content");
-    expect(MARKETING_PEER_TABS).toHaveLength(9);
+    expect(MARKETING_PEER_TABS).toHaveLength(4);
   });
 });

@@ -37,7 +37,7 @@ export default function KnowledgeTab({ domainInput }: KnowledgeTabProps) {
           Run a real ingestion job on your site. Progress and findings persist to company knowledge
           with source provenance.
         </p>
-        <Link href={websiteScanHref()} className="mw-btn-primary pg-focus-premium" style={{ marginTop: 14 }}>
+        <Link href={websiteScanHref(domainInput.peerId)} className="mw-btn-primary pg-focus-premium" style={{ marginTop: 14 }}>
           Open website intelligence
         </Link>
       </section>

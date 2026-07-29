@@ -20,6 +20,7 @@ import type { HandoffScene, HandoffState } from "@/lib/home/handoff-types";
 import { getHomeCopy, resolveHomeLocale } from "@/lib/i18n";
 import type { PeerRow } from "@/lib/peer-display";
 import { fetchOrganizationPeers } from "@/lib/peers/queries";
+import { selectCanonicalCustomerPeers } from "@/lib/customer-v17/select-canonical-customer-peers";
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import { createClient } from "@/lib/supabase/client";
 
@@ -31,6 +32,7 @@ export type HandoffHomeState = {
   handoff: HandoffState | null;
   viewModel: HomeViewModel | null;
   marketingSnapshots: HomePeerWorkspaceSnapshot[];
+  canonicalPeers: PeerRow[];
   copy: ReturnType<typeof getHomeCopy>;
   retry: () => void;
   previewBanner: string | null;
@@ -205,12 +207,18 @@ export function useHandoffHome() {
     }).items.length;
   }, [pageState, marketingSnapshots, understanding, locale, previewParam, visualParam]);
 
+  const canonicalPeers = useMemo(
+    () => selectCanonicalCustomerPeers(peers),
+    [peers]
+  );
+
   return {
     pageState,
     errorMessage,
     handoff,
     viewModel,
     marketingSnapshots,
+    canonicalPeers,
     copy,
     retry,
     previewBanner,
