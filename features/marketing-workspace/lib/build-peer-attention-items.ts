@@ -107,7 +107,7 @@ export function buildMarketingPeerAttentionItems(input: {
           projectTitle: project.title,
           projectId: project.id,
           ageLabel: reviewItem.updatedAt
-            ? formatRelativeTime(reviewItem.updatedAt)
+            ? formatRelativeTime(reviewItem.updatedAt, locale)
             : undefined,
           kind,
         });
@@ -162,6 +162,7 @@ function groupAttentionItems(
           : `For ${first.projectTitle ?? "your campaign"} — I can continue after your decision.`,
       primaryActionLabel: primaryCtaLabel,
       href: first.href,
+      projectId: first.projectId,
       projectTitle: first.projectTitle,
       ageLabel: first.ageLabel,
       kind: "group",
@@ -180,6 +181,7 @@ function toVm(item: RawAttention, kind: "single"): PeerAttentionItemViewModel {
     whyItMatters: item.whyItMatters,
     primaryActionLabel: item.primaryActionLabel,
     href: item.href,
+    projectId: item.projectId,
     projectTitle: item.projectTitle,
     ageLabel: item.ageLabel,
     kind,

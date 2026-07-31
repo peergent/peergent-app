@@ -21,7 +21,7 @@ export function buildMarketingPeerCompletedOutcomes(input: {
 }): PeerCompletedOutcomeViewModel[] {
   return buildDeduplicatedCompletedOutcomes(input).map((o) => ({
     ...o,
-    completedTimeLabel: formatRelativeTime(o.completedAt),
+    completedTimeLabel: formatRelativeTime(o.completedAt, input.locale),
   }));
 }
 

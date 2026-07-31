@@ -83,11 +83,11 @@ export function buildMarketingPeerWorkspacePresence(
 
   let lastUpdate: string | null = null;
   if (unit?.updatedAt) {
-    lastUpdate = formatRelativeTime(unit.updatedAt);
+    lastUpdate = formatRelativeTime(unit.updatedAt, locale);
   } else if (queue[0]?.id) {
     const draft = domainInput.drafts.find((d) => d.id === queue[0]?.id);
     if (draft?.generatedAt) {
-      lastUpdate = formatRelativeTime(draft.generatedAt);
+      lastUpdate = formatRelativeTime(draft.generatedAt, locale);
     }
   }
 
@@ -110,7 +110,7 @@ export function buildMarketingPeerWorkspacePresence(
         : marketingPeerSectionHref(peerId, "work"),
       primaryActionLabel: workspaceCopy.needsHelpCta,
       lastMeaningfulUpdateLabel: formatUpdatedLabel(
-        formatRelativeTime(safeFailure.failedAt),
+        formatRelativeTime(safeFailure.failedAt, locale),
         locale
       ),
       showLiveIndicator: false,

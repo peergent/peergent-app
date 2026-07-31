@@ -149,18 +149,30 @@ export function activityFeedToVoice(title: string): string {
   return title.endsWith(".") ? title : `${title}.`;
 }
 
-export function formatRelativeTime(iso: string): string {
+/**
+ * Relative time in the customer's language.
+ *
+ * Optional locale with an English default, so the many existing callers are
+ * unaffected while the Office can pass the customer's own. A timestamp reading
+ * "Bijgewerkt 2 days ago" is the most visible kind of half-translation there
+ * is, because it sits next to her voice.
+ */
+export function formatRelativeTime(iso: string, locale?: string | null): string {
+  const nl = locale === "nl";
   try {
     const date = new Date(iso);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffHours < 1) return "Just now";
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 1) return nl ? "Zojuist" : "Just now";
+    if (diffHours < 24) return nl ? `${diffHours} uur geleden` : `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date);
+    if (diffDays === 1) return nl ? "Gisteren" : "Yesterday";
+    if (diffDays < 7) return nl ? `${diffDays} dagen geleden` : `${diffDays} days ago`;
+    return new Intl.DateTimeFormat(nl ? "nl-NL" : "en-GB", {
+      day: "numeric",
+      month: "short",
+    }).format(date);
   } catch {
     return "";
   }

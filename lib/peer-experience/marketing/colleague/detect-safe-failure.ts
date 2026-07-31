@@ -15,6 +15,19 @@ function isFailedExecutionEvent(note: string): boolean {
 }
 
 /**
+ * Whether a single unit is *currently* in a failed state.
+ *
+ * A unit counts as failed only when its most recent event is a failed-execution
+ * rollback: any later event means the Peer moved on. Cancelled units never
+ * count — the customer ended those deliberately.
+ */
+export function isWorkUnitFailed(unit: WorkUnit): boolean {
+  if (unit.cancelled) return false;
+  const lastEvent = unit.eventLog[unit.eventLog.length - 1];
+  return Boolean(lastEvent && isFailedExecutionEvent(lastEvent.note));
+}
+
+/**
  * Truthful "Failed safely" detection (PEERGENT_PRESENCE_MODEL.md §3.6).
  *
  * A unit counts as failed only when its *most recent* event is a failed-execution
@@ -32,10 +45,9 @@ export function detectSafeFailure(
   let latest: SafeFailureSignal | null = null;
 
   for (const unit of workUnits) {
-    if (unit.cancelled) continue;
+    if (!isWorkUnitFailed(unit)) continue;
 
-    const lastEvent = unit.eventLog[unit.eventLog.length - 1];
-    if (!lastEvent || !isFailedExecutionEvent(lastEvent.note)) continue;
+    const lastEvent = unit.eventLog[unit.eventLog.length - 1]!;
 
     if (!latest || lastEvent.at > latest.failedAt) {
       latest = {

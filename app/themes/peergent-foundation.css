@@ -1,0 +1,387 @@
+/**
+ * Peergent Foundation — Product Design Specification (frozen-v1) §2.
+ *
+ * Extends the canonical --pg-* token layer in peergent-tokens.css. Everything
+ * here is specified by the frozen spec and should not be changed without a
+ * spec revision.
+ */
+
+/* ============================================================
+   §2 Space — 4px base scale: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 72
+   The first seven already exist. 72 is the spec's section rhythm.
+   ============================================================ */
+
+:root {
+  --pg-space-18: 72px;
+
+  /* §2 Motion — two jobs only: confirm a change, signal life.
+     One easing curve throughout. */
+  --pg-duration-state: 120ms;
+  --pg-duration-enter: 200ms;
+  --pg-duration-mode: 320ms;
+  --pg-duration-breathe: 3400ms;
+  --pg-ease-peergent: cubic-bezier(0.2, 0.6, 0.2, 1);
+
+  /* §2 Type scale */
+  --pg-type-display: 44px;
+  --pg-type-display-sm: 32px;
+  --pg-type-metric: 32px;
+  --pg-type-section: 19px;
+  --pg-type-voice: 16px;
+  --pg-type-body: 15px;
+  --pg-type-body-sm: 14px;
+  --pg-type-label: 10.5px;
+
+  --pg-weight-display: 640;
+  --pg-weight-metric: 680;
+  --pg-weight-section: 620;
+  --pg-weight-voice: 450;
+  --pg-weight-label: 500;
+
+  --pg-measure: 68ch;
+
+  /* Office layout rhythm.
+     Content is bounded so pages stay readable on large displays instead of
+     stretching into a dashboard. */
+  --pg-office-content-max: 980px;
+  --pg-office-gutter: var(--pg-space-5);
+  --pg-office-section-gap: var(--pg-space-8);
+  --pg-office-card-gap: var(--pg-space-3);
+  --pg-presence-height: 56px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --pg-office-gutter: var(--pg-space-4);
+    --pg-office-section-gap: var(--pg-space-6);
+  }
+}
+
+/* ============================================================
+   §2 Peer accents — identity only.
+   Used on the avatar ring, the Peer's presence line, and their row in the
+   team rail. NEVER on controls: a Peer's colour says who is speaking, not
+   what to click.
+   ============================================================ */
+
+/* ============================================================
+   Office surfaces — a real elevation ladder.
+
+   The base theme puts the canvas at #070816 and card surfaces at #0d0e22 with
+   an 11%-alpha border. Those values are close enough that a card is not
+   perceptible as a separate plane, which is what makes the Office read as one
+   flat black sheet. These tokens give the Office three genuinely distinct
+   levels plus a visible-but-soft edge.
+   ============================================================ */
+
+[data-pg-theme="dark"] {
+  --pg-office-canvas: #06070f;
+  --pg-office-chrome: #0a0c17;
+  --pg-office-panel: #101324;
+  --pg-office-panel-hover: #151932;
+  --pg-office-inset: #171c33;
+
+  --pg-office-line: rgba(255, 255, 255, 0.075);
+  --pg-office-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* A single hairline of light along the top edge is what reads as depth on a
+     dark ground — far more effective than a heavier drop shadow. */
+  --pg-office-lift:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 28px -18px rgba(0, 0, 0, 0.75);
+
+  --pg-office-glow: rgba(123, 111, 255, 0.14);
+}
+
+[data-pg-theme="light"] {
+  --pg-office-canvas: #f6f6fa;
+  --pg-office-chrome: #fbfbfd;
+  --pg-office-panel: #ffffff;
+  --pg-office-panel-hover: #fdfdff;
+  --pg-office-inset: #f4f5f9;
+
+  --pg-office-line: rgba(17, 20, 40, 0.09);
+  --pg-office-line-strong: rgba(17, 20, 40, 0.16);
+
+  --pg-office-lift:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(17, 20, 40, 0.05),
+    0 12px 26px -18px rgba(17, 20, 40, 0.18);
+
+  --pg-office-glow: rgba(91, 79, 199, 0.1);
+}
+
+[data-pg-theme="dark"] {
+  --pg-peer-marketing: #7b6fff;
+  --pg-peer-sales: #d9a05b;
+  --pg-peer-support: #3fbfa4;
+  --pg-peer-finance: #6ea8fe;
+  --pg-peer-planning: #b98ce0;
+  --pg-peer-hr: #e08fa8;
+  --pg-peer-recruitment: #7fc4e8;
+  --pg-peer-legal: #9aa5c4;
+  --pg-peer-operations: #8fc98a;
+
+  /* §2 Attention — means "a human decision is required" and appears nowhere
+     else. Its scarcity is what makes it work. */
+  --pg-color-decision: #e0a55a;
+  --pg-color-decision-soft: rgba(224, 165, 90, 0.14);
+  --pg-color-decision-line: rgba(224, 165, 90, 0.32);
+
+  /* §2 Elevation — two levels only. Ground (page) and raised (card),
+     separated by a hairline border plus one soft shadow. No third level. */
+  --pg-elevation-raised: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -14px rgba(0, 0, 0, 0.5);
+}
+
+[data-pg-theme="light"] {
+  --pg-peer-marketing: #5b4fc7;
+  --pg-peer-sales: #a8722c;
+  --pg-peer-support: #1a8f78;
+  --pg-peer-finance: #2f6fd0;
+  --pg-peer-planning: #8257b8;
+  --pg-peer-hr: #b85c7a;
+  --pg-peer-recruitment: #3d8fb8;
+  --pg-peer-legal: #5f6b8a;
+  --pg-peer-operations: #4f9349;
+
+  --pg-color-decision: #b0741b;
+  --pg-color-decision-soft: rgba(176, 116, 27, 0.1);
+  --pg-color-decision-line: rgba(176, 116, 27, 0.28);
+
+  --pg-elevation-raised: 0 1px 2px rgba(20, 24, 31, 0.04), 0 8px 24px -12px rgba(20, 24, 31, 0.1);
+}
+
+/* ============================================================
+   §2 Typography roles
+   The mono utility face marks everything the SYSTEM says; the proportional
+   face marks everything a PERSON says. That split is what makes the Peer
+   read as an author.
+   ============================================================ */
+
+.pg-display {
+  font-size: var(--pg-type-display);
+  font-weight: var(--pg-weight-display);
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.pg-display--sm {
+  font-size: var(--pg-type-display-sm);
+  letter-spacing: -0.024em;
+  line-height: 1.1;
+}
+
+.pg-metric {
+  font-size: var(--pg-type-metric);
+  font-weight: var(--pg-weight-metric);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.pg-section-title {
+  font-size: var(--pg-type-section);
+  font-weight: var(--pg-weight-section);
+  line-height: 1.3;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+/* §2: the Peer's voice is never set smaller than body text, never italic as
+   a default, never grey. The moment her line is styled as a caption, she
+   becomes a caption. */
+.pg-voice {
+  font-size: var(--pg-type-voice);
+  font-weight: var(--pg-weight-voice);
+  line-height: 1.55;
+  color: var(--pg-color-text-primary);
+  font-style: normal;
+  margin: 0;
+}
+
+.pg-body {
+  font-size: var(--pg-type-body);
+  line-height: 1.6;
+  color: var(--pg-color-text-secondary);
+  margin: 0;
+}
+
+.pg-body--sm {
+  font-size: var(--pg-type-body-sm);
+}
+
+.pg-label {
+  font-family: var(--font-v17-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: var(--pg-type-label);
+  font-weight: var(--pg-weight-label);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pg-color-text-tertiary);
+  margin: 0;
+}
+
+.pg-measure {
+  max-width: var(--pg-measure);
+}
+
+/* ============================================================
+   §8 Presence — the only ambient motion in the product.
+   Breathes while working; static and filled otherwise. Under reduced motion
+   it stays static and filled rather than disappearing, because presence is
+   information.
+   ============================================================ */
+
+@keyframes pg-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.38;
+  }
+}
+
+.pg-presence-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.pg-presence-dot--working {
+  animation: pg-breathe var(--pg-duration-breathe) var(--pg-ease-peergent) infinite;
+}
+
+/* The Peer's mark turns slowly while she is working. One rotation per ~14s is
+   below the threshold that reads as "loading" — it reads as alive. */
+@keyframes pg-peer-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pg-peer-mark-orbit {
+  transform-origin: 50% 50%;
+  animation: pg-peer-orbit 14s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-peer-mark-orbit {
+    animation: none;
+  }
+}
+
+/* §8.1 Only a meaning change transitions, and only as a crossfade. */
+@keyframes pg-voice-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.pg-voice-enter {
+  animation: pg-voice-in var(--pg-duration-enter) var(--pg-ease-peergent) both;
+}
+
+/* §8 Element enter — new row, resolved decision. */
+@keyframes pg-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pg-item-enter {
+  animation: pg-item-in var(--pg-duration-enter) var(--pg-ease-peergent) both;
+}
+
+/* §8 Mode change — entering review mode. A place you go, not a layer. */
+@keyframes pg-mode-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pg-mode-enter {
+  animation: pg-mode-in var(--pg-duration-mode) var(--pg-ease-peergent) both;
+}
+
+/* §8 Card hover — interactive without shouting. */
+.pg-raise {
+  transition:
+    border-color var(--pg-duration-state) var(--pg-ease-peergent),
+    transform var(--pg-duration-state) var(--pg-ease-peergent);
+}
+
+.pg-raise:hover {
+  border-color: var(--pg-color-border);
+  transform: translateY(-2px);
+}
+
+/* §8 Approve — checkmark draws. Completion felt, not announced. */
+@keyframes pg-check-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.pg-check-draw {
+  stroke-dasharray: 24;
+  animation: pg-check-draw var(--pg-duration-enter) var(--pg-ease-peergent) both;
+}
+
+/* §8 Loading — skeleton at final dimensions. No spinner, ever. */
+@keyframes pg-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.pg-skeleton {
+  background: var(--pg-color-border-subtle);
+  border-radius: var(--pg-radius-sm);
+  animation: pg-skeleton-pulse 1.6s var(--pg-ease-peergent) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-presence-dot--working,
+  .pg-skeleton,
+  .pg-check-draw,
+  .pg-voice-enter,
+  .pg-item-enter,
+  .pg-mode-enter {
+    animation: none;
+  }
+
+  .pg-raise {
+    transition: none;
+  }
+
+  .pg-raise:hover {
+    transform: none;
+  }
+}

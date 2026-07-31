@@ -30,6 +30,8 @@ export type PeerAttentionItemViewModel = {
   whyItMatters: string;
   primaryActionLabel: string;
   href: string;
+  /** Stable identity for the owning engagement — match on this, never on title. */
+  projectId?: string;
   projectTitle?: string;
   ageLabel?: string;
   kind: "single" | "group";

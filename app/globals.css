@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./themes/peergent-tokens.css";
+@import "./themes/peergent-foundation.css";
 @import "./themes/peergent-transitions.css";
 
 :root {
