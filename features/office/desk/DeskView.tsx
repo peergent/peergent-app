@@ -6,9 +6,12 @@ import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/ui/cn";
 import {
   PgAskInput,
+  PgAttentionBand,
   PgAutonomyRequest,
   PgCard,
   PgDecisionCard,
+  PgMetricRow,
+  PgSectionHeader,
   PgSignalPanel,
 } from "@/components/design-system";
 import { peerAccentVar } from "@/lib/design-system/foundation";
@@ -79,19 +82,21 @@ function FocusPanel({
         style={{ background: `linear-gradient(180deg, ${accent}, transparent)` }}
       />
 
+      {/* Her accent appears here and on the next step. Nowhere else on the
+          page — that is what keeps it meaning "Emma is speaking". */}
       <p
-        className="text-[10.5px] font-medium tracking-[0.09em] uppercase"
+        className="pg-micro font-medium tracking-[0.09em] uppercase"
         style={{ color: accent }}
       >
         {focus.eyebrow}
       </p>
 
-      <h1 className="mt-[var(--pg-space-3)] max-w-[20ch] text-[26px] leading-[1.16] font-semibold tracking-[-0.02em] text-[var(--pg-color-text-primary)] sm:text-[30px] lg:text-[34px] lg:leading-[1.14] lg:tracking-[-0.025em]">
+      <h1 className="pg-display mt-[var(--pg-space-3)] max-w-[20ch] text-[var(--pg-color-text-primary)]">
         {focus.headline}
       </h1>
 
       {focus.detail ? (
-        <p className="mt-[var(--pg-space-4)] max-w-[46ch] text-[15px] leading-relaxed text-[var(--pg-color-text-secondary)]">
+        <p className="pg-voice mt-[var(--pg-space-5)] max-w-[48ch] text-[var(--pg-color-text-secondary)]">
           {focus.detail}
         </p>
       ) : null}
@@ -104,7 +109,7 @@ function FocusPanel({
               className={cn(
                 "pg-focus-premium inline-flex min-h-9 items-center gap-2",
                 "rounded-[var(--pg-radius-sm)] border border-[var(--pg-office-line-strong)]",
-                "bg-[var(--pg-office-inset)] px-4 text-[13.5px]",
+                "bg-[var(--pg-office-inset)] px-4 text-[var(--pg-type-body-sm)]",
                 "text-[var(--pg-color-text-primary)]",
                 "transition-colors duration-[var(--pg-duration-state)]",
                 "hover:bg-[var(--pg-office-panel-hover)]"
@@ -115,7 +120,7 @@ function FocusPanel({
             </Link>
           ) : null}
           {focus.meta ? (
-            <span className="text-[12.5px] text-[var(--pg-color-text-tertiary)]">
+            <span className="pg-meta text-[var(--pg-color-text-tertiary)]">
               {focus.meta}
             </span>
           ) : null}
@@ -215,19 +220,17 @@ export default function DeskView({
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[1180px] flex-col gap-[var(--pg-space-10)]"
+      className="mx-auto flex w-full max-w-[1180px] flex-col gap-[var(--pg-office-band-gap)]"
       data-testid="office-desk-view"
     >
-      {/* Decisions come before everything — they are the only thing that can
-          genuinely block the customer's day. */}
+      {/* What requires you — a band, above the page's subject, and absent
+          entirely when nothing is waiting. The absence is what keeps it
+          meaningful: a band that is always there becomes chrome. */}
       {model.decisions.length > 0 ? (
-        <section
-          className="flex flex-col gap-[var(--pg-space-3)]"
-          aria-label={copy.decisionsHeading(model.decisions.length)}
+        <PgAttentionBand
+          heading={copy.decisionsHeading(model.decisions.length)}
+          testId="desk-attention"
         >
-          <h2 className="text-[10.5px] font-medium tracking-[0.09em] text-[var(--pg-color-decision)] uppercase">
-            {copy.decisionsHeading(model.decisions.length)}
-          </h2>
           {model.decisions.map((decision) => (
             <PgDecisionCard
               key={decision.id}
@@ -240,7 +243,7 @@ export default function DeskView({
               testId={`desk-decision-${decision.id}`}
             />
           ))}
-        </section>
+        </PgAttentionBand>
       ) : null}
 
       {model.autonomyRequest ? (
@@ -264,6 +267,25 @@ export default function DeskView({
           </div>
           <NextStep briefing={briefing} accent={accent} beside />
         </div>
+      ) : null}
+
+      {/* The business in numbers.
+          Reach and leads outrank published and drafted, because marketing is
+          about improving the business rather than producing content. The row
+          is empty — not zeroed — when nothing is measured. */}
+      {briefing && briefing.kpis.length > 0 ? (
+        <section aria-label={briefing.copy.briefingHeading} data-testid="desk-kpis">
+          <PgMetricRow
+            metrics={briefing.kpis.map((kpi) => ({
+              id: kpi.id,
+              label: kpi.label,
+              value: kpi.value,
+              delta: kpi.delta,
+              methodology: kpi.methodology,
+              emphasis: kpi.emphasis,
+            }))}
+          />
+        </section>
       ) : null}
 
       {/* Anything else in flight, listed plainly beneath the anchor. */}
@@ -298,9 +320,7 @@ export default function DeskView({
           aria-label={briefing.copy.briefingHeading}
           data-testid="desk-briefing"
         >
-          <h2 className="text-[10.5px] font-medium tracking-[0.09em] text-[var(--pg-color-text-tertiary)] uppercase">
-            {briefing.copy.briefingHeading}
-          </h2>
+          <PgSectionHeader title={briefing.copy.briefingHeading} />
 
           <div
             className={cn(

@@ -12,6 +12,14 @@ export type PgTrendChartProps = {
   points: readonly { at: string; value: number }[];
   label: string;
   height?: number;
+  /**
+   * Line colour, as a CSS colour or `var(...)`. Defaults to the accent, which
+   * is correct when the chart plots something Emma is reporting on directly.
+   * A chart of production activity — volume, counts — is not her voice and
+   * should use `var(--pg-state-neutral)` instead, per the state colour
+   * contract: purple means "Emma is speaking," and a shape on an axis is not.
+   */
+  colorVar?: string;
   className?: string;
   testId?: string;
 };
@@ -20,6 +28,7 @@ export default function PgTrendChart({
   points,
   label,
   height = 120,
+  colorVar = "var(--pg-color-accent)",
   className,
   testId,
 }: PgTrendChartProps) {
@@ -67,11 +76,11 @@ export default function PgTrendChart({
           />
         ))}
 
-        <path d={area} fill="var(--pg-color-accent)" opacity={0.09} />
+        <path d={area} fill={colorVar} opacity={0.09} />
         <path
           d={line}
           fill="none"
-          stroke="var(--pg-color-accent)"
+          stroke={colorVar}
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
           strokeLinejoin="round"
@@ -79,7 +88,7 @@ export default function PgTrendChart({
         />
 
         {/* Emphasised endpoint — where the story currently ends. */}
-        <circle cx={last.x} cy={last.y} r={3} fill="var(--pg-color-accent)" />
+        <circle cx={last.x} cy={last.y} r={3} fill={colorVar} />
       </svg>
     </figure>
   );

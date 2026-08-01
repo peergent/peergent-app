@@ -127,6 +127,13 @@ export type PerformanceSignal = {
   benchmark: string | null;
 };
 
+/** Re-exported so views import one module. */
+export type {
+  PerformanceSectionModel,
+  PerformanceSectionMetric,
+  PerformanceSectionState,
+} from "./sections";
+
 export type PerformanceViewModel = {
   peerId: string;
   peerName: string;
@@ -139,6 +146,17 @@ export type PerformanceViewModel = {
   metrics: PerformanceMetric[];
   trend: PerformanceTrend;
   cuts: PerformanceCut[];
+  /**
+   * §4.5 The eight domain sections, each either reporting or honestly
+   * unavailable. Ordered for reading: outcomes first, production last,
+   * unavailable integrations after everything that can speak.
+   */
+  sections: import("./sections").PerformanceSectionModel[];
+  /**
+   * The highest-value outcomes across every reporting section, for the
+   * executive row. Never padded — an unmeasured business shows an empty row.
+   */
+  executive: import("./sections").PerformanceSectionMetric[];
   gaps: PerformanceGap[];
   signals: PerformanceSignal[];
   copy: PerformanceCopy;

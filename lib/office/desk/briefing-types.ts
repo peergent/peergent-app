@@ -71,6 +71,36 @@ export type BriefingPanel = {
 };
 
 /**
+ * A business figure on the Desk, ranked by what kind of fact it is.
+ *
+ * Marketing is not about publishing content; it is about improving the
+ * business. So the Desk separates the two and ranks them:
+ *
+ *   outcome    what happened to the business — reach, leads, revenue, return.
+ *              Reported by a connected source. Leads the page.
+ *   activity   what the Peer produced — published, campaigns completed.
+ *              Counted internally. Real, useful, and deliberately secondary.
+ *
+ * The distinction is not editorial: it maps exactly onto the Performance view
+ * model's own `source` field (`channel` vs `counted`), so nothing is
+ * reclassified here and nothing new is claimed.
+ */
+export type BriefingKpi = {
+  id: string;
+  label: string;
+  value: string;
+  /** Only ever present when a real prior period exists to compare against. */
+  delta: {
+    direction: "up" | "down" | "flat";
+    label: string;
+    /** False for cost-like figures, where a rise is not good news. */
+    upIsGood: boolean;
+  } | null;
+  methodology: string | null;
+  emphasis: "outcome" | "activity";
+};
+
+/**
  * §4.1 The Focus Anchor — the work context the customer should understand.
  *
  * This is a *third* concept, deliberately separate from the two it is
@@ -155,6 +185,11 @@ export type DeskBriefing = {
   rung: PresenceRung;
   /** Always present. The Desk never renders without a subject. */
   focus: DeskFocusAnchor;
+  /**
+   * The business, in numbers. Outcomes first, production second, and empty
+   * when nothing is measured — never padded to fill the row.
+   */
+  kpis: BriefingKpi[];
   panels: BriefingPanel[];
   nextStep: BriefingNextStep | null;
   changes: BriefingChange[];

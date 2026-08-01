@@ -311,9 +311,12 @@ describe("the Desk agrees with every page it summarises", () => {
   });
 
   it("shows no panel a destination would leave empty", () => {
+    // A panel earns its place with a reading, a number, or an explanation of
+    // what will appear. Performance carries only its reading now that the KPI
+    // band holds the figures, and that is the intended shape.
     for (const panel of briefing.panels) {
       expect(
-        panel.stats.length > 0 || panel.future !== null,
+        panel.headline.trim() !== "" || panel.stats.length > 0 || panel.future !== null,
         `${panel.id} is dead in the demo`
       ).toBe(true);
     }

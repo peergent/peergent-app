@@ -44,7 +44,7 @@ export type { PgBriefingSkeletonBlockProps } from "./PgBriefingSkeletonBlock";
 
 /* ---- Product Design Specification (frozen-v1) foundation ---- */
 export { default as PgCard } from "./PgCard";
-export type { PgCardProps } from "./PgCard";
+export type { PgCardProps, PgCardElevation } from "./PgCard";
 export { default as PgStatusPill } from "./PgStatusPill";
 export type { PgStatusPillProps } from "./PgStatusPill";
 export { default as PgSkeleton, PgSkeletonRows } from "./PgSkeleton";
@@ -108,3 +108,19 @@ export type {
 
 export { default as PgChartFrame } from "./PgChartFrame";
 export type { PgChartFrameProps } from "./PgChartFrame";
+
+export { default as PgMetric } from "./PgMetric";
+export type {
+  PgMetricProps,
+  PgMetricEmphasis,
+  PgMetricDirection,
+} from "./PgMetric";
+
+export { default as PgMetricRow } from "./PgMetricRow";
+export type { PgMetricRowProps, PgMetricRowDensity } from "./PgMetricRow";
+
+export { default as PgAttentionBand } from "./PgAttentionBand";
+export type { PgAttentionBandProps, PgAttentionTone } from "./PgAttentionBand";
+
+export { default as PgSectionHeader } from "./PgSectionHeader";
+export type { PgSectionHeaderProps, PgSectionHeaderLevel } from "./PgSectionHeader";

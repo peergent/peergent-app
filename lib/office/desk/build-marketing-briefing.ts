@@ -11,10 +11,12 @@ import type {
   BriefingNextStep,
   BriefingPanel,
   BriefingStat,
+  BriefingKpi,
   DeskBriefing,
   DeskFocusAnchor,
 } from "./briefing-types";
 import type { WorkViewModel } from "../work/types";
+import type { PerformanceViewModel } from "../performance/types";
 import type { DeskViewModel } from "./types";
 
 /**
@@ -175,6 +177,62 @@ function buildFocusAnchor(
     ctaLabel: null,
     meta: null,
   };
+}
+
+/**
+ * Metrics where a rise is not good news.
+ *
+ * Without this the palette would congratulate a climbing cost-per-acquisition
+ * in the same green it uses for climbing revenue. Keyed by the stable metric
+ * id, so a source that starts reporting spend is handled the day it arrives.
+ */
+const COST_LIKE_METRICS = new Set([
+  "spend",
+  "cpa",
+  "cpc",
+  "campaign_cpa",
+  "meta_spend",
+  "google_spend",
+]);
+
+/**
+ * The business in numbers, ranked outcome-first.
+ *
+ * Reads `performance.metrics` — which has already passed §4.5's grounding gate
+ * — and sorts by what kind of fact each one is. Nothing is added, nothing is
+ * recomputed, and an unmeasured business produces an empty row rather than a
+ * row of zeroes.
+ */
+function buildKpis(performance: PerformanceViewModel): BriefingKpi[] {
+  const toKpi = (
+    metric: PerformanceViewModel["metrics"][number],
+    emphasis: BriefingKpi["emphasis"]
+  ): BriefingKpi => ({
+    id: metric.id,
+    label: metric.label,
+    value: metric.value,
+    delta: metric.comparison
+      ? {
+          direction: metric.comparison.direction,
+          label: metric.comparison.label,
+          upIsGood: !COST_LIKE_METRICS.has(metric.id),
+        }
+      : null,
+    methodology: metric.methodology,
+    emphasis,
+  });
+
+  const outcomes = performance.metrics
+    .filter((metric) => metric.source === "channel")
+    .map((metric) => toKpi(metric, "outcome"));
+
+  const activity = performance.metrics
+    .filter((metric) => metric.source !== "channel")
+    .map((metric) => toKpi(metric, "activity"));
+
+  // Outcomes always lead. Activity fills whatever room is left, so a workspace
+  // with nothing connected still shows what she genuinely produced.
+  return [...outcomes, ...activity].slice(0, 4);
 }
 
 export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
@@ -527,9 +585,24 @@ export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
     };
   }
 
+  const kpis = buildKpis(performance);
+
+  // The KPI band now carries the business figures at full weight. A panel that
+  // repeats them makes the page say the same thing twice and costs the reader
+  // a second pass to discover it learned nothing. The panel keeps what the band
+  // cannot express — her reading of what the numbers mean.
+  const promoted = new Set(kpis.map((kpi) => kpi.id));
+  for (const panel of panels) {
+    const remaining = panel.stats.filter((stat) => !promoted.has(stat.id));
+    if (remaining.length !== panel.stats.length) {
+      panel.stats = remaining;
+    }
+  }
+
   return {
     rung: input.desk.presence?.rung ?? "orientation",
     focus: buildFocusAnchor(input.desk, work, nl),
+    kpis,
     panels,
     nextStep,
     changes: input.desk.completed.map((item) => ({

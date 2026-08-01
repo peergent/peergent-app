@@ -107,12 +107,17 @@ describe("the briefing reports on every part of her job", () => {
     }
   });
 
-  it("never leaves a panel with neither a number nor an explanation", () => {
-    // This is the "no dead page" rule: a panel that cannot show data must say
-    // what it will show, or it becomes the empty state the Desk exists to kill.
+  it("never leaves a panel without something specific to say", () => {
+    // The "no dead page" rule. Originally this meant a number or a promise,
+    // but once the KPI band took the business figures the Performance panel
+    // was left carrying only her reading of them — which is the most valuable
+    // thing on it, not an absence. What must never happen is a panel that
+    // renders as an empty box, so the bar is: a real sentence, or a number, or
+    // an explanation of what will appear.
     for (const domainInput of [empty, lived]) {
       for (const panel of briefingFor(domainInput).panels) {
-        const hasSomething = panel.stats.length > 0 || panel.future !== null;
+        const hasSomething =
+          panel.headline.trim() !== "" || panel.stats.length > 0 || panel.future !== null;
         expect(hasSomething, `${panel.id} would render as a dead panel`).toBe(true);
       }
     }
@@ -152,6 +157,67 @@ describe("the briefing cannot say more than its destination would", () => {
       if (!panel.future) continue;
       expect(panel.future.promise.trim()).not.toBe("");
       expect(panel.future.unlocks.trim()).not.toBe("");
+    }
+  });
+});
+
+describe("business outcomes outrank production activity", () => {
+  it("puts every channel-reported outcome ahead of every internal count", () => {
+    // Marketing is about improving the business, not about publishing content.
+    // Reach and leads are outcomes a source reported; published and drafted are
+    // things we can count without help. The ranking must be structural, not a
+    // matter of which happened to be built first.
+    const kpis = briefingFor(lived).kpis;
+    const lastOutcome = kpis.map((k) => k.emphasis).lastIndexOf("outcome");
+    const firstActivity = kpis.map((k) => k.emphasis).indexOf("activity");
+
+    if (lastOutcome !== -1 && firstActivity !== -1) {
+      expect(lastOutcome).toBeLessThan(firstActivity);
+    }
+  });
+
+  it("never pads the row to fill it", () => {
+    // An empty tile reads as a broken integration — a claim about the
+    // customer's setup we have no business making.
+    for (const domainInput of [empty, lived]) {
+      for (const kpi of briefingFor(domainInput).kpis) {
+        expect(kpi.value.trim()).not.toBe("");
+        expect(kpi.label.trim()).not.toBe("");
+      }
+    }
+  });
+
+  it("only claims an improvement when a real comparison exists", () => {
+    for (const kpi of briefingFor(lived).kpis) {
+      if (kpi.delta === null) continue;
+      expect(["up", "down", "flat"]).toContain(kpi.delta.direction);
+      expect(kpi.delta.label.trim()).not.toBe("");
+    }
+  });
+
+  it("never states the same figure twice on one page", () => {
+    // The band and the panels are two views of one workspace. A number in both
+    // makes the page repeat itself, which reads as noise rather than emphasis.
+    const briefing = briefingFor(lived);
+    const inBand = new Set(briefing.kpis.map((kpi) => kpi.id));
+    for (const panel of briefing.panels) {
+      for (const stat of panel.stats) {
+        expect(
+          inBand.has(stat.id),
+          `"${stat.id}" appears in both the KPI band and the ${panel.id} panel`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("shows no figure Performance itself withheld", () => {
+    const performance = buildMarketingPerformanceViewModelForOffice({
+      domainInput: lived,
+      ...base,
+    });
+    const allowed = new Set(performance.metrics.map((m) => m.id));
+    for (const kpi of briefingFor(lived).kpis) {
+      expect(allowed.has(kpi.id), `${kpi.id} is not a Performance metric`).toBe(true);
     }
   });
 });

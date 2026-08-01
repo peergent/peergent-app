@@ -32,6 +32,7 @@ import type { DeskViewModel } from "@/lib/office/desk/types";
 import type { WorkViewModel } from "@/lib/office/work/types";
 import type { DeskBriefing } from "@/lib/office/desk/briefing-types";
 import type { PerformanceViewModel } from "@/lib/office/performance/types";
+import { buildPerformanceSections } from "@/lib/office/performance/sections";
 
 /**
  * Local-only render harness for the Office shell, Desk and Work.
@@ -158,6 +159,11 @@ const briefingCopy: DeskBriefing["copy"] = {
 /** A workspace with real history: every panel has something to report. */
 const briefingLived: DeskBriefing = {
   rung: "observation",
+  kpis: [
+    { id: "reach", label: "Bereik", value: "18.420", delta: { direction: "up", label: "+18%", upIsGood: true }, methodology: "Gerapporteerd door een gekoppelde bron.", emphasis: "outcome" },
+    { id: "leads", label: "Leads", value: "63", delta: { direction: "up", label: "+12%", upIsGood: true }, methodology: "Gerapporteerd door een gekoppelde bron.", emphasis: "outcome" },
+    { id: "published", label: "Gepubliceerd", value: "6", delta: null, methodology: "Geteld op basis van wat er live ging.", emphasis: "activity" },
+  ],
   focus: {
     source: "preparing",
     eyebrow: "What I'm working on",
@@ -250,6 +256,7 @@ const briefingLived: DeskBriefing = {
 /** Day one: nothing has happened yet, and every panel has to earn its place. */
 const briefingEarly: DeskBriefing = {
   rung: "orientation",
+  kpis: [],
   focus: {
     source: "recommendation",
     eyebrow: "Where I'd start",
@@ -484,6 +491,18 @@ const performanceEarly: PerformanceViewModel = {
   ],
   trend: null,
   cuts: [],
+  // A live-shaped workspace with nothing connected. Built through the real
+  // section builder rather than hand-rolled, so the harness cannot show a
+  // shape the product would not produce.
+  sections: buildPerformanceSections({
+    peerId: PEER.id,
+    locale: "en",
+    connections: [],
+    storedMetrics: [],
+    countedMetrics: {},
+    agreementHref: "/office/preview/agreement",
+  }),
+  executive: [],
   gaps: [
     {
       id: "reach",

@@ -23,13 +23,20 @@
   --pg-ease-peergent: cubic-bezier(0.2, 0.6, 0.2, 1);
 
   /* §2 Type scale */
-  --pg-type-display: 44px;
-  --pg-type-display-sm: 32px;
+  /* Fluid so the tier itself scales, rather than call sites pairing a base
+     class with a `lg:` variant — Tailwind cannot generate a variant of a plain
+     CSS class, so those silently do nothing. */
+  --pg-type-display: clamp(28px, 5vw, 44px);
+  --pg-type-display-sm: clamp(24px, 4vw, 32px);
   --pg-type-metric: 32px;
   --pg-type-section: 19px;
   --pg-type-voice: 16px;
   --pg-type-body: 15px;
   --pg-type-body-sm: 14px;
+  /* The two tiers the Office was improvising with 11/11.5/12/12.5/13/13.5.
+     Half-pixel steps are invisible: they cost hierarchy and buy nothing. */
+  --pg-type-meta: 13px;
+  --pg-type-micro: 11px;
   --pg-type-label: 10.5px;
 
   --pg-weight-display: 640;
@@ -48,12 +55,22 @@
   --pg-office-section-gap: var(--pg-space-8);
   --pg-office-card-gap: var(--pg-space-3);
   --pg-presence-height: 56px;
+
+  /* Macro rhythm.
+     Two thirds of Office spacing was 8px or 12px, which gives fine control
+     inside a block and none between blocks — the reason the page reads as one
+     continuous density. These are the steps that separate movements. */
+  --pg-office-band-gap: var(--pg-space-12);   /* 48px — between page bands   */
+  --pg-office-band-gap-lg: var(--pg-space-16); /* 64px — around the hero      */
+  --pg-office-block-gap: var(--pg-space-6);   /* 24px — within a band        */
 }
 
 @media (max-width: 640px) {
   :root {
     --pg-office-gutter: var(--pg-space-4);
     --pg-office-section-gap: var(--pg-space-6);
+    --pg-office-band-gap: var(--pg-space-8);
+    --pg-office-band-gap-lg: var(--pg-space-10);
   }
 }
 
@@ -227,6 +244,71 @@
 
 .pg-measure {
   max-width: var(--pg-measure);
+}
+
+/* ============================================================
+   State colour contract.
+
+   71% of Office colour was accent purple, which made purple mean "Peergent
+   exists" rather than anything a reader can act on. Meanwhile --pg-color-error
+   was defined and used exactly zero times — the single strongest signal in the
+   palette, unused.
+
+   Colour is a claim. Each of these means one thing and is used for nothing
+   else:
+
+     positive   a measured improvement, and only ever with a real comparison
+                behind it. A count is not an improvement.
+     attention  needs the customer. The existing decision amber.
+     critical   something is broken. Reserved for genuine faults.
+     neutral    information, provenance, methodology. Carries no judgement.
+     voice      Emma is speaking. Her accent, and nothing decorative.
+
+   Anything that does not make one of those five claims stays greyscale.
+   ============================================================ */
+
+:root {
+  --pg-state-positive: var(--pg-color-success);
+  --pg-state-attention: var(--pg-color-decision);
+  --pg-state-critical: var(--pg-color-error);
+  --pg-state-neutral: var(--pg-color-info);
+  --pg-state-voice: var(--pg-color-accent);
+
+  /* Soft fills for the same five, for backgrounds and rails. */
+  --pg-state-positive-soft: color-mix(in srgb, var(--pg-state-positive) 14%, transparent);
+  --pg-state-attention-soft: var(--pg-color-decision-soft);
+  --pg-state-critical-soft: color-mix(in srgb, var(--pg-state-critical) 14%, transparent);
+  --pg-state-neutral-soft: color-mix(in srgb, var(--pg-state-neutral) 14%, transparent);
+  --pg-state-voice-soft: color-mix(in srgb, var(--pg-state-voice) 14%, transparent);
+
+  /* Hairlines. */
+  --pg-state-positive-line: color-mix(in srgb, var(--pg-state-positive) 32%, transparent);
+  --pg-state-attention-line: var(--pg-color-decision-line);
+  --pg-state-critical-line: color-mix(in srgb, var(--pg-state-critical) 32%, transparent);
+  --pg-state-neutral-line: color-mix(in srgb, var(--pg-state-neutral) 32%, transparent);
+}
+
+/* ============================================================
+   Type tiers the Office was improvising.
+   ============================================================ */
+
+.pg-meta {
+  font-size: var(--pg-type-meta);
+  line-height: 1.5;
+  color: var(--pg-color-text-secondary);
+  margin: 0;
+}
+
+.pg-micro {
+  font-size: var(--pg-type-micro);
+  line-height: 1.45;
+  color: var(--pg-color-text-tertiary);
+  margin: 0;
+}
+
+/* Metadata that is a number: timestamps, counts, deltas. */
+.pg-micro--num {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================

@@ -3,6 +3,7 @@ import { buildMarketingPerformanceViewModel } from "@/lib/peer-experience/market
 import { deriveProjectStatus } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { resolveProjectIdForDraft } from "../attribution";
 import { officeHref } from "../links";
+import { buildPerformanceSections } from "./sections";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingContentDraft } from "@/lib/marketing-intelligence";
 import { groundPerformancePresence, keepGroundedSignals } from "./grounding";
@@ -337,6 +338,42 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
 
   const metrics: PerformanceMetric[] = [...countedMetrics, ...channelMetrics].slice(0, 4);
 
+  /* ---- The eight domain sections ---------------------------------------
+   * Assembled against PERFORMANCE_PAGE_SECTIONS from stored snapshots keyed by
+   * metricKey, so the Office surfaces every metric the domain models rather
+   * than the six the old label-matching allowlist happened to catch.
+   *
+   * The internally counted figures are the ones already counted honestly
+   * elsewhere on this page — publication volume and completed campaigns. No
+   * estimate is passed in: `hours_saved` is deliberately absent, because the
+   * only producer for it multiplies completed work by 45 minutes, and §12
+   * forbids surfacing a number that feels good and cannot be defended.
+   */
+  const sections = buildPerformanceSections({
+    peerId,
+    locale,
+    connections: domainInput.connections,
+    storedMetrics: domainInput.storedMetrics ?? [],
+    countedMetrics: {
+      content_published: String(publishedThisPeriod.length),
+      tasks_completed: String(completedThisPeriod.length),
+    },
+    agreementHref: officeHref(peerId, "agreement"),
+  });
+
+  // The executive row takes the strongest outcomes across everything that is
+  // genuinely reporting. Production activity never enters it: it has its own
+  // section at the foot of the page.
+  const executive = sections
+    .flatMap((section) => section.metrics)
+    .filter((metric) => metric.kind === "outcome")
+    .sort((a, b) => a.priority - b.priority)
+    .filter(
+      (metric, index, all) =>
+        all.findIndex((other) => other.key === metric.key) === index
+    )
+    .slice(0, 4);
+
   // ---- Trend: only drawn when there is something real to draw ------------
   //
   // Plotted as volume per bucket rather than a running total. A cumulative
@@ -577,6 +614,8 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
     metrics,
     trend,
     cuts,
+    sections,
+    executive,
     gaps,
     signals,
     copy,

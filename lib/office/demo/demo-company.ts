@@ -980,19 +980,62 @@ function storedMetrics(now: Date, peerId: string, locale: DemoLocale): MetricSna
     recordedAt,
   });
 
-  // These labels are join keys, not copy: the executive metric resolver matches
-  // a stored metric to its definition by looking for "reach", "leads",
-  // "revenue" and "roi" inside the label. Translating them here silently broke
-  // the join and dropped three of the four channel figures. The Dutch labels a
-  // customer actually reads are applied by id at the Office presentation
-  // boundary instead.
+  // Snapshots are keyed by `metricKey`, which is what the Office resolves on.
+  // The label is display text for surfaces that show it raw.
+  //
+  // These are the figures a connected source would return for a workspace this
+  // size: six published pieces over four weeks, four of them on LinkedIn, one
+  // paid campaign just live. The ratios are deliberately ordinary — a demo
+  // showing a 40% conversion rate teaches a prospect to distrust everything
+  // else on the screen.
+  //
+  // Every provider here is `connected` in `connections()`. Instagram and
+  // Search Console are not, so nothing is authored for them: those sections
+  // must render as honest connection opportunities, which is half of what the
+  // demo exists to show.
   const decimal = locale === "nl" ? "," : ".";
+  const money = (whole: string) => `€ ${whole}`;
 
   return [
-    metric("m-reach", "linkedin", "reach", "Reach", "18.420", null),
+    /* ---- Attribution: the question an owner asks first ------------------ */
+    metric("m-revenue", "hubspot", "attributed_revenue", "Revenue influenced", money("41.200"), null),
+    metric("m-attr-leads", "hubspot", "attributed_leads", "Attributed leads", "48", null),
+
+    /* ---- Overview ------------------------------------------------------- */
     metric("m-leads", "hubspot", "leads", "Leads", "63", null),
-    metric("m-revenue", "hubspot", "revenue", "Revenue influenced", "€ 41.200", null),
-    metric("m-roi", "ga4", "roi", "ROI", `3${decimal}2×`, null),
+    metric("m-reach", "ga4", "reach", "Reach", "18.420", null),
+    metric("m-engagement", "linkedin", "engagement", "Engagement", "1.284", null),
+
+    /* ---- Channels ------------------------------------------------------- */
+    metric("m-li-reach", "linkedin", "linkedin_reach", "LinkedIn reach", "12.960", null),
+    metric("m-google-spend", "google_ads", "google_spend", "Google Ads spend", money("1.840"), null),
+
+    /* ---- Campaigns ------------------------------------------------------ */
+    metric("m-camp-roas", "google_ads", "campaign_roas", "Campaign ROAS", `3${decimal}2×`, null),
+    metric("m-camp-leads", "google_ads", "campaign_leads", "Campaign leads", "21", null),
+    metric("m-camp-cpa", "google_ads", "campaign_cpa", "Campaign CPA", money("87"), null),
+
+    /* ---- Paid media -----------------------------------------------------
+     * Account-level, across all paid activity. Deliberately different from the
+     * campaign figures above: the Q4 push outperforms the account average,
+     * which is the whole reason she singles it out. Identical values in both
+     * sections would read as the page repeating itself.
+     */
+    metric("m-roas", "google_ads", "roas", "ROAS", `2${decimal}8×`, null),
+    metric("m-ctr", "google_ads", "ctr", "CTR", `4${decimal}1`, "%"),
+    metric("m-cpc", "google_ads", "cpc", "CPC", money(`1${decimal}94`), null),
+    metric("m-cpa", "google_ads", "cpa", "CPA", money("94"), null),
+
+    /* ---- Content -------------------------------------------------------- */
+    metric("m-content-clicks", "ga4", "content_clicks", "Content clicks", "2.106", null),
+    metric("m-content-eng", "linkedin", "content_engagement", "Content engagement", "912", null),
+
+    /* ---- Deliberately absent -------------------------------------------
+     * seo_clicks / seo_impressions / seo_rankings — Search Console is not
+     * connected, so Organic visibility must render as an opportunity.
+     * instagram_reach — Instagram is not connected either.
+     * hours_saved — the only producer is an estimate, and §12 forbids it.
+     * -------------------------------------------------------------------- */
   ];
 }
 
