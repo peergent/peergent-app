@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type {
   PerformanceSectionMetric,
   PerformanceSectionModel,
+  PerformanceTrend,
+  PerformanceTrendPoint,
   PerformanceViewModel,
 } from "@/lib/office/performance/types";
 
@@ -12,42 +15,57 @@ export type VisionPerformanceViewProps = {
   locale?: string | null;
 };
 
-function MiniSpark() {
-  return (
-    <svg viewBox="0 0 120 48" preserveAspectRatio="none" aria-hidden className="h-full w-full">
-      <path
-        className="pg-v13-trend-area"
-        d="M0 38 L30 32 L60 34 L90 22 L120 18 L120 48 L0 48 Z"
-      />
-      <path className="pg-v13-trend-line" d="M0 38 L30 32 L60 34 L90 22 L120 18" />
-    </svg>
-  );
-}
+type SparkVariant = "primary" | "secondary";
 
-function TrendSpark({ points }: { points: { value: number }[] }) {
-  if (points.length < 2) return <MiniSpark />;
+function buildSparkGeometry(points: PerformanceTrendPoint[], width: number, height: number) {
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-  const w = 320;
-  const h = 120;
-  const step = w / (points.length - 1);
-  const coords = points.map((p, i) => {
-    const x = i * step;
-    const y = h - 15 - ((p.value - min) / range) * (h - 30);
-    return `${x},${y}`;
+  const step = width / (points.length - 1);
+  const coords = points.map((point, index) => {
+    const x = index * step;
+    const y = height - 15 - ((point.value - min) / range) * (height - 30);
+    return { x, y };
   });
-  const line = coords.join(" L");
-  const area = `M${line} L${w},${h} L0,${h} Z`;
+  const line = coords.map((coord) => `${coord.x},${coord.y}`).join(" L");
+  const area = `M${line} L${width},${height} L0,${height} Z`;
+  const last = coords[coords.length - 1];
+  return { line, area, last };
+}
+
+function TrendSpark({
+  points,
+  large = false,
+  variant = "primary",
+}: {
+  points: PerformanceTrendPoint[];
+  large?: boolean;
+  variant?: SparkVariant;
+}) {
+  if (points.length < 2) return null;
+
+  const width = large ? 320 : 120;
+  const height = large ? 120 : 48;
+  const { line, area, last } = buildSparkGeometry(points, width, height);
+  const areaClass =
+    variant === "secondary" ? "pg-v13-trend-area pg-v13-trend-area--b" : "pg-v13-trend-area";
+  const lineClass =
+    variant === "secondary" ? "pg-v13-trend-line pg-v13-trend-line--b" : "pg-v13-trend-line";
+  const ptClass = variant === "secondary" ? "pg-v13-trend-pt pg-v13-trend-pt--b" : "pg-v13-trend-pt";
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden className="h-full w-full">
-      <line className="pg-v13-grid-line" x1="0" y1="15" x2={w} y2="15" />
-      <line className="pg-v13-grid-line" x1="0" y1="50" x2={w} y2="50" />
-      <line className="pg-v13-grid-line" x1="0" y1="85" x2={w} y2="85" />
-      <path className="pg-v13-trend-area" d={area} />
-      <path className="pg-v13-trend-line" d={`M${line}`} />
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden className="h-full w-full">
+      {large ? (
+        <>
+          <line className="pg-v13-grid-line" x1="0" y1="15" x2={width} y2="15" />
+          <line className="pg-v13-grid-line" x1="0" y1="50" x2={width} y2="50" />
+          <line className="pg-v13-grid-line" x1="0" y1="85" x2={width} y2="85" />
+        </>
+      ) : null}
+      <path className={areaClass} d={area} />
+      <path className={lineClass} d={`M${line}`} />
+      {last ? <circle className={ptClass} cx={last.x} cy={last.y} r={large ? 3.5 : 2.5} /> : null}
     </svg>
   );
 }
@@ -56,17 +74,16 @@ function TrendCard({
   metric,
   large = false,
   trend,
-  fallbackDelta,
+  variant = "primary",
 }: {
   metric: PerformanceSectionMetric;
   large?: boolean;
-  trend?: PerformanceViewModel["trend"];
-  fallbackDelta?: string;
+  trend?: PerformanceTrend;
+  variant?: SparkVariant;
 }) {
   const delta = metric.delta;
-  const deltaLabel = delta
-    ? `${delta.direction === "down" ? "▼" : "▲"} ${delta.label}`
-    : fallbackDelta;
+  const deltaLabel = delta ? `${delta.direction === "down" ? "▼" : "▲"} ${delta.label}` : null;
+  const chartPoints = trend && trend.points.length >= 2 ? trend.points : null;
 
   return (
     <div className={large ? "pg-v13-trend-card" : "pg-v13-trend-card pg-v13-trend-card--sm"}>
@@ -88,22 +105,31 @@ function TrendCard({
         </div>
         <div className="pg-v13-trend-cap">{metric.sourceLabel}</div>
       </div>
-      <div className={large ? "pg-v13-trend-chart" : "pg-v13-trend-chart pg-v13-trend-chart--mini"}>
-        {large && trend?.points.length ? <TrendSpark points={trend.points} /> : <MiniSpark />}
-        {large ? (
-          <div className="pg-v13-trend-x">
-            <span>W1</span>
-            <span>W2</span>
-            <span>W3</span>
-            <span>W4</span>
-          </div>
-        ) : null}
-      </div>
+      {chartPoints ? (
+        <div className={large ? "pg-v13-trend-chart" : "pg-v13-trend-chart pg-v13-trend-chart--mini"}>
+          <TrendSpark points={chartPoints} large={large} variant={variant} />
+          {large ? (
+            <div className="pg-v13-trend-x">
+              <span>Week 1</span>
+              <span>Week 2</span>
+              <span>Week 3</span>
+              <span>Week 4</span>
+            </div>
+          ) : (
+            <div className="pg-v13-trend-x">
+              <span>W1</span>
+              <span>W2</span>
+              <span>W3</span>
+              <span>W4</span>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function channelIconStyle(sourceLabel: string): React.CSSProperties {
+function channelIconStyle(sourceLabel: string): CSSProperties {
   const lower = sourceLabel.toLowerCase();
   if (lower.includes("linkedin")) return { background: "#0A66C2" };
   if (lower.includes("google ads")) return { background: "#EFAA53", color: "#14151F" };
@@ -137,20 +163,8 @@ function ChannelCard({ section }: { section: PerformanceSectionModel }) {
   );
 }
 
-function pickKpi(
-  executive: PerformanceSectionMetric[],
-  keys: string[],
-  fallback: PerformanceSectionMetric
-): PerformanceSectionMetric {
-  for (const key of keys) {
-    const found = executive.find((m) => m.key.includes(key));
-    if (found) return found;
-  }
-  return fallback;
-}
-
 /**
- * Vision v13 Resultaten — matches docs/reference/peergent-vision-v13 mockup mkt-resultaten.
+ * Vision v13 Resultaten — grounded metrics only; charts render when real series exist.
  */
 export default function VisionPerformanceView({ model, locale }: VisionPerformanceViewProps) {
   const nl = locale === "nl";
@@ -166,40 +180,7 @@ export default function VisionPerformanceView({ model, locale }: VisionPerforman
         text: `${m.value} ${m.label.toLowerCase()}`,
       }));
 
-  const executive = model.executive;
-  const revenue = pickKpi(executive, ["revenue", "attributed_revenue"], executive[0] ?? {
-    key: "revenue",
-    label: nl ? "Beïnvloede omzet" : "Influenced revenue",
-    value: "€41.200",
-    kind: "outcome",
-    upIsGood: true,
-    sourceLabel: "HubSpot · vs vorige 30 dagen",
-    methodology: "",
-    delta: { direction: "up", label: "18,4%" },
-    priority: 0,
-  });
-  const reach = pickKpi(executive, ["reach"], executive[1] ?? {
-    key: "reach",
-    label: nl ? "Bereik" : "Reach",
-    value: "18.420",
-    kind: "outcome",
-    upIsGood: true,
-    sourceLabel: "GA4",
-    methodology: "",
-    delta: { direction: "up", label: "7,2%" },
-    priority: 1,
-  });
-  const leads = pickKpi(executive, ["lead"], executive[2] ?? {
-    key: "leads",
-    label: nl ? "Leads" : "Leads",
-    value: "48",
-    kind: "outcome",
-    upIsGood: true,
-    sourceLabel: "HubSpot",
-    methodology: "",
-    delta: { direction: "up", label: "11%" },
-    priority: 2,
-  });
+  const executive = model.executive.filter((metric) => metric.kind === "outcome").slice(0, 3);
 
   const channelSections = [
     reporting.find((s) => s.id === "channels"),
@@ -208,9 +189,7 @@ export default function VisionPerformanceView({ model, locale }: VisionPerforman
     reporting.find((s) => s.id === "attribution"),
   ].filter(Boolean) as PerformanceSectionModel[];
 
-  const channelCards = channelSections.length
-    ? channelSections
-    : reporting.slice(0, 4);
+  const channelCards = channelSections.length ? channelSections : reporting.slice(0, 4);
 
   return (
     <div data-testid="office-performance-view">
@@ -259,14 +238,24 @@ export default function VisionPerformanceView({ model, locale }: VisionPerforman
         </div>
       ) : null}
 
-      <p className="pg-v13-sec-label">
-        {nl ? "Belangrijkste trends — 30 dagen" : model.copy.trendHeading}
-      </p>
-      <div className="pg-v13-trend-grid pg-v13-sec">
-        <TrendCard metric={revenue} large trend={model.trend} fallbackDelta="▲ 18,4%" />
-        <TrendCard metric={reach} fallbackDelta="▲ 7,2%" />
-        <TrendCard metric={leads} fallbackDelta="▲ 11%" />
-      </div>
+      {executive.length > 0 ? (
+        <>
+          <p className="pg-v13-sec-label">
+            {nl ? "Belangrijkste trends — 30 dagen" : model.copy.trendHeading}
+          </p>
+          <div className="pg-v13-trend-grid pg-v13-sec">
+            {executive.map((metric, index) => (
+              <TrendCard
+                key={metric.key}
+                metric={metric}
+                large={index === 0}
+                trend={index === 0 ? model.trend : null}
+                variant={index === 1 ? "secondary" : "primary"}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {channelCards.length > 0 ? (
         <section className="pg-v13-sec">

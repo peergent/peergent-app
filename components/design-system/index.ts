@@ -68,6 +68,8 @@ export type { PgOfficeShellProps } from "./PgOfficeShell";
 export { default as PgVisionShell } from "./PgVisionShell";
 export type { PgVisionShellProps } from "./PgVisionShell";
 export { default as PgVisionModal } from "./PgVisionModal";
+export { default as PgVisionFormModal } from "./PgVisionFormModal";
+export type { PgVisionFormModalProps } from "./PgVisionFormModal";
 export { default as PgCampaignWorkspaceModal } from "./PgCampaignWorkspaceModal";
 export { default as PgContentPreviewModal } from "./PgContentPreviewModal";
 export { default as PgMarketInsights } from "./PgMarketInsights";

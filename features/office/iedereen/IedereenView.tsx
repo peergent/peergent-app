@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import type { HandoffHomeState } from "@/hooks/useHandoffHome";
 import { activitySourcesFromMarketingSnapshots } from "@/lib/home";
@@ -85,21 +84,18 @@ export default function IedereenView({
   const localePreference = customerLocalePreferenceFromEnv();
   const v17Copy = getV17CommandCenterCopy(localePreference);
 
-  const model = useMemo(() => {
-    if (!handoff) return null;
-    return buildV17CommandCenterViewModel({
-      viewModel,
-      handoff,
-      copy,
-      activitySources: activitySourcesFromMarketingSnapshots(marketingSnapshots),
-      formatRelativeTime: (iso) => formatHomeRelativeTime(iso, copy),
-      localePreference,
-      canonicalPeers,
-      marketingSnapshots,
-    });
-  }, [handoff, viewModel, copy, marketingSnapshots, localePreference, canonicalPeers]);
+  if (!handoff) return null;
 
-  if (!handoff || !model) return null;
+  const model = buildV17CommandCenterViewModel({
+    viewModel,
+    handoff,
+    copy,
+    activitySources: activitySourcesFromMarketingSnapshots(marketingSnapshots),
+    formatRelativeTime: (iso) => formatHomeRelativeTime(iso, copy),
+    localePreference,
+    canonicalPeers,
+    marketingSnapshots,
+  });
 
   const nl = localePreference === "nl";
   const waitingTitle =

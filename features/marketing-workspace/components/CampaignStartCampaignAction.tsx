@@ -10,7 +10,7 @@ import {
   presentCampaignStartFeedback,
   type CampaignStartFeedback,
 } from "../lib/campaign-start-action-presenter";
-import MwModal from "./MwModal";
+import MarketingVisionModal from "./MarketingVisionModal";
 
 export type CampaignStartCampaignActionProps = {
   projectId: string;
@@ -22,6 +22,7 @@ export type CampaignStartCampaignActionProps = {
   onStartCampaignExecution: (projectId: string) => Promise<CampaignExecutionWorkspaceResult>;
   buttonLabel?: string;
   className?: string;
+  presentation?: "default" | "v17";
 };
 
 export default function CampaignStartCampaignAction({
@@ -34,7 +35,9 @@ export default function CampaignStartCampaignAction({
   onStartCampaignExecution,
   buttonLabel: buttonLabelOverride,
   className,
+  presentation = "default",
 }: CampaignStartCampaignActionProps) {
+  const isV17 = presentation === "v17";
   const feedbackId = useId();
   const pendingRef = useRef(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -130,7 +133,7 @@ export default function CampaignStartCampaignAction({
         </p>
       ) : null}
 
-      <MwModal
+      <MarketingVisionModal
         open={confirmOpen}
         onClose={() => {
           if (pending) return;
@@ -140,8 +143,10 @@ export default function CampaignStartCampaignAction({
         subtitle="Peergent will create campaign work items for your team."
         closeOnEscape={!pending}
         closeOnOverlayClick={!pending}
+        presentation={presentation}
+        testId="mw-campaign-start-modal"
       >
-        <div className="mw-modal-body">
+        <div className={isV17 ? undefined : "mw-modal-body"}>
           <ul className="mw-campaign-meta" style={{ marginBottom: 16 }}>
             <li>Work items will be added to this campaign.</li>
             <li>Nothing will be published automatically.</li>
@@ -150,10 +155,14 @@ export default function CampaignStartCampaignAction({
               {approvalModeLabel ? `: ${approvalModeLabel}` : "."}
             </li>
           </ul>
-          <div className="mw-modal-actions">
+          <div className={isV17 ? "pg-v13-form-actions" : "mw-modal-actions"}>
             <button
               type="button"
-              className="mw-modal-secondary pg-focus-premium"
+              className={
+                isV17
+                  ? "pg-v13-btn pg-v13-btn--ghost pg-focus-premium"
+                  : "mw-modal-secondary pg-focus-premium"
+              }
               disabled={pending}
               onClick={() => setConfirmOpen(false)}
             >
@@ -161,7 +170,9 @@ export default function CampaignStartCampaignAction({
             </button>
             <button
               type="button"
-              className="mw-btn-primary pg-focus-premium"
+              className={
+                isV17 ? "pg-v13-btn pg-focus-premium" : "mw-btn-primary pg-focus-premium"
+              }
               disabled={pending}
               data-testid="mw-campaign-start-confirm"
               onClick={() => void handleConfirmStart()}
@@ -170,7 +181,7 @@ export default function CampaignStartCampaignAction({
             </button>
           </div>
         </div>
-      </MwModal>
+      </MarketingVisionModal>
     </div>
   );
 }

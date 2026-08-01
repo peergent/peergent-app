@@ -11,7 +11,7 @@ import type {
 } from "@/lib/peer-experience/marketing/campaign-review-decisions";
 import { getCampaignReviewItemHref, getProjectHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
 import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
-import MwModal from "./MwModal";
+import MarketingVisionModal from "./MarketingVisionModal";
 import type { CampaignReviewWorkspaceHandlers } from "../lib/campaign-review-handlers";
 import {
   approveModalTitleForItem,
@@ -153,21 +153,18 @@ export default function CampaignReviewActions({
     reviewHandlers,
   ]);
 
-  const toggleChip = useCallback(
-    (key: string) => {
-      setSelectedChipKeys((prev) => {
-        const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-        const labels = chipOptions
-          .filter((opt) => next.includes(chipKey(opt.id, opt.label)))
-          .map((opt) => opt.label);
-        setChangeMessage(messageFromSelectedLabels(labels));
-        return next;
-      });
-    },
-    [chipOptions]
-  );
+  const toggleChip = (key: string) => {
+    setSelectedChipKeys((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      const labels = chipOptions
+        .filter((opt) => next.includes(chipKey(opt.id, opt.label)))
+        .map((opt) => opt.label);
+      setChangeMessage(messageFromSelectedLabels(labels));
+      return next;
+    });
+  };
 
-  const submitChanges = useCallback(() => {
+  const submitChanges = () => {
     const onRequestChanges = reviewHandlers.handleRequestCampaignReviewChanges;
     if (typeof onRequestChanges !== "function") {
       setChangeError("Review actions are unavailable. Refresh and try again.");
@@ -211,16 +208,9 @@ export default function CampaignReviewActions({
     setSelectedChipKeys([]);
     setChangeMessage("");
     approveTriggerRef.current?.focus();
-  }, [
-    changeMessage,
-    chipOptions,
-    item.workUnitId,
-    projectId,
-    reviewHandlers,
-    selectedChipKeys,
-  ]);
+  };
 
-  const submitReject = useCallback(() => {
+  const submitReject = () => {
     const onReject = reviewHandlers.handleRejectCampaignReviewItem;
     if (typeof onReject !== "function") {
       setRejectError("Review actions are unavailable. Refresh and try again.");
@@ -249,7 +239,7 @@ export default function CampaignReviewActions({
     setStatusMessage(result.message);
     setRejectOpen(false);
     approveTriggerRef.current?.focus();
-  }, [item.workUnitId, projectId, rejectMessage, rejectReason, reviewHandlers]);
+  };
 
   const runRevise = useCallback(async () => {
     const onRevise = reviewHandlers.handleReviseCampaignReviewItem;
@@ -437,7 +427,7 @@ export default function CampaignReviewActions({
         </div>
       </div>
 
-      <MwModal
+      <MarketingVisionModal
         open={approveOpen}
         onClose={() => !pending && setApproveOpen(false)}
         title={
@@ -450,14 +440,14 @@ export default function CampaignReviewActions({
             ? `${modalCopy.approveBody} ${modalCopy.approveNote}`
             : "Marketing Peer will continue preparing the next campaign deliverables. You can revisit past decisions from Version History when it is available."
         }
-        variant={isV17 ? "v17" : "default"}
+        presentation={isV17 ? "v17" : "default"}
         closeOnEscape={!pending}
         closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
-        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
+        <div className={isV17 ? "pg-v13-form-actions" : "mw-modal-actions"}>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
+            className={isV17 ? "pg-v13-btn pg-v13-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
             disabled={pending}
             onClick={() => setApproveOpen(false)}
           >
@@ -465,7 +455,7 @@ export default function CampaignReviewActions({
           </button>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            className={isV17 ? "pg-v13-btn pg-focus-premium" : "mw-btn-primary"}
             disabled={pending}
             onClick={() => void runApprove()}
           >
@@ -476,16 +466,16 @@ export default function CampaignReviewActions({
                 : approvePrimaryButtonLabel(item.artifactTypeLabel)}
           </button>
         </div>
-      </MwModal>
+      </MarketingVisionModal>
 
-      <MwModal
+      <MarketingVisionModal
         open={changesOpen}
         onClose={closeChanges}
         title={isV17 ? modalCopy.requestChangesTitle : "Request changes"}
         subtitle={
           isV17 ? modalCopy.requestChangesSubtitle : "Tell Marketing Peer what you would like changed."
         }
-        variant={isV17 ? "v17" : "default"}
+        presentation={isV17 ? "v17" : "default"}
         closeOnEscape={!pending}
         closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
@@ -528,10 +518,10 @@ export default function CampaignReviewActions({
             </p>
           ) : null}
         </div>
-        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
+        <div className={isV17 ? "pg-v13-form-actions" : "mw-modal-actions"}>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
+            className={isV17 ? "pg-v13-btn pg-v13-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
             disabled={pending}
             onClick={closeChanges}
           >
@@ -539,21 +529,21 @@ export default function CampaignReviewActions({
           </button>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            className={isV17 ? "pg-v13-btn pg-focus-premium" : "mw-btn-primary"}
             disabled={pending}
             onClick={submitChanges}
           >
             {isV17 ? modalCopy.requestChangesSubmit : "Submit feedback"}
           </button>
         </div>
-      </MwModal>
+      </MarketingVisionModal>
 
-      <MwModal
+      <MarketingVisionModal
         open={rejectOpen}
         onClose={() => !pending && setRejectOpen(false)}
         title={isV17 ? modalCopy.rejectTitle : "Reject this item"}
         subtitle={isV17 ? modalCopy.rejectSubtitle : "Rejecting stops campaign progress. Marketing Peer will wait until you manually start a new revision."}
-        variant={isV17 ? "v17" : "default"}
+        presentation={isV17 ? "v17" : "default"}
         closeOnEscape={!pending}
         closeAriaLabel={isV17 ? modalCopy.closeAria : "Close"}
       >
@@ -591,10 +581,10 @@ export default function CampaignReviewActions({
             </p>
           ) : null}
         </div>
-        <div className={isV17 ? "v17-modal-actions" : "mw-modal-actions"}>
+        <div className={isV17 ? "pg-v13-form-actions" : "mw-modal-actions"}>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
+            className={isV17 ? "pg-v13-btn pg-v13-btn--ghost pg-focus-premium" : "mw-modal-secondary"}
             disabled={pending}
             onClick={() => setRejectOpen(false)}
           >
@@ -602,14 +592,14 @@ export default function CampaignReviewActions({
           </button>
           <button
             type="button"
-            className={isV17 ? "v17-btn v17-btn--primary pg-focus-premium" : "mw-btn-primary"}
+            className={isV17 ? "pg-v13-btn pg-focus-premium" : "mw-btn-primary"}
             disabled={pending}
             onClick={submitReject}
           >
             {isV17 ? modalCopy.rejectSubmit : "Reject item"}
           </button>
         </div>
-      </MwModal>
+      </MarketingVisionModal>
     </div>
   );
 }

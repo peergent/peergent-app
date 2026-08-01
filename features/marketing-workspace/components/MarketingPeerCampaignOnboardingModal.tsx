@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CampaignOnboardingResult } from "@/lib/peer-experience/marketing/campaign-onboarding";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
-import type { CampaignSetupChannel, CampaignSetupDeliverable } from "@/lib/peer-experience/marketing/projects/types";
-import MwModal from "./MwModal";
+import type { CampaignSetupChannel } from "@/lib/peer-experience/marketing/projects/types";
+import MarketingVisionModal from "./MarketingVisionModal";
 import {
   campaignOnboardingStepHasErrors,
   channelOptionLabel,
@@ -29,6 +29,7 @@ export type MarketingPeerCampaignOnboardingModalProps = {
     projectId: string,
     input: ReturnType<typeof toCampaignOnboardingInput>
   ) => Promise<CampaignOnboardingResult>;
+  presentation?: "default" | "v17";
 };
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -44,16 +45,25 @@ function toggleSelection<T extends string>(current: T[], value: T, exclusive?: T
   return [...withoutExclusive, value];
 }
 
-export default function MarketingPeerCampaignOnboardingModal({
-  open,
+function CampaignOnboardingModalFlow({
   project,
-  peerName,
   campaignGoal,
   approvalModeLabel,
   onClose,
   onSkipForNow,
   onComplete,
-}: MarketingPeerCampaignOnboardingModalProps) {
+  onStepChange,
+  onSubmittingChange,
+}: {
+  project: MarketingProject;
+  campaignGoal: string;
+  approvalModeLabel: string;
+  onClose: () => void;
+  onSkipForNow: () => void;
+  onComplete: MarketingPeerCampaignOnboardingModalProps["onComplete"];
+  onStepChange: (step: Step) => void;
+  onSubmittingChange: (submitting: boolean) => void;
+}) {
   const [step, setStep] = useState<Step>(1);
   const [state, setState] = useState<CampaignOnboardingFormState>(() =>
     createCampaignOnboardingFormState(project)
@@ -64,14 +74,12 @@ export default function MarketingPeerCampaignOnboardingModal({
   const pendingRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setState(createCampaignOnboardingFormState(project));
-      setErrors({});
-      setSubmitError(null);
-      setSubmitting(false);
-    }
-  }, [open, project]);
+    onStepChange(step);
+  }, [onStepChange, step]);
+
+  useEffect(() => {
+    onSubmittingChange(submitting);
+  }, [onSubmittingChange, submitting]);
 
   const deliverableOptions = deliverableOptionsForChannels(state.selectedChannels);
 
@@ -129,19 +137,7 @@ export default function MarketingPeerCampaignOnboardingModal({
   const summary = summarizeOnboardingState(state);
 
   return (
-    <MwModal
-      open={open}
-      onClose={() => {
-        if (submitting) return;
-        onClose();
-      }}
-      title={`${peerName} — campaign setup`}
-      subtitle={`Step ${step} of 5`}
-      maxWidth={560}
-      closeOnEscape={!submitting}
-      closeOnOverlayClick={!submitting}
-    >
-      <form onSubmit={handleStepSubmit} className="mw-campaign-onboarding-form">
+    <form onSubmit={handleStepSubmit} className="mw-campaign-onboarding-form">
         {step === 1 && (
           <>
             <p className="mw-modal-label">Who should this campaign reach?</p>
@@ -405,6 +401,51 @@ export default function MarketingPeerCampaignOnboardingModal({
           ) : null}
         </div>
       </form>
-    </MwModal>
+  );
+}
+
+export default function MarketingPeerCampaignOnboardingModal({
+  open,
+  project,
+  peerName,
+  campaignGoal,
+  approvalModeLabel,
+  onClose,
+  onSkipForNow,
+  onComplete,
+  presentation = "default",
+}: MarketingPeerCampaignOnboardingModalProps) {
+  const [step, setStep] = useState<Step>(1);
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <MarketingVisionModal
+      open={open}
+      onClose={() => {
+        if (submitting) return;
+        onClose();
+      }}
+      title={`${peerName} — campaign setup`}
+      subtitle={`Step ${step} of 5`}
+      maxWidth={560}
+      closeOnEscape={!submitting}
+      closeOnOverlayClick={!submitting}
+      presentation={presentation}
+      testId="mw-campaign-onboarding-modal"
+    >
+      {open ? (
+        <CampaignOnboardingModalFlow
+          key={project.id}
+          project={project}
+          campaignGoal={campaignGoal}
+          approvalModeLabel={approvalModeLabel}
+          onClose={onClose}
+          onSkipForNow={onSkipForNow}
+          onComplete={onComplete}
+          onStepChange={setStep}
+          onSubmittingChange={setSubmitting}
+        />
+      ) : null}
+    </MarketingVisionModal>
   );
 }

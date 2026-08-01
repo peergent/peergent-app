@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -25,6 +25,27 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const THEME_CHANGE_EVENT = "pg-theme-change";
+
+function subscribeToTheme(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(THEME_CHANGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(THEME_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+function getThemePreferenceSnapshot(): ThemePreference {
+  if (typeof window === "undefined") return "light";
+  return readStoredThemePreference();
+}
+
+function getServerThemePreferenceSnapshot(): ThemePreference {
+  return "light";
+}
+
 function applyTheme(preference: ThemePreference) {
   const resolved = resolveTheme(preference);
   document.documentElement.setAttribute("data-pg-theme", resolved);
@@ -41,20 +62,22 @@ function withTransition(run: () => void) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>("light");
-  const [resolved, setResolved] = useState<ResolvedTheme>("light");
+  const preference = useSyncExternalStore(
+    subscribeToTheme,
+    getThemePreferenceSnapshot,
+    getServerThemePreferenceSnapshot
+  );
+  const resolved = resolveTheme(preference);
 
   useEffect(() => {
-    const stored = readStoredThemePreference();
-    setPreferenceState(stored);
-    setResolved(applyTheme(stored));
-  }, []);
+    applyTheme(preference);
+  }, [preference]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
       if (preference !== "system") return;
-      setResolved(applyTheme("system"));
+      window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
     };
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
@@ -63,8 +86,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setPreference = useCallback((next: ThemePreference) => {
     withTransition(() => {
       localStorage.setItem(THEME_STORAGE_KEY, next);
-      setPreferenceState(next);
-      setResolved(applyTheme(next));
+      window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
     });
   }, []);
 

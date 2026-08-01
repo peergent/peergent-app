@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import type { CampaignApprovalMode } from "@/lib/campaign";
-import MwModal from "./MwModal";
+import MarketingVisionModal from "./MarketingVisionModal";
 import {
   CREATE_CAMPAIGN_PRIMARY_GOALS,
   createCampaignFormHasErrors,
@@ -13,7 +13,6 @@ import {
 } from "../lib/create-campaign-form";
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { getV17CreateCampaignCopy } from "@/lib/i18n/v17-create-campaign-copy";
-import { resolveCustomerLocalePreference } from "@/lib/i18n/resolve-customer-locale-preference";
 
 const APPROVAL_OPTIONS: readonly { value: CampaignApprovalMode; label: string }[] = [
   { value: "approval_before_publication", label: "Approve before publication" },
@@ -45,7 +44,6 @@ export default function CreateCampaignModal({
 }: CreateCampaignModalProps) {
   const formId = useId();
   const isV17 = presentation === "v17";
-  const locale = resolveCustomerLocalePreference(localePreference);
   const v17Copy = getV17CreateCampaignCopy(localePreference);
   const [values, setValues] = useState<CreateCampaignFormValues>(createEmptyCreateCampaignForm);
   const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateCreateCampaignForm>>({});
@@ -83,7 +81,7 @@ export default function CreateCampaignModal({
   };
 
   return (
-    <MwModal
+    <MarketingVisionModal
       open={open}
       onClose={handleClose}
       title={isV17 ? v17Copy.title : "Create campaign"}
@@ -93,18 +91,19 @@ export default function CreateCampaignModal({
       maxWidth={560}
       closeOnEscape={!submitting}
       closeOnOverlayClick={!submitting}
-      variant={isV17 ? "v17" : "default"}
+      presentation={isV17 ? "v17" : "default"}
+      testId="create-campaign-modal"
     >
       <form
         id={formId}
         onSubmit={(e) => void handleSubmit(e)}
-        className={isV17 ? "v17-create-campaign-form" : "mw-create-campaign-form"}
+        className={isV17 ? "pg-v13-form" : "mw-create-campaign-form"}
       >
-        <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+        <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"}>
           {isV17 ? v17Copy.nameLabel : "Campaign name"} <span aria-hidden="true">*</span>
         </p>
         <input
-          className={isV17 ? "v17-field-input" : "mw-modal-input"}
+          className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
           value={values.name}
           onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
           aria-required
@@ -118,17 +117,17 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+        <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
           {isV17 ? v17Copy.primaryGoalLabel : "Primary goal"} <span aria-hidden="true">*</span>
         </p>
-        <div className={isV17 ? "v17-goal-grid" : "mw-platform-chips"} role="radiogroup" aria-label="Primary goal">
+        <div className={isV17 ? "pg-v13-goal-grid" : "mw-platform-chips"} role="radiogroup" aria-label="Primary goal">
           {CREATE_CAMPAIGN_PRIMARY_GOALS.map((goal) => (
             <button
               key={goal.id}
               type="button"
               className={
                 isV17
-                  ? `v17-goal-chip pg-focus-premium${values.primaryGoalId === goal.id ? " is-active" : ""}`
+                  ? `pg-v13-goal-chip pg-focus-premium${values.primaryGoalId === goal.id ? " is-active" : ""}`
                   : `mw-platform-chip pg-focus-premium${values.primaryGoalId === goal.id ? " mw-platform-chip--active" : ""}`
               }
               aria-pressed={values.primaryGoalId === goal.id}
@@ -147,11 +146,11 @@ export default function CreateCampaignModal({
 
         {values.primaryGoalId === "custom" && (
           <>
-            <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 12 }}>
+            <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"} style={{ marginTop: 12 }}>
               {isV17 ? v17Copy.customGoalLabel : "Custom goal"} <span aria-hidden="true">*</span>
             </p>
             <input
-              className={isV17 ? "v17-field-input" : "mw-modal-input"}
+              className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
               value={values.customGoalText}
               onChange={(e) => setValues((v) => ({ ...v, customGoalText: e.target.value }))}
               disabled={submitting}
@@ -165,12 +164,12 @@ export default function CreateCampaignModal({
           </>
         )}
 
-        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+        <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
           {isV17 ? v17Copy.descriptionLabel : "What do you want to achieve?"}{" "}
           <span aria-hidden="true">*</span>
         </p>
         <textarea
-          className={isV17 ? "v17-field-input" : "mw-modal-input"}
+          className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
           rows={3}
           value={values.description}
           onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
@@ -184,41 +183,41 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <p className={isV17 ? "v17-field-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
+        <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"} style={{ marginTop: 16 }}>
           {isV17 ? v17Copy.audienceLabel : "Target audience"}{" "}
           {!isV17 ? (
             <span className="mw-modal-label-hint">(optional)</span>
           ) : (
-            <span className="v17-field-hint">({v17Copy.audienceHint})</span>
+            <span className="pg-v13-form-hint">({v17Copy.audienceHint})</span>
           )}
         </p>
         <input
-          className={isV17 ? "v17-field-input" : "mw-modal-input"}
+          className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
           value={values.targetAudience}
           onChange={(e) => setValues((v) => ({ ...v, targetAudience: e.target.value }))}
           disabled={submitting}
         />
 
-        <div className="v17-form-row-dates" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div className="pg-v13-form-row" style={{ marginTop: 16 }}>
           <div style={{ flex: 1 }}>
-            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+            <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"}>
               {isV17 ? v17Copy.startDateLabel : "Start date"}
             </p>
             <input
               type="date"
-              className={isV17 ? "v17-field-input" : "mw-modal-input"}
+              className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
               value={values.startDate}
               onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))}
               disabled={submitting}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+            <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"}>
               {isV17 ? v17Copy.endDateLabel : "Target end date"}
             </p>
             <input
               type="date"
-              className={isV17 ? "v17-field-input" : "mw-modal-input"}
+              className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
               value={values.endDate}
               onChange={(e) => setValues((v) => ({ ...v, endDate: e.target.value }))}
               disabled={submitting}
@@ -232,16 +231,16 @@ export default function CreateCampaignModal({
           </div>
         </div>
 
-        <div className="v17-form-row-budget" style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div className="pg-v13-form-row" style={{ marginTop: 16 }}>
           <div style={{ flex: 2 }}>
-            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+            <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"}>
               {isV17 ? v17Copy.budgetLabel : "Budget"}
             </p>
             <input
               type="number"
               min={0}
               step="any"
-              className={isV17 ? "v17-field-input" : "mw-modal-input"}
+              className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
               value={values.budgetAmount}
               onChange={(e) => setValues((v) => ({ ...v, budgetAmount: e.target.value }))}
               disabled={submitting}
@@ -254,11 +253,11 @@ export default function CreateCampaignModal({
             )}
           </div>
           <div style={{ flex: 1 }}>
-            <p className={isV17 ? "v17-field-label" : "mw-modal-label"}>
+            <p className={isV17 ? "pg-v13-form-label" : "mw-modal-label"}>
               {isV17 ? v17Copy.currencyLabel : "Currency"}
             </p>
             <input
-              className={isV17 ? "v17-field-input" : "mw-modal-input"}
+              className={isV17 ? "pg-v13-form-input" : "mw-modal-input"}
               value={values.budgetCurrency}
               onChange={(e) => setValues((v) => ({ ...v, budgetCurrency: e.target.value }))}
               disabled={submitting}
@@ -297,11 +296,11 @@ export default function CreateCampaignModal({
           </p>
         )}
 
-        <div className={isV17 ? "v17-form-actions" : undefined}>
+        <div className={isV17 ? "pg-v13-form-actions" : undefined}>
           {isV17 ? (
             <button
               type="button"
-              className="v17-btn v17-btn--ghost pg-focus-premium"
+              className="pg-v13-btn pg-v13-btn--ghost pg-focus-premium"
               onClick={handleClose}
               disabled={submitting}
             >
@@ -312,7 +311,7 @@ export default function CreateCampaignModal({
             type="submit"
             className={
               isV17
-                ? "v17-btn v17-btn--primary pg-focus-premium"
+                ? "pg-v13-btn pg-focus-premium"
                 : "mw-btn-primary mw-btn-primary--full pg-focus-premium"
             }
             style={isV17 ? undefined : { marginTop: 20 }}
@@ -329,6 +328,6 @@ export default function CreateCampaignModal({
           </button>
         </div>
       </form>
-    </MwModal>
+    </MarketingVisionModal>
   );
 }

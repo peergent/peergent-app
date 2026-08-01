@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import AgreementView, { type AgreementViewProps } from "./AgreementView";
+import { type AgreementViewProps } from "./AgreementView";
+import VisionAgreementDetailView from "./VisionAgreementDetailView";
 
 export type InstellingenSectionId =
   | "brand"
@@ -114,12 +115,11 @@ export default function VisionInstellingenView({
         <p className="pg-v13-eyebrow">{nl ? "Instellingen" : "Settings"}</p>
         <h2 className="pg-v13-settings-detail-title">{row?.name}</h2>
         <p className="pg-v13-settings-detail-desc">{row?.desc}</p>
-        <div className="pg-v13-panel pg-v13-settings-detail-body">
-          <AgreementView
+        <div className="pg-v13-settings-detail-body">
+          <VisionAgreementDetailView
             model={model}
             {...agreementProps}
             visibleSection={activeSection}
-            hideHeader
           />
         </div>
       </div>
