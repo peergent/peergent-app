@@ -8,6 +8,7 @@ import ContentReviewMode from "./ContentReviewMode";
 export type VisionContentViewProps = {
   model: ContentViewModel;
   locale?: string | null;
+  peerId?: string;
   onApprove?: (itemId: string) => void;
   onAskForChanges?: (itemId: string, notes: string) => void;
   onRetry?: (itemId: string) => void;
@@ -17,11 +18,13 @@ export type VisionContentViewProps = {
 function ContentCard({
   item,
   copy,
+  peerId,
   onReview,
   onOpenPreview,
 }: {
   item: ContentItem;
   copy: ContentViewModel["copy"];
+  peerId?: string;
   onReview: (item: ContentItem) => void;
   onOpenPreview?: (item: ContentItem) => void;
 }) {
@@ -86,6 +89,14 @@ function ContentCard({
       ) : null}
       {waiting ? (
         <p className="pg-v13-work-meta pg-v13-work-meta--link mt-2.5">{copy.reviewCta} →</p>
+      ) : published && peerId ? (
+        <Link
+          href={`/office/${peerId}/content/${item.id}`}
+          className="pg-v13-btn pg-v13-btn--link mt-2.5 inline-block no-underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Bekijk volledig →
+        </Link>
       ) : null}
     </div>
   );
@@ -97,6 +108,7 @@ function ContentCard({
 export default function VisionContentView({
   model,
   locale,
+  peerId,
   onApprove,
   onAskForChanges,
   onRetry,
@@ -158,6 +170,7 @@ export default function VisionContentView({
               key={item.id}
               item={item}
               copy={copy}
+              peerId={peerId}
               onReview={setReviewing}
               onOpenPreview={onOpenPreview}
             />

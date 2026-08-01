@@ -4,6 +4,10 @@ import { deriveProjectStatus } from "@/lib/peer-experience/marketing/projects/pr
 import { resolveProjectIdForDraft } from "../attribution";
 import { officeHref } from "../links";
 import { buildPerformanceSections } from "./sections";
+import {
+  buildProviderPerformanceCards,
+  curateExecutiveMetrics,
+} from "./provider-cards";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingContentDraft } from "@/lib/marketing-intelligence";
 import { groundPerformancePresence, keepGroundedSignals } from "./grounding";
@@ -364,15 +368,21 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
   // The executive row takes the strongest outcomes across everything that is
   // genuinely reporting. Production activity never enters it: it has its own
   // section at the foot of the page.
-  const executive = sections
-    .flatMap((section) => section.metrics)
-    .filter((metric) => metric.kind === "outcome")
-    .sort((a, b) => a.priority - b.priority)
-    .filter(
-      (metric, index, all) =>
-        all.findIndex((other) => other.key === metric.key) === index
-    )
-    .slice(0, 4);
+  const executive = curateExecutiveMetrics(
+    sections
+      .flatMap((section) => section.metrics)
+      .filter((metric) => metric.kind === "outcome")
+      .filter(
+        (metric, index, all) =>
+          all.findIndex((other) => other.key === metric.key) === index
+      )
+  );
+
+  const providerCards = buildProviderPerformanceCards({
+    peerId,
+    locale,
+    domainInput,
+  });
 
   // ---- Trend: only drawn when there is something real to draw ------------
   //
@@ -595,6 +605,7 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
     cuts,
     sections,
     executive,
+    providerCards,
     gaps,
     signals,
     copy,

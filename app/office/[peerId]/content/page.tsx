@@ -7,7 +7,7 @@ import VisionContentView from "@/features/office/content/VisionContentView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingContentViewModel } from "@/lib/office/content/build-marketing-content";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
-import { demoPreviewStatsForChannel } from "@/lib/office/content/demo-preview-stats";
+import { previewStatsForContent } from "@/lib/office/content/demo-preview-stats";
 import type { ContentItem } from "@/lib/office/content/types";
 
 function OfficeContentInner() {
@@ -62,10 +62,11 @@ function OfficeContentInner() {
   }, [model.groups, previewId]);
 
   const previewStats = previewItem
-    ? demoPreviewStatsForChannel(
-        previewItem.channelId,
-        localePreference === "nl" ? "nl" : "en"
-      )
+    ? previewStatsForContent({
+        isDemo,
+        channelId: previewItem.channelId,
+        locale: localePreference === "nl" ? "nl" : "en",
+      })
     : [];
 
   const closePreview = () => {
@@ -106,6 +107,7 @@ function OfficeContentInner() {
           <VisionContentView
             model={model}
             locale={localePreference}
+            peerId={peerId}
             onOpenPreview={openPreview}
           />
         )}
@@ -122,6 +124,7 @@ function OfficeContentInner() {
           campaignTitle={previewItem.campaignTitle}
           previewText={previewItem.preview}
           stats={previewStats}
+          detailHref={`/office/${peerId}/content/${previewItem.id}`}
         />
       ) : null}
     </>

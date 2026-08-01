@@ -3,9 +3,11 @@
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PgCampaignWorkspaceModal, PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
+import CampaignWorkspaceModal from "@/features/office/campaign/CampaignWorkspaceModal";
+import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import VisionWorkView from "@/features/office/work/VisionWorkView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
+import { buildCampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
 import { buildMarketingWorkViewModel } from "@/lib/office/work/build-marketing-work";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { officeHref } from "@/lib/office/links";
@@ -117,6 +119,36 @@ function OfficeWorkContent() {
     return null;
   }, [modalItem, workspaceParam, model.groups]);
 
+  const campaignModel = useMemo(() => {
+    if (!activeItem) return null;
+    return buildCampaignDetailViewModel({
+      peerId,
+      projectId: activeItem.id,
+      domainInput,
+      locale: localePreference,
+    });
+  }, [activeItem, peerId, domainInput, localePreference]);
+
+  const handleApproveAll = useCallback(() => {
+    if (!campaignModel || campaignModel.pending.length === 0) return;
+    const first = campaignModel.pending[0];
+    const target = first.previewHref ?? first.reviewHref ?? first.detailHref;
+    if (target) {
+      closeWorkspace();
+      router.push(target);
+    }
+  }, [campaignModel, closeWorkspace, router]);
+
+  const handleWorkspaceItem = useCallback(
+    (item: { previewHref?: string; detailHref?: string; reviewHref?: string }) => {
+      const target = item.detailHref ?? item.previewHref ?? item.reviewHref;
+      if (!target) return;
+      closeWorkspace();
+      router.push(target);
+    },
+    [closeWorkspace, router]
+  );
+
   const filterHref = (filter: WorkGroupId | "all") => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("workspace");
@@ -173,15 +205,14 @@ function OfficeWorkContent() {
         )}
       </PgOfficeShell>
 
-      {activeItem ? (
-        <PgCampaignWorkspaceModal
+      {campaignModel ? (
+        <CampaignWorkspaceModal
           open
           onClose={closeWorkspace}
           locale={localePreference}
-          campaignName={activeItem.name}
-          statusLabel={activeItem.stageLabel}
-          peerId={peerId}
-          projectId={activeItem.id}
+          model={campaignModel}
+          onApproveAll={campaignModel.pending.length > 0 ? handleApproveAll : undefined}
+          onItemAction={handleWorkspaceItem}
         />
       ) : null}
       {newCampaignModal}

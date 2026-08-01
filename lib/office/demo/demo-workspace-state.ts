@@ -1,4 +1,6 @@
 import type { MarketingResponsibility } from "@/lib/peer-experience/marketing/responsibilities/types";
+import type { AgreementKnowledge } from "@/lib/office/agreement/types";
+import type { KnowledgeAmendments } from "@/lib/office/agreement/build-marketing-agreement";
 import { DEMO_PEER_ID, demoResponsibilities } from "./demo-company";
 
 /**
@@ -46,7 +48,13 @@ const listeners = new Set<Listener>();
 /** The canonical Veldwerk configuration a reset returns to. */
 const defaults: MarketingResponsibility[] = demoResponsibilities();
 
+const emptyKnowledgeAmendments: KnowledgeAmendments = {
+  overrides: {},
+  additions: [],
+};
+
 let current: MarketingResponsibility[] = defaults;
+let knowledgeAmendments: KnowledgeAmendments = emptyKnowledgeAmendments;
 
 function emit(): void {
   for (const listener of listeners) listener();
@@ -81,14 +89,73 @@ export function setDemoResponsibilities(
   emit();
 }
 
+export function getDemoKnowledgeAmendments(): KnowledgeAmendments {
+  return knowledgeAmendments;
+}
+
+export function getDemoKnowledgeAmendmentsServerSnapshot(): KnowledgeAmendments {
+  return emptyKnowledgeAmendments;
+}
+
+export function setDemoKnowledgeOverride(
+  peerId: string,
+  knowledgeId: string,
+  value: string,
+  correctedBy: string
+): void {
+  assertDemoPeer(peerId);
+  knowledgeAmendments = {
+    ...knowledgeAmendments,
+    overrides: {
+      ...knowledgeAmendments.overrides,
+      [knowledgeId]: { value, correctedBy },
+    },
+  };
+  emit();
+}
+
+export function addDemoCustomerKnowledge(
+  peerId: string,
+  entry: AgreementKnowledge
+): void {
+  assertDemoPeer(peerId);
+  if (entry.provenance !== "customer_rule") {
+    throw new Error("Demo additions must be customer_rule provenance.");
+  }
+  knowledgeAmendments = {
+    ...knowledgeAmendments,
+    additions: [...knowledgeAmendments.additions, entry],
+  };
+  emit();
+}
+
+export function removeDemoCustomerKnowledge(peerId: string, knowledgeId: string): void {
+  assertDemoPeer(peerId);
+  const restOverrides = { ...knowledgeAmendments.overrides };
+  delete restOverrides[knowledgeId];
+  knowledgeAmendments = {
+    overrides: restOverrides,
+    additions: knowledgeAmendments.additions.filter((entry) => entry.id !== knowledgeId),
+  };
+  emit();
+}
+
+function knowledgeIsModified(): boolean {
+  return (
+    Object.keys(knowledgeAmendments.overrides).length > 0 ||
+    knowledgeAmendments.additions.length > 0
+  );
+}
+
 /** True once anything has been changed, so the UI can offer a reset. */
 export function isDemoWorkspaceModified(): boolean {
-  return current !== defaults;
+  return current !== defaults || knowledgeIsModified();
 }
 
 /** Restores the canonical Veldwerk defaults. */
 export function resetDemoWorkspace(): void {
-  if (current === defaults) return;
+  if (current === defaults && !knowledgeIsModified()) return;
   current = defaults;
+  knowledgeAmendments = emptyKnowledgeAmendments;
   emit();
 }

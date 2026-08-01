@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import PgVisionModal from "./PgVisionModal";
 
 export type ContentPreviewStat = {
@@ -16,6 +17,7 @@ export type PgContentPreviewModalProps = {
   campaignTitle?: string | null;
   previewText?: string | null;
   stats: ContentPreviewStat[];
+  detailHref?: string | null;
 };
 
 const CHANNEL_ACCENT: Record<string, string> = {
@@ -47,6 +49,7 @@ export default function PgContentPreviewModal({
   campaignTitle,
   previewText,
   stats,
+  detailHref,
 }: PgContentPreviewModalProps) {
   const nl = locale === "nl";
 
@@ -101,6 +104,15 @@ export default function PgContentPreviewModal({
             </div>
           ))}
         </div>
+        {detailHref ? (
+          <Link
+            href={detailHref}
+            className="pg-v13-btn pg-v13-btn--ghost mt-4 inline-flex w-full justify-center no-underline"
+            onClick={onClose}
+          >
+            {nl ? "Bekijk volledig" : "View full detail"}
+          </Link>
+        ) : null}
       </div>
     </PgVisionModal>
   );

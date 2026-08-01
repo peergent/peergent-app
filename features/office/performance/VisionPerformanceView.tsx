@@ -9,6 +9,7 @@ import type {
   PerformanceTrendPoint,
   PerformanceViewModel,
 } from "@/lib/office/performance/types";
+import type { PerformanceProviderCard } from "@/lib/office/performance/provider-cards";
 
 export type VisionPerformanceViewProps = {
   model: PerformanceViewModel;
@@ -129,36 +130,43 @@ function TrendCard({
   );
 }
 
-function channelIconStyle(sourceLabel: string): CSSProperties {
-  const lower = sourceLabel.toLowerCase();
-  if (lower.includes("linkedin")) return { background: "#0A66C2" };
-  if (lower.includes("google ads")) return { background: "#EFAA53", color: "#14151F" };
-  if (lower.includes("analytics") || lower.includes("ga4"))
-    return { background: "#3FC79A", color: "#14151F" };
-  if (lower.includes("hubspot")) return { background: "var(--pg-v13-grad)" };
-  return { background: "var(--pg-v13-blue)" };
+function channelIconStyleForProvider(id: PerformanceProviderCard["id"]): CSSProperties {
+  switch (id) {
+    case "linkedin":
+      return { background: "#0A66C2" };
+    case "google_ads":
+      return { background: "#EFAA53", color: "#14151F" };
+    case "ga4":
+      return { background: "#3FC79A", color: "#14151F" };
+    case "hubspot":
+      return { background: "var(--pg-v13-grad)" };
+    default:
+      return { background: "var(--pg-v13-blue)" };
+  }
 }
 
-function ChannelCard({ section }: { section: PerformanceSectionModel }) {
-  const name = section.title.replace(/ —.*/, "");
-  const initial = name.slice(0, 2).toUpperCase();
+function ProviderCard({ card, nl }: { card: PerformanceProviderCard; nl: boolean }) {
+  const initial = card.title.slice(0, 2).toUpperCase();
 
   return (
     <div className="pg-v13-channel-card">
       <div className="pg-v13-channel-head">
-        <div className="pg-v13-channel-ico" style={channelIconStyle(name)}>
-          {initial.slice(0, 2)}
+        <div className="pg-v13-channel-ico" style={channelIconStyleForProvider(card.id)}>
+          {initial}
         </div>
-        <div className="pg-v13-channel-name">{name}</div>
+        <div className="pg-v13-channel-name">{card.title}</div>
       </div>
       <div className="pg-v13-channel-stats">
-        {section.metrics.slice(0, 4).map((metric) => (
+        {card.metrics.slice(0, 4).map((metric) => (
           <div key={metric.key}>
             <div className="pg-v13-cs-lbl">{metric.label}</div>
             <div className="pg-v13-cs-val">{metric.value}</div>
           </div>
         ))}
       </div>
+      <Link href={card.detailHref} className="pg-v13-btn pg-v13-btn--link mt-3 inline-block no-underline">
+        {nl ? "Zie meer" : "See more"}
+      </Link>
     </div>
   );
 }
@@ -168,7 +176,6 @@ function ChannelCard({ section }: { section: PerformanceSectionModel }) {
  */
 export default function VisionPerformanceView({ model, locale }: VisionPerformanceViewProps) {
   const nl = locale === "nl";
-  const reporting = model.sections.filter((s) => s.state === "reporting");
 
   const storyItems = model.executive.length
     ? model.executive.map((item) => ({
@@ -180,16 +187,9 @@ export default function VisionPerformanceView({ model, locale }: VisionPerforman
         text: `${m.value} ${m.label.toLowerCase()}`,
       }));
 
-  const executive = model.executive.filter((metric) => metric.kind === "outcome").slice(0, 3);
+  const executive = model.executive.slice(0, 3);
 
-  const channelSections = [
-    reporting.find((s) => s.id === "channels"),
-    reporting.find((s) => s.id === "ads"),
-    reporting.find((s) => s.id === "content"),
-    reporting.find((s) => s.id === "attribution"),
-  ].filter(Boolean) as PerformanceSectionModel[];
-
-  const channelCards = channelSections.length ? channelSections : reporting.slice(0, 4);
+  const providerCards = model.providerCards ?? [];
 
   return (
     <div data-testid="office-performance-view">
@@ -257,12 +257,12 @@ export default function VisionPerformanceView({ model, locale }: VisionPerforman
         </>
       ) : null}
 
-      {channelCards.length > 0 ? (
+      {providerCards.length > 0 ? (
         <section className="pg-v13-sec">
           <p className="pg-v13-sec-label">{nl ? "Per kanaal — 30 dagen" : "By channel — 30 days"}</p>
           <div className="pg-v13-channel-grid">
-            {channelCards.map((section) => (
-              <ChannelCard key={section.id} section={section} />
+            {providerCards.map((card) => (
+              <ProviderCard key={card.id} card={card} nl={nl} />
             ))}
           </div>
         </section>

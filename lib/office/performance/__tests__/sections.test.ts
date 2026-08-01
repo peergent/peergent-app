@@ -226,7 +226,7 @@ describe("no fabricated comparisons", () => {
 });
 
 describe("outcomes rank above production activity", () => {
-  it("sorts every outcome ahead of every activity in the executive row", () => {
+  it("curates executive row as revenue, reach, leads", () => {
     const domainInput = buildDemoDomainInput({ now: new Date("2026-07-31T09:00:00.000Z") });
     const model = buildMarketingPerformanceViewModelForOffice({
       domainInput,
@@ -243,8 +243,11 @@ describe("outcomes rank above production activity", () => {
       );
     }
 
-    const priorities = model.executive.map((m) => m.priority);
-    expect([...priorities].sort((a, b) => a - b)).toEqual(priorities);
+    expect(model.executive.map((m) => m.key)).toEqual([
+      "attributed_revenue",
+      "reach",
+      "leads",
+    ]);
   });
 
   it("keeps production activity in its own section at the foot", () => {

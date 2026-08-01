@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { useHandoffHome, type HandoffHomeState } from "@/hooks/useHandoffHome";
@@ -8,7 +9,7 @@ import FigmaHomePort from "@/features/home/figma-port/FigmaHomePort";
 import HandoffSkeleton from "./HandoffSkeleton";
 import PgVisionShell from "@/components/design-system/PgVisionShell";
 import IedereenView from "@/features/office/iedereen/IedereenView";
-import { DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
+import { buildLiveVisionRoster, DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
 import "@/features/home/figma-port/figma-home.css";
 
 export type HandoffHomeProps = {
@@ -25,11 +26,17 @@ function HandoffHomeView({
 }) {
   const searchParams = useSearchParams();
   const visualParam = searchParams.get("visual");
-  const { pageState, errorMessage, handoff, copy, retry, previewBanner } = homeState;
+  const { pageState, errorMessage, handoff, copy, retry, previewBanner, canonicalPeers } =
+    homeState;
+
+  const roster = useMemo(
+    () => (isDemo ? DEMO_VISION_ROSTER : buildLiveVisionRoster(canonicalPeers)),
+    [isDemo, canonicalPeers]
+  );
 
   if (pageState === "loading") {
     return (
-      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={roster}>
         <HandoffSkeleton />
       </PgVisionShell>
     );
@@ -37,7 +44,7 @@ function HandoffHomeView({
 
   if (pageState === "error") {
     return (
-      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={roster}>
         <p className="pg-v13-title text-[22px]">{copy.errorTitle}</p>
         <p className="pg-v13-sub">{errorMessage}</p>
         <button type="button" onClick={retry} className="pg-v13-btn pg-focus-premium">
@@ -63,7 +70,7 @@ function HandoffHomeView({
       {visualParam === "reference" ? (
         <FigmaHomePort homeState={homeState} onPrimaryActivate={() => undefined} />
       ) : (
-        <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+        <PgVisionShell mode="iedereen" isDemo={isDemo} roster={roster}>
           <IedereenView homeState={homeState} isDemo={isDemo} />
         </PgVisionShell>
       )}

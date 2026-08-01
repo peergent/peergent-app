@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import { useAccount } from "@/components/account/AccountProvider";
 import { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 import { buildMarketingPeerDomainInput } from "@/features/studio/marketing-peer/buildMarketingPeerDomainInput";
 import { loadIntegrationConnections } from "@/lib/integrations/connection-store";
 import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
+import { selectCanonicalCustomerPeers } from "@/lib/customer-v17/select-canonical-customer-peers";
+import { fetchOrganizationPeers } from "@/lib/peers/queries";
+import { createClient } from "@/lib/supabase/client";
+import type { PeerRow } from "@/lib/peer-display";
 import {
   DEMO_PEER_NAME,
   DEMO_PEER_ROLE,
@@ -18,7 +22,10 @@ import {
   getDemoResponsibilitiesServerSnapshot,
   subscribeDemoWorkspace,
 } from "@/lib/office/demo/demo-workspace-state";
-import { DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
+import {
+  buildLiveVisionRoster,
+  DEMO_VISION_ROSTER,
+} from "@/lib/office/vision-roster";
 import { useOfficeNewCampaign } from "@/features/office/useOfficeNewCampaign";
 
 /**
@@ -40,6 +47,33 @@ export function useOfficePeer() {
    * the demo cannot read from or write to a real customer's data.
    */
   const demo = isDemoPeer(peerId);
+
+  const [livePeers, setLivePeers] = useState<PeerRow[]>([]);
+
+  useEffect(() => {
+    if (demo || !organizationId) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const supabase = createClient();
+        const rows = await fetchOrganizationPeers(supabase, organizationId);
+        if (!cancelled) setLivePeers(selectCanonicalCustomerPeers(rows));
+      } catch {
+        if (!cancelled) setLivePeers([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [demo, organizationId]);
+
+  const liveRoster = useMemo(() => {
+    if (demo) return DEMO_VISION_ROSTER;
+    if (!organizationId) return [];
+    return buildLiveVisionRoster(livePeers);
+  }, [demo, organizationId, livePeers]);
 
   const workspace = useMarketingWorkspace(
     demo ? "" : peerId,
@@ -107,7 +141,7 @@ export function useOfficePeer() {
     /** True while rendering the curated showcase rather than a real workspace. */
     isDemo: demo,
     team: [] as const,
-    roster: demo ? DEMO_VISION_ROSTER : ([] as const),
+    roster: liveRoster,
     openNewCampaign,
     newCampaignModal,
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/ui/cn";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
@@ -37,16 +38,16 @@ export default function PgVisionModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className="pg-vision pg-v13-modal-backdrop"
       data-pg-theme={resolved}
+      data-testid={testId}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      data-testid={testId}
     >
       <div
         className={cn(
@@ -59,6 +60,7 @@ export default function PgVisionModal({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,17 +1,28 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useState, useSyncExternalStore } from "react";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import VisionInstellingenView from "@/features/office/agreement/VisionInstellingenView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
-import { buildMarketingAgreementViewModel } from "@/lib/office/agreement/build-marketing-agreement";
+import {
+  applyKnowledgeAmendments,
+  buildMarketingAgreementViewModel,
+  type KnowledgeAmendments,
+} from "@/lib/office/agreement/build-marketing-agreement";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import {
+  addDemoCustomerKnowledge,
+  getDemoKnowledgeAmendments,
+  getDemoKnowledgeAmendmentsServerSnapshot,
   isDemoWorkspaceModified,
+  removeDemoCustomerKnowledge,
   resetDemoWorkspace,
+  setDemoKnowledgeOverride,
   setDemoResponsibilities,
+  subscribeDemoWorkspace,
 } from "@/lib/office/demo/demo-workspace-state";
 import type {
+  AgreementKnowledge,
   AgreementSaveState,
   BoundaryKind,
 } from "@/lib/office/agreement/types";
@@ -77,17 +88,26 @@ function OfficeAgreementInner() {
   const [pending, setPending] = useState<{ id: string; next: BoundaryKind } | null>(
     null
   );
+  const [liveKnowledgeAmendments, setLiveKnowledgeAmendments] =
+    useState<KnowledgeAmendments>({ overrides: {}, additions: [] });
 
-  const model = useMemo(
-    () =>
-      buildMarketingAgreementViewModel({
-        domainInput,
-        peerName,
-        peerRole,
-        localePreference,
-      }),
-    [domainInput, peerName, peerRole, localePreference]
+  const demoKnowledgeAmendments = useSyncExternalStore(
+    subscribeDemoWorkspace,
+    getDemoKnowledgeAmendments,
+    getDemoKnowledgeAmendmentsServerSnapshot
   );
+
+  const knowledgeAmendments = isDemo ? demoKnowledgeAmendments : liveKnowledgeAmendments;
+
+  const model = useMemo(() => {
+    const base = buildMarketingAgreementViewModel({
+      domainInput,
+      peerName,
+      peerRole,
+      localePreference,
+    });
+    return applyKnowledgeAmendments(base, knowledgeAmendments);
+  }, [domainInput, peerName, peerRole, localePreference, knowledgeAmendments]);
 
   const deskModel = useMemo(
     () =>
@@ -172,6 +192,63 @@ function OfficeAgreementInner() {
     }
   }
 
+  const nl = localePreference === "nl";
+  const correctedBy = nl ? "Jij" : "You";
+
+  function saveKnowledge(id: string, value: string) {
+    if (isDemo) {
+      setDemoKnowledgeOverride(peerId, id, value, correctedBy);
+      return;
+    }
+    setLiveKnowledgeAmendments((current) => ({
+      ...current,
+      overrides: {
+        ...current.overrides,
+        [id]: { value, correctedBy },
+      },
+    }));
+  }
+
+  function addKnowledge(entry: { label: string; value: string }) {
+    const knowledgeEntry: AgreementKnowledge = {
+      id: `customer:${Date.now()}`,
+      label: entry.label,
+      value: entry.value,
+      provenance: "customer_rule",
+      correctable: true,
+      correctedBy: null,
+    };
+    if (isDemo) {
+      addDemoCustomerKnowledge(peerId, knowledgeEntry);
+      return;
+    }
+    setLiveKnowledgeAmendments((current) => ({
+      ...current,
+      additions: [...current.additions, knowledgeEntry],
+    }));
+  }
+
+  function removeKnowledge(id: string) {
+    if (isDemo) {
+      removeDemoCustomerKnowledge(peerId, id);
+      return;
+    }
+    setLiveKnowledgeAmendments((current) => {
+      const restOverrides = { ...current.overrides };
+      delete restOverrides[id];
+      return {
+        overrides: restOverrides,
+        additions: current.additions.filter((entry) => entry.id !== id),
+      };
+    });
+  }
+
+  const knowledgePersistNotice = isDemo
+    ? null
+    : nl
+      ? "Wijzigingen zijn alleen zichtbaar in deze sessie. Permanente opslag volgt zodra de workspace-koppeling beschikbaar is."
+      : "Changes are visible in this session only. Permanent storage follows once the workspace link is available.";
+
   return (
     <>
       <PgOfficeShell
@@ -198,6 +275,7 @@ function OfficeAgreementInner() {
               model={model}
               locale={localePreference}
               peerId={peerId}
+              isDemo={isDemo}
               saveState={saveState}
               onChangeBoundary={requestChange}
               onConfirm={confirmChange}
@@ -205,6 +283,10 @@ function OfficeAgreementInner() {
                 setPending(null);
                 setSaveState({ status: "idle" });
               }}
+              onSaveKnowledge={saveKnowledge}
+              onAddKnowledge={addKnowledge}
+              onRemoveKnowledge={removeKnowledge}
+              knowledgePersistNotice={knowledgePersistNotice}
             />
           </>
         )}

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { PresenceLine } from "@/lib/design-system/foundation";
 import type { OfficeDestinationId } from "@/lib/office/destinations";
-import { DEMO_VISION_ROSTER, type VisionRosterPeer } from "@/lib/office/vision-roster";
+import { type VisionRosterPeer } from "@/lib/office/vision-roster";
 import PgVisionShell from "./PgVisionShell";
 
 export type TeamRailPeer = {
@@ -59,7 +59,7 @@ export default function PgOfficeShell({
       presence={presenceSuspended ? null : presence}
       decisionCount={decisionCount}
       isDemo={isDemo}
-      roster={roster ?? DEMO_VISION_ROSTER}
+      roster={roster ?? []}
       onAsk={onSearch}
       onNewCampaign={onNewCampaign}
     >

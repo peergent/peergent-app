@@ -83,6 +83,19 @@ export function demoPreviewStatsForChannel(
   return table[key] ?? table.linkedin ?? [];
 }
 
+/**
+ * Returns preview stats only for the demo workspace. Live workspaces must never
+ * receive fictional demo metrics.
+ */
+export function previewStatsForContent(options: {
+  isDemo: boolean;
+  channelId: string | null | undefined;
+  locale: MarketingCampaignLocale;
+}): ContentPreviewStat[] {
+  if (!options.isDemo) return [];
+  return demoPreviewStatsForChannel(options.channelId, options.locale);
+}
+
 export function firstPublishedDraftForProject(
   projectId: string,
   drafts: { id: string; status: string; channel?: string | null; contentType?: string | null }[],

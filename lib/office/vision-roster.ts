@@ -1,8 +1,16 @@
+import type { PeerRow } from "@/lib/peer-display";
+import {
+  customerPeerRoleBucket,
+  type CustomerPeerRoleBucket,
+} from "@/lib/customer-v17/select-canonical-customer-peers";
+import { officeHref } from "./links";
+import { DEMO_PEER_ID } from "./demo/demo-company";
+
 /**
  * Vision v13 peer roster — sidebar chips for Iedereen + Peers.
  *
  * Marketing is the only fully functional peer in this phase. Sales and Support
- * appear for navigation preparation and status indicators only.
+ * appear when a real peer exists for that bucket — never routed to demo.
  */
 
 export type VisionRosterPeer = {
@@ -40,6 +48,42 @@ export const DEMO_VISION_ROSTER: readonly VisionRosterPeer[] = [
     href: "/office/demo",
   },
 ] as const;
+
+const LIVE_ROSTER_BUCKETS: readonly {
+  role: VisionRosterPeer["role"];
+  bucket: CustomerPeerRoleBucket;
+}[] = [
+  { role: "Marketing", bucket: "Marketing" },
+  { role: "Sales", bucket: "Sales" },
+  { role: "Support", bucket: "Support" },
+];
+
+/**
+ * Builds the live Home/Office sidebar roster from canonical organization peers.
+ * Omits buckets with no peer. Never links to `/office/demo`.
+ */
+export function buildLiveVisionRoster(peers: readonly PeerRow[]): VisionRosterPeer[] {
+  return LIVE_ROSTER_BUCKETS.flatMap(({ role, bucket }) => {
+    const peer = peers.find(
+      (row) =>
+        customerPeerRoleBucket(row.role) === bucket && row.id !== DEMO_PEER_ID
+    );
+    if (!peer?.id) return [];
+
+    const state: VisionRosterPeer["state"] =
+      peer.status === "active" ? "working" : "calm";
+
+    return [
+      {
+        id: peer.id,
+        name: role,
+        role,
+        state,
+        href: officeHref(peer.id, "desk"),
+      },
+    ];
+  });
+}
 
 export function peerAccentCssVar(role: string): string {
   switch (role) {

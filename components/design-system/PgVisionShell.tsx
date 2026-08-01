@@ -135,7 +135,7 @@ export default function PgVisionShell({
   presence = null,
   decisionCount = 0,
   isDemo = false,
-  roster = DEMO_VISION_ROSTER,
+  roster = [],
   onAsk,
   onNewCampaign,
   children,

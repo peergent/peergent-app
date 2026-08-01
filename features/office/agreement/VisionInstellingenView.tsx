@@ -16,6 +16,11 @@ export type InstellingenSectionId =
 export type VisionInstellingenViewProps = AgreementViewProps & {
   locale?: string | null;
   peerId: string;
+  isDemo?: boolean;
+  onSaveKnowledge?: (id: string, value: string) => void;
+  onAddKnowledge?: (entry: { label: string; value: string }) => void;
+  onRemoveKnowledge?: (id: string) => void;
+  knowledgePersistNotice?: string | null;
 };
 
 const SECTIONS: InstellingenSectionId[] = [
@@ -49,6 +54,11 @@ export default function VisionInstellingenView({
   model,
   locale,
   peerId,
+  isDemo,
+  onSaveKnowledge,
+  onAddKnowledge,
+  onRemoveKnowledge,
+  knowledgePersistNotice,
   ...agreementProps
 }: VisionInstellingenViewProps) {
   const nl = locale === "nl";
@@ -119,7 +129,13 @@ export default function VisionInstellingenView({
           <VisionAgreementDetailView
             model={model}
             {...agreementProps}
+            locale={locale}
+            isDemo={isDemo}
             visibleSection={activeSection}
+            onSaveKnowledge={onSaveKnowledge}
+            onAddKnowledge={onAddKnowledge}
+            onRemoveKnowledge={onRemoveKnowledge}
+            knowledgePersistNotice={knowledgePersistNotice}
           />
         </div>
       </div>

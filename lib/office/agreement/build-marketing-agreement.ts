@@ -20,6 +20,49 @@ import type {
   BoundaryKind,
 } from "./types";
 
+export type KnowledgeAmendments = {
+  overrides: Record<string, { value: string; correctedBy: string }>;
+  additions: AgreementKnowledge[];
+};
+
+export function applyKnowledgeAmendments(
+  model: AgreementViewModel,
+  amendments: KnowledgeAmendments | null | undefined
+): AgreementViewModel {
+  if (!amendments) return model;
+
+  const knowledge = model.knowledge.map((entry) => {
+    const override = amendments.overrides[entry.id];
+    if (!override) return entry;
+    return {
+      ...entry,
+      value: override.value,
+      provenance: "customer_rule" as const,
+      correctedBy: override.correctedBy,
+      correctable: true,
+    };
+  });
+
+  const existingIds = new Set(knowledge.map((entry) => entry.id));
+  for (const addition of amendments.additions) {
+    if (!existingIds.has(addition.id)) {
+      knowledge.push(addition);
+      existingIds.add(addition.id);
+    }
+  }
+
+  const hasLearned = knowledge.some(
+    (entry) =>
+      entry.provenance === "emma_understanding" || entry.provenance === "customer_rule"
+  );
+
+  return {
+    ...model,
+    knowledge,
+    noLearnedUnderstanding: hasLearned ? null : model.noLearnedUnderstanding,
+  };
+}
+
 /**
  * Marketing adapter for the working agreement (§4.8).
  *
@@ -283,6 +326,74 @@ export function buildMarketingAgreementViewModel(input: {
       value: brand.positioningStatement,
       provenance: "emma_understanding",
       correctable: true,
+      correctedBy: null,
+    });
+  }
+  if (brand?.keyMessages?.length) {
+    knowledge.push({
+      id: "claims",
+      label: nl ? "Kernclaims" : "Key claims",
+      value: brand.keyMessages.join(" · "),
+      provenance: "emma_understanding",
+      correctable: true,
+      correctedBy: null,
+    });
+  }
+  if (brand?.toneOfVoice?.dos?.length || brand?.toneOfVoice?.donts?.length) {
+    const dos = brand.toneOfVoice.dos?.join(", ") ?? "";
+    const donts = brand.toneOfVoice.donts?.join(", ") ?? "";
+    knowledge.push({
+      id: "tone-rules",
+      label: nl ? "Tone of voice regels" : "Tone of voice rules",
+      value: nl
+        ? `Wel: ${dos || "—"}. Niet: ${donts || "—"}.`
+        : `Do: ${dos || "—"}. Don't: ${donts || "—"}.`,
+      provenance: "emma_understanding",
+      correctable: true,
+      correctedBy: null,
+    });
+  }
+  if (brand?.marketCategory) {
+    knowledge.push({
+      id: "market-category",
+      label: nl ? "Marktcategorie" : "Market category",
+      value: brand.marketCategory,
+      provenance: "emma_understanding",
+      correctable: true,
+      correctedBy: null,
+    });
+  }
+  if (brand?.tagline) {
+    knowledge.push({
+      id: "tagline",
+      label: nl ? "Tagline" : "Tagline",
+      value: brand.tagline,
+      provenance: "emma_understanding",
+      correctable: true,
+      correctedBy: null,
+    });
+  }
+
+  const competitors = domainInput.understanding?.competitors ?? [];
+  for (const competitor of competitors.slice(0, 4)) {
+    knowledge.push({
+      id: `competitor:${competitor.id ?? competitor.name}`,
+      label: nl ? `Concurrent: ${competitor.name}` : `Competitor: ${competitor.name}`,
+      value: [...competitor.strengths, ...competitor.differentiators].filter(Boolean).join(" · ") || competitor.name,
+      provenance: "emma_understanding",
+      correctable: true,
+      correctedBy: null,
+    });
+  }
+
+  const products = domainInput.understanding?.products ?? [];
+  for (const product of products.slice(0, 4)) {
+    knowledge.push({
+      id: `product:${product.id ?? product.name}`,
+      label: nl ? `Product: ${product.name}` : `Product: ${product.name}`,
+      value: product.description ?? product.name,
+      provenance: "emma_understanding",
+      correctable: false,
       correctedBy: null,
     });
   }

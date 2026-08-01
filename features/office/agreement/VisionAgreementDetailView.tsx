@@ -182,7 +182,216 @@ function BoundaryGroup({
 
 export type VisionAgreementDetailViewProps = Omit<AgreementViewProps, "hideHeader"> & {
   visibleSection: NonNullable<AgreementViewProps["visibleSection"]>;
+  locale?: string | null;
+  isDemo?: boolean;
+  onSaveKnowledge?: (id: string, value: string) => void;
+  onAddKnowledge?: (entry: { label: string; value: string }) => void;
+  onRemoveKnowledge?: (id: string) => void;
+  knowledgePersistNotice?: string | null;
 };
+
+function KnowledgeSection({
+  entries,
+  copy,
+  locale,
+  visibleSection,
+  onCorrect,
+  onSaveKnowledge,
+  onAddKnowledge,
+  onRemoveKnowledge,
+  knowledgePersistNotice,
+}: {
+  entries: AgreementKnowledge[];
+  copy: AgreementViewModel["copy"];
+  locale?: string | null;
+  visibleSection: "brand" | "knowledge";
+  onCorrect?: (id: string) => void;
+  onSaveKnowledge?: (id: string, value: string) => void;
+  onAddKnowledge?: (entry: { label: string; value: string }) => void;
+  onRemoveKnowledge?: (id: string) => void;
+  knowledgePersistNotice?: string | null;
+}) {
+  const nl = locale === "nl";
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftValue, setDraftValue] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newValue, setNewValue] = useState("");
+
+  const provenanceLabel = (provenance: AgreementKnowledge["provenance"]) =>
+    provenance === "system_fact"
+      ? copy.provenanceSystem
+      : provenance === "customer_rule"
+        ? copy.provenanceCustomer
+        : copy.provenanceEmma;
+
+  const startEdit = (entry: AgreementKnowledge) => {
+    setEditingId(entry.id);
+    setDraftValue(entry.value);
+  };
+
+  const saveEdit = (id: string) => {
+    const trimmed = draftValue.trim();
+    if (!trimmed) return;
+    onSaveKnowledge?.(id, trimmed);
+    setEditingId(null);
+    setDraftValue("");
+  };
+
+  const submitAdd = () => {
+    const label = newLabel.trim();
+    const value = newValue.trim();
+    if (!label || !value) return;
+    onAddKnowledge?.({ label, value });
+    setNewLabel("");
+    setNewValue("");
+    setShowAdd(false);
+  };
+
+  return (
+    <div data-testid="office-agreement-view">
+      {knowledgePersistNotice ? (
+        <p className="mb-4 text-[12.5px] text-[var(--pg-v13-ink-faint)]" data-testid="knowledge-persist-notice">
+          {knowledgePersistNotice}
+        </p>
+      ) : null}
+      <ul className="m-0 flex list-none flex-col gap-0 p-0">
+        {entries.map((entry) => (
+          <li
+            key={entry.id}
+            className="pg-v13-agreement-knowledge-row"
+            data-testid={`agreement-knowledge-${entry.id}`}
+          >
+            <p className="pg-v13-mono text-[10px] tracking-[0.06em] text-[var(--pg-v13-ink-faint)] uppercase">
+              {entry.label}
+              {" · "}
+              <span className={PROVENANCE_STYLE[entry.provenance]}>{provenanceLabel(entry.provenance)}</span>
+            </p>
+            {editingId === entry.id ? (
+              <div className="mt-2 flex flex-col gap-2">
+                <textarea
+                  className="pg-v13-input min-h-[88px] w-full resize-y text-[13.5px]"
+                  value={draftValue}
+                  onChange={(event) => setDraftValue(event.target.value)}
+                  data-testid={`agreement-edit-${entry.id}`}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="pg-v13-btn pg-v13-btn--sm"
+                    onClick={() => saveEdit(entry.id)}
+                  >
+                    {copy.confirmLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="pg-v13-btn pg-v13-btn--ghost pg-v13-btn--sm"
+                    onClick={() => {
+                      setEditingId(null);
+                      setDraftValue("");
+                    }}
+                  >
+                    {copy.cancelLabel}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="mt-1 text-[13.5px] leading-snug text-[var(--pg-v13-ink)]">{entry.value}</p>
+                {entry.correctedBy ? (
+                  <p className="mt-1 text-[12px] text-[var(--pg-v13-blue)]">
+                    {copy.correctedLabel(entry.correctedBy)}
+                  </p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {entry.correctable && onSaveKnowledge ? (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(entry)}
+                      className="pg-v13-btn pg-v13-btn--link"
+                      data-testid={`agreement-edit-btn-${entry.id}`}
+                    >
+                      {entry.correctable && entry.provenance === "emma_understanding"
+                        ? copy.correctLabel
+                        : nl
+                          ? "Bewerken"
+                          : "Edit"}
+                    </button>
+                  ) : entry.correctable && onCorrect ? (
+                    <button
+                      type="button"
+                      onClick={() => onCorrect(entry.id)}
+                      className="pg-v13-btn pg-v13-btn--link"
+                      data-testid={`agreement-correct-${entry.id}`}
+                    >
+                      {copy.correctLabel}
+                    </button>
+                  ) : null}
+                  {entry.provenance === "customer_rule" && onRemoveKnowledge ? (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveKnowledge(entry.id)}
+                      className="pg-v13-btn pg-v13-btn--ghost pg-v13-btn--sm"
+                      data-testid={`agreement-remove-${entry.id}`}
+                    >
+                      {nl ? "Verwijderen" : "Remove"}
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {visibleSection === "knowledge" && onAddKnowledge ? (
+        <div className="mt-6 border-t border-[var(--pg-v13-line-soft)] pt-5">
+          {showAdd ? (
+            <div className="flex flex-col gap-3" data-testid="agreement-add-knowledge-form">
+              <input
+                className="pg-v13-input w-full text-[13.5px]"
+                placeholder={nl ? "Onderwerp (bijv. concurrent, product, regel)" : "Topic (e.g. competitor, product, rule)"}
+                value={newLabel}
+                onChange={(event) => setNewLabel(event.target.value)}
+              />
+              <textarea
+                className="pg-v13-input min-h-[96px] w-full resize-y text-[13.5px]"
+                placeholder={nl ? "Wat moet Emma weten?" : "What should Emma know?"}
+                value={newValue}
+                onChange={(event) => setNewValue(event.target.value)}
+              />
+              <p className="text-[12px] text-[var(--pg-v13-ink-faint)]">
+                {nl
+                  ? "Dit wordt opgeslagen als door jou ingestelde kennis — niet als afgeleid beeld."
+                  : "This is saved as knowledge you set — not as inferred understanding."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="pg-v13-btn pg-v13-btn--sm" onClick={submitAdd}>
+                  {nl ? "Voeg kennis toe" : "Add knowledge"}
+                </button>
+                <button
+                  type="button"
+                  className="pg-v13-btn pg-v13-btn--ghost pg-v13-btn--sm"
+                  onClick={() => setShowAdd(false)}
+                >
+                  {copy.cancelLabel}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="pg-v13-btn pg-v13-btn--ghost"
+              onClick={() => setShowAdd(true)}
+              data-testid="agreement-add-knowledge"
+            >
+              {nl ? "Voeg kennis toe" : "Add knowledge"}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function VisionAgreementDetailView({
   model,
@@ -192,16 +401,14 @@ export default function VisionAgreementDetailView({
   onCancel,
   onCorrect,
   visibleSection,
+  locale,
+  onSaveKnowledge,
+  onAddKnowledge,
+  onRemoveKnowledge,
+  knowledgePersistNotice,
 }: VisionAgreementDetailViewProps) {
   const { copy } = model;
   const [showHistory, setShowHistory] = useState(false);
-
-  const provenanceLabel = (provenance: AgreementKnowledge["provenance"]) =>
-    provenance === "system_fact"
-      ? copy.provenanceSystem
-      : provenance === "customer_rule"
-        ? copy.provenanceCustomer
-        : copy.provenanceEmma;
 
   const brandKnowledge = model.knowledge.filter(
     (entry) => entry.provenance === "customer_rule" || entry.provenance === "emma_understanding"
@@ -220,7 +427,16 @@ export default function VisionAgreementDetailView({
 
   if (visibleSection === "brand" || visibleSection === "knowledge") {
     const entries = visibleSection === "brand" ? brandKnowledge : model.knowledge;
-    if (entries.length === 0) {
+
+    if (entries.length === 0 && visibleSection === "brand") {
+      return (
+        <p className="text-[13px] text-[var(--pg-v13-ink-faint)]" data-testid="agreement-no-learned">
+          {model.noLearnedUnderstanding ?? copy.knowledgeHeading}
+        </p>
+      );
+    }
+
+    if (entries.length === 0 && visibleSection === "knowledge" && !onAddKnowledge) {
       return (
         <p className="text-[13px] text-[var(--pg-v13-ink-faint)]" data-testid="agreement-no-learned">
           {model.noLearnedUnderstanding ?? copy.knowledgeHeading}
@@ -229,43 +445,24 @@ export default function VisionAgreementDetailView({
     }
 
     return (
-      <div data-testid="office-agreement-view">
-        <ul className="m-0 flex list-none flex-col gap-0 p-0">
-          {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="pg-v13-agreement-knowledge-row"
-              data-testid={`agreement-knowledge-${entry.id}`}
-            >
-              <p className="pg-v13-mono text-[10px] tracking-[0.06em] text-[var(--pg-v13-ink-faint)] uppercase">
-                {entry.label}
-                {" · "}
-                <span className={PROVENANCE_STYLE[entry.provenance]}>{provenanceLabel(entry.provenance)}</span>
-              </p>
-              <p className="mt-1 text-[13.5px] leading-snug text-[var(--pg-v13-ink)]">{entry.value}</p>
-              {entry.correctedBy ? (
-                <p className="mt-1 text-[12px] text-[var(--pg-v13-blue)]">
-                  {copy.correctedLabel(entry.correctedBy)}
-                </p>
-              ) : entry.correctable && onCorrect ? (
-                <button
-                  type="button"
-                  onClick={() => onCorrect(entry.id)}
-                  className="pg-v13-btn pg-v13-btn--link mt-2"
-                  data-testid={`agreement-correct-${entry.id}`}
-                >
-                  {copy.correctLabel}
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        {model.noLearnedUnderstanding && visibleSection === "knowledge" ? (
+      <>
+        <KnowledgeSection
+          entries={entries}
+          copy={copy}
+          locale={locale}
+          visibleSection={visibleSection}
+          onCorrect={onCorrect}
+          onSaveKnowledge={onSaveKnowledge}
+          onAddKnowledge={visibleSection === "knowledge" ? onAddKnowledge : undefined}
+          onRemoveKnowledge={onRemoveKnowledge}
+          knowledgePersistNotice={knowledgePersistNotice}
+        />
+        {model.noLearnedUnderstanding && visibleSection === "knowledge" && entries.length > 0 ? (
           <p className="mt-4 text-[13px] text-[var(--pg-v13-ink-faint)]" data-testid="agreement-no-learned">
             {model.noLearnedUnderstanding}
           </p>
         ) : null}
-      </div>
+      </>
     );
   }
 

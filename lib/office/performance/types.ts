@@ -157,6 +157,8 @@ export type PerformanceViewModel = {
    * executive row. Never padded — an unmeasured business shows an empty row.
    */
   executive: import("./sections").PerformanceSectionMetric[];
+  /** Integration/provider cards for the channel grid (LinkedIn, Google Ads, CRM, GA4). */
+  providerCards: import("./provider-cards").PerformanceProviderCard[];
   gaps: PerformanceGap[];
   signals: PerformanceSignal[];
   copy: PerformanceCopy;

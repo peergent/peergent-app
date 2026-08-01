@@ -560,6 +560,7 @@ const performanceEarly: PerformanceViewModel = {
     agreementHref: "/office/preview/agreement",
   }),
   executive: [],
+  providerCards: [],
   gaps: [
     {
       id: "reach",
