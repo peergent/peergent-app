@@ -235,10 +235,12 @@ export function buildMarketingContentViewModel(input: {
   const peerId = domainInput.peerId;
 
   const rawPage = Number.parseInt(input.searchParams?.get("page") ?? "1", 10);
+  const stateParam = input.searchParams?.get("state");
   const filters: ContentFilters = {
-    state: (CONTENT_STATES.find(
-      (s) => s === input.searchParams?.get("state")
-    ) ?? null) as ContentState | null,
+    state:
+      stateParam === "all"
+        ? null
+        : "published",
     channel: input.searchParams?.get("channel") || null,
     campaignId: input.searchParams?.get("campaign") || null,
     query: input.searchParams?.get("q")?.trim() || null,
@@ -262,6 +264,8 @@ export function buildMarketingContentViewModel(input: {
     const unit = unitForDraft(draft.id, domainInput.workUnits);
     const failed = unit ? isWorkUnitFailed(unit) : false;
     const state = stateForDraft(draft, failed, unit);
+    if (state !== "published") continue;
+
     const campaignId = resolveProjectIdForDraft(draft, domainInput.workUnits);
     const channelLabel = channelLabelFor(draft.channel ?? draft.contentType, locale);
 
@@ -280,7 +284,7 @@ export function buildMarketingContentViewModel(input: {
       performance: null,
       performanceAbsence: state === "published" && !hasLiveReporting ? copy.noOutcomeYet : null,
       href: officeHref(peerId, "content", { item: draft.id }),
-      canReview: state === "awaiting_review",
+      canReview: false,
       failure: failed
         ? {
             voice: nl
@@ -297,44 +301,11 @@ export function buildMarketingContentViewModel(input: {
     });
   }
 
-  // ---- Planned: work that exists but has produced no content yet ---------
-  const PLANNED_STAGES = new Set(["requested", "understanding", "planning"]);
-  for (const unit of domainInput.workUnits) {
-    if (unit.draftId || unit.cancelled) continue;
-    if (!PLANNED_STAGES.has(unit.status)) continue;
-
-    const channelLabel = channelLabelFor(unit.channel, locale);
-    items.push({
-      id: `planned:${unit.id}`,
-      state: "planned",
-      statusLabel: stateTitle("planned", locale),
-      title: unit.title,
-      // Nothing has been written yet — an excerpt would be an invention.
-      preview: null,
-      channelId: unit.channel ?? null,
-      channelLabel,
-      campaignId: unit.projectId ?? null,
-      campaignTitle: unit.projectId
-        ? (projectTitleById.get(unit.projectId) ?? null)
-        : null,
-      dateLabel: unit.updatedAt ? formatRelativeTime(unit.updatedAt, locale) : null,
-      performance: null,
-      performanceAbsence: null,
-      href: unit.projectId
-        ? officeHref(peerId, "work", { campaign: unit.projectId })
-        : null,
-      canReview: false,
-      failure: null,
-      sortAt: unit.updatedAt ?? null,
-      searchBody: null,
-    });
-  }
-
   // ---- Filtering, search, deterministic order, pagination ----------------
   items.sort(compareItems);
 
   const filtered = items.filter((item) => {
-    if (filters.state && item.state !== filters.state) return false;
+    if (item.state !== "published") return false;
     if (filters.channel && item.channelId !== filters.channel) return false;
     if (filters.campaignId && item.campaignId !== filters.campaignId) return false;
     if (filters.query && !matchesQuery(item, filters.query)) return false;
@@ -348,21 +319,21 @@ export function buildMarketingContentViewModel(input: {
     page * CONTENT_PAGE_SIZE
   );
 
-  const groups: ContentGroup[] = CONTENT_STATES.map((state) => ({
-    state,
-    title: stateTitle(state, locale),
-    items: pageItems.filter((item) => item.state === state),
-  })).filter((group) => group.items.length > 0);
+  const groups: ContentGroup[] = [
+    {
+      state: "published" as ContentState,
+      title: stateTitle("published", locale),
+      items: pageItems,
+    },
+  ].filter((group) => group.items.length > 0);
 
-  // ---- Filter options, built from what actually exists --------------------
   const href = (patch: Partial<ContentFilters>) => {
-    // Changing any filter resets to page 1 unless the page is patched
-    // explicitly — otherwise a narrower filter can strand the customer on an
-    // empty page.
     const next = { ...filters, page: 1, ...patch };
     const params = new URLSearchParams();
-    if (next.state) params.set("state", next.state);
+    if (next.state === null) params.set("state", "all");
+    else if (next.state === "published") params.delete("state");
     if (next.channel) params.set("channel", next.channel);
+    else params.delete("channel");
     if (next.campaignId) params.set("campaign", next.campaignId);
     if (next.query) params.set("q", next.query);
     if (next.page > 1) params.set("page", String(next.page));
@@ -370,57 +341,40 @@ export function buildMarketingContentViewModel(input: {
     return `/office/${peerId}/content${query ? `?${query}` : ""}`;
   };
 
-  const presentStates = CONTENT_STATES.filter((state) =>
-    items.some((item) => item.state === state)
-  );
+  const visionChannels = [
+    "google_ads",
+    "linkedin",
+    "newsletter",
+    "blog",
+    "instagram",
+  ] as const;
 
-  const presentChannels = [
-    ...new Set(items.map((item) => item.channelId).filter(Boolean) as string[]),
-  ];
-
-  const filterGroups: ContentFilterGroup[] = [];
-
-  if (presentStates.length > 1) {
-    filterGroups.push({
+  const filterGroups: ContentFilterGroup[] = [
+    {
       id: "state",
       label: copy.stateLabel,
       options: [
         {
-          id: "all",
-          label: copy.allLabel,
-          active: filters.state === null,
-          href: href({ state: null }),
+          id: "published",
+          label: nl ? "Gepubliceerd" : "Published",
+          active: filters.state === "published" && !filters.channel,
+          href: href({ state: "published", channel: null }),
         },
-        ...presentStates.map((state) => ({
-          id: state,
-          label: stateTitle(state, locale),
-          active: filters.state === state,
-          href: href({ state }),
-        })),
-      ],
-    });
-  }
-
-  if (presentChannels.length > 1) {
-    filterGroups.push({
-      id: "channel",
-      label: copy.channelLabel,
-      options: [
         {
           id: "all",
           label: copy.allLabel,
-          active: filters.channel === null,
-          href: href({ channel: null }),
+          active: filters.state === null && !filters.channel,
+          href: href({ state: null, channel: null }),
         },
-        ...presentChannels.map((channel) => ({
+        ...visionChannels.map((channel) => ({
           id: channel,
           label: channelLabelFor(channel, locale) ?? channel,
           active: filters.channel === channel,
-          href: href({ channel }),
+          href: href({ state: "published", channel }),
         })),
       ],
-    });
-  }
+    },
+  ];
 
   // ---- Presence: her read on the corpus, grounded in what exists ---------
   const publishedItems = items.filter((item) => item.state === "published");

@@ -326,6 +326,6 @@ describe("Work — localization", () => {
       localePreference: "nl",
     });
     expect(model.copy.title).toBe("Werk");
-    expect(model.groups.some((g) => g.title === "In de wachtrij")).toBe(true);
+    expect(model.groups.some((g) => g.title === "Ingepland")).toBe(true);
   });
 });

@@ -9,14 +9,14 @@ import type { PresenceLine } from "@/lib/design-system/foundation";
 
 /* ---------------- Filters (§4.5: period, campaign, channel, content type) --- */
 
-export const PERFORMANCE_PERIODS = ["7d", "30d", "90d", "all"] as const;
+export const PERFORMANCE_PERIODS = ["1d", "7d", "30d", "365d"] as const;
 export type PerformancePeriod = (typeof PERFORMANCE_PERIODS)[number];
 
 export const PERIOD_DAYS: Record<PerformancePeriod, number | null> = {
+  "1d": 1,
   "7d": 7,
   "30d": 30,
-  "90d": 90,
-  all: null,
+  "365d": 365,
 };
 
 export type PerformanceFilters = {

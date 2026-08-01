@@ -53,6 +53,7 @@ function stageLabelFor(
   return (STAGE_LABELS[locale] ?? STAGE_LABELS.en)[status] ?? projectStatusLabel(status);
 }
 import { officeHref } from "../links";
+import { resolveProjectIdForDraft } from "../attribution";
 import type {
   WorkChannel,
   WorkCopy,
@@ -78,7 +79,6 @@ import type {
 const FINISHED_STATUSES: readonly MarketingProjectStatus[] = [
   "completed",
   "archived",
-  "monitoring_results",
 ];
 
 /** Publishing channels the customer chose, mapped to the provider that serves them. */
@@ -143,9 +143,9 @@ function groupTitle(id: WorkGroupId, locale: "en" | "nl"): string {
   };
   const nl: Record<WorkGroupId, string> = {
     blocked_on_you: "Wacht op jou",
-    blocked_elsewhere: "Wacht op iets anders",
+    blocked_elsewhere: "Geblokkeerd",
     moving: "Loopt",
-    queued: "In de wachtrij",
+    queued: "Ingepland",
     finished: "Recent afgerond",
   };
   return locale === "nl" ? nl[id] : en[id];
@@ -187,6 +187,7 @@ function resolveGroup(input: {
   hasStarted: boolean;
 }): WorkGroupId {
   if (FINISHED_STATUSES.includes(input.status)) return "finished";
+  if (input.status === "monitoring_results") return "moving";
   if (input.awaitingCustomer) return "blocked_on_you";
   if (input.paused || input.disconnectedChannel) return "blocked_elsewhere";
   if (!input.hasStarted) return "queued";

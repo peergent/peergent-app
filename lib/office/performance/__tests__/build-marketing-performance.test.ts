@@ -148,7 +148,7 @@ describe("Performance — interpretation stability", () => {
       ],
     });
 
-    const wide = build(input, "period=90d");
+    const wide = build(input, "period=365d");
     const narrow = build(input, "period=7d");
 
     const publishedIn = (m: ReturnType<typeof build>) =>
@@ -296,8 +296,8 @@ describe("Performance — filters", () => {
   it("reflects filters in the URL so a view is shareable", () => {
     const model = build(domain({ drafts: [draft()] }), "period=7d");
     const period = model.filterGroups.find((g) => g.id === "period");
-    const ninety = period?.options.find((o) => o.id === "90d");
-    expect(ninety?.href).toContain("period=90d");
+    const year = period?.options.find((o) => o.id === "365d");
+    expect(year?.href).toContain("period=365d");
     expect(model.filters.period).toBe("7d");
   });
 
@@ -309,7 +309,7 @@ describe("Performance — filters", () => {
           draft({ id: "b", channel: "instagram" }),
         ],
       }),
-      "period=90d&channel=linkedin"
+      "period=365d&channel=linkedin"
     );
     expect(model.filters.channel).toBe("linkedin");
     expect(model.metrics.find((m) => m.id === "published")?.value).toBe("1");

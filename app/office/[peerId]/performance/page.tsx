@@ -3,7 +3,7 @@
 import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
-import PerformanceView from "@/features/office/performance/PerformanceView";
+import VisionPerformanceView from "@/features/office/performance/VisionPerformanceView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingPerformanceViewModelForOffice } from "@/lib/office/performance/build-marketing-performance";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
@@ -27,6 +27,9 @@ function OfficePerformanceInner() {
     loading,
     isDemo,
     team,
+    roster,
+    openNewCampaign,
+    newCampaignModal,
   } = useOfficePeer();
   const searchParams = useSearchParams();
 
@@ -56,26 +59,30 @@ function OfficePerformanceInner() {
   );
 
   return (
-    <PgOfficeShell
-      peerId={peerId}
-      locale={localePreference}
-      isDemo={isDemo}
-      peerName={peerName}
-      peerRole={peerRole}
-      team={team}
-      active="performance"
-      presence={loading ? null : model.presence}
-      decisionCount={deskModel.decisions.length}
-      onBrief={() => undefined}
-      onSearch={() => undefined}
-    >
-      {loading ? (
-        // §4.5 Chart skeletons at final height so the page never reflows.
-        <PgSkeletonRows rows={3} rowHeight={120} />
-      ) : (
-        <PerformanceView model={model} />
-      )}
-    </PgOfficeShell>
+    <>
+      <PgOfficeShell
+        peerId={peerId}
+        locale={localePreference}
+        isDemo={isDemo}
+        peerName={peerName}
+        peerRole={peerRole}
+        team={team}
+        roster={roster}
+        active="performance"
+        presence={loading ? null : model.presence}
+        decisionCount={deskModel.decisions.length}
+        onBrief={() => undefined}
+        onSearch={() => undefined}
+        onNewCampaign={openNewCampaign}
+      >
+        {loading ? (
+          <PgSkeletonRows rows={3} rowHeight={120} />
+        ) : (
+          <VisionPerformanceView model={model} locale={localePreference} />
+        )}
+      </PgOfficeShell>
+      {newCampaignModal}
+    </>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
-import DeskView from "@/features/office/desk/DeskView";
+import VisionDeskView from "@/features/office/desk/VisionDeskView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { buildMarketingDeskBriefing } from "@/lib/office/desk/build-marketing-briefing";
@@ -25,6 +25,9 @@ function OfficeDeskInner() {
     loading,
     isDemo,
     team,
+    roster,
+    openNewCampaign,
+    newCampaignModal,
   } = useOfficePeer();
 
   // §8.1 The presence line freezes entirely while the customer types.
@@ -60,32 +63,36 @@ function OfficeDeskInner() {
   );
 
   return (
-    <PgOfficeShell
-      peerId={peerId}
-      locale={localePreference}
-      isDemo={isDemo}
-      peerName={peerName}
-      peerRole={peerRole}
-      team={team}
-      active="desk"
-      presence={loading ? null : model.presence}
-      decisionCount={model.decisions.length}
-      presenceSuspended={askFocused}
-      onBrief={() => undefined}
-      onSearch={() => undefined}
-    >
-      {loading ? (
-        // §4.1 Skeleton rows at final dimensions. Never a spinner.
-        <PgSkeletonRows rows={3} rowHeight={92} />
-      ) : (
-        <DeskView
-          model={model}
-          briefing={briefing}
-          onAsk={() => undefined}
-          onAskFocusChange={setAskFocused}
-        />
-      )}
-    </PgOfficeShell>
+    <>
+      <PgOfficeShell
+        peerId={peerId}
+        locale={localePreference}
+        isDemo={isDemo}
+        peerName={peerName}
+        peerRole={peerRole}
+        team={team}
+        roster={roster}
+        active="desk"
+        presence={loading ? null : model.presence}
+        decisionCount={model.decisions.length}
+        presenceSuspended={askFocused}
+        onBrief={() => undefined}
+        onSearch={() => undefined}
+        onNewCampaign={openNewCampaign}
+      >
+        {loading ? (
+          // §4.1 Skeleton rows at final dimensions. Never a spinner.
+          <PgSkeletonRows rows={3} rowHeight={92} />
+        ) : (
+          <VisionDeskView
+            model={model}
+            briefing={briefing}
+            locale={localePreference}
+          />
+        )}
+      </PgOfficeShell>
+      {newCampaignModal}
+    </>
   );
 }
 

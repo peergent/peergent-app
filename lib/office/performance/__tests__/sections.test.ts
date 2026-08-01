@@ -330,7 +330,7 @@ describe("filters preserve grounded results", () => {
       domainInput.connections.filter((c) => c.status === "connected").map((c) => c.id)
     );
 
-    for (const period of ["7d", "30d", "90d", "all"]) {
+    for (const period of ["1d", "7d", "30d", "365d"]) {
       const model = buildMarketingPerformanceViewModelForOffice({
         domainInput,
         peerName: "Emma",

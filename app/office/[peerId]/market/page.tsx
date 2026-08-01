@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo } from "react";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
-import MarketView from "@/features/office/market/MarketView";
+import VisionMarketView from "@/features/office/market/VisionMarketView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingMarketViewModel } from "@/lib/office/market/build-marketing-market";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
@@ -21,6 +21,9 @@ function OfficeMarketInner() {
     loading,
     isDemo,
     team,
+    roster,
+    openNewCampaign,
+    newCampaignModal,
   } = useOfficePeer();
 
   const model = useMemo(
@@ -46,25 +49,30 @@ function OfficeMarketInner() {
   );
 
   return (
-    <PgOfficeShell
-      peerId={peerId}
-      locale={localePreference}
-      isDemo={isDemo}
-      peerName={peerName}
-      peerRole={peerRole}
-      team={team}
-      active="market"
-      presence={loading ? null : model.presence}
-      decisionCount={deskModel.decisions.length}
-      onBrief={() => undefined}
-      onSearch={() => undefined}
-    >
-      {loading ? (
-        <PgSkeletonRows rows={3} rowHeight={132} />
-      ) : (
-        <MarketView model={model} />
-      )}
-    </PgOfficeShell>
+    <>
+      <PgOfficeShell
+        peerId={peerId}
+        locale={localePreference}
+        isDemo={isDemo}
+        peerName={peerName}
+        peerRole={peerRole}
+        team={team}
+        roster={roster}
+        active="market"
+        presence={loading ? null : model.presence}
+        decisionCount={deskModel.decisions.length}
+        onBrief={() => undefined}
+        onSearch={() => undefined}
+        onNewCampaign={openNewCampaign}
+      >
+        {loading ? (
+          <PgSkeletonRows rows={3} rowHeight={132} />
+        ) : (
+          <VisionMarketView model={model} locale={localePreference} />
+        )}
+      </PgOfficeShell>
+      {newCampaignModal}
+    </>
   );
 }
 

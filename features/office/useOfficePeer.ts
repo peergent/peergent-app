@@ -18,6 +18,8 @@ import {
   getDemoResponsibilitiesServerSnapshot,
   subscribeDemoWorkspace,
 } from "@/lib/office/demo/demo-workspace-state";
+import { DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
+import { useOfficeNewCampaign } from "@/features/office/useOfficeNewCampaign";
 
 /**
  * Shared data wiring for every office destination.
@@ -84,6 +86,15 @@ export function useOfficePeer() {
     [account?.fullName, demoResponsibilities]
   );
 
+  const { openNewCampaign, newCampaignModal } = useOfficeNewCampaign({
+    peerId,
+    peerName,
+    peerRole,
+    localePreference: customerLocalePreferenceFromEnv(),
+    isDemo: demo,
+    workspace,
+  });
+
   return {
     peerId,
     peerName,
@@ -95,7 +106,9 @@ export function useOfficePeer() {
     loading: demo ? false : workspace.pageState === "loading",
     /** True while rendering the curated showcase rather than a real workspace. */
     isDemo: demo,
-    /** §3 The rail hides itself below two Peers. */
     team: [] as const,
+    roster: demo ? DEMO_VISION_ROSTER : ([] as const),
+    openNewCampaign,
+    newCampaignModal,
   };
 }

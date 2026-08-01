@@ -41,7 +41,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      data-pg-theme="dark"
+      data-pg-theme="light"
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <head>

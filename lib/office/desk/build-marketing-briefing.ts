@@ -255,7 +255,10 @@ export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
     ...shared,
     now: input.now,
   });
-  const content = buildMarketingContentViewModel(shared);
+  const content = buildMarketingContentViewModel({
+    ...shared,
+    searchParams: new URLSearchParams("state=all"),
+  });
   const market = buildMarketingMarketViewModel({ ...shared, now: input.now });
   const agreement = buildMarketingAgreementViewModel(shared);
 
@@ -372,36 +375,9 @@ export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
   const contentCount = (state: string) =>
     content.groups.find((group) => group.state === state)?.items.length ?? 0;
   const published = contentCount("published");
-  const awaitingReview = contentCount("awaiting_review");
-  const drafts = contentCount("draft");
-  const scheduled = contentCount("scheduled");
 
   const contentStats: BriefingStat[] = [];
-  if (awaitingReview > 0) {
-    contentStats.push(
-      stat(
-        "awaiting",
-        nl ? "Wacht op goedkeuring" : "Awaiting review",
-        String(awaitingReview),
-        null,
-        "attention"
-      )
-    );
-  }
-  if (scheduled > 0) {
-    contentStats.push(
-      stat(
-        "scheduled",
-        nl ? "Ingepland" : "Scheduled",
-        String(scheduled),
-        content.groups.find((g) => g.state === "scheduled")?.items[0]?.dateLabel ?? null
-      )
-    );
-  }
-  if (drafts > 0) {
-    contentStats.push(stat("drafts", nl ? "Concepten" : "Drafts", String(drafts), null, "quiet"));
-  }
-  if (published > 0 && contentStats.length < 3) {
+  if (published > 0) {
     contentStats.push(
       stat(
         "published",

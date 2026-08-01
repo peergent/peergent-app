@@ -48,22 +48,17 @@
 
   --pg-measure: 68ch;
 
-  /* Office layout rhythm.
-     Content is bounded so pages stay readable on large displays instead of
-     stretching into a dashboard. */
-  --pg-office-content-max: 980px;
-  --pg-office-gutter: var(--pg-space-5);
+  /* Office layout rhythm — Vision v13 canvas spec (mockup.html .canvas) */
+  --pg-office-content-max: var(--pg-v13-canvas-max, 920px);
+  --pg-office-gutter: var(--pg-v13-canvas-padding-x, var(--pg-space-5));
   --pg-office-section-gap: var(--pg-space-8);
   --pg-office-card-gap: var(--pg-space-3);
   --pg-presence-height: 56px;
 
-  /* Macro rhythm.
-     Two thirds of Office spacing was 8px or 12px, which gives fine control
-     inside a block and none between blocks — the reason the page reads as one
-     continuous density. These are the steps that separate movements. */
-  --pg-office-band-gap: var(--pg-space-12);   /* 48px — between page bands   */
-  --pg-office-band-gap-lg: var(--pg-space-16); /* 64px — around the hero      */
-  --pg-office-block-gap: var(--pg-space-6);   /* 24px — within a band        */
+  /* Macro rhythm — v13 .sec { margin-bottom: 42px } */
+  --pg-office-band-gap: var(--pg-v13-section-gap, 42px);
+  --pg-office-band-gap-lg: var(--pg-space-12);
+  --pg-office-block-gap: var(--pg-space-6);
 }
 
 @media (max-width: 640px) {
@@ -93,48 +88,42 @@
    ============================================================ */
 
 [data-pg-theme="dark"] {
-  --pg-office-canvas: #06070f;
-  --pg-office-chrome: #0a0c17;
-  --pg-office-panel: #101324;
-  --pg-office-panel-hover: #151932;
-  --pg-office-inset: #171c33;
+  --pg-office-canvas: var(--pg-v13-bg-solid, #0a0a12);
+  --pg-office-canvas-wash: var(--pg-v13-bg-wash);
+  --pg-office-chrome: var(--pg-v13-glass, rgba(20, 21, 32, 0.55));
+  --pg-office-panel: var(--pg-v13-surface, #14151f);
+  --pg-office-panel-hover: var(--pg-v13-panel-hover, rgba(255, 255, 255, 0.052));
+  --pg-office-inset: color-mix(in srgb, var(--pg-v13-surface, #14151f) 88%, #fff);
 
-  --pg-office-line: rgba(255, 255, 255, 0.075);
-  --pg-office-line-strong: rgba(255, 255, 255, 0.14);
+  --pg-office-line: var(--pg-v13-line-soft, rgba(255, 255, 255, 0.06));
+  --pg-office-line-strong: var(--pg-v13-line, rgba(255, 255, 255, 0.09));
 
-  /* A single hairline of light along the top edge is what reads as depth on a
-     dark ground — far more effective than a heavier drop shadow. */
-  --pg-office-lift:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 12px 28px -18px rgba(0, 0, 0, 0.75);
+  --pg-office-lift: var(--pg-v13-shadow);
 
-  --pg-office-glow: rgba(123, 111, 255, 0.14);
+  --pg-office-glow: var(--pg-v13-orb-a, rgba(91, 124, 250, 0.14));
   --pg-hero-wash: color-mix(in srgb, var(--pg-peer-marketing) 12%, transparent);
 }
 
 [data-pg-theme="light"] {
-  --pg-office-canvas: #f6f6fa;
-  --pg-office-chrome: #fbfbfd;
-  --pg-office-panel: #ffffff;
-  --pg-office-panel-hover: #fdfdff;
-  --pg-office-inset: #f4f5f9;
+  --pg-office-canvas: var(--pg-v13-bg-solid, #f8f9fd);
+  --pg-office-canvas-wash: var(--pg-v13-bg-wash);
+  --pg-office-chrome: var(--pg-v13-glass, rgba(255, 255, 255, 0.68));
+  --pg-office-panel: var(--pg-v13-surface, #ffffff);
+  --pg-office-panel-hover: var(--pg-v13-panel-hover, rgba(20, 22, 42, 0.06));
+  --pg-office-inset: var(--pg-v13-panel, rgba(20, 22, 42, 0.035));
 
-  --pg-office-line: rgba(17, 20, 40, 0.09);
-  --pg-office-line-strong: rgba(17, 20, 40, 0.16);
+  --pg-office-line: var(--pg-v13-line-soft, rgba(20, 22, 42, 0.08));
+  --pg-office-line-strong: var(--pg-v13-line, rgba(20, 22, 42, 0.12));
 
-  --pg-office-lift:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 2px rgba(17, 20, 40, 0.05),
-    0 12px 26px -18px rgba(17, 20, 40, 0.18);
+  --pg-office-lift: var(--pg-v13-shadow);
 
-  --pg-office-glow: rgba(91, 79, 199, 0.1);
+  --pg-office-glow: var(--pg-v13-orb-a, rgba(62, 95, 238, 0.16));
 }
 
 [data-pg-theme="dark"] {
-  --pg-peer-marketing: #7b6fff;
-  --pg-peer-sales: #d9a05b;
-  --pg-peer-support: #3fbfa4;
+  --pg-peer-marketing: var(--pg-v13-marketing, #5b7cfa);
+  --pg-peer-sales: var(--pg-v13-sales, #efaa53);
+  --pg-peer-support: var(--pg-v13-support, #3fc79a);
   --pg-peer-finance: #6ea8fe;
   --pg-peer-planning: #b98ce0;
   --pg-peer-hr: #e08fa8;
@@ -142,21 +131,17 @@
   --pg-peer-legal: #9aa5c4;
   --pg-peer-operations: #8fc98a;
 
-  /* §2 Attention — means "a human decision is required" and appears nowhere
-     else. Its scarcity is what makes it work. */
-  --pg-color-decision: #e0a55a;
-  --pg-color-decision-soft: rgba(224, 165, 90, 0.14);
-  --pg-color-decision-line: rgba(224, 165, 90, 0.32);
+  --pg-color-decision: var(--pg-v13-attention, #efaa53);
+  --pg-color-decision-soft: var(--pg-v13-attention-soft, rgba(239, 170, 83, 0.1));
+  --pg-color-decision-line: var(--pg-v13-attention-line, rgba(239, 170, 83, 0.32));
 
-  /* §2 Elevation — two levels only. Ground (page) and raised (card),
-     separated by a hairline border plus one soft shadow. No third level. */
-  --pg-elevation-raised: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -14px rgba(0, 0, 0, 0.5);
+  --pg-elevation-raised: var(--pg-v13-shadow);
 }
 
 [data-pg-theme="light"] {
-  --pg-peer-marketing: #5b4fc7;
-  --pg-peer-sales: #a8722c;
-  --pg-peer-support: #1a8f78;
+  --pg-peer-marketing: var(--pg-v13-marketing, #3e5fee);
+  --pg-peer-sales: var(--pg-v13-sales, #c9822e);
+  --pg-peer-support: var(--pg-v13-support, #0e9a73);
   --pg-peer-finance: #2f6fd0;
   --pg-peer-planning: #8257b8;
   --pg-peer-hr: #b85c7a;
@@ -164,11 +149,11 @@
   --pg-peer-legal: #5f6b8a;
   --pg-peer-operations: #4f9349;
 
-  --pg-color-decision: #b0741b;
-  --pg-color-decision-soft: rgba(176, 116, 27, 0.1);
-  --pg-color-decision-line: rgba(176, 116, 27, 0.28);
+  --pg-color-decision: var(--pg-v13-attention, #c9822e);
+  --pg-color-decision-soft: var(--pg-v13-attention-soft, rgba(201, 130, 46, 0.1));
+  --pg-color-decision-line: var(--pg-v13-attention-line, rgba(201, 130, 46, 0.32));
 
-  --pg-elevation-raised: 0 1px 2px rgba(20, 24, 31, 0.04), 0 8px 24px -12px rgba(20, 24, 31, 0.1);
+  --pg-elevation-raised: var(--pg-v13-shadow);
 }
 
 /* ============================================================
@@ -270,11 +255,11 @@
    ============================================================ */
 
 :root {
-  --pg-state-positive: var(--pg-color-success);
+  --pg-state-positive: var(--pg-v13-success, var(--pg-color-success));
   --pg-state-attention: var(--pg-color-decision);
   --pg-state-critical: var(--pg-color-error);
-  --pg-state-neutral: var(--pg-color-info);
-  --pg-state-voice: var(--pg-color-accent);
+  --pg-state-neutral: var(--pg-v13-blue, var(--pg-color-info));
+  --pg-state-voice: var(--pg-v13-marketing, var(--pg-color-accent));
 
   /* Soft fills for the same five, for backgrounds and rails. */
   --pg-state-positive-soft: color-mix(in srgb, var(--pg-state-positive) 14%, transparent);
@@ -483,9 +468,38 @@
 }
 
 .pg-office-canvas {
-  background:
-    radial-gradient(ellipse 80% 55% at 50% -8%, var(--pg-office-glow), transparent 55%),
-    var(--pg-office-canvas);
+  position: relative;
+  isolation: isolate;
+  color: var(--pg-v13-ink, var(--pg-color-text-primary));
+  background: var(--pg-office-canvas-wash, var(--pg-office-canvas));
+  overflow: hidden;
+}
+
+.pg-office-canvas::before,
+.pg-office-canvas::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pg-office-canvas::before {
+  width: min(640px, 90vw);
+  height: min(640px, 90vw);
+  top: -260px;
+  right: -160px;
+  background: radial-gradient(circle, var(--pg-office-glow), transparent 70%);
+}
+
+.pg-office-canvas::after {
+  width: min(520px, 80vw);
+  height: min(520px, 80vw);
+  bottom: -220px;
+  left: -160px;
+  background: radial-gradient(circle, var(--pg-v13-orb-b, rgba(100, 112, 232, 0.12)), transparent 70%);
 }
 
 @keyframes pg-band-in {
@@ -505,12 +519,14 @@
 
 .pg-hero-surface {
   position: relative;
+  z-index: 1;
   border-radius: var(--pg-radius-lg);
-  border: 1px solid var(--pg-office-line-strong);
-  background: var(--pg-office-panel);
-  box-shadow:
-    var(--pg-office-lift),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--pg-office-line);
+  border-top: 2px solid var(--pg-peer-marketing);
+  background: var(--pg-v13-panel, var(--pg-office-panel));
+  box-shadow: var(--pg-office-lift);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
@@ -519,14 +535,20 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 70% 80% at 0% 50%, var(--pg-hero-wash, transparent), transparent 68%);
+  background: radial-gradient(
+    ellipse 70% 80% at 0% 50%,
+    var(--pg-hero-wash, transparent),
+    transparent 68%
+  );
 }
 
 .pg-kpi-card {
-  border-radius: var(--pg-radius-md);
+  border-radius: var(--pg-radius-lg);
   border: 1px solid var(--pg-office-line);
-  background: var(--pg-office-panel);
+  background: var(--pg-v13-panel, var(--pg-office-panel));
   box-shadow: var(--pg-office-lift);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   padding: var(--pg-space-4) var(--pg-space-5);
   transition:
     border-color var(--pg-duration-state) var(--pg-ease-peergent),
@@ -548,15 +570,17 @@
 }
 
 .pg-entity-card {
-  border-radius: var(--pg-radius-md);
+  border-radius: var(--pg-radius-lg);
   border: 1px solid var(--pg-office-line);
-  background: var(--pg-office-panel);
+  background: var(--pg-v13-panel, var(--pg-office-panel));
   box-shadow: var(--pg-office-lift);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: var(--pg-space-5);
 }
 
 .pg-entity-card--attention {
-  border-left: 3px solid var(--pg-state-attention);
+  border-left: 2.5px solid var(--pg-state-attention);
 }
 
 .pg-content-preview {

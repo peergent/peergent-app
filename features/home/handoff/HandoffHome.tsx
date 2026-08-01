@@ -6,46 +6,48 @@ import { RefreshCw } from "lucide-react";
 import { useHandoffHome, type HandoffHomeState } from "@/hooks/useHandoffHome";
 import FigmaHomePort from "@/features/home/figma-port/FigmaHomePort";
 import HandoffSkeleton from "./HandoffSkeleton";
-import V17CustomerShell from "@/features/customer-v17/shell/V17CustomerShell";
-import V17CommandCenter from "@/features/customer-v17/command-center/V17CommandCenter";
+import PgVisionShell from "@/components/design-system/PgVisionShell";
+import IedereenView from "@/features/office/iedereen/IedereenView";
+import { DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
 import "@/features/home/figma-port/figma-home.css";
-import "@/features/customer-v17/styles/v17-customer.css";
 
 export type HandoffHomeProps = {
   homeState?: HandoffHomeState;
+  isDemo?: boolean;
 };
 
-function HandoffHomeView({ homeState }: { homeState: HandoffHomeState }) {
+function HandoffHomeView({
+  homeState,
+  isDemo = false,
+}: {
+  homeState: HandoffHomeState;
+  isDemo?: boolean;
+}) {
   const searchParams = useSearchParams();
   const visualParam = searchParams.get("visual");
   const { pageState, errorMessage, handoff, copy, retry, previewBanner } = homeState;
 
   if (pageState === "loading") {
     return (
-      <V17CustomerShell>
-        <div className="v17-page">
-          {previewBanner ? <p className="v17-page-support">{previewBanner}</p> : null}
-          <HandoffSkeleton />
-        </div>
-      </V17CustomerShell>
+      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+        <HandoffSkeleton />
+      </PgVisionShell>
     );
   }
 
   if (pageState === "error") {
     return (
-      <V17CustomerShell>
-        <div className="v17-page">
-          <p className="v17-page-title">{copy.errorTitle}</p>
-          <p className="v17-page-support">{errorMessage}</p>
-          <button type="button" onClick={retry} className="v17-btn v17-btn--primary pg-focus-premium">
-            <RefreshCw size={16} aria-hidden />
-            {copy.errorRetry}
-          </button>
-          <Link href="/team" className="v17-btn v17-btn--ghost pg-focus-premium">
-            {copy.teamPulseViewTeam}
-          </Link>
-        </div>
-      </V17CustomerShell>
+      <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+        <p className="pg-v13-title text-[22px]">{copy.errorTitle}</p>
+        <p className="pg-v13-sub">{errorMessage}</p>
+        <button type="button" onClick={retry} className="pg-v13-btn pg-focus-premium">
+          <RefreshCw size={16} aria-hidden />
+          {copy.errorRetry}
+        </button>
+        <Link href="/team" className="pg-v13-btn pg-v13-btn--ghost mt-3 inline-flex no-underline">
+          {copy.teamPulseViewTeam}
+        </Link>
+      </PgVisionShell>
     );
   }
 
@@ -61,9 +63,9 @@ function HandoffHomeView({ homeState }: { homeState: HandoffHomeState }) {
       {visualParam === "reference" ? (
         <FigmaHomePort homeState={homeState} onPrimaryActivate={() => undefined} />
       ) : (
-        <V17CustomerShell>
-          <V17CommandCenter homeState={homeState} />
-        </V17CustomerShell>
+        <PgVisionShell mode="iedereen" isDemo={isDemo} roster={isDemo ? DEMO_VISION_ROSTER : undefined}>
+          <IedereenView homeState={homeState} isDemo={isDemo} />
+        </PgVisionShell>
       )}
     </>
   );
@@ -74,9 +76,9 @@ function HandoffHomeWithHook() {
   return <HandoffHomeView homeState={homeState} />;
 }
 
-export default function HandoffHome({ homeState }: HandoffHomeProps = {}) {
+export default function HandoffHome({ homeState, isDemo }: HandoffHomeProps = {}) {
   if (homeState) {
-    return <HandoffHomeView homeState={homeState} />;
+    return <HandoffHomeView homeState={homeState} isDemo={isDemo} />;
   }
   return <HandoffHomeWithHook />;
 }

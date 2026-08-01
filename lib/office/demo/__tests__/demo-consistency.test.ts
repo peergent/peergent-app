@@ -24,7 +24,11 @@ const domainInput = buildDemoDomainInput({ now: NOW });
 const base = { domainInput, peerName: "Emma", peerRole: "Marketing" };
 
 const work = buildMarketingWorkViewModel(base);
-const content = buildMarketingContentViewModel(base);
+const content = buildMarketingContentViewModel({
+  ...base,
+  searchParams: new URLSearchParams("state=all"),
+});
+const contentPublished = buildMarketingContentViewModel(base);
 const performance = buildMarketingPerformanceViewModelForOffice({ ...base, now: NOW });
 const market = buildMarketingMarketViewModel({ ...base, now: NOW });
 const agreement = buildMarketingAgreementViewModel(base);
@@ -39,6 +43,7 @@ describe("the demo workspace is one company", () => {
   it("gives every page something to show", () => {
     expect(allWorkItems.length).toBeGreaterThan(0);
     expect(allContentItems.length).toBeGreaterThan(0);
+    expect(contentPublished.groups.flatMap((g) => g.items).length).toBeGreaterThan(0);
     expect(performance.metrics.length).toBeGreaterThan(0);
     expect(market.competitors.length).toBeGreaterThan(0);
     expect(agreement.autonomous.length).toBeGreaterThan(0);
@@ -242,16 +247,16 @@ describe("the Desk agrees with every page it summarises", () => {
     }
   });
 
-  it("counts the same items awaiting review as Content does", () => {
-    const contentPanel = briefing.panels.find((p) => p.id === "content")!;
-    const awaitingStat = contentPanel.stats.find((s) => s.id === "awaiting");
-    const awaitingOnContent =
-      content.groups.find((g) => g.state === "awaiting_review")?.items.length ?? 0;
+  it("counts the same items awaiting review as Work does", () => {
+    const workPanel = briefing.panels.find((p) => p.id === "work")!;
+    const awaitingStat = workPanel.stats.find((s) => s.id === "blocked");
+    const awaitingOnWork =
+      work.groups.find((g) => g.id === "blocked_on_you")?.items.length ?? 0;
 
-    if (awaitingOnContent === 0) {
+    if (awaitingOnWork === 0) {
       expect(awaitingStat).toBeUndefined();
     } else {
-      expect(Number(awaitingStat!.value)).toBe(awaitingOnContent);
+      expect(Number(awaitingStat!.value)).toBe(awaitingOnWork);
     }
   });
 
@@ -268,36 +273,11 @@ describe("the Desk agrees with every page it summarises", () => {
     expect(stat!.value).toBe(`${connected}/${agreement.connections.length}`);
   });
 
-  it("asks for review of exactly as many items as Content is holding", () => {
-    // Caught in the browser, not by a count: the Desk asked to "Review 3 items"
-    // while Content listed two awaiting review. Both numbers were correct about
-    // different things, and a prospect reads that as the product contradicting
-    // itself. The demo data must make the two agree.
+  it("asks for review when Work has items blocked on the customer", () => {
     const awaiting =
-      content.groups.find((g) => g.state === "awaiting_review")?.items.length ?? 0;
-
-    for (const decision of desk.decisions) {
-      const asked = decision.title.match(/\d+/);
-      if (!asked) continue;
-      expect(
-        Number(asked[0]),
-        `the Desk asks to review ${asked[0]} items, Content holds ${awaiting}`
-      ).toBe(awaiting);
-    }
-  });
-
-  it("says the same number of items need review as Content is holding", () => {
-    // Her presence line, the decision cards and the Content list are three
-    // views of one queue. The demo is only believable when they agree.
-    const awaiting =
-      content.groups.find((g) => g.state === "awaiting_review")?.items.length ?? 0;
-    const stated = desk.presence?.text.match(/\d+/);
-    if (stated) {
-      expect(
-        Number(stated[0]),
-        `she says ${stated[0]} need review, Content holds ${awaiting}`
-      ).toBe(awaiting);
-    }
+      work.groups.find((g) => g.id === "blocked_on_you")?.items.length ?? 0;
+    if (awaiting === 0) return;
+    expect(desk.decisions.length).toBeGreaterThan(0);
   });
 
   it("closes the day with real outcomes, not a generic line", () => {

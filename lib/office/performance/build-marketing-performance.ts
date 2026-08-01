@@ -44,7 +44,7 @@ function copyFor(locale: MarketingCampaignLocale): PerformanceCopy {
       channelLabel: "Kanaal",
       contentTypeLabel: "Soort",
       allLabel: "Alles",
-      gapsHeading: "Wat ik nog niet kan zien",
+      gapsHeading: "Nog niet meetbaar",
       trendHeading: "Verloop",
       methodologyPrefix: "Geteld op basis van",
       observedHeading: "Gemeten",
@@ -77,16 +77,16 @@ function copyFor(locale: MarketingCampaignLocale): PerformanceCopy {
 
 function periodLabel(period: PerformancePeriod, locale: MarketingCampaignLocale): string {
   const en: Record<PerformancePeriod, string> = {
-    "7d": "7 days",
-    "30d": "30 days",
-    "90d": "90 days",
-    all: "All time",
+    "1d": "Day",
+    "7d": "Week",
+    "30d": "Month",
+    "365d": "Year",
   };
   const nl: Record<PerformancePeriod, string> = {
-    "7d": "7 dagen",
-    "30d": "30 dagen",
-    "90d": "90 dagen",
-    all: "Alles",
+    "1d": "Dag",
+    "7d": "Week",
+    "30d": "Maand",
+    "365d": "Jaar",
   };
   return locale === "nl" ? nl[period] : en[period];
 }
@@ -582,27 +582,6 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
       })),
     },
   ];
-
-  if (byChannel.size > 0) {
-    filterGroups.push({
-      id: "channel",
-      label: copy.channelLabel,
-      options: [
-        {
-          id: "all",
-          label: copy.allLabel,
-          active: filters.channel === null,
-          href: filterHref(peerId, filters, { channel: null }),
-        },
-        ...[...byChannel.keys()].map((channel) => ({
-          id: channel,
-          label: channelLabel(channel),
-          active: filters.channel === channel,
-          href: filterHref(peerId, filters, { channel }),
-        })),
-      ],
-    });
-  }
 
   return {
     peerId,

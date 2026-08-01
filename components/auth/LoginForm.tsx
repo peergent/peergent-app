@@ -5,21 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { signInWithPassword } from "@/lib/auth/actions";
+import { loginAction, type LoginActionState } from "@/lib/auth/login-action";
 
-const initialState = { error: "" };
+const initialState: LoginActionState = { error: "" };
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
   const verified = searchParams.get("verified") === "1";
-  const [state, formAction, pending] = useActionState(
-    async (_prev: typeof initialState, formData: FormData) => {
-      const result = await signInWithPassword(formData);
-      return { error: result?.error ?? "" };
-    },
-    initialState
-  );
+  const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   return (
     <form action={formAction} className="space-y-5">

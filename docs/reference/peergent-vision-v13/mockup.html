@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peergent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+    --ease: cubic-bezier(.16,1,.3,1);
+    --spring: cubic-bezier(.34,1.4,.4,1);
+  }
+  html[data-theme="light"]{
+    --bg-wash: linear-gradient(165deg, #FFFFFF 0%, #F8F9FD 32%, #F2F4FB 62%, #FAFBFE 100%);
+    --bg-solid:#F8F9FD;
+    --surface:#FFFFFF;
+    --panel: rgba(20,22,42,0.035);
+    --panel-hover: rgba(20,22,42,0.06);
+    --line: rgba(20,22,42,0.12);
+    --line-soft: rgba(20,22,42,0.08);
+    --ink:#14151F;
+    --ink-soft:#585C70;
+    --ink-faint:#9599AC;
+    --blue:#3E5FEE;
+    --indigo:#6470E8;
+    --purple-accent:#8B5CF6;
+    --title-grad: linear-gradient(120deg, var(--blue), var(--purple-accent));
+    --grad: linear-gradient(135deg, var(--blue), var(--indigo));
+    --grad-soft: linear-gradient(135deg, rgba(62,95,238,0.12), rgba(100,112,232,0.08));
+    --attention:#C9822E;
+    --attention-soft: rgba(201,130,46,0.10);
+    --attention-line: rgba(201,130,46,0.32);
+    --success:#0E8F6C;
+    --success-soft: rgba(14,143,108,0.09);
+    --marketing:#3E5FEE; --sales:#C9822E; --support:#0E9A73;
+    --glass: rgba(255,255,255,0.68);
+    --shadow: 0 1px 2px rgba(20,22,50,0.05), 0 16px 36px -20px rgba(20,22,50,0.18);
+  }
+  html[data-theme="dark"]{
+    --bg-wash: linear-gradient(175deg, #0C0D18 0%, #08090F 42%, #0A0A12 78%, #0D0B14 100%);
+    --bg-solid:#0A0A12;
+    --surface:#14151F;
+    --panel: rgba(255,255,255,0.032);
+    --panel-hover: rgba(255,255,255,0.052);
+    --line: rgba(255,255,255,0.09);
+    --line-soft: rgba(255,255,255,0.06);
+    --ink:#F4F5FA;
+    --ink-soft:#9497AC;
+    --ink-faint:#5C6079;
+    --blue:#5B7CFA;
+    --indigo:#7C8CF8;
+    --purple-accent:#B78CF9;
+    --title-grad: linear-gradient(120deg, var(--blue), var(--purple-accent));
+    --grad: linear-gradient(135deg, var(--blue), var(--indigo));
+    --grad-soft: linear-gradient(135deg, rgba(91,124,250,0.16), rgba(124,140,248,0.10));
+    --attention:#EFAA53;
+    --attention-soft: rgba(239,170,83,0.10);
+    --attention-line: rgba(239,170,83,0.32);
+    --success:#3FC79A;
+    --success-soft: rgba(63,199,154,0.10);
+    --marketing:#5B7CFA; --sales:#EFAA53; --support:#3FC79A;
+    --glass: rgba(20,21,32,0.55);
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 16px 36px -18px rgba(0,0,0,0.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-wash);color:var(--ink);font-family:'Manrope',sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh;position:relative;
+  }
+  .mesh{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.5;}
+  .orb.o1{width:640px;height:640px;top:-260px;right:-160px;background:radial-gradient(circle, rgba(62,95,238,0.16), transparent 70%);}
+  .orb.o2{width:520px;height:520px;bottom:-220px;left:-160px;background:radial-gradient(circle, rgba(100,112,232,0.12), transparent 70%);}
+  em,i{font-style:italic;}
+
+  /* ============ APP LAYOUT — collapsible sidebar with the roster ============ */
+  .app{display:flex;min-height:100vh;position:relative;z-index:1;}
+  .rail{
+    width:230px;flex-shrink:0;position:relative;
+    padding:24px 16px;display:flex;flex-direction:column;gap:20px;
+    border-right:1px solid var(--line-soft);
+    background:var(--glass);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+    transition:width .28s var(--ease), padding .28s var(--ease);
+  }
+  .rail.collapsed{width:76px;padding:24px 14px;}
+  .rail.collapsed .label,
+  .rail.collapsed .brand-word,
+  .rail.collapsed .theme-toggle,
+  .rail.collapsed .nav-label{display:none;}
+  .rail.collapsed .brand{justify-content:center;}
+  .rail.collapsed .r-chip{justify-content:center;padding:8px;}
+  .rail.collapsed .nav-group{align-items:center;display:flex;flex-direction:column;}
+  .rail.collapsed .you-row{justify-content:center;}
+
+  .collapse-btn{
+    position:absolute;top:26px;right:-11px;width:22px;height:22px;border-radius:50%;
+    background:var(--surface);border:1px solid var(--line);color:var(--ink-faint);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;
+    transition:color .15s var(--ease), transform .28s var(--ease);
+  }
+  .collapse-btn:hover{color:var(--ink);}
+  .collapse-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .28s var(--ease);}
+  .rail.collapsed .collapse-btn svg{transform:rotate(180deg);}
+
+  .brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+  .mark{width:24px;height:24px;border-radius:7px;background:var(--grad);position:relative;box-shadow:0 3px 12px rgba(91,124,250,0.35);flex-shrink:0;}
+  .mark svg{position:absolute;inset:0;width:100%;height:100%;}
+  .brand-word{
+    font-weight:800;font-size:15px;letter-spacing:-0.01em;
+    background:var(--title-grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  .nav-group{display:flex;flex-direction:column;gap:2px;}
+  .nav-label{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding:6px 8px 4px;}
+  .nav-label.nav-label-lg{font-size:12px;letter-spacing:.03em;text-transform:none;color:var(--ink-soft);font-weight:700;font-family:'Manrope',sans-serif;padding:10px 8px 6px;}
+
+  .peer-chip{padding:5px 10px 5px 8px;}
+  .peer-chip .r-name{font-size:11.5px;}
+  .r-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--ink-faint);}
+  .r-dot.working{background:var(--peer,var(--blue));box-shadow:0 0 0 2.5px var(--grad-soft);}
+  .r-dot.waiting{background:var(--attention);box-shadow:0 0 0 2.5px var(--attention-soft);}
+  .r-dot.calm{background:var(--ink-faint);opacity:.7;}
+  .rail.collapsed .peer-chip{justify-content:center;padding:8px;}
+  .r-chip{
+    display:flex;align-items:center;gap:9px;padding:7px 10px 7px 6px;border-radius:100px;cursor:pointer;width:100%;
+    border:1px solid transparent;background:none;font-family:'Manrope',sans-serif;text-align:left;
+    transition:background .15s var(--ease), border-color .15s var(--ease);flex-shrink:0;
+  }
+  .r-chip:hover{background:var(--panel);}
+  .r-chip.active{background:var(--grad-soft);border-color:rgba(91,124,250,0.25);}
+  .r-avatar{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:800;color:var(--ink);background:var(--ink-faint);position:relative;
+  }
+  .r-avatar.everyone{background:var(--grad);color:#fff;}
+  .r-avatar.working{box-shadow:0 0 0 2px var(--bg-solid),0 0 0 3.5px var(--peer,var(--blue));}
+  .r-avatar.waiting{box-shadow:0 0 0 2px var(--bg-solid),0 0 0 3.5px var(--attention);}
+  .r-avatar.calm{box-shadow:0 0 0 2px var(--bg-solid),0 0 0 3.5px var(--ink-faint);opacity:.8;}
+  .r-name{font-size:12.5px;color:var(--ink-soft);font-weight:600;white-space:nowrap;}
+  .r-chip.active .r-name{color:var(--ink);}
+  .r-flag{width:6px;height:6px;border-radius:50%;background:var(--attention);margin-left:auto;}
+
+  .theme-toggle{display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line-soft);border-radius:100px;padding:2px;align-self:flex-start;}
+  .theme-toggle button{width:24px;height:24px;border-radius:50%;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);transition:background .15s var(--ease), color .15s var(--ease);}
+  .theme-toggle button svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .theme-toggle button.active{background:var(--grad-soft);color:var(--ink);}
+
+  .rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:12px;}
+  .ask{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line-soft);border-radius:100px;
+    padding:7px 12px 7px 14px;color:var(--ink-faint);font-size:11.5px;white-space:nowrap;overflow:hidden;
+  }
+  .ask kbd{font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--panel);padding:2px 6px;border-radius:5px;border:1px solid var(--line-soft);}
+  .you-row{display:flex;align-items:center;gap:9px;padding:0 2px;}
+  .you{width:26px;height:26px;border-radius:50%;background:linear-gradient(160deg,#B98CF0,#7C6CE8);flex-shrink:0;}
+
+  /* ============ Canvas ============ */
+  .main{flex:1;min-width:0;}
+  .canvas{max-width:920px;margin:0;padding:48px 48px 130px;position:relative;z-index:1;}
+  .page{display:none;}
+  .page.active{display:block;animation:fade .3s var(--ease);}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;}
+  h1.title{
+    font-size:36px;font-weight:800;letter-spacing:-0.03em;margin:0 0 10px;
+    background:var(--title-grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{font-size:14.5px;color:var(--ink-soft);line-height:1.55;max-width:600px;margin-bottom:32px;}
+  .sub em{color:var(--ink);font-weight:600;}
+
+  .btn{
+    background:var(--grad);color:#fff;border:none;border-radius:var(--r-md);
+    padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif;
+    box-shadow:0 3px 12px rgba(91,124,250,0.25);transition:transform .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(91,124,250,0.35);}
+  .btn.ghost{background:none;color:var(--ink);border:1px solid var(--line);box-shadow:none;}
+  .btn.ghost:hover{border-color:var(--ink-faint);transform:none;}
+  .btn.sm{padding:7px 13px;font-size:12px;}
+  .btn.link{background:none;color:var(--blue);padding:0;box-shadow:none;}
+  .btn.link:hover{transform:none;text-decoration:underline;}
+
+  /* -- voice / briefing -- */
+  .brief{
+    border:1px solid var(--line-soft);border-top:2px solid var(--peer,var(--blue));border-radius:var(--r-lg);
+    background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    padding:22px 26px;margin-bottom:30px;box-shadow:var(--shadow);
+  }
+  .brief-tag{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--peer,var(--blue));margin-bottom:10px;}
+  .brief-tag .dot{width:5px;height:5px;border-radius:50%;background:var(--peer,var(--blue));}
+  .brief p{font-size:17px;font-style:italic;font-weight:500;line-height:1.55;margin:0 0 8px;color:var(--ink);}
+  .brief .when{font-size:12px;color:var(--ink-faint);}
+
+  .decision{
+    display:flex;justify-content:space-between;align-items:center;gap:20px;
+    padding:16px 18px;border:1px solid var(--attention-line);border-left:2.5px solid var(--attention);
+    background:var(--attention-soft);border-radius:var(--r-lg);margin-bottom:8px;
+  }
+  .decision .txt b{display:block;font-weight:700;font-size:14px;margin-bottom:2px;}
+  .decision .txt span{color:var(--ink-soft);font-size:12px;}
+
+  .sec{margin-bottom:42px;}
+  .sec-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .sec-label.attn{color:var(--attention);}
+  .sec-label .n{color:var(--ink-soft);}
+  .done-row{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13.5px;}
+  .done-row .dot2{width:6px;height:6px;border-radius:50%;background:var(--peer,var(--blue));flex-shrink:0;}
+  .next-row{font-size:12.5px;color:var(--ink-faint);padding:3px 0;}
+
+  /* -- underline sub tabs -- */
+  .subnav{display:flex;justify-content:space-between;align-items:center;margin:28px 0 24px;border-bottom:1px solid var(--line-soft);}
+  .subnav-tabs{display:flex;gap:22px;}
+  .subnav-tabs button{background:none;border:none;padding:9px 1px;font-size:12.5px;color:var(--ink-faint);cursor:pointer;border-bottom:2px solid transparent;font-family:'Manrope',sans-serif;}
+  .subnav-tabs button.active{color:var(--ink);border-color:var(--peer,var(--blue));font-weight:700;}
+  .subnav-cta{
+    background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:100px;
+    padding:6px 13px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;
+    margin-bottom:10px;transition:border-color .15s var(--ease), color .15s var(--ease);
+  }
+  .subnav-cta:hover{border-color:var(--peer,var(--blue));color:var(--ink);}
+  .subview{display:none;}
+  .subview.active{display:block;animation:fade .25s var(--ease);}
+
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .stat-row.two{grid-template-columns:repeat(2,1fr);}
+  .stat-row.two{grid-template-columns:repeat(2,1fr);}
+  .stat-box{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:16px 18px;backdrop-filter:blur(14px);}
+  .stat-box .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px;}
+  .stat-box .val{font-size:24px;font-weight:800;letter-spacing:-0.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .stat-box .cap{font-size:11px;color:var(--ink-faint);margin-top:6px;}
+
+  .row-list{
+    border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);
+    padding:2px 16px;backdrop-filter:blur(12px);
+  }
+  .row-list.bare{border:none;background:none;padding:0;border-top:1px solid var(--line-soft);border-radius:0;backdrop-filter:none;}
+  .row-item{display:flex;justify-content:space-between;align-items:center;padding:14px 2px;border-bottom:1px solid var(--line-soft);font-size:13.5px;gap:20px;}
+  .row-list .row-item:last-child{border-bottom:none;}
+  .row-list.bare .row-item:last-child{border-bottom:1px solid var(--line-soft);}
+  .row-item .l{font-weight:600;}
+  .row-item .r{display:flex;align-items:center;gap:9px;}
+  .row-item .val{font-weight:800;font-size:15px;}
+  .row-item .src{font-size:10px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;}
+
+  .work-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--panel);margin-bottom:8px;font-size:13.5px;}
+  .work-row .name{font-weight:700;}
+  .work-row .meta{font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+  .status-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--attention);}
+  .status-tag.done{color:var(--success);}
+  .status-tag.progress{color:var(--blue);}
+
+  .sec-label .ind{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+  .sec-label .ind.i-attn{background:var(--attention);box-shadow:0 0 0 3px var(--attention-soft);}
+  .sec-label .ind.i-progress{background:var(--blue);box-shadow:0 0 0 3px var(--grad-soft);}
+  .sec-label .ind.i-done{background:var(--success);box-shadow:0 0 0 3px var(--success-soft);}
+
+  .work-card.compact{
+    padding:12px 16px;background:var(--panel-hover);border-color:transparent;
+    display:flex;justify-content:space-between;align-items:center;gap:14px;
+  }
+  .work-card.compact .top{display:block;margin-bottom:0;}
+  .work-card.compact h4{font-size:13.5px;font-weight:700;margin:0 0 2px;}
+  .work-card.compact .meta2{display:block;}
+
+  .quote-panel{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:22px 24px;margin-bottom:20px;}
+  .quote-panel p{font-size:14.5px;line-height:1.6;margin:0 0 14px;}
+  .quote-panel .what{border-left:2px solid var(--blue);padding-left:13px;}
+  .quote-panel .what b{display:block;font-size:11.5px;font-weight:800;margin-bottom:3px;}
+  .quote-panel .what span{font-size:12.5px;color:var(--ink-soft);}
+
+  .chip-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px;}
+  .chip{font-size:11.5px;padding:5px 11px;border-radius:100px;background:var(--panel-hover);border:1px solid var(--line-soft);color:var(--ink-soft);}
+  .settings-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--panel);margin-bottom:7px;}
+  .settings-row .name{font-size:13.5px;font-weight:700;}
+  .settings-row .desc{font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+
+  .work-card{border:1px solid var(--line-soft);border-radius:var(--r-lg);padding:18px 20px;background:var(--panel);margin-bottom:8px;}
+  .work-card.clickable{cursor:pointer;transition:border-color .15s var(--ease), transform .15s var(--ease);}
+  .work-card.clickable:hover{border-color:var(--line);transform:translateY(-1px);}
+  .work-card .meta2{font-size:11.5px;color:var(--ink-faint);}
+  .work-card.clickable .meta2{color:var(--blue);font-weight:600;margin-top:6px;}
+
+  .bureau-top{display:flex;justify-content:flex-end;margin-bottom:22px;}
+
+  /* -- Preview modal -- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,22,42,0.35);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:40px;
+  }
+  .modal-backdrop.show{display:flex;animation:fade .2s var(--ease);}
+  .modal{
+    width:100%;max-width:480px;max-height:85vh;overflow-y:auto;
+    border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
+    box-shadow:0 30px 80px -20px rgba(20,22,50,0.22);padding:26px 28px;
+    animation:modalIn .25s var(--spring);
+  }
+  @keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+  .modal-head .mt{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;}
+  .modal-head h3{font-size:18px;font-weight:800;margin:0;}
+  .modal-close{background:var(--panel);border:1px solid var(--line-soft);color:var(--ink-soft);width:26px;height:26px;border-radius:50%;cursor:pointer;flex-shrink:0;font-size:14px;line-height:1;}
+
+  .email-mock{border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden;margin-bottom:14px;}
+  .email-mock .em-head{padding:14px 16px;border-bottom:1px solid var(--line-soft);background:var(--panel);}
+  .email-mock .em-head .from{font-size:11.5px;color:var(--ink-faint);margin-bottom:4px;}
+  .email-mock .em-head .subj{font-weight:800;font-size:14.5px;}
+  .email-mock .em-body{padding:16px;font-size:13px;color:var(--ink-soft);line-height:1.6;}
+
+  .doc-mock{border:1px solid var(--line-soft);border-radius:var(--r-md);padding:16px;margin-bottom:14px;}
+  .doc-mock li{font-size:13px;color:var(--ink-soft);line-height:1.7;margin-bottom:4px;}
+
+  .modal .stat-row{margin-top:4px;}
+  .modal .stat-box .val{font-size:19px;}
+
+  /* -- Rich campaign workspace -- */
+  .modal.workspace{max-width:660px;padding:0;}
+  .ws-head{padding:24px 28px 18px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:flex-start;}
+  .ws-head .mt{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;}
+  .ws-head h3{font-size:21px;font-weight:800;margin:0 0 10px;}
+  .ws-status{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--attention);}
+  .ws-status .dot{width:7px;height:7px;border-radius:50%;background:var(--attention);}
+  .ws-body{padding:22px 28px 26px;}
+  .ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+  .ws-field .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;}
+  .ws-field .v{font-size:13.5px;font-weight:600;line-height:1.5;}
+
+  .ws-sec{margin-bottom:22px;}
+  .ws-sec-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:11px;}
+  .checklist{display:flex;flex-direction:column;gap:7px;}
+  .checklist .ci{display:flex;align-items:center;gap:9px;font-size:13.5px;}
+  .checklist .ci svg{width:15px;height:15px;flex-shrink:0;}
+  .checklist .ci.done{color:var(--ink);}
+  .checklist .ci.done svg{stroke:var(--success);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .checklist .ci.todo{color:var(--ink-soft);}
+  .checklist .ci.todo svg{stroke:var(--ink-faint);fill:none;stroke-width:2;}
+
+  .preview-row{display:flex;gap:9px;overflow-x:auto;padding-bottom:2px;}
+  .preview-chip{
+    flex-shrink:0;width:88px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--panel);
+    padding:10px 10px 9px;text-align:center;
+  }
+  .preview-chip .sw{width:100%;height:38px;border-radius:7px;margin-bottom:7px;}
+  .preview-chip .lb{font-size:10.5px;font-weight:700;color:var(--ink-soft);}
+
+  .ws-actions{display:flex;flex-direction:column;gap:8px;margin-top:24px;}
+  .ws-actions .btn{width:100%;}
+  .ws-actions .btn.ghost{background:none;}
+  .ws-actions .btn.text{background:none;box-shadow:none;color:var(--ink-faint);font-weight:600;padding:4px;}
+  .ws-actions .btn.text:hover{color:var(--ink);transform:none;}
+
+  /* -- Markt: signals, recommendation, competitor cards -- */
+  .signal-list{display:flex;flex-direction:column;gap:2px;margin-bottom:20px;}
+  .signal-item{display:flex;align-items:flex-start;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+  .signal-item:last-child{border-bottom:none;}
+  .signal-item .warn{color:var(--attention);flex-shrink:0;margin-top:1px;}
+  .signal-item .warn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+  .reco-panel{border:1px solid var(--line-soft);border-left:2.5px solid var(--blue);border-radius:var(--r-lg);background:var(--panel);padding:18px 22px;margin-bottom:30px;}
+  .reco-panel .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:8px;}
+  .reco-panel p{font-size:14.5px;margin:0 0 14px;line-height:1.5;}
+
+  .comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .comp-card{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:16px 18px;}
+  .comp-card .cname{font-size:14px;font-weight:800;margin-bottom:10px;}
+  .comp-card ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .comp-card li{font-size:12px;color:var(--ink-soft);line-height:1.5;}
+
+  /* -- Resultaten: results as a story -- */
+  .story-panel{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:22px 26px;margin-bottom:28px;}
+  .story-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:14px;}
+  .story-list{display:flex;flex-direction:column;gap:11px;}
+  .story-item{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:700;}
+  .story-item .plus{
+    width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;background:var(--grad-soft);color:var(--blue);
+  }
+  .work-card.waiting{border-left:2.5px solid var(--attention);}
+  .work-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .work-card h4{font-size:15.5px;font-weight:800;margin:0 0 3px;}
+  .work-card .meta2{font-size:11.5px;color:var(--ink-faint);}
+  .work-card .divider{border-top:1px solid var(--line-soft);margin:12px 0;}
+  .work-card .stuck-label{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
+  .work-card .stuck-val{font-size:13px;font-weight:700;}
+  .split-two{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  .spark-mini{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:16px 18px;margin-bottom:14px;
+    display:flex;align-items:center;gap:18px;}
+  .spark-mini svg{width:110px;height:36px;flex-shrink:0;}
+  .spark-mini path{fill:none;stroke:var(--blue);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .spark-mini .t{font-size:12.5px;color:var(--ink-soft);}
+  .spark-mini .t b{color:var(--ink);font-weight:800;}
+
+  /* -- Trend charts (real, not a bare line) -- */
+  .trend-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;margin-bottom:14px;align-items:stretch;}
+  .trend-grid.two{grid-template-columns:1fr 1fr;}
+  .trend-card{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:18px 20px 14px;
+    backdrop-filter:blur(14px);display:flex;flex-direction:column;}
+  .trend-head{margin-bottom:10px;}
+  .trend-head .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;}
+  .trend-head .valrow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
+  .trend-head .val{font-size:24px;font-weight:800;letter-spacing:-0.02em;}
+  .trend-card.sm .trend-head .val{font-size:19px;}
+  .trend-delta{font-size:11px;font-weight:700;color:var(--success);display:inline-flex;align-items:center;gap:3px;}
+  .trend-delta.down{color:var(--attention);}
+  .trend-cap{font-size:10.5px;color:var(--ink-faint);margin-top:2px;}
+  .trend-chart{width:100%;margin-top:auto;}
+  .trend-chart svg{width:100%;display:block;overflow:visible;}
+  .trend-chart .grid-line{stroke:var(--line-soft);stroke-width:1;}
+  .trend-chart .area{fill:url(#gradA);opacity:.7;}
+  .trend-chart .area-b{fill:url(#gradB);opacity:.7;}
+  .trend-chart .line{fill:none;stroke:var(--blue);stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;}
+  .trend-chart .line-b{fill:none;stroke:var(--indigo);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .trend-chart .pt{fill:var(--blue);stroke:var(--bg-solid);stroke-width:2;}
+  .trend-chart .pt-b{fill:var(--indigo);stroke:var(--bg-solid);stroke-width:2;}
+  .trend-x{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink-faint);margin-top:6px;padding:0 1px;}
+
+  /* -- Per-channel cards -- */
+  .channel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .channel-card{border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--panel);padding:18px 20px;backdrop-filter:blur(14px);}
+  .channel-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
+  .channel-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;}
+  .channel-name{font-size:14px;font-weight:800;}
+  .channel-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;}
+  .channel-stats .cs-lbl{font-size:10.5px;color:var(--ink-faint);margin-bottom:3px;}
+  .channel-stats .cs-val{font-size:16.5px;font-weight:800;}
+  .peer-marketing{--peer:var(--marketing);}
+  .peer-sales{--peer:var(--sales);}
+  .peer-support{--peer:var(--support);}
+</style>
+</head>
+<body>
+<div class="mesh"><div class="orb o1"></div><div class="orb o2"></div></div>
+
+<div class="app">
+<nav class="rail">
+  <button class="collapse-btn" onclick="toggleSidebar()" aria-label="Zijbalk in-/uitklappen" title="In-/uitklappen">
+    <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+
+  <div class="brand">
+    <div class="mark"><svg viewBox="0 0 26 26" fill="none"><path d="M8 5v16M8 5c5 0 8 1.5 8 5.5S13 16 8 16" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="brand-word">Peergent</div>
+  </div>
+
+  <div class="theme-toggle">
+    <button id="theme-light-btn" class="active" onclick="setTheme('light')" title="Licht" aria-label="Licht thema">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+    </button>
+    <button id="theme-dark-btn" onclick="setTheme('dark')" title="Donker" aria-label="Donker thema">
+      <svg viewBox="0 0 24 24"><path d="M21 12.5A8.5 8.5 0 1111.5 3 7 7 0 0021 12.5z"/></svg>
+    </button>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Overzicht</div>
+    <button class="r-chip active" data-view="team" title="Iedereen">
+      <span class="r-avatar everyone">✺</span><span class="r-name label">Iedereen</span>
+    </button>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label nav-label-lg">Peers</div>
+    <button class="r-chip peer-chip" data-view="marketing" title="Marketing">
+      <span class="r-dot working" style="--peer:var(--marketing);"></span><span class="r-name label">Marketing</span>
+    </button>
+    <button class="r-chip peer-chip" data-view="sales" title="Sales">
+      <span class="r-dot waiting"></span><span class="r-name label">Sales</span><span class="r-flag label"></span>
+    </button>
+    <button class="r-chip peer-chip" data-view="support" title="Support">
+      <span class="r-dot calm"></span><span class="r-name label">Support</span>
+    </button>
+  </div>
+
+  <div class="rail-foot">
+    <div class="ask label">Vraag me iets <kbd>⌘K</kbd></div>
+    <div class="you-row"><div class="you"></div><span class="label">Jij</span></div>
+  </div>
+</nav>
+
+<main class="main">
+<div class="canvas">
+
+  <!-- ============ IEDEREEN (het team, geen los "Command Center" meer) ============ -->
+  <section class="page active" id="page-team">
+    <div class="eyebrow">Dinsdag 28 juli</div>
+    <h1 class="title">Alles onder controle. Je team is aan het werk.</h1>
+    <div class="sub">Drie collega's actief — <em>Sales wacht op jou.</em></div>
+
+    <div class="sec">
+      <div class="sec-label attn">Wacht op jou — <span class="n">1</span></div>
+      <div class="decision">
+        <div class="txt"><b>Campagneplan zomeractie goedkeuren</b><span>Marketing · klaar om te versturen</span></div>
+        <button class="btn sm" onclick="openPeer('marketing')">Bekijk</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Vandaag afgerond</div>
+      <div class="done-row"><span class="dot2" style="background:var(--marketing);"></span>Marketing — 3 LinkedIn-posts, e-mailconcept</div>
+      <div class="done-row"><span class="dot2" style="background:var(--support);"></span>Support — 14 tickets opgelost</div>
+      <div class="done-row"><span class="dot2" style="background:var(--sales);"></span>Sales — 2 opvolgmails, 1 afspraak</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Je team</div>
+      <div class="row-list">
+        <div class="row-item"><div class="l">Marketing</div><div class="r"><span class="src">40 taken</span><span class="val">94%</span></div></div>
+        <div class="row-item"><div class="l">Sales</div><div class="r"><span class="src">12 taken</span><span class="val">76%</span></div></div>
+        <div class="row-item"><div class="l">Support</div><div class="r"><span class="src">41 taken</span><span class="val">98%</span></div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Trends — 30 dagen <span class="n">· 41 taken afgerond deze week</span></div>
+
+      <div class="stat-row two" style="margin-bottom:16px;">
+        <div class="stat-box"><div class="lbl">Goedgekeurde opdrachten</div><div class="val">4</div></div>
+        <div class="stat-box"><div class="lbl">Campagnes actief</div><div class="val">6</div></div>
+      </div>
+      <svg width="0" height="0" style="position:absolute;">
+        <defs>
+          <linearGradient id="gradTeamA" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3E5FEE" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#3E5FEE" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="gradTeamB" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6470E8" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#6470E8" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="trend-grid two">
+        <div class="trend-card">
+          <div class="trend-head">
+            <div class="lbl">Beïnvloede omzet</div>
+            <div class="valrow"><span class="val">€41.200</span><span class="trend-delta">▲ 18,4%</span></div>
+            <div class="trend-cap">HubSpot · vs vorige 30 dagen</div>
+          </div>
+          <div class="trend-chart">
+            <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+              <line class="grid-line" x1="0" y1="15" x2="320" y2="15"/>
+              <line class="grid-line" x1="0" y1="50" x2="320" y2="50"/>
+              <line class="grid-line" x1="0" y1="85" x2="320" y2="85"/>
+              <path fill="url(#gradTeamA)" d="M0,105 L64,92 L128,98 L192,68 L256,50 L320,25 L320,120 L0,120 Z"/>
+              <path class="line" d="M0,105 L64,92 L128,98 L192,68 L256,50 L320,25"/>
+              <circle class="pt" cx="320" cy="25" r="3.5"/>
+            </svg>
+          </div>
+          <div class="trend-x"><span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span></div>
+        </div>
+
+        <div class="trend-card">
+          <div class="trend-head">
+            <div class="lbl">Tijd bespaard</div>
+            <div class="valrow"><span class="val">6,5u</span><span class="trend-delta">▲ 12%</span></div>
+            <div class="trend-cap">Peergent · vs vorige 30 dagen</div>
+          </div>
+          <div class="trend-chart">
+            <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+              <line class="grid-line" x1="0" y1="15" x2="320" y2="15"/>
+              <line class="grid-line" x1="0" y1="50" x2="320" y2="50"/>
+              <line class="grid-line" x1="0" y1="85" x2="320" y2="85"/>
+              <path fill="url(#gradTeamB)" d="M0,95 L64,100 L128,80 L192,88 L256,55 L320,35 L320,120 L0,120 Z"/>
+              <path class="line-b" d="M0,95 L64,100 L128,80 L192,88 L256,55 L320,35"/>
+              <circle class="pt-b" cx="320" cy="35" r="3.5"/>
+            </svg>
+          </div>
+          <div class="trend-x"><span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARKETING PEER ============ -->
+  <section class="page" id="page-marketing">
+    <div class="eyebrow peer-marketing">Peer</div>
+    <div class="brief peer-marketing">
+      <div class="brief-tag"><span class="dot"></span>Marketing Peer</div>
+      <p>Focus ligt bij de zomeractie — onze grootste omzetkans deze maand. Zodra het campagneplan is goedgekeurd, ga ik live met de eerste advertenties.</p>
+      <div class="when">Je hoort van me zodra de advertenties staan.</div>
+    </div>
+
+    <div class="subnav peer-marketing">
+      <div class="subnav-tabs">
+        <button class="active" data-sub="mkt-vandaag">Bureau</button>
+        <button data-sub="mkt-werk">Werk</button>
+        <button data-sub="mkt-resultaten">Resultaten</button>
+        <button data-sub="mkt-markt">Markt</button>
+        <button data-sub="mkt-instellingen">Instellingen</button>
+      </div>
+      <button class="subnav-cta" onclick="openPreview('new-campaign')">+ Nieuwe campagne</button>
+    </div>
+
+    <div class="subview active" id="mkt-vandaag">
+      <div class="sec">
+        <div class="sec-label attn">Wacht op jou</div>
+        <div class="decision">
+          <div class="txt"><b>Campagneplan goedkeuren</b><span>Zomeractie · klaar voor review</span></div>
+          <button class="btn sm">Goedkeuren</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-label">Vandaag gedaan</div>
+        <div class="done-row"><span class="dot2"></span>Campagnestrategie afgerond</div>
+        <div class="done-row"><span class="dot2"></span>Drie LinkedIn-posts geschreven</div>
+        <div class="done-row"><span class="dot2"></span>E-mailconcept voorbereid</div>
+      </div>
+      <div class="sec">
+        <div class="sec-label">Hierna</div>
+        <div class="next-row">Landingspagina afronden</div>
+        <div class="next-row">Advertenties voorbereiden</div>
+      </div>
+      <div class="sec">
+        <div class="sec-label">Deze week — snel overzicht</div>
+        <div class="spark-mini">
+          <svg viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 22 L20 18 L40 20 L60 10 L80 12 L100 4"/></svg>
+          <div class="t"><b>18.420</b> bereik · <b>48</b> leads deze maand — bereik loopt op sinds de zomeractie live ging.</div>
+        </div>
+        <button class="btn ghost" onclick="openSub('mkt-resultaten')">Bekijk volledige resultaten →</button>
+      </div>
+    </div>
+
+    <div class="subview" id="mkt-werk">
+      <div class="sec">
+        <div class="sec-label attn"><span class="ind i-attn"></span>Wacht op jou <span class="n">1</span></div>
+        <div class="work-card waiting clickable" onclick="openWorkspace('warmtepomp')">
+          <div class="top"><h4>Klaar voor het warmtepompseizoen</h4><span class="status-tag">Wacht op jouw akkoord</span></div>
+          <div class="meta2">Nieuwsbrief · klaar voor review</div>
+          <div class="divider"></div>
+          <div class="stuck-label">Loopt vast op</div>
+          <div class="stuck-val">jou · verwacht 3 aug</div>
+          <div class="meta2" style="margin-top:10px;">Open campagne-workspace →</div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-label"><span class="ind i-progress"></span>Loopt <span class="n">2</span></div>
+        <div class="work-card">
+          <div class="top"><h4>Demo-aanjager Q4</h4><span class="status-tag progress">Ingepland</span></div>
+          <div class="meta2">Gaat op het geplande moment live</div>
+        </div>
+        <div class="work-card">
+          <div class="top"><h4>Zomeractie — advertenties</h4><span class="status-tag progress">In productie</span></div>
+          <div class="meta2">Eerste creatives worden voorbereid</div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-label"><span class="ind i-done"></span>Recent afgerond <span class="n">2</span></div>
+        <div class="work-card compact clickable" onclick="openPreview('nieuwsbrief-juli')">
+          <div class="top"><h4>Nieuwsbrief juli</h4><span class="meta2">Bekijk hoe het verstuurd is →</span></div>
+          <span class="status-tag done">Verzonden 14 juli</span>
+        </div>
+        <div class="work-card compact clickable" onclick="openPreview('lancering-planning')">
+          <div class="top"><h4>Productlancering herfst — planning</h4><span class="meta2">Bekijk wat er is gedaan →</span></div>
+          <span class="status-tag done">Afgerond 9 juli</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="subview" id="mkt-resultaten">
+      <div class="story-panel">
+        <div class="story-lbl">Sinds vorige week</div>
+        <div class="story-list">
+          <div class="story-item"><span class="plus">+</span>18 offerteaanvragen</div>
+          <div class="story-item"><span class="plus">+</span>€41.200 beïnvloede omzet</div>
+          <div class="story-item"><span class="plus">2</span>campagnes live</div>
+          <div class="story-item"><span class="plus">6</span>advertenties vervangen</div>
+          <div class="story-item"><span class="plus">3</span>A/B-tests gewonnen</div>
+        </div>
+      </div>
+
+      <svg width="0" height="0" style="position:absolute;">
+        <defs>
+          <linearGradient id="gradA" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3E5FEE" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#3E5FEE" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="gradB" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6470E8" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#6470E8" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div class="sec-label">Belangrijkste trends — 30 dagen</div>
+      <div class="trend-grid sec">
+        <div class="trend-card">
+          <div class="trend-head">
+            <div class="lbl">Beïnvloede omzet</div>
+            <div class="valrow"><span class="val">€41.200</span><span class="trend-delta">▲ 18,4%</span></div>
+            <div class="trend-cap">HubSpot · vs vorige 30 dagen</div>
+          </div>
+          <div class="trend-chart">
+            <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+              <line class="grid-line" x1="0" y1="15" x2="320" y2="15"/>
+              <line class="grid-line" x1="0" y1="50" x2="320" y2="50"/>
+              <line class="grid-line" x1="0" y1="85" x2="320" y2="85"/>
+              <path class="area" d="M0,105 L64,92 L128,98 L192,68 L256,50 L320,25 L320,120 L0,120 Z"/>
+              <path class="line" d="M0,105 L64,92 L128,98 L192,68 L256,50 L320,25"/>
+              <circle class="pt" cx="320" cy="25" r="3.5"/>
+            </svg>
+          </div>
+          <div class="trend-x"><span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span></div>
+        </div>
+
+        <div class="trend-card sm">
+          <div class="trend-head">
+            <div class="lbl">Bereik</div>
+            <div class="valrow"><span class="val">18.420</span><span class="trend-delta">▲ 7,2%</span></div>
+            <div class="trend-cap">GA4</div>
+          </div>
+          <div class="trend-chart">
+            <svg viewBox="0 0 220 90" preserveAspectRatio="none">
+              <line class="grid-line" x1="0" y1="12" x2="220" y2="12"/>
+              <line class="grid-line" x1="0" y1="45" x2="220" y2="45"/>
+              <line class="grid-line" x1="0" y1="78" x2="220" y2="78"/>
+              <path class="area-b" d="M0,55 L44,68 L88,58 L132,35 L176,44 L220,18 L220,90 L0,90 Z"/>
+              <path class="line-b" d="M0,55 L44,68 L88,58 L132,35 L176,44 L220,18"/>
+              <circle class="pt-b" cx="220" cy="18" r="3"/>
+            </svg>
+          </div>
+          <div class="trend-x"><span>W1</span><span>W2</span><span>W3</span><span>W4</span></div>
+        </div>
+
+        <div class="trend-card sm">
+          <div class="trend-head">
+            <div class="lbl">Leads</div>
+            <div class="valrow"><span class="val">48</span><span class="trend-delta">▲ 11%</span></div>
+            <div class="trend-cap">HubSpot</div>
+          </div>
+          <div class="trend-chart">
+            <svg viewBox="0 0 220 90" preserveAspectRatio="none">
+              <line class="grid-line" x1="0" y1="12" x2="220" y2="12"/>
+              <line class="grid-line" x1="0" y1="45" x2="220" y2="45"/>
+              <line class="grid-line" x1="0" y1="78" x2="220" y2="78"/>
+              <path class="area-b" d="M0,65 L44,55 L88,60 L132,40 L176,46 L220,22 L220,90 L0,90 Z"/>
+              <path class="line-b" d="M0,65 L44,55 L88,60 L132,40 L176,46 L220,22"/>
+              <circle class="pt-b" cx="220" cy="22" r="3"/>
+            </svg>
+          </div>
+          <div class="trend-x"><span>W1</span><span>W2</span><span>W3</span><span>W4</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-label">Per kanaal — 30 dagen</div>
+        <div class="channel-grid">
+          <div class="channel-card">
+            <div class="channel-head"><div class="channel-ico" style="background:#0A66C2;">in</div><div class="channel-name">LinkedIn</div></div>
+            <div class="channel-stats">
+              <div><div class="cs-lbl">Bereik</div><div class="cs-val">12.960</div></div>
+              <div><div class="cs-lbl">Interactie</div><div class="cs-val">1.284</div></div>
+              <div><div class="cs-lbl">Nieuwe volgers</div><div class="cs-val">214</div></div>
+              <div><div class="cs-lbl">Posts live</div><div class="cs-val">6</div></div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-head"><div class="channel-ico" style="background:#EFAA53;color:#14151F;">G</div><div class="channel-name">Google Ads</div></div>
+            <div class="channel-stats">
+              <div><div class="cs-lbl">Uitgaven</div><div class="cs-val">€1.840</div></div>
+              <div><div class="cs-lbl">ROAS</div><div class="cs-val">2,8×</div></div>
+              <div><div class="cs-lbl">CPA</div><div class="cs-val">€94</div></div>
+              <div><div class="cs-lbl">Doorklikratio</div><div class="cs-val">4,1%</div></div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-head"><div class="channel-ico" style="background:#3FC79A;color:#14151F;">GA</div><div class="channel-name">Google Analytics</div></div>
+            <div class="channel-stats">
+              <div><div class="cs-lbl">Bereik</div><div class="cs-val">18.420</div></div>
+              <div><div class="cs-lbl">Kliks op content</div><div class="cs-val">2.106</div></div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-head"><div class="channel-ico" style="background:var(--grad);">H</div><div class="channel-name">HubSpot</div></div>
+            <div class="channel-stats">
+              <div><div class="cs-lbl">Beïnvloede omzet</div><div class="cs-val">€41.200</div></div>
+              <div><div class="cs-lbl">Toegeschreven leads</div><div class="cs-val">48</div></div>
+              <div><div class="cs-lbl">Leads uit campagnes</div><div class="cs-val">21</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subview" id="mkt-markt">
+      <div class="sec-label">Emma heeft 3 dingen gezien</div>
+      <div class="signal-list">
+        <div class="signal-item"><span class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.8 1.8 0 001.5 2.7h15.4a1.8 1.8 0 001.5-2.7L13.7 3.9a1.8 1.8 0 00-3.4 0z"/></svg></span>Routeplan gebruikt nu video in hun advertenties.</div>
+        <div class="signal-item"><span class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.8 1.8 0 001.5 2.7h15.4a1.8 1.8 0 001.5-2.7L13.7 3.9a1.8 1.8 0 00-3.4 0z"/></svg></span>Servicedesk Pro verlaagt hun instapprijs.</div>
+        <div class="signal-item"><span class="warn"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.8 1.8 0 001.5 2.7h15.4a1.8 1.8 0 001.5-2.7L13.7 3.9a1.8 1.8 0 00-3.4 0z"/></svg></span>Google Ads CPC stijgt in onze categorie.</div>
+      </div>
+
+      <div class="reco-panel">
+        <div class="lbl">Aanbeveling</div>
+        <p>Ik adviseer om de warmtepomp-campagne uiterlijk dinsdag live te zetten — Routeplan draait dezelfde campagne al.</p>
+        <button class="btn sm" onclick="openWorkspace('warmtepomp')">Bekijk campagne</button>
+      </div>
+
+      <div class="sec-label">Concurrenten</div>
+      <div class="comp-grid">
+        <div class="comp-card">
+          <div class="cname">Routeplan</div>
+          <ul>
+            <li>Sterk in laagste prijs per gebruiker.</li>
+            <li>Lange staat van dienst bij vloten van 200+.</li>
+          </ul>
+        </div>
+        <div class="comp-card">
+          <div class="cname">Servicedesk Pro</div>
+          <ul>
+            <li>Sterk in facturatie &amp; contracten.</li>
+            <li>Breedste functieaanbod in de categorie.</li>
+          </ul>
+        </div>
+        <div class="comp-card">
+          <div class="cname">Fieldly</div>
+          <ul>
+            <li>Mobiel-eerst voor de monteur.</li>
+            <li>Sterke adoptie bij kleinere teams.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="subview" id="mkt-instellingen">
+      <div class="sec">
+        <div class="sec-label">Vaardigheden</div>
+        <div class="chip-list">
+          <span class="chip">SEO</span><span class="chip">Google Ads</span><span class="chip">Meta Ads</span>
+          <span class="chip">Social media</span><span class="chip">E-mailmarketing</span><span class="chip">Landingspagina's</span>
+          <span class="chip">Creatives</span><span class="chip">+ 2 meer</span>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-label">Beheer</div>
+        <div class="settings-row"><div><div class="name">Merkkennis</div><div class="desc">Tone of voice, kleuren, claims en beeldstijl</div></div></div>
+        <div class="settings-row"><div><div class="name">Koppelingen</div><div class="desc">Meta Ads, Google Ads, HubSpot, GA4</div></div></div>
+        <div class="settings-row"><div><div class="name">Verantwoordelijkheden</div><div class="desc">Welke campagnes en kanalen</div></div></div>
+        <div class="settings-row"><div><div class="name">Zelfstandigheid</div><div class="desc">Wat mag zonder jouw goedkeuring</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SALES PEER ============ -->
+  <section class="page" id="page-sales">
+    <div class="eyebrow peer-sales">Peer</div>
+    <div class="brief peer-sales">
+      <div class="brief-tag"><span class="dot"></span>Sales Peer</div>
+      <p>Ik werk de offerte voor Bakkerij De Molen af — een kans van €2.400 per maand. Ik wacht op jouw akkoord voordat ik 'm verstuur.</p>
+      <div class="when">Je hoort van me zodra de offerte de deur uit is.</div>
+    </div>
+    <div class="subnav peer-sales">
+      <div class="subnav-tabs">
+        <button class="active" data-sub="sal-vandaag">Bureau</button>
+        <button data-sub="sal-werk">Werk</button>
+        <button data-sub="sal-resultaten">Resultaten</button>
+      </div>
+    </div>
+    <div class="subview active" id="sal-vandaag">
+      <div class="sec">
+        <div class="sec-label attn">Wacht op jou</div>
+        <div class="decision"><div class="txt"><b>Offerte voor De Molen goedkeuren</b><span>€2.400 · maandabonnement</span></div><button class="btn sm">Goedkeuren</button></div>
+      </div>
+      <div class="sec"><div class="sec-label">Vandaag gedaan</div>
+        <div class="done-row"><span class="dot2"></span>2 opvolgmails verstuurd</div>
+        <div class="done-row"><span class="dot2"></span>1 afspraak ingepland</div>
+      </div>
+    </div>
+    <div class="subview" id="sal-werk">
+      <div class="work-row"><div><div class="name">Bakkerij De Molen</div><div class="meta">Offerte verstuurd</div></div><span class="status-tag">In behandeling</span></div>
+      <div class="work-row"><div><div class="name">Groenpartners BV</div><div class="meta">Gewonnen 18 juli</div></div><span class="status-tag done">Gewonnen</span></div>
+    </div>
+    <div class="subview" id="sal-resultaten">
+      <div class="stat-row two">
+        <div class="stat-box"><div class="lbl">Nieuwe leads</div><div class="val">6</div></div>
+        <div class="stat-box"><div class="lbl">Conversie</div><div class="val">24%</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SUPPORT PEER ============ -->
+  <section class="page" id="page-support">
+    <div class="eyebrow peer-support">Peer</div>
+    <div class="brief peer-support">
+      <div class="brief-tag"><span class="dot"></span>Support Peer</div>
+      <p>Rustige dag, op één escalatie na: een klant vraagt een terugbetaling buiten ons beleid. Dat leg ik liever aan jou voor dan dat ik het zelf beslis.</p>
+      <div class="when">Ik wacht op jouw beslissing.</div>
+    </div>
+    <div class="subnav peer-support">
+      <div class="subnav-tabs">
+        <button class="active" data-sub="sup-vandaag">Bureau</button>
+        <button data-sub="sup-werk">Werk</button>
+        <button data-sub="sup-resultaten">Resultaten</button>
+      </div>
+    </div>
+    <div class="subview active" id="sup-vandaag">
+      <div class="sec">
+        <div class="sec-label attn">Wacht op jou</div>
+        <div class="decision"><div class="txt"><b>Escalatie: terugbetaling buiten beleid</b><span>Klant vraagt uitzondering</span></div><button class="btn sm">Bekijk</button></div>
+      </div>
+      <div class="sec"><div class="sec-label">Vandaag gedaan</div>
+        <div class="done-row"><span class="dot2"></span>14 tickets opgelost</div>
+        <div class="done-row"><span class="dot2"></span>Gem. reactietijd 4 minuten</div>
+      </div>
+    </div>
+    <div class="subview" id="sup-werk">
+      <div class="work-row"><div><div class="name">Terugbetaling — order #8821</div><div class="meta">Wacht op jou</div></div><span class="status-tag">Escalatie</span></div>
+    </div>
+    <div class="subview" id="sup-resultaten">
+      <div class="stat-row two">
+        <div class="stat-box"><div class="lbl">Tickets opgelost</div><div class="val">41</div></div>
+        <div class="stat-box"><div class="lbl">Klanttevredenheid</div><div class="val">4,7</div></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" onclick="if(event.target===this) closePreview()">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<script>
+  function toggleSidebar(){
+    document.querySelector('.rail').classList.toggle('collapsed');
+  }
+  function setTheme(mode){
+    document.documentElement.setAttribute('data-theme', mode);
+    document.getElementById('theme-light-btn').classList.toggle('active', mode === 'light');
+    document.getElementById('theme-dark-btn').classList.toggle('active', mode === 'dark');
+  }
+  function openSub(subId){
+    const target = document.getElementById(subId);
+    const page = target.closest('.page');
+    const nav = page.querySelector('.subnav-tabs');
+    nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    nav.querySelector('[data-sub="'+subId+'"]').classList.add('active');
+    page.querySelectorAll('.subview').forEach(v=>v.classList.remove('active'));
+    target.classList.add('active');
+  }
+  function openPeer(view){ goTo(view); }
+  const previews = {
+    'new-campaign': {
+      mt: 'Nieuwe campagne', title: 'Waar wil je mee beginnen?',
+      body: `<div class="doc-mock"><ul>
+        <li>Vertel me het doel — bijv. meer leads, een productlancering of naamsbekendheid.</li>
+        <li>Ik stel een campagneplan op met kanalen, timing en content.</li>
+        <li>Jij keurt het plan goed, ik voer het uit.</li>
+      </ul></div>
+      <button class="btn" style="width:100%;">Start briefing met Emma</button>`
+    },
+    'nieuwsbrief-juli': {
+      mt: 'Verzonden 14 juli · Nieuwsbrief', title: 'Nieuwsbrief juli',
+      body: `<div class="email-mock">
+        <div class="em-head"><div class="from">Van: Emma (Marketing Peer) · Aan: 1.842 abonnees</div><div class="subj">Het meeste werk ging deze periode naar LinkedIn</div></div>
+        <div class="em-body">Een kort overzicht van wat we deze maand hebben gepubliceerd, plus een vooruitblik op de zomeractie die eraan komt. Inclusief drie tips die klanten nu al kunnen gebruiken.</div>
+      </div>
+      <div class="stat-row two">
+        <div class="stat-box"><div class="lbl">Open rate</div><div class="val">42%</div></div>
+        <div class="stat-box"><div class="lbl">Doorkliks</div><div class="val">6,1%</div></div>
+      </div>`
+    },
+    'lancering-planning': {
+      mt: 'Afgerond 9 juli · Interne planning', title: 'Productlancering herfst — planning',
+      body: `<div class="doc-mock"><ul>
+        <li>Drie fases uitgewerkt: voorbereiding, launch week, nazorg.</li>
+        <li>Contentkalender voor 6 weken klaar, per kanaal ingedeeld.</li>
+        <li>Verantwoordelijkheden en deadlines toegewezen per fase.</li>
+      </ul></div>
+      <button class="btn ghost" style="width:100%;">Open volledige planning</button>`
+    }
+  };
+
+  function openWorkspace(key){
+    const checkIcon = '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
+    const circleIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>';
+    const modal = document.getElementById('modal-body');
+    modal.classList.add('workspace');
+    modal.innerHTML = `
+      <div class="ws-head">
+        <div>
+          <div class="mt">Campagne</div>
+          <h3>Klaar voor het warmtepompseizoen</h3>
+          <div class="ws-status"><span class="dot"></span>Wacht op akkoord</div>
+        </div>
+        <button class="modal-close" onclick="closePreview()">✕</button>
+      </div>
+      <div class="ws-body">
+        <div class="ws-grid">
+          <div class="ws-field"><div class="k">Doel</div><div class="v">Meer warmtepomp-offertes</div></div>
+          <div class="ws-field"><div class="k">Waarom</div><div class="v">Routeplan draait dezelfde campagne — dit is het moment om te reageren.</div></div>
+        </div>
+
+        <div class="ws-sec">
+          <div class="ws-sec-label">Wat ik al gedaan heb</div>
+          <div class="checklist">
+            <div class="ci done">${checkIcon}Doelgroep onderzocht</div>
+            <div class="ci done">${checkIcon}Advertenties geschreven</div>
+            <div class="ci done">${checkIcon}Afbeeldingen gemaakt</div>
+            <div class="ci done">${checkIcon}Nieuwsbrief geschreven</div>
+            <div class="ci done">${checkIcon}LinkedIn-posts gemaakt</div>
+            <div class="ci done">${checkIcon}Google Ads-structuur opgezet</div>
+          </div>
+        </div>
+
+        <div class="ws-sec">
+          <div class="ws-sec-label">Nog nodig</div>
+          <div class="checklist">
+            <div class="ci todo">${circleIcon}Goedkeuring headline</div>
+            <div class="ci todo">${circleIcon}Budget bevestigen</div>
+            <div class="ci todo">${circleIcon}Live zetten</div>
+          </div>
+        </div>
+
+        <div class="ws-sec">
+          <div class="ws-sec-label">Preview</div>
+          <div class="preview-row">
+            <div class="preview-chip"><div class="sw" style="background:#0A66C2;"></div><div class="lb">LinkedIn</div></div>
+            <div class="preview-chip"><div class="sw" style="background:linear-gradient(135deg,#F58529,#DD2A7B,#8134AF);"></div><div class="lb">Instagram</div></div>
+            <div class="preview-chip"><div class="sw" style="background:#EFAA53;"></div><div class="lb">Google Ads</div></div>
+            <div class="preview-chip"><div class="sw" style="background:var(--grad);"></div><div class="lb">Landingpage</div></div>
+            <div class="preview-chip"><div class="sw" style="background:var(--ink-faint);"></div><div class="lb">Nieuwsbrief</div></div>
+          </div>
+        </div>
+
+        <div class="ws-actions">
+          <button class="btn" onclick="closePreview()">Keur alles goed</button>
+          <button class="btn ghost" onclick="openPreview('nieuwsbrief-juli')">Alleen nieuwsbrief aanpassen</button>
+          <button class="btn text" onclick="closePreview()">Vraag Emma iets</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('modal-backdrop').classList.add('show');
+  }
+
+  function openPreview(key){
+    const p = previews[key];
+    if(!p) return;
+    document.getElementById('modal-body').classList.remove('workspace');
+    document.getElementById('modal-body').innerHTML = `
+      <div class="modal-head">
+        <div><div class="mt">${p.mt}</div><h3>${p.title}</h3></div>
+        <button class="modal-close" onclick="closePreview()">✕</button>
+      </div>
+      ${p.body}
+    `;
+    document.getElementById('modal-backdrop').classList.add('show');
+  }
+  function closePreview(){
+    document.getElementById('modal-backdrop').classList.remove('show');
+  }
+
+  function goTo(view){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+view).classList.add('active');
+    document.querySelectorAll('.r-chip').forEach(c=>c.classList.remove('active'));
+    document.querySelector('.r-chip[data-view="'+view+'"]').classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  document.querySelectorAll('.r-chip').forEach(c=>{
+    c.addEventListener('click', ()=> goTo(c.dataset.view));
+  });
+  document.querySelectorAll('.subnav-tabs').forEach(nav=>{
+    nav.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const page = nav.closest('.page');
+        nav.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        page.querySelectorAll('.subview').forEach(v=>v.classList.remove('active'));
+        document.getElementById(btn.dataset.sub).classList.add('active');
+      });
+    });
+  });
+</script>
+</body>
+</html>

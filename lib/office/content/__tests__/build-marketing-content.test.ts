@@ -47,7 +47,7 @@ function draft(overrides?: Partial<MarketingContentDraft>): MarketingContentDraf
     rationale: {} as MarketingContentDraft["rationale"],
     sourceReferences: [],
     confidence: "medium" as MarketingContentDraft["confidence"],
-    status: "ready_for_review",
+    status: "published",
     warnings: [],
     generatedAt: "2026-07-28T00:00:00.000Z",
     ...overrides,
@@ -95,13 +95,13 @@ function unit(overrides?: {
   };
 }
 
-function build(input: MarketingPeerDomainInput, search?: string, locale?: string) {
+function build(input: MarketingPeerDomainInput, search = "state=all", locale?: string) {
   return buildMarketingContentViewModel({
     domainInput: input,
     peerName: "Emma",
     peerRole: "Marketing",
     localePreference: locale,
-    searchParams: search ? new URLSearchParams(search) : undefined,
+    searchParams: new URLSearchParams(search),
   });
 }
 
@@ -109,63 +109,28 @@ function allItems(model: ReturnType<typeof build>) {
   return model.groups.flatMap((g) => g.items);
 }
 
-describe("Content — states are separated", () => {
-  it("maps each draft status onto its customer-facing state", () => {
+describe("Content — published corpus only (Vision v13)", () => {
+  it("lists only published drafts on the Content destination", () => {
     const model = build(
       domain({
         drafts: [
           draft({ id: "a", status: "draft" }),
           draft({ id: "b", status: "ready_for_review" }),
-          draft({ id: "c", status: "approved" }),
-          draft({ id: "d", status: "ready_to_publish" }),
           draft({ id: "e", status: "published" }),
         ],
       })
     );
 
-    const byId = new Map(allItems(model).map((i) => [i.id, i.state]));
-    expect(byId.get("a")).toBe("draft");
-    expect(byId.get("b")).toBe("awaiting_review");
-    // Approved without a work unit at the scheduled stage stays approved —
-    // claiming a schedule we cannot evidence would be an invention.
-    expect(byId.get("c")).toBe("approved");
-    expect(byId.get("d")).toBe("approved");
-    expect(byId.get("e")).toBe("published");
+    const items = allItems(model);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.state).toBe("published");
   });
 
-  it("separates scheduled from approved only on a real lifecycle signal", () => {
-    const scheduledUnit = { ...unit({ draftId: "c" }), status: "scheduled" as const };
-    const model = build(
-      domain({
-        drafts: [draft({ id: "c", status: "approved" })],
-        workUnits: [scheduledUnit],
-      })
-    );
-    expect(allItems(model).find((i) => i.id === "c")?.state).toBe("scheduled");
-  });
-
-  it("shows work that has produced nothing yet as planned", () => {
+  it("does not surface planned work units — that lives on Work", () => {
     const model = build(
       domain({ workUnits: [unit({ draftId: null })], projects: [project()] })
     );
-    const planned = allItems(model).filter((i) => i.state === "planned");
-    expect(planned).toHaveLength(1);
-    // Nothing has been written, so an excerpt would be an invention.
-    expect(planned[0]?.preview).toBeNull();
-  });
-
-  it("only offers review on items that are actually awaiting it", () => {
-    const model = build(
-      domain({
-        drafts: [
-          draft({ id: "a", status: "ready_for_review" }),
-          draft({ id: "b", status: "published" }),
-        ],
-      })
-    );
-    const byId = new Map(allItems(model).map((i) => [i.id, i.canReview]));
-    expect(byId.get("a")).toBe(true);
-    expect(byId.get("b")).toBe(false);
+    expect(allItems(model)).toHaveLength(0);
   });
 });
 
@@ -184,65 +149,27 @@ describe("Content — never fabricates outcomes", () => {
     expect(published?.performanceAbsence?.toLowerCase()).toContain("reporting");
   });
 
-  it("does not claim absence for work that has not gone out", () => {
-    const model = build(domain({ drafts: [draft({ status: "draft" })] }));
-    expect(allItems(model)[0]?.performanceAbsence).toBeNull();
-  });
-
   it("previews the real content rather than describing it", () => {
-    const model = build(domain({ drafts: [draft()] }));
+    const model = build(domain({ drafts: [draft({ status: "published" })] }));
     expect(allItems(model)[0]?.preview).toContain("six weeks watching people fail");
   });
 
   it("returns no preview when there is no body to show", () => {
-    const model = build(domain({ drafts: [draft({ body: "   " })] }));
+    const model = build(domain({ drafts: [draft({ status: "published", body: "   " })] }));
     expect(allItems(model)[0]?.preview).toBeNull();
   });
 });
 
-describe("Content — publishing failure", () => {
-  const failedUnit = revertWorkUnitFromFailedExecution(
-    unit(),
-    "LinkedIn API rejected the payload with 503"
-  );
-
-  it("surfaces a failure as its own state", () => {
-    const model = build(
-      domain({ drafts: [draft()], workUnits: [failedUnit] })
+describe("Content — publishing failure stays on Work", () => {
+  it("does not list failed drafts that never went live", () => {
+    const failedUnit = revertWorkUnitFromFailedExecution(
+      unit(),
+      "LinkedIn API rejected the payload with 503"
     );
-    expect(allItems(model).some((i) => i.state === "failed")).toBe(true);
-  });
-
-  it("speaks in her voice and never leaks the underlying error", () => {
     const model = build(
-      domain({ drafts: [draft()], workUnits: [failedUnit] })
+      domain({ drafts: [draft({ status: "ready_for_review" })], workUnits: [failedUnit] })
     );
-    const failed = allItems(model).find((i) => i.state === "failed");
-
-    expect(failed?.failure?.voice).toContain("couldn't publish");
-    expect(failed?.failure?.voice).not.toContain("503");
-    expect(failed?.failure?.voice).not.toContain("API");
-    expect(failed?.failure?.voice).not.toContain("payload");
-  });
-
-  it("states that the work is preserved and offers a way back", () => {
-    const model = build(
-      domain({ drafts: [draft()], workUnits: [failedUnit] })
-    );
-    const failed = allItems(model).find((i) => i.state === "failed");
-    expect(failed?.failure?.preserved.toLowerCase()).toContain("nothing is lost");
-    expect(failed?.failure?.retryLabel).toBeTruthy();
-  });
-
-  it("leads the presence line with the failure, ahead of anything else", () => {
-    const model = build(
-      domain({
-        drafts: [draft(), draft({ id: "d2", status: "published" })],
-        workUnits: [failedUnit],
-      })
-    );
-    expect(model.presence.rung).toBe("fault");
-    expect(model.presence.text.toLowerCase()).toContain("nothing is lost");
+    expect(allItems(model)).toHaveLength(0);
   });
 });
 
@@ -275,18 +202,10 @@ describe("Content — grounded, non-generic copy", () => {
     expect(model.empty).not.toBeNull();
   });
 
-  it("points at the unblock when work is waiting on approval", () => {
-    const model = build(domain({ drafts: [draft()] }));
-    expect(model.presence.text.toLowerCase()).toContain("waiting on your approval");
-  });
-
   it("keeps machine vocabulary out of every customer-facing string", () => {
     const model = build(
       domain({
-        drafts: [draft(), draft({ id: "d2", status: "published" })],
-        workUnits: [
-          revertWorkUnitFromFailedExecution(unit({ draftId: "d2" }), "boom"),
-        ],
+        drafts: [draft({ status: "published" }), draft({ id: "d2", status: "published" })],
       })
     );
     expect(contentStringsAreClean(model)).toBe(true);
@@ -297,7 +216,7 @@ describe("Content — attribution and filtering", () => {
   it("attributes content to a campaign by stable id, not by title", () => {
     const model = build(
       domain({
-        drafts: [draft()],
+        drafts: [draft({ status: "published" })],
         workUnits: [unit({ projectId: "p1" })],
         projects: [project({ id: "p1", title: "Launch" })],
       })
@@ -310,7 +229,7 @@ describe("Content — attribution and filtering", () => {
   it("still attributes when the unit has no draft id, via the plan reference", () => {
     const model = build(
       domain({
-        drafts: [draft({ id: "orphan", planActivityReference: "a9" })],
+        drafts: [draft({ id: "orphan", status: "published", planActivityReference: "a9" })],
         workUnits: [unit({ draftId: null, projectId: "p2", reference: "a9" })],
         projects: [project({ id: "p2", title: "Second" })],
       })
@@ -333,9 +252,9 @@ describe("Content — attribution and filtering", () => {
     expect(allItems(model)[0]?.id).toBe("a");
   });
 
-  it("ignores an unknown state filter rather than showing nothing", () => {
-    const model = build(domain({ drafts: [draft()] }), "state=banana");
-    expect(model.filters.state).toBeNull();
+  it("ignores an unknown state filter and keeps the published corpus", () => {
+    const model = build(domain({ drafts: [draft({ status: "published" })] }), "state=banana");
+    expect(model.filters.state).toBe("published");
     expect(allItems(model)).toHaveLength(1);
   });
 });
@@ -423,11 +342,9 @@ describe("Content — archive search, ordering and pagination", () => {
 
 describe("Content — localization", () => {
   it("renders Dutch copy and Dutch state labels", () => {
-    const model = build(domain({ drafts: [draft()] }), undefined, "nl");
+    const model = build(domain({ drafts: [draft({ status: "published" })] }), undefined, "nl");
     expect(model.copy.title).toBe("Content");
     expect(model.copy.askForChangesCta).toBe("Vraag om aanpassingen");
-    expect(
-      model.groups.some((g) => g.title === "Wacht op jouw goedkeuring")
-    ).toBe(true);
+    expect(model.groups.some((g) => g.title === "Gepubliceerd")).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
-import AgreementView from "@/features/office/agreement/AgreementView";
+import VisionInstellingenView from "@/features/office/agreement/VisionInstellingenView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingAgreementViewModel } from "@/lib/office/agreement/build-marketing-agreement";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
@@ -67,6 +67,9 @@ function OfficeAgreementInner() {
     loading,
     isDemo,
     team,
+    roster,
+    openNewCampaign,
+    newCampaignModal,
     workspace,
   } = useOfficePeer();
 
@@ -170,37 +173,44 @@ function OfficeAgreementInner() {
   }
 
   return (
-    <PgOfficeShell
-      peerId={peerId}
-      locale={localePreference}
-      isDemo={isDemo}
-      peerName={peerName}
-      peerRole={peerRole}
-      team={team}
-      active="agreement"
-      presence={loading ? null : model.presence}
-      decisionCount={deskModel.decisions.length}
-      onBrief={() => undefined}
-      onSearch={() => undefined}
-    >
-      {loading ? (
-        <PgSkeletonRows rows={3} rowHeight={156} />
-      ) : (
-        <>
-          {isDemo ? <DemoAgreementNotice locale={localePreference} /> : null}
-          <AgreementView
-            model={model}
-            saveState={saveState}
-            onChangeBoundary={requestChange}
-            onConfirm={confirmChange}
-            onCancel={() => {
-              setPending(null);
-              setSaveState({ status: "idle" });
-            }}
-          />
-        </>
-      )}
-    </PgOfficeShell>
+    <>
+      <PgOfficeShell
+        peerId={peerId}
+        locale={localePreference}
+        isDemo={isDemo}
+        peerName={peerName}
+        peerRole={peerRole}
+        team={team}
+        roster={roster}
+        active="agreement"
+        presence={loading ? null : model.presence}
+        decisionCount={deskModel.decisions.length}
+        onBrief={() => undefined}
+        onSearch={() => undefined}
+        onNewCampaign={openNewCampaign}
+      >
+        {loading ? (
+          <PgSkeletonRows rows={3} rowHeight={156} />
+        ) : (
+          <>
+            {isDemo ? <DemoAgreementNotice locale={localePreference} /> : null}
+            <VisionInstellingenView
+              model={model}
+              locale={localePreference}
+              peerId={peerId}
+              saveState={saveState}
+              onChangeBoundary={requestChange}
+              onConfirm={confirmChange}
+              onCancel={() => {
+                setPending(null);
+                setSaveState({ status: "idle" });
+              }}
+            />
+          </>
+        )}
+      </PgOfficeShell>
+      {newCampaignModal}
+    </>
   );
 }
 

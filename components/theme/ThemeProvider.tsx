@@ -41,8 +41,8 @@ function withTransition(run: () => void) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [resolved, setResolved] = useState<ResolvedTheme>("dark");
+  const [preference, setPreferenceState] = useState<ThemePreference>("light");
+  const [resolved, setResolved] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
     const stored = readStoredThemePreference();

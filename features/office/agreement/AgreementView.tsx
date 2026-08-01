@@ -39,6 +39,15 @@ export type AgreementViewProps = {
   onConfirm?: (boundaryId: string) => void;
   onCancel?: () => void;
   onCorrect?: (knowledgeId: string) => void;
+  visibleSection?:
+    | "brand"
+    | "connections"
+    | "responsibilities"
+    | "autonomy"
+    | "agreement"
+    | "knowledge"
+    | null;
+  hideHeader?: boolean;
 };
 
 const PROVENANCE_STYLE: Record<AgreementKnowledge["provenance"], string> = {
@@ -260,6 +269,8 @@ export default function AgreementView({
   onConfirm,
   onCancel,
   onCorrect,
+  visibleSection = null,
+  hideHeader = false,
 }: AgreementViewProps) {
   const { copy } = model;
   const [showHistory, setShowHistory] = useState(false);
@@ -271,9 +282,21 @@ export default function AgreementView({
         ? copy.provenanceCustomer
         : copy.provenanceEmma;
 
+  const brandKnowledge = model.knowledge.filter(
+    (entry) => entry.provenance === "customer_rule" || entry.provenance === "emma_understanding"
+  );
+
+  const showBoundaries =
+    !visibleSection || visibleSection === "agreement" || visibleSection === "autonomy" || visibleSection === "responsibilities";
+  const showKnowledge =
+    !visibleSection || visibleSection === "knowledge" || visibleSection === "brand";
+  const showConnections = !visibleSection || visibleSection === "connections";
+  const knowledgeEntries =
+    visibleSection === "brand" ? brandKnowledge : model.knowledge;
+
   return (
     <PgPage testId="office-agreement-view">
-      <PgPageHeader title={copy.title} subtitle={copy.subtitle} />
+      {!hideHeader ? <PgPageHeader title={copy.title} subtitle={copy.subtitle} /> : null}
 
       {model.empty ? (
         <PgEmptyState
@@ -284,7 +307,9 @@ export default function AgreementView({
       ) : null}
 
       {/* Boundaries — scannable accordion groups with counts always visible. */}
+      {showBoundaries ? (
       <PgAccordion testId="agreement-boundaries" className="mb-[var(--pg-space-6)]">
+        {(!visibleSection || visibleSection === "agreement" || visibleSection === "autonomy") ? (
         <PgAccordionSection
           id="autonomous"
           title={copy.autonomousHeading}
@@ -303,6 +328,8 @@ export default function AgreementView({
             />
           ))}
         </PgAccordionSection>
+        ) : null}
+        {(!visibleSection || visibleSection === "agreement" || visibleSection === "responsibilities") ? (
         <PgAccordionSection
           id="needs-approval"
           title={copy.needsApprovalHeading}
@@ -321,6 +348,8 @@ export default function AgreementView({
             />
           ))}
         </PgAccordionSection>
+        ) : null}
+        {(!visibleSection || visibleSection === "agreement" || visibleSection === "autonomy") ? (
         <PgAccordionSection
           id="never"
           title={copy.neverHeading}
@@ -338,15 +367,18 @@ export default function AgreementView({
             />
           ))}
         </PgAccordionSection>
+        ) : null}
       </PgAccordion>
+      ) : null}
 
       {/* Legacy flat sections removed — boundaries live in accordion above. */}
 
       {/* What she knows, with provenance always visible. */}
+      {showKnowledge && knowledgeEntries.length > 0 ? (
       <PgSection title={copy.knowledgeHeading}>
         <PgCard>
           <ul className="m-0 flex list-none flex-col gap-[var(--pg-space-3)] p-0">
-            {model.knowledge.map((entry) => (
+            {knowledgeEntries.map((entry) => (
               <li
                 key={entry.id}
                 className="flex flex-col gap-1"
@@ -388,9 +420,10 @@ export default function AgreementView({
           ) : null}
         </PgCard>
       </PgSection>
+      ) : null}
 
       {/* Access — real connections only. */}
-      {model.connections.length > 0 ? (
+      {showConnections && model.connections.length > 0 ? (
         <PgSection title={copy.connectionsHeading}>
           <div className="flex flex-col gap-[var(--pg-space-2)]">
             {model.connections.map((connection) => (
@@ -428,7 +461,7 @@ export default function AgreementView({
       ) : null}
 
       {/* Reversible history, collapsed — it is a record, not presence. */}
-      {model.history.length > 0 ? (
+      {(!visibleSection || visibleSection === "agreement") && model.history.length > 0 ? (
         <section aria-labelledby="agreement-history">
           <div className="flex items-baseline gap-[var(--pg-space-3)]">
             <h2 id="agreement-history" className="pg-label">
