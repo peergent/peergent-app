@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/ui/cn";
 import { peerAccentVar } from "@/lib/design-system/foundation";
 import {
-  PgCard,
+  PgEntityCard,
   PgMeta,
   PgPage,
   PgPageHeader,
@@ -51,39 +51,14 @@ function WorkCard({
   const blockedOnCustomer = group.id === "blocked_on_you";
 
   return (
-    <PgCard
-      interactive
-      decision={blockedOnCustomer}
-      data-testid={`work-item-${item.id}`}
-    >
-      <Link href={item.href} className="pg-focus-premium block">
-        <div className="flex flex-wrap items-baseline gap-x-[var(--pg-space-3)] gap-y-1">
-          <p className="pg-voice min-w-0 flex-1">{item.name}</p>
-          <PgStateBadge
-            state={GROUP_STATE[group.id]}
-            label={item.stageLabel}
-            className="shrink-0"
-          />
-        </div>
-
-        {item.nextStep ? (
-          <p className="pg-body pg-body--sm mt-[var(--pg-space-2)]">
-            <span className="text-[var(--pg-color-text-tertiary)]">
-              {copy.nextStepLabel}
-            </span>{" "}
-            {item.nextStep}
-          </p>
-        ) : null}
-
-        {item.blockedBy ? (
-          <p className="mt-[var(--pg-space-2)] text-[13px] text-[var(--pg-color-decision)]">
-            <span className="opacity-70">{copy.blockedLabel}</span> {item.blockedBy}
-          </p>
-        ) : null}
-
-        {/* Channel readiness and timing are secondary — one quiet row. */}
+    <PgEntityCard
+      title={item.name}
+      subtitle={item.nextStep ? `${copy.nextStepLabel} ${item.nextStep}` : null}
+      status={{ state: GROUP_STATE[group.id], label: item.stageLabel }}
+      attention={blockedOnCustomer}
+      href={item.href}
+      meta={
         <PgMeta
-          className="mt-[var(--pg-space-3)]"
           items={[
             item.expectedLabel,
             ...item.channels.map((channel) =>
@@ -91,8 +66,14 @@ function WorkCard({
             ),
           ]}
         />
-      </Link>
-    </PgCard>
+      }
+      facts={
+        item.blockedBy
+          ? [{ label: copy.blockedLabel, value: item.blockedBy }]
+          : []
+      }
+      testId={`work-item-${item.id}`}
+    />
   );
 }
 

@@ -191,7 +191,7 @@ export default function PgOfficeShell({
     <div
       // Full viewport by default; a host that already owns the height (the dev
       // harness) can hand down its own via --pg-shell-min-h.
-      className="flex min-h-[var(--pg-shell-min-h,100vh)] flex-1 bg-[var(--pg-office-canvas)]"
+      className="flex min-h-[var(--pg-shell-min-h,100vh)] flex-1 pg-office-canvas"
     >
       <PgTeamRail peers={team} activePeerId={peerId} />
 

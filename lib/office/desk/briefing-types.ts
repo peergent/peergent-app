@@ -190,10 +190,52 @@ export type DeskBriefing = {
    * when nothing is measured — never padded to fill the row.
    */
   kpis: BriefingKpi[];
+  /** Executive composition for the hero band — derived from performance, not re-grounded. */
+  executive: DeskBriefingExecutive;
+  /** Spotlight rows for current work, content and market — traceable to destination VMs. */
+  spotlight: DeskBriefingSpotlight;
   panels: BriefingPanel[];
   nextStep: BriefingNextStep | null;
   changes: BriefingChange[];
   copy: BriefingCopy;
+};
+
+export type DeskBriefingExecutive = {
+  primaryKpi: BriefingKpi | null;
+  secondaryKpis: BriefingKpi[];
+  interpretation: string | null;
+  interpretationFact: string | null;
+  recommendation: string | null;
+  periodLabel: string | null;
+};
+
+export type DeskBriefingContentPreview = {
+  id: string;
+  title: string;
+  channelId: string | null;
+  channelLabel: string | null;
+  statusLabel: string;
+  state: string;
+  preview: string | null;
+  meta: string | null;
+  href: string | null;
+  performance: Array<{ label: string; value: string }> | null;
+};
+
+export type DeskBriefingSpotlight = {
+  activeWork: {
+    id: string;
+    title: string;
+    stageLabel: string;
+    nextStep: string | null;
+    href: string;
+    blockedBy: string | null;
+    progressPct: number | null;
+  } | null;
+  contentPreviews: DeskBriefingContentPreview[];
+  marketHeadline: string | null;
+  marketRecommendation: string | null;
+  marketHref: string | null;
 };
 
 export type BriefingCopy = {

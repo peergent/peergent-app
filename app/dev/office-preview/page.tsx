@@ -156,6 +156,23 @@ const briefingCopy: DeskBriefing["copy"] = {
   openLabel: (destination) => `Open ${destination}`,
 };
 
+const emptyExecutive: DeskBriefing["executive"] = {
+  primaryKpi: null,
+  secondaryKpis: [],
+  interpretation: null,
+  interpretationFact: null,
+  recommendation: null,
+  periodLabel: null,
+};
+
+const emptySpotlight: DeskBriefing["spotlight"] = {
+  activeWork: null,
+  contentPreviews: [],
+  marketHeadline: null,
+  marketRecommendation: null,
+  marketHref: null,
+};
+
 /** A workspace with real history: every panel has something to report. */
 const briefingLived: DeskBriefing = {
   rung: "observation",
@@ -164,6 +181,44 @@ const briefingLived: DeskBriefing = {
     { id: "leads", label: "Leads", value: "63", delta: { direction: "up", label: "+12%", upIsGood: true }, methodology: "Gerapporteerd door een gekoppelde bron.", emphasis: "outcome" },
     { id: "published", label: "Gepubliceerd", value: "6", delta: null, methodology: "Geteld op basis van wat er live ging.", emphasis: "activity" },
   ],
+  executive: {
+    primaryKpi: { id: "reach", label: "Bereik", value: "18.420", delta: { direction: "up", label: "+18%", upIsGood: true }, methodology: "Gerapporteerd door een gekoppelde bron.", emphasis: "outcome" },
+    secondaryKpis: [
+      { id: "leads", label: "Leads", value: "63", delta: { direction: "up", label: "+12%", upIsGood: true }, methodology: "Gerapporteerd door een gekoppelde bron.", emphasis: "outcome" },
+    ],
+    interpretation: "LinkedIn is carrying the reach; email is not pulling its weight yet.",
+    interpretationFact: "Based on connected channel reporting for the last 30 days.",
+    recommendation: "Connect Google Analytics to close the loop on site conversions.",
+    periodLabel: "Last 30 days",
+  },
+  spotlight: {
+    activeWork: {
+      id: "camp-summer",
+      title: "Summer product launch",
+      stageLabel: "Awaiting review",
+      nextStep: "Review the launch email draft",
+      href: "/office/preview/work",
+      blockedBy: "Your approval on the email",
+      progressPct: 72,
+    },
+    contentPreviews: [
+      {
+        id: "preview-1",
+        title: "Launch email — first draft",
+        channelId: "email",
+        channelLabel: "Newsletter",
+        statusLabel: "Awaiting review",
+        state: "awaiting_review",
+        preview: "We help installers plan their week in minutes, not hours.",
+        meta: "Summer launch · Today",
+        href: "/office/preview/content",
+        performance: null,
+      },
+    ],
+    marketHeadline: "Two competitors lead on price; neither says anything about onboarding.",
+    marketRecommendation: "Lead with onboarding speed in the next campaign.",
+    marketHref: "/office/preview/market",
+  },
   focus: {
     source: "preparing",
     eyebrow: "What I'm working on",
@@ -257,6 +312,8 @@ const briefingLived: DeskBriefing = {
 const briefingEarly: DeskBriefing = {
   rung: "orientation",
   kpis: [],
+  executive: emptyExecutive,
+  spotlight: emptySpotlight,
   focus: {
     source: "recommendation",
     eyebrow: "Where I'd start",

@@ -13,6 +13,8 @@ import type {
   BriefingStat,
   BriefingKpi,
   DeskBriefing,
+  DeskBriefingExecutive,
+  DeskBriefingSpotlight,
   DeskFocusAnchor,
 } from "./briefing-types";
 import type { WorkViewModel } from "../work/types";
@@ -587,6 +589,64 @@ export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
 
   const kpis = buildKpis(performance);
 
+  const outcomeKpis = kpis.filter((k) => k.emphasis === "outcome");
+  const primaryKpi = outcomeKpis[0] ?? kpis[0] ?? null;
+  const secondaryKpis = outcomeKpis.slice(1, 4);
+
+  const activeWorkItem =
+    work.groups.find((g) => g.id === "moving")?.items[0] ??
+    work.groups.find((g) => g.id === "blocked_on_you")?.items[0] ??
+    null;
+
+  const contentPreviews = content.groups
+    .flatMap((g) => g.items)
+    .slice(0, 3)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      channelId: item.channelId,
+      channelLabel: item.channelLabel,
+      statusLabel: item.statusLabel,
+      state: item.state,
+      preview: item.preview,
+      meta: [item.campaignTitle, item.dateLabel].filter(Boolean).join(" · ") || null,
+      href: item.href,
+      performance: item.performance,
+    }));
+
+  const marketPanel = panels.find((p) => p.id === "market");
+  const marketHeadline = marketPanel?.headline ?? null;
+
+  const executive: DeskBriefingExecutive = {
+    primaryKpi,
+    secondaryKpis,
+    interpretation: topSignal?.interpretation ?? null,
+    interpretationFact: topSignal?.fact ?? null,
+    recommendation: topSignal?.recommendation ?? null,
+    periodLabel:
+      performance.filterGroups
+        .find((f) => f.id === "period")
+        ?.options.find((o) => o.active)?.label ?? null,
+  };
+
+  const spotlight: DeskBriefingSpotlight = {
+    activeWork: activeWorkItem
+      ? {
+          id: activeWorkItem.id,
+          title: activeWorkItem.name,
+          stageLabel: activeWorkItem.stageLabel,
+          nextStep: activeWorkItem.nextStep,
+          href: activeWorkItem.href,
+          blockedBy: activeWorkItem.blockedBy,
+          progressPct: null,
+        }
+      : null,
+    contentPreviews,
+    marketHeadline,
+    marketRecommendation: topSignal?.recommendation ?? null,
+    marketHref: officeHref(peerId, "market"),
+  };
+
   // The KPI band now carries the business figures at full weight. A panel that
   // repeats them makes the page say the same thing twice and costs the reader
   // a second pass to discover it learned nothing. The panel keeps what the band
@@ -603,6 +663,8 @@ export function buildMarketingDeskBriefing(input: BriefingInput): DeskBriefing {
     rung: input.desk.presence?.rung ?? "orientation",
     focus: buildFocusAnchor(input.desk, work, nl),
     kpis,
+    executive,
+    spotlight,
     panels,
     nextStep,
     changes: input.desk.completed.map((item) => ({

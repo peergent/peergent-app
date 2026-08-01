@@ -6,7 +6,7 @@ import {
   PgCard,
   PgChartFrame,
   PgFilterBar,
-  PgMetric,
+  PgHeroSurface,
   PgMethodology,
   PgPage,
   PgPageHeader,
@@ -14,6 +14,7 @@ import {
   PgTable,
   PgTrendChart,
 } from "@/components/design-system";
+import { peerAccentVar } from "@/lib/design-system/foundation";
 import type {
   PerformanceCut,
   PerformanceSectionModel,
@@ -94,6 +95,7 @@ function cutToTableRows(cut: PerformanceCut) {
 
 export default function PerformanceView({ model }: PerformanceViewProps) {
   const { copy } = model;
+  const accent = peerAccentVar(model.peerRole);
 
   const reporting = model.sections.filter((s) => s.state === "reporting");
   const unavailable = model.sections.filter((s) => s.state === "unavailable");
@@ -168,81 +170,39 @@ export default function PerformanceView({ model }: PerformanceViewProps) {
       {/* 1. The hero. One number the page leads with, the figures around it,
              and her reading — three tiers, one card, three seconds. */}
       {heroMetric ? (
-        <PgCard elevation="feature" data-testid="perf-hero">
-          <PgMetric
-            label={heroMetric.label}
-            value={heroMetric.value}
-            delta={
-              heroMetric.delta
-                ? { ...heroMetric.delta, upIsGood: heroMetric.upIsGood }
-                : null
-            }
-            methodology={heroMetric.methodology}
-            emphasis="hero"
-            testId="perf-hero-metric"
-          />
-
-          {secondaryMetrics.length > 0 ? (
-            <div
-              className={cn(
-                "mt-[var(--pg-space-6)] flex flex-wrap gap-x-[var(--pg-space-6)] gap-y-[var(--pg-space-4)]",
-                "border-t border-[var(--pg-office-line)] pt-[var(--pg-space-5)]"
-              )}
-              data-testid="perf-hero-secondary"
-            >
-              {secondaryMetrics.map((metric, index) => (
-                <div
-                  key={metric.key}
-                  className={cn(
-                    // Full width and horizontally divided while stacked on
-                    // narrow screens; a vertical divider only makes sense once
-                    // the row has room to actually be a row.
-                    "w-full min-w-[9rem] sm:w-auto",
-                    index > 0 &&
-                      cn(
-                        "border-t border-[var(--pg-office-line)] pt-[var(--pg-space-3)]",
-                        "sm:border-t-0 sm:border-l sm:pt-0 sm:pl-[var(--pg-space-6)]"
-                      )
-                  )}
-                >
-                  <PgMetric
-                    label={metric.label}
-                    value={metric.value}
-                    delta={
-                      metric.delta ? { ...metric.delta, upIsGood: metric.upIsGood } : null
-                    }
-                    emphasis="outcome"
-                    testId={`perf-hero-secondary-${metric.key}`}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {topSignal ? (
-            <div
-              className="mt-[var(--pg-space-6)] border-t border-[var(--pg-office-line)] pt-[var(--pg-space-5)]"
-              data-testid={`perf-signal-${topSignal.id}`}
-            >
-              {/* Her voice — the only purple on the page, because it is the
-                  only place she is speaking rather than reporting. */}
-              <p className="pg-voice pg-measure text-[var(--pg-color-text-primary)]">
-                {topSignal.interpretation}
-              </p>
-              <PgMethodology className="mt-[var(--pg-space-2)]">
-                {topSignal.fact}
-              </PgMethodology>
-              {topSignal.recommendation ? (
-                <p
-                  className="mt-[var(--pg-space-3)] border-l-2 pl-[var(--pg-space-4)] text-[var(--pg-type-body)] text-[var(--pg-color-text-secondary)]"
-                  style={{ borderColor: "var(--pg-state-voice)" }}
-                >
-                  {topSignal.recommendation}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </PgCard>
+        <PgHeroSurface
+          accentVar={accent}
+          eyebrow={copy.title}
+          headline={topSignal?.interpretation ?? heroMetric.label}
+          detail={topSignal ? heroMetric.label : null}
+          primaryMetric={{
+            label: heroMetric.label,
+            value: heroMetric.value,
+            delta: heroMetric.delta ? { ...heroMetric.delta, upIsGood: heroMetric.upIsGood } : null,
+            methodology: heroMetric.methodology,
+            emphasis: "hero",
+          }}
+          secondaryMetrics={secondaryMetrics.map((metric) => ({
+            label: metric.label,
+            value: metric.value,
+            delta: metric.delta ? { ...metric.delta, upIsGood: metric.upIsGood } : null,
+            emphasis: "outcome" as const,
+          }))}
+          voice={topSignal?.interpretation}
+          voiceFact={topSignal?.fact}
+          recommendation={topSignal?.recommendation}
+          chart={
+            model.trend ? (
+              <PgTrendChart
+                points={model.trend.points}
+                label={model.trend.label}
+                height={120}
+                colorVar="var(--pg-state-neutral)"
+              />
+            ) : undefined
+          }
+          testId="perf-hero"
+        />
       ) : topSignal ? (
         // No connected source yet, but she still has a reading — her voice
         // stands alone rather than waiting for numbers that do not exist.
@@ -259,8 +219,8 @@ export default function PerformanceView({ model }: PerformanceViewProps) {
       {/* 2. The one real series — demoted deliberately. It plots how much went
              out, not what it returned, so it is smaller than the hero and
              coloured as information rather than as her voice. */}
-      {model.trend ? (
-        <section aria-label={copy.trendHeading} data-testid="perf-trend">
+      {model.trend && heroMetric ? null : model.trend ? (
+        <section aria-label={copy.trendHeading} data-testid="perf-trend" className="pg-band-enter">
           <PgSectionHeader
             title={copy.trendHeading}
             hint={model.trend.label}
@@ -270,7 +230,7 @@ export default function PerformanceView({ model }: PerformanceViewProps) {
             <PgTrendChart
               points={model.trend.points}
               label={model.trend.label}
-              height={72}
+              height={100}
               colorVar="var(--pg-state-neutral)"
             />
             <PgMethodology className="mt-[var(--pg-space-3)]">

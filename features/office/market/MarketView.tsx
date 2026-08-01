@@ -3,6 +3,7 @@
 import {
   PgCard,
   PgEmptyState,
+  PgEntityCard,
   PgInsightCard,
   PgMethodology,
   PgPage,
@@ -207,39 +208,35 @@ export default function MarketView({ model }: MarketViewProps) {
       {/* The roster itself. */}
       {model.competitors.length > 0 ? (
         <PgSection title={copy.competitorsHeading}>
-          <div className="grid gap-[var(--pg-space-3)] lg:grid-cols-2">
+          <div className="grid gap-[var(--pg-space-4)] lg:grid-cols-2">
             {model.competitors.map((competitor) => (
-              <PgCard
+              <PgEntityCard
                 key={competitor.id}
-                data-testid={`market-competitor-${competitor.id}`}
-              >
-                <p className="pg-voice">{competitor.name}</p>
-
-                {competitor.isThin ? (
-                  <p className="pg-body pg-body--sm mt-[var(--pg-space-2)] text-[var(--pg-color-text-tertiary)]">
-                    {copy.thinRecord}
-                  </p>
-                ) : (
-                  <dl className="m-0 mt-[var(--pg-space-3)] flex flex-col gap-[var(--pg-space-2)]">
-                    {(
-                      [
-                        [copy.differentiatorsLabel, competitor.differentiators],
-                        [copy.strengthsLabel, competitor.strengths],
-                        [copy.weaknessesLabel, competitor.weaknesses],
-                      ] as const
-                    )
-                      .filter(([, values]) => values.length > 0)
-                      .map(([label, values]) => (
-                        <div key={label} className="flex flex-col gap-0.5">
-                          <dt className="pg-label">{label}</dt>
-                          <dd className="pg-body pg-body--sm m-0">
-                            {values.join(" · ")}
-                          </dd>
-                        </div>
-                      ))}
-                  </dl>
-                )}
-              </PgCard>
+                title={competitor.name}
+                subtitle={
+                  competitor.isThin
+                    ? copy.thinRecord
+                    : competitor.differentiators.slice(0, 2).join(" · ") || null
+                }
+                leading={
+                  <span className="pg-channel-monogram" aria-hidden>
+                    {competitor.name.slice(0, 2).toUpperCase()}
+                  </span>
+                }
+                facts={
+                  competitor.isThin
+                    ? []
+                    : [
+                        ...(competitor.strengths.length
+                          ? [{ label: copy.strengthsLabel, value: competitor.strengths.join(" · ") }]
+                          : []),
+                        ...(competitor.weaknesses.length
+                          ? [{ label: copy.weaknessesLabel, value: competitor.weaknesses.join(" · ") }]
+                          : []),
+                      ]
+                }
+                testId={`market-competitor-${competitor.id}`}
+              />
             ))}
           </div>
         </PgSection>

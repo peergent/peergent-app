@@ -26,10 +26,11 @@
   /* Fluid so the tier itself scales, rather than call sites pairing a base
      class with a `lg:` variant — Tailwind cannot generate a variant of a plain
      CSS class, so those silently do nothing. */
-  --pg-type-display: clamp(28px, 5vw, 44px);
-  --pg-type-display-sm: clamp(24px, 4vw, 32px);
-  --pg-type-metric: 32px;
-  --pg-type-section: 19px;
+  --pg-type-display: clamp(30px, 4.5vw, 52px);
+  --pg-type-display-sm: clamp(26px, 3.8vw, 38px);
+  --pg-type-metric: clamp(28px, 3vw, 40px);
+  --pg-type-title: clamp(18px, 2.2vw, 22px);
+  --pg-type-section: 20px;
   --pg-type-voice: 16px;
   --pg-type-body: 15px;
   --pg-type-body-sm: 14px;
@@ -109,6 +110,7 @@
     0 12px 28px -18px rgba(0, 0, 0, 0.75);
 
   --pg-office-glow: rgba(123, 111, 255, 0.14);
+  --pg-hero-wash: color-mix(in srgb, var(--pg-peer-marketing) 12%, transparent);
 }
 
 [data-pg-theme="light"] {
@@ -464,6 +466,178 @@
   }
 
   .pg-raise:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   Office visual language — Demo Workspace redesign
+   ============================================================ */
+
+.pg-title {
+  font-size: var(--pg-type-title);
+  font-weight: var(--pg-weight-section);
+  line-height: 1.25;
+  letter-spacing: -0.016em;
+  margin: 0;
+}
+
+.pg-office-canvas {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -8%, var(--pg-office-glow), transparent 55%),
+    var(--pg-office-canvas);
+}
+
+@keyframes pg-band-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pg-band-enter {
+  animation: pg-band-in var(--pg-duration-enter) var(--pg-ease-peergent) both;
+}
+
+.pg-hero-surface {
+  position: relative;
+  border-radius: var(--pg-radius-lg);
+  border: 1px solid var(--pg-office-line-strong);
+  background: var(--pg-office-panel);
+  box-shadow:
+    var(--pg-office-lift),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.pg-hero-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 80% at 0% 50%, var(--pg-hero-wash, transparent), transparent 68%);
+}
+
+.pg-kpi-card {
+  border-radius: var(--pg-radius-md);
+  border: 1px solid var(--pg-office-line);
+  background: var(--pg-office-panel);
+  box-shadow: var(--pg-office-lift);
+  padding: var(--pg-space-4) var(--pg-space-5);
+  transition:
+    border-color var(--pg-duration-state) var(--pg-ease-peergent),
+    transform var(--pg-duration-state) var(--pg-ease-peergent);
+}
+
+.pg-kpi-card--outcome {
+  border-color: var(--pg-office-line-strong);
+  background: linear-gradient(
+    165deg,
+    var(--pg-office-panel) 0%,
+    color-mix(in srgb, var(--pg-office-panel) 92%, var(--pg-state-neutral)) 100%
+  );
+}
+
+.pg-kpi-card--interactive:hover {
+  border-color: var(--pg-office-line-strong);
+  transform: translateY(-2px);
+}
+
+.pg-entity-card {
+  border-radius: var(--pg-radius-md);
+  border: 1px solid var(--pg-office-line);
+  background: var(--pg-office-panel);
+  box-shadow: var(--pg-office-lift);
+  padding: var(--pg-space-5);
+}
+
+.pg-entity-card--attention {
+  border-left: 3px solid var(--pg-state-attention);
+}
+
+.pg-content-preview {
+  border-radius: var(--pg-radius-md);
+  border: 1px solid var(--pg-office-line);
+  background: var(--pg-office-panel);
+  overflow: hidden;
+  transition:
+    border-color var(--pg-duration-state) var(--pg-ease-peergent),
+    transform var(--pg-duration-state) var(--pg-ease-peergent);
+}
+
+.pg-content-preview:hover {
+  border-color: var(--pg-office-line-strong);
+  transform: translateY(-1px);
+}
+
+.pg-content-preview__channel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pg-color-text-secondary);
+  background: var(--pg-office-inset);
+  border-bottom: 1px solid var(--pg-office-line);
+}
+
+.pg-timeline {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-timeline::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 1px;
+  background: var(--pg-office-line);
+}
+
+.pg-timeline__item {
+  position: relative;
+  padding-left: var(--pg-space-5);
+  padding-bottom: var(--pg-space-4);
+}
+
+.pg-timeline__item:last-child {
+  padding-bottom: 0;
+}
+
+.pg-channel-monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--pg-radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--pg-office-inset);
+  border: 1px solid var(--pg-office-line);
+  color: var(--pg-color-text-secondary);
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-band-enter {
+    animation: none;
+  }
+
+  .pg-kpi-card--interactive:hover,
+  .pg-content-preview:hover {
     transform: none;
   }
 }

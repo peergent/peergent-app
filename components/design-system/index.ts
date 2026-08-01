@@ -122,5 +122,17 @@ export type { PgMetricRowProps, PgMetricRowDensity } from "./PgMetricRow";
 export { default as PgAttentionBand } from "./PgAttentionBand";
 export type { PgAttentionBandProps, PgAttentionTone } from "./PgAttentionBand";
 
+export { default as PgAccordion, PgAccordionSection } from "./PgAccordion";
+export { default as PgHeroSurface } from "./PgHeroSurface";
+export type { PgHeroSurfaceProps } from "./PgHeroSurface";
+export { default as PgKpiCard } from "./PgKpiCard";
+export type { PgKpiCardProps } from "./PgKpiCard";
+export { default as PgEntityCard } from "./PgEntityCard";
+export type { PgEntityCardProps } from "./PgEntityCard";
+export { default as PgContentPreviewCard } from "./PgContentPreviewCard";
+export type { PgContentPreviewCardProps } from "./PgContentPreviewCard";
+export { default as PgTimeline } from "./PgTimeline";
+export type { PgTimelineProps, PgTimelineItem } from "./PgTimeline";
+
 export { default as PgSectionHeader } from "./PgSectionHeader";
 export type { PgSectionHeaderProps, PgSectionHeaderLevel } from "./PgSectionHeader";

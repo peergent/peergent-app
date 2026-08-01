@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/ui/cn";
 import {
+  PgAccordion,
+  PgAccordionSection,
   PgCard,
   PgEmptyState,
   PgErrorState,
@@ -281,35 +283,64 @@ export default function AgreementView({
         />
       ) : null}
 
-      {/* Order is specified: what she does alone comes first. */}
-      <BoundarySection
-        heading={copy.autonomousHeading}
-        boundaries={model.autonomous}
-        copy={copy}
-        saveState={saveState}
-        onChangeBoundary={onChangeBoundary}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />
-      <BoundarySection
-        heading={copy.needsApprovalHeading}
-        boundaries={model.needsApproval}
-        copy={copy}
-        saveState={saveState}
-        tone="decision"
-        onChangeBoundary={onChangeBoundary}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />
-      <BoundarySection
-        heading={copy.neverHeading}
-        boundaries={model.never}
-        copy={copy}
-        saveState={saveState}
-        onChangeBoundary={onChangeBoundary}
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />
+      {/* Boundaries — scannable accordion groups with counts always visible. */}
+      <PgAccordion testId="agreement-boundaries" className="mb-[var(--pg-space-6)]">
+        <PgAccordionSection
+          id="autonomous"
+          title={copy.autonomousHeading}
+          count={model.autonomous.length}
+          defaultOpen
+        >
+          {model.autonomous.map((boundary) => (
+            <BoundaryCard
+              key={boundary.id}
+              boundary={boundary}
+              copy={copy}
+              saveState={saveState}
+              onChangeBoundary={onChangeBoundary}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+            />
+          ))}
+        </PgAccordionSection>
+        <PgAccordionSection
+          id="needs-approval"
+          title={copy.needsApprovalHeading}
+          count={model.needsApproval.length}
+          defaultOpen
+        >
+          {model.needsApproval.map((boundary) => (
+            <BoundaryCard
+              key={boundary.id}
+              boundary={boundary}
+              copy={copy}
+              saveState={saveState}
+              onChangeBoundary={onChangeBoundary}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+            />
+          ))}
+        </PgAccordionSection>
+        <PgAccordionSection
+          id="never"
+          title={copy.neverHeading}
+          count={model.never.length}
+        >
+          {model.never.map((boundary) => (
+            <BoundaryCard
+              key={boundary.id}
+              boundary={boundary}
+              copy={copy}
+              saveState={saveState}
+              onChangeBoundary={onChangeBoundary}
+              onConfirm={onConfirm}
+              onCancel={onCancel}
+            />
+          ))}
+        </PgAccordionSection>
+      </PgAccordion>
+
+      {/* Legacy flat sections removed — boundaries live in accordion above. */}
 
       {/* What she knows, with provenance always visible. */}
       <PgSection title={copy.knowledgeHeading}>

@@ -5,16 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/ui/cn";
 import {
-  PgCard,
+  PgContentPreviewCard,
   PgEmptyState,
   PgErrorState,
   PgFilterBar,
   PgInput,
-  PgMeta,
   PgPage,
   PgPageHeader,
   PgSection,
-  PgStateBadge,
   type PgState,
 } from "@/components/design-system";
 import type { ContentItem, ContentViewModel } from "@/lib/office/content/types";
@@ -66,78 +64,20 @@ function ContentCard({
   }
 
   return (
-    <PgCard interactive data-testid={`content-item-${item.id}`}>
-      <div className="flex flex-wrap items-baseline gap-x-[var(--pg-space-3)] gap-y-1">
-        {item.channelLabel ? (
-          <span className="text-[11.5px] text-[var(--pg-color-text-tertiary)]">
-            {item.channelLabel}
-          </span>
-        ) : null}
-        <PgStateBadge
-          state={item.state as PgState}
-          label={item.statusLabel}
-          className="ml-auto shrink-0"
-        />
-      </div>
-
-      <p className="pg-voice mt-[var(--pg-space-2)]">{item.title}</p>
-
-      {/* A real excerpt of the actual content, never a description of it. */}
-      {item.preview ? (
-        <p className="pg-body pg-body--sm mt-[var(--pg-space-2)]">{item.preview}</p>
-      ) : null}
-
-      <PgMeta
-        className="mt-[var(--pg-space-3)]"
-        items={[item.campaignTitle, item.dateLabel]}
-      />
-
-      {item.performance ? (
-        <div className="mt-[var(--pg-space-3)] flex flex-wrap gap-[var(--pg-space-4)]">
-          {item.performance.map((stat) => (
-            <span key={stat.label} className="flex flex-col">
-              <span className="text-[11.5px] text-[var(--pg-color-text-tertiary)]">
-                {stat.label}
-              </span>
-              <span className="text-[var(--pg-type-body-sm)] tabular-nums">
-                {stat.value}
-              </span>
-            </span>
-          ))}
-        </div>
-      ) : item.performanceAbsence ? (
-        // Honest absence — stated, not left blank.
-        <p className="pg-body pg-body--sm mt-[var(--pg-space-3)] text-[var(--pg-color-text-tertiary)]">
-          {item.performanceAbsence}
-        </p>
-      ) : null}
-
-      <div className="mt-[var(--pg-space-3)] flex flex-wrap items-center gap-[var(--pg-space-3)]">
-        {item.canReview ? (
-          <button
-            type="button"
-            onClick={() => onReview(item)}
-            className={cn(
-              "pg-focus-premium inline-flex min-h-9 items-center rounded-[var(--pg-radius-sm)]",
-              "bg-[var(--pg-color-accent)] px-4 text-sm font-medium",
-              "text-[var(--pg-color-text-inverse)] transition",
-              "hover:bg-[var(--pg-color-accent-hover)]"
-            )}
-            data-testid={`content-review-${item.id}`}
-          >
-            {copy.reviewCta}
-          </button>
-        ) : null}
-        {item.href ? (
-          <Link
-            href={item.href}
-            className="pg-focus-premium text-sm text-[var(--pg-color-accent)]"
-          >
-            {copy.openCta}
-          </Link>
-        ) : null}
-      </div>
-    </PgCard>
+    <PgContentPreviewCard
+      title={item.title}
+      preview={item.preview}
+      channelId={item.channelId}
+      channelLabel={item.channelLabel}
+      status={{ state: item.state as PgState, label: item.statusLabel }}
+      meta={[item.campaignTitle, item.dateLabel].filter(Boolean).join(" · ") || null}
+      performance={item.performance}
+      href={item.canReview ? null : item.href}
+      featured={item.state === "awaiting_review"}
+      onReview={item.canReview ? () => onReview(item) : undefined}
+      reviewLabel={item.canReview ? copy.reviewCta : undefined}
+      testId={`content-item-${item.id}`}
+    />
   );
 }
 
@@ -226,14 +166,18 @@ export default function ContentView({
           attention={group.state === "awaiting_review" || group.state === "failed"}
         >
           <div className="grid gap-[var(--pg-office-card-gap)] lg:grid-cols-2">
-            {group.items.map((item) => (
-              <ContentCard
+            {group.items.map((item, index) => (
+              <div
                 key={item.id}
-                item={item}
-                copy={copy}
-                onReview={setReviewing}
-                onRetry={onRetry}
-              />
+                className={cn(index === 0 && group.state === "published" && "lg:col-span-2")}
+              >
+                <ContentCard
+                  item={item}
+                  copy={copy}
+                  onReview={setReviewing}
+                  onRetry={onRetry}
+                />
+              </div>
             ))}
           </div>
         </PgSection>
