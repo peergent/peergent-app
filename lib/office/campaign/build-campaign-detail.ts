@@ -1,12 +1,28 @@
 import {
   deriveProjectStatus,
-  projectStatusLabel,
 } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { MarketingContentDraft } from "@/lib/marketing-intelligence";
 import { officeHref } from "../links";
 import { resolveProjectIdForDraft } from "../attribution";
+import { customerLabelForProjectStatus } from "./customer-facing-status";
+import { readDemoCampaignOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
+import { buildCampaignWorkflowViewModel } from "./build-campaign-workflow";
+import { buildCampaignContext } from "./campaign-context";
+import { buildWebsiteMissingPrompt, buildCompetitorMissingPrompt } from "./build-campaign-workflow-evidence";
+import {
+  EMMA_OPENING_EN,
+  EMMA_OPENING_NL,
+  EMMA_PLAN_STEPS_EN,
+  EMMA_PLAN_STEPS_NL,
+} from "./build-structured-strategy-evidence";
+import { workflowBasedStatusLabel } from "./campaign-workflow-status";
+import { buildOptimizationMetrics, formatOfficeDate } from "./campaign-optimization";
+import { buildCampaignResultsViewModel } from "./build-campaign-results";
+import type { CampaignExecutionMode } from "./workflow-types";
+import type { CampaignDurationSnapshot } from "./campaign-duration";
+import { formatDurationPresetLabel, formatDurationRange, formatRunningStatus } from "./campaign-duration";
 
 export type CampaignWorkspaceItemKind = "completed" | "pending" | "preview";
 
@@ -30,22 +46,60 @@ export type CampaignDetailTimelineStep = {
   state: "done" | "active" | "upcoming";
 };
 
+export type CampaignActivityItem = {
+  id: string;
+  title: string;
+  description: string;
+  timeLabel: string;
+};
+
+export type CampaignScheduleInfo = {
+  scheduledAt: string;
+  scheduledAtLabel: string;
+  channels: string[];
+  deliverableLabels: string[];
+};
+
 export type CampaignDetailViewModel = {
   peerId: string;
   projectId: string;
   name: string;
   statusLabel: string;
+  lifecycleStatus: "review" | "ready_to_schedule" | "scheduled" | "published" | "planning";
   goal: string;
   why: string;
   channels: string[];
   ownerLabel: string;
   createdAtLabel: string;
   detailHref: string;
+  scheduleInfo: CampaignScheduleInfo | null;
+  publishedAtLabel: string | null;
+  emmaOpeningLine: string | null;
+  emmaPlanSteps: readonly string[];
+  websitePrompt: { message: string; addWebsiteLabel: string; skipLabel: string } | null;
+  websiteEditUrl: string | null;
+  competitorPrompt: { message: string; addLabel: string; skipLabel: string } | null;
+  manualChoiceSummary: readonly { label: string; value: string }[] | null;
+  executionMode: CampaignExecutionMode;
+  optimizationMetrics: readonly { label: string; value: string }[];
+  optimizationHasData: boolean;
+  resultsViewModel: import("./build-campaign-results").CampaignResultsViewModel;
+  performanceLabel: string;
+  performanceActionable: boolean;
+  durationSummary: {
+    runningLabel: string | null;
+    dateRangeLabel: string | null;
+    statusLabel: string | null;
+    duration: CampaignDurationSnapshot | null;
+  } | null;
+  deliverablesSectionLabel: string;
   completed: CampaignWorkspaceItem[];
   pending: CampaignWorkspaceItem[];
   previews: CampaignWorkspaceItem[];
   timeline: CampaignDetailTimelineStep[];
+  activityItems: CampaignActivityItem[];
   producedDrafts: MarketingContentDraft[];
+  workflow: import("./workflow-types").CampaignWorkflowViewModel;
 };
 
 function channelLabel(channel: string, nl: boolean): string {
@@ -104,9 +158,12 @@ export function buildCampaignDetailViewModel(input: {
   projectId: string;
   domainInput: MarketingPeerDomainInput;
   locale?: string | null;
+  isDemo?: boolean;
 }): CampaignDetailViewModel | null {
   const { peerId, projectId, domainInput } = input;
   const nl = input.locale === "nl";
+  const isDemo = input.isDemo ?? peerId === "demo";
+  const overlay = readDemoCampaignOverlay(domainInput);
   const project = domainInput.projects.find((p) => p.id === projectId);
   if (!project) return null;
 
@@ -118,11 +175,54 @@ export function buildCampaignDetailViewModel(input: {
     new Set()
   );
 
-  const channels = [
-    ...new Set(
-      drafts.map((d) => d.channel).filter(Boolean) as string[]
-    ),
-  ].map((c) => channelLabel(c, nl));
+  const scheduleRecord = overlay.demoCampaignSchedule?.[projectId];
+  const publishedRecord = overlay.demoCampaignPublished?.[projectId];
+  const hasPublished = drafts.some((d) => d.status === "published");
+  const hasPending = drafts.some((d) => d.status === "ready_for_review");
+  const allApproved =
+    drafts.length > 0 &&
+    drafts.every((d) => d.status === "approved" || d.status === "ready_to_publish" || d.status === "published");
+
+  let lifecycleStatus: CampaignDetailViewModel["lifecycleStatus"] = "planning";
+  if (hasPublished || publishedRecord) lifecycleStatus = "published";
+  else if (scheduleRecord) lifecycleStatus = "scheduled";
+  else if (allApproved && !hasPending) lifecycleStatus = "ready_to_schedule";
+  else if (hasPending || status === "waiting_for_review") lifecycleStatus = "review";
+
+  let statusLabel = customerLabelForProjectStatus(status, input.locale, {
+    hasPendingReview: hasPending,
+  });
+  if (lifecycleStatus === "scheduled") statusLabel = nl ? "Ingepland" : "Scheduled";
+  if (lifecycleStatus === "published") statusLabel = nl ? "Gepubliceerd" : "Published";
+  if (lifecycleStatus === "ready_to_schedule") statusLabel = nl ? "Klaar om in te plannen" : "Ready to schedule";
+
+  const workflow = buildCampaignWorkflowViewModel({
+    peerId,
+    project,
+    domainInput,
+    locale: input.locale,
+    isDemo,
+  });
+  const activeWorkflowStep = workflow.steps.find((s) => s.state === "active");
+  const workflowStatus = workflowBasedStatusLabel({
+    activeStepId: activeWorkflowStep?.id,
+    campaignContext:
+      overlay.demoCampaignContexts?.[projectId] ??
+      buildCampaignContext({ project, domainInput, locale: input.locale }),
+    executionMode: workflow.executionMode,
+    pendingApprovalCount: workflow.approvalCenter.count,
+    locale: input.locale,
+    lifecyclePublished: lifecycleStatus === "published",
+    lifecycleScheduled: lifecycleStatus === "scheduled",
+  });
+  if (workflowStatus && lifecycleStatus !== "published" && lifecycleStatus !== "scheduled") {
+    statusLabel = workflowStatus;
+  }
+
+  const rawChannels = [
+    ...new Set(drafts.map((d) => d.channel).filter(Boolean) as string[]),
+  ];
+  const channels = rawChannels.map((c) => channelLabel(c, nl));
 
   const completed: CampaignWorkspaceItem[] = [];
   const pending: CampaignWorkspaceItem[] = [];
@@ -192,22 +292,243 @@ export function buildCampaignDetailViewModel(input: {
     });
   }
 
+  const stepApprovals = overlay.demoCampaignStepApprovals?.[projectId];
+
+  const demoActivity: CampaignActivityItem[] = (overlay.demoCampaignActivity ?? [])
+    .filter((item) => item.projectId === projectId)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      timeLabel: new Date(item.at).toLocaleDateString(nl ? "nl-NL" : "en-GB", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    }));
+
+  const activityItems: CampaignActivityItem[] = demoActivity
+    .slice()
+    .reverse()
+    .slice(0, 8);
+
+  const campaignContext =
+    overlay.demoCampaignContexts?.[projectId] ??
+    buildCampaignContext({
+      project,
+      domainInput,
+      locale: input.locale,
+      websiteSkipped: overlay.demoCampaignContexts?.[projectId]?.websiteState === "skipped",
+      websiteUrl: overlay.demoCampaignContexts?.[projectId]?.websiteUrl ?? undefined,
+      competitors: overlay.demoCampaignContexts?.[projectId]?.competitors,
+      competitorsSkipped: overlay.demoCampaignContexts?.[projectId]?.competitorsSkipped,
+    });
+
+  const isNewWizardCampaign =
+    project.origin === "campaign_wizard" &&
+    !publishedRecord &&
+    !scheduleRecord &&
+    demoActivity.length <= 2;
+
+  const emmaOpeningLine = isNewWizardCampaign ? (nl ? EMMA_OPENING_NL : EMMA_OPENING_EN) : null;
+
+  const emmaPlanSteps = isNewWizardCampaign
+    ? nl
+      ? EMMA_PLAN_STEPS_NL
+      : EMMA_PLAN_STEPS_EN
+    : [];
+
+  const websitePrompt =
+    campaignContext.websiteState === "missing" &&
+    !stepApprovals?.website_analyzed
+      ? buildWebsiteMissingPrompt(campaignContext, nl)
+      : null;
+
+  const websiteEditUrl =
+    campaignContext.websiteState === "simulated_analysis_complete" && campaignContext.websiteUrl
+      ? campaignContext.websiteUrl
+      : null;
+
+  const competitorPrompt =
+    !campaignContext.isSeedCampaign &&
+    campaignContext.competitorContextState === "missing" &&
+    !stepApprovals?.competitors_analyzed &&
+    (stepApprovals?.website_analyzed === "approved" || campaignContext.websiteState !== "missing")
+      ? buildCompetitorMissingPrompt(campaignContext, nl)
+      : null;
+
+  const setup = project.campaignSetup;
+  const manualChoiceSummary =
+    campaignContext.campaignMode === "manual" && setup
+      ? [
+          {
+            label: nl ? "Doelen" : "Goals",
+            value: campaignContext.goals.join(" · ") || "—",
+          },
+          {
+            label: nl ? "Doelgroep" : "Audience",
+            value: campaignContext.audience || "—",
+          },
+          {
+            label: nl ? "Kanalen" : "Channels",
+            value:
+              campaignContext.selectedChannels.length > 0
+                ? campaignContext.selectedChannels.map((c) => channelLabel(c, nl)).join(", ")
+                : "—",
+          },
+          {
+            label: nl ? "Onderdelen" : "Deliverables",
+            value:
+              campaignContext.selectedDeliverables.length > 0
+                ? campaignContext.selectedDeliverables
+                    .map((d) => d.replace(/_/g, " "))
+                    .join(", ")
+                : "—",
+          },
+          {
+            label: nl ? "Timing" : "Timing",
+            value: setup.startDate
+              ? `${setup.startDate}${setup.endDate ? ` – ${setup.endDate}` : ""}`
+              : campaignContext.durationPreset
+                ? formatDurationPresetLabel(campaignContext.durationPreset, input.locale)
+                : nl
+                  ? "Geen vaste deadline"
+                  : "No fixed deadline",
+          },
+          {
+            label: nl ? "Uitvoeringsmodus" : "Execution mode",
+            value:
+              campaignContext.executionMode === "fully_automatic"
+                ? nl
+                  ? "Volledig automatisch"
+                  : "Fully automatic"
+                : campaignContext.executionMode === "semi_automatic"
+                  ? nl
+                    ? "Semi-automatisch"
+                    : "Semi-automatic"
+                  : nl
+                    ? "Handmatig"
+                    : "Manual",
+          },
+        ]
+      : null;
+
+  const { metrics: optimizationMetrics, hasSufficientData: optimizationHasData } =
+    buildOptimizationMetrics({
+      channels: rawChannels,
+      locale: input.locale,
+      isPublished: lifecycleStatus === "published",
+    });
+
+  const resultsViewModel = buildCampaignResultsViewModel({
+    channels: rawChannels,
+    locale: input.locale,
+    isPublished: lifecycleStatus === "published",
+    isScheduled: lifecycleStatus === "scheduled",
+    campaignName: project.title,
+    executionMode: campaignContext.executionMode,
+    publishedAt: publishedRecord?.publishedAt ?? null,
+    scheduledAt: scheduleRecord?.scheduledAt ?? null,
+    durationPreset: campaignContext.durationPreset,
+    startDate: campaignContext.startDate,
+    endDate: campaignContext.endDate,
+    durationDays: campaignContext.durationDays,
+  });
+
+  let performanceLabel = "";
+  let performanceActionable = false;
+  if (lifecycleStatus === "published") {
+    if (optimizationHasData) {
+      performanceLabel = nl ? "Bekijk resultaten →" : "View results →";
+      performanceActionable = true;
+    } else {
+      performanceLabel = nl ? "Resultaten worden verzameld" : "Results are being collected";
+      performanceActionable = false;
+    }
+  }
+
+  const deliverablesSectionLabel = nl ? "Gemaakt voor deze campagne" : "Created for this campaign";
+
+  const scheduleInfo: CampaignScheduleInfo | null = scheduleRecord
+    ? {
+        scheduledAt: scheduleRecord.scheduledAt,
+        scheduledAtLabel: new Date(scheduleRecord.scheduledAt).toLocaleString(nl ? "nl-NL" : "en-GB"),
+        channels: scheduleRecord.channels.map((c) => channelLabel(c, nl)),
+        deliverableLabels: scheduleRecord.deliverableIds.map((id) => {
+          const draft = drafts.find((d) => d.id === id);
+          return draft?.title ?? id;
+        }),
+      }
+    : null;
+
+  const publishedAtLabel = publishedRecord
+    ? formatOfficeDate(publishedRecord.publishedAt, input.locale)
+    : null;
+
+  const durationSummary =
+    lifecycleStatus === "published" && resultsViewModel.duration
+      ? {
+          runningLabel: nl ? "Actief" : "Running",
+          dateRangeLabel: formatDurationRange(resultsViewModel.duration, input.locale),
+          statusLabel: formatRunningStatus(resultsViewModel.duration, input.locale),
+          duration: resultsViewModel.duration,
+        }
+      : lifecycleStatus === "scheduled" && campaignContext.startDate
+        ? {
+            runningLabel: nl ? "Ingepland" : "Scheduled",
+            dateRangeLabel: campaignContext.endDate
+              ? `${campaignContext.startDate} → ${campaignContext.endDate}`
+              : campaignContext.startDate,
+            statusLabel: formatDurationPresetLabel(campaignContext.durationPreset, input.locale),
+            duration: resultsViewModel.duration,
+          }
+        : campaignContext.startDate
+          ? {
+              runningLabel: null,
+              dateRangeLabel: campaignContext.endDate
+                ? `${campaignContext.startDate} → ${campaignContext.endDate}`
+                : campaignContext.startDate,
+              statusLabel: formatDurationPresetLabel(campaignContext.durationPreset, input.locale),
+              duration: resultsViewModel.duration,
+            }
+          : null;
+
   return {
     peerId,
     projectId,
     name: project.title,
-    statusLabel: projectStatusLabel(status),
+    statusLabel,
+    lifecycleStatus,
     goal: project.goal ?? "",
     why: project.rawRequest ?? "",
     channels,
     ownerLabel: project.ownerLabel ?? "",
-    createdAtLabel: project.createdAt,
+    createdAtLabel: formatOfficeDate(project.createdAt, input.locale) ?? project.createdAt,
     detailHref: `${officeHref(peerId, "work")}/campaigns/${projectId}`,
+    scheduleInfo,
+    publishedAtLabel,
+    emmaOpeningLine,
+    emmaPlanSteps,
+    websitePrompt,
+    websiteEditUrl,
+    competitorPrompt,
+    manualChoiceSummary,
+    executionMode: campaignContext.executionMode,
+    optimizationMetrics,
+    optimizationHasData,
+    resultsViewModel,
+    performanceLabel,
+    performanceActionable,
+    durationSummary,
+    deliverablesSectionLabel,
     completed,
     pending,
     previews,
     timeline: buildTimeline(status, nl),
+    activityItems,
     producedDrafts: drafts,
+    workflow,
   };
 }
 

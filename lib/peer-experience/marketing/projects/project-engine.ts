@@ -9,6 +9,7 @@ import type {
   MarketingProjectCampaignSetup,
   MarketingProjectStatus,
   MarketingProjectTimelineEntry,
+  CampaignSetupChannel,
 } from "./types";
 
 function projectId(): string {
@@ -79,9 +80,15 @@ export type CreateMarketingCampaignProjectInput = {
   targetAudience?: string;
   startDate?: string;
   endDate?: string;
+  durationPreset?: import("@/lib/office/campaign/campaign-duration").CampaignDurationPreset;
   budgetAmount?: number;
   budgetCurrency?: string;
   approvalMode?: MarketingProjectCampaignSetup["approvalMode"];
+  selectedChannels?: readonly CampaignSetupChannel[];
+  selectedDeliverables?: readonly import("./types").CampaignSetupDeliverable[];
+  setupMode?: MarketingProjectCampaignSetup["setupMode"];
+  secondaryGoalIds?: readonly string[];
+  priority?: MarketingProjectCampaignSetup["priority"];
 };
 
 function campaignTypeFromPrimaryGoal(primaryGoalId: string): MarketingCampaignType {
@@ -111,10 +118,18 @@ export function createMarketingCampaignProject(
     ...(input.targetAudience?.trim() ? { targetAudience: input.targetAudience.trim() } : {}),
     ...(input.startDate ? { startDate: input.startDate } : {}),
     ...(input.endDate ? { endDate: input.endDate } : {}),
+    ...(input.durationPreset ? { durationPreset: input.durationPreset } : {}),
     ...(input.budgetAmount !== undefined && input.budgetAmount > 0
       ? { budgetAmount: input.budgetAmount, budgetCurrency: input.budgetCurrency ?? "USD" }
       : {}),
     ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
+    ...(input.selectedChannels?.length ? { selectedChannels: input.selectedChannels } : {}),
+    ...(input.selectedDeliverables?.length
+      ? { selectedDeliverables: input.selectedDeliverables }
+      : {}),
+    ...(input.setupMode ? { setupMode: input.setupMode } : {}),
+    ...(input.secondaryGoalIds?.length ? { secondaryGoalIds: input.secondaryGoalIds } : {}),
+    ...(input.priority ? { priority: input.priority } : {}),
   };
 
   const base = createMarketingProject({

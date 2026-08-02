@@ -21,10 +21,11 @@ describe("create campaign form validation", () => {
 
   it("requires custom goal text when custom is selected", () => {
     const errors = validateCreateCampaignForm({
-      ...createEmptyCreateCampaignForm(),
+      ...createEmptyCreateCampaignForm("manual"),
       name: "Launch",
       description: "Grow pipeline",
       primaryGoalId: "custom",
+      selectedGoalIds: ["custom"],
       customGoalText: "",
     });
     expect(errors.customGoalText).toBeTruthy();
@@ -43,7 +44,7 @@ describe("create campaign form validation", () => {
 
   it("rejects negative budget", () => {
     const errors = validateCreateCampaignForm({
-      ...createEmptyCreateCampaignForm(),
+      ...createEmptyCreateCampaignForm("manual"),
       name: "Launch",
       description: "Grow pipeline",
       budgetAmount: "-10",

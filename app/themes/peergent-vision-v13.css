@@ -1053,8 +1053,120 @@
   color: var(--pg-v13-ink-soft);
 }
 
+.pg-v13-modal--form {
+  max-width: 560px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
 .pg-v13-modal-body {
   padding: 18px 28px 26px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pg-v13-modal--form .pg-v13-modal-body {
+  padding-bottom: 0;
+}
+
+.pg-v13-modal-footer {
+  flex-shrink: 0;
+  padding: 16px 28px 22px;
+  border-top: 1px solid var(--pg-v13-line-soft);
+  background: var(--pg-v13-surface);
+}
+
+.pg-v13-modal-footer .pg-v13-form-actions {
+  margin-top: 0;
+}
+
+.pg-v13-goal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pg-v13-goal-chip {
+  border: 1px solid var(--pg-v13-line-soft);
+  border-radius: var(--pg-radius-full);
+  background: var(--pg-v13-panel);
+  color: var(--pg-v13-ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--pg-v13-ease), background 0.15s var(--pg-v13-ease);
+}
+
+.pg-v13-goal-chip:hover {
+  border-color: var(--pg-v13-line);
+  background: var(--pg-v13-panel-hover);
+}
+
+.pg-v13-goal-chip.is-active {
+  border-color: var(--pg-v13-blue);
+  background: var(--pg-v13-grad-soft);
+  color: var(--pg-v13-ink);
+}
+
+.pg-v13-channel-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pg-v13-channel-chip {
+  border: 1px solid var(--pg-v13-line-soft);
+  border-radius: var(--pg-radius-md);
+  background: var(--pg-v13-panel);
+  color: var(--pg-v13-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.pg-v13-channel-chip.is-active {
+  border-color: var(--pg-v13-blue);
+  background: var(--pg-v13-grad-soft);
+  color: var(--pg-v13-ink);
+}
+
+.pg-v13-workflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pg-v13-workflow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: none;
+  border-radius: var(--pg-radius-md);
+  background: transparent;
+  padding: 8px 6px;
+  text-align: left;
+}
+
+.pg-v13-workflow-step--clickable {
+  cursor: pointer;
+  transition: background 0.15s var(--pg-v13-ease);
+}
+
+.pg-v13-workflow-step--clickable:hover,
+.pg-v13-workflow-step--clickable:focus-visible {
+  background: var(--pg-v13-panel-hover);
+  outline: none;
+}
+
+.pg-v13-workflow-icon {
+  display: flex;
+  margin-top: 1px;
 }
 
 .pg-v13-form-label,

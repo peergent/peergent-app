@@ -3,6 +3,10 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import CreateCampaignModal from "@/features/marketing-workspace/components/CreateCampaignModal";
+import CreateCampaignModeModal, {
+  type CampaignSetupMode,
+} from "@/features/marketing-workspace/components/CreateCampaignModeModal";
+import { createDemoCampaign } from "@/lib/office/demo/demo-campaign-store";
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 
@@ -18,8 +22,7 @@ export type UseOfficeNewCampaignInput = {
 };
 
 /**
- * Wires Vision v13 "+ Nieuwe campagne" to the existing Create Campaign flow.
- * Live workspaces persist via handleCreateCampaign; demo ends before persistence.
+ * Wires Vision v13 "+ Nieuwe campagne" to mode selection, then automatic or manual wizard.
  */
 export function useOfficeNewCampaign({
   peerId,
@@ -30,58 +33,76 @@ export function useOfficeNewCampaign({
   workspace,
 }: UseOfficeNewCampaignInput) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [demoNotice, setDemoNotice] = useState<string | null>(null);
+  const [modeOpen, setModeOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [setupMode, setSetupMode] = useState<CampaignSetupMode>("automatic");
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const marketingPeer = peerRole.toLowerCase().includes("marketing");
 
   const openNewCampaign = useCallback(() => {
     if (!marketingPeer) return;
-    setDemoNotice(null);
-    setOpen(true);
+    setCreateError(null);
+    setModeOpen(true);
   }, [marketingPeer]);
+
+  const handleModeSelect = useCallback((mode: CampaignSetupMode) => {
+    setSetupMode(mode);
+    setModeOpen(false);
+    setWizardOpen(true);
+  }, []);
 
   const handleCreate = useCallback(
     async (input: CreateMarketingCampaignProjectInput) => {
       if (isDemo) {
-        setDemoNotice(
-          localePreference === "nl"
-            ? "Campagne-opzet bekeken. In de demo wordt niets opgeslagen."
-            : "Campaign setup reviewed. Nothing is saved in the demo."
+        const project = createDemoCampaign(
+          peerId,
+          input,
+          localePreference === "nl" ? "nl" : "en"
         );
-        setOpen(false);
-        return { projectId: "demo-preview" };
+        setWizardOpen(false);
+        router.push(`/office/${peerId}/work/campaigns/${project.id}`);
+        return { projectId: project.id };
       }
 
-      const result = await workspace.handleCreateCampaign(input);
-      setOpen(false);
-      router.push(`/office/${peerId}/work?workspace=${result.projectId}`);
-      return result;
+      try {
+        const result = await workspace.handleCreateCampaign(input);
+        setWizardOpen(false);
+        router.push(`/office/${peerId}/work/campaigns/${result.projectId}`);
+        return result;
+      } catch {
+        setCreateError(
+          localePreference === "nl"
+            ? "De campagne kon niet worden opgeslagen. Probeer het opnieuw."
+            : "The campaign could not be saved. Try again."
+        );
+        throw new Error("create_failed");
+      }
     },
     [isDemo, localePreference, peerId, router, workspace]
   );
 
   const newCampaignModal =
-    marketingPeer && open ? (
+    marketingPeer && (modeOpen || wizardOpen) ? (
       <>
+        <CreateCampaignModeModal
+          open={modeOpen}
+          onClose={() => setModeOpen(false)}
+          onSelect={handleModeSelect}
+          localePreference={localePreference}
+        />
         <CreateCampaignModal
-          open={open}
-          onClose={() => setOpen(false)}
+          open={wizardOpen}
+          onClose={() => setWizardOpen(false)}
+          setupMode={setupMode}
           peerId={isDemo ? "demo" : peerId}
           ownerLabel={peerName}
           peerName={peerName}
           onCreate={handleCreate}
           presentation="v17"
           localePreference={localePreference}
+          externalError={createError}
         />
-        {demoNotice ? (
-          <p
-            className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-[var(--pg-v13-line-soft)] bg-[var(--pg-v13-surface)] px-4 py-2 text-[13px] text-[var(--pg-v13-ink-soft)] shadow-lg"
-            role="status"
-          >
-            {demoNotice}
-          </p>
-        ) : null}
       </>
     ) : null;
 

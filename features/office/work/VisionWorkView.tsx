@@ -99,7 +99,7 @@ function WorkCard({
             {item.expectedLabel ? ` · ${item.expectedLabel}` : ""}
           </p>
           <p className="pg-v13-work-meta pg-v13-work-meta--link mt-2.5">
-            {locale === "nl" ? "Open campagne-workspace →" : "Open campaign workspace →"}
+            {locale === "nl" ? "Open campagne →" : "Open campaign →"}
           </p>
         </>
       ) : null}

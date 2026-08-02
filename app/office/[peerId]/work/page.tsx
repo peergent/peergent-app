@@ -1,13 +1,11 @@
 "use client";
 
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import CampaignWorkspaceModal from "@/features/office/campaign/CampaignWorkspaceModal";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import VisionWorkView from "@/features/office/work/VisionWorkView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
-import { buildCampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
 import { buildMarketingWorkViewModel } from "@/lib/office/work/build-marketing-work";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { officeHref } from "@/lib/office/links";
@@ -42,8 +40,12 @@ function OfficeWorkContent() {
     newCampaignModal,
   } = useOfficePeer();
 
-  const [modalItem, setModalItem] = useState<WorkItem | null>(null);
   const nl = localePreference === "nl";
+
+  useEffect(() => {
+    if (!workspaceParam) return;
+    router.replace(`/office/${peerId}/work/campaigns/${workspaceParam}`);
+  }, [peerId, router, workspaceParam]);
 
   const deskModel = useMemo(
     () =>
@@ -75,14 +77,11 @@ function OfficeWorkContent() {
     };
   }, [model, filterParam]);
 
-  const openWorkspace = useCallback(
+  const openCampaign = useCallback(
     (item: WorkItem) => {
-      setModalItem(item);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("workspace", item.id);
-      router.replace(`/office/${peerId}/work?${params.toString()}`, { scroll: false });
+      router.push(`/office/${peerId}/work/campaigns/${item.id}`);
     },
-    [peerId, router, searchParams]
+    [peerId, router]
   );
 
   const openContentPreview = useCallback(
@@ -98,55 +97,6 @@ function OfficeWorkContent() {
       router.push(`${officeHref(peerId, "content")}?${params.toString()}`);
     },
     [domainInput.drafts, domainInput.workUnits, peerId, router]
-  );
-
-  const closeWorkspace = useCallback(() => {
-    setModalItem(null);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("workspace");
-    params.delete("campaign");
-    const q = params.toString();
-    router.replace(q ? `/office/${peerId}/work?${q}` : `/office/${peerId}/work`, { scroll: false });
-  }, [peerId, router, searchParams]);
-
-  const activeItem = useMemo(() => {
-    if (modalItem) return modalItem;
-    if (!workspaceParam) return null;
-    for (const group of model.groups) {
-      const found = group.items.find((item) => item.id === workspaceParam);
-      if (found) return found;
-    }
-    return null;
-  }, [modalItem, workspaceParam, model.groups]);
-
-  const campaignModel = useMemo(() => {
-    if (!activeItem) return null;
-    return buildCampaignDetailViewModel({
-      peerId,
-      projectId: activeItem.id,
-      domainInput,
-      locale: localePreference,
-    });
-  }, [activeItem, peerId, domainInput, localePreference]);
-
-  const handleApproveAll = useCallback(() => {
-    if (!campaignModel || campaignModel.pending.length === 0) return;
-    const first = campaignModel.pending[0];
-    const target = first.previewHref ?? first.reviewHref ?? first.detailHref;
-    if (target) {
-      closeWorkspace();
-      router.push(target);
-    }
-  }, [campaignModel, closeWorkspace, router]);
-
-  const handleWorkspaceItem = useCallback(
-    (item: { previewHref?: string; detailHref?: string; reviewHref?: string }) => {
-      const target = item.detailHref ?? item.previewHref ?? item.reviewHref;
-      if (!target) return;
-      closeWorkspace();
-      router.push(target);
-    },
-    [closeWorkspace, router]
   );
 
   const filterHref = (filter: WorkGroupId | "all") => {
@@ -198,23 +148,12 @@ function OfficeWorkContent() {
             <VisionWorkView
               model={filteredModel}
               locale={localePreference}
-              onOpenCampaign={openWorkspace}
+              onOpenCampaign={openCampaign}
               onOpenPreview={openContentPreview}
             />
           </>
         )}
       </PgOfficeShell>
-
-      {campaignModel ? (
-        <CampaignWorkspaceModal
-          open
-          onClose={closeWorkspace}
-          locale={localePreference}
-          model={campaignModel}
-          onApproveAll={campaignModel.pending.length > 0 ? handleApproveAll : undefined}
-          onItemAction={handleWorkspaceItem}
-        />
-      ) : null}
       {newCampaignModal}
     </>
   );

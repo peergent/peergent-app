@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/ui/cn";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -24,6 +24,11 @@ export default function PgVisionModal({
   testId,
 }: PgVisionModalProps) {
   const { resolved } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +43,7 @@ export default function PgVisionModal({
     };
   }, [open, onClose]);
 
-  if (!open || typeof document === "undefined") return null;
+  if (!open || !mounted) return null;
 
   return createPortal(
     <div

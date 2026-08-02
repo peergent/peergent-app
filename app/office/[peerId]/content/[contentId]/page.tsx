@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import VisionContentDetailView from "@/features/office/content/VisionContentDetailView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
+import { getDemoCampaignSnapshot } from "@/lib/office/demo/demo-campaign-store";
 import { buildContentDetailViewModel } from "@/lib/office/content/build-content-detail";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { officeHref } from "@/lib/office/links";
@@ -35,8 +36,9 @@ function ContentDetailInner() {
         contentId,
         domainInput,
         locale: localePreference,
+        approvalHistory: isDemo ? getDemoCampaignSnapshot().approvalHistory : undefined,
       }),
-    [peerId, contentId, domainInput, localePreference]
+    [peerId, contentId, domainInput, isDemo, localePreference]
   );
 
   const deskModel = useMemo(

@@ -1,0 +1,42 @@
+ M app/layout.tsx
+ M app/team/[peerId]/connections/page.tsx
+ M app/team/[peerId]/knowledge/page.tsx
+ M app/team/[peerId]/page.tsx
+ M app/team/[peerId]/performance/page.tsx
+ M app/team/[peerId]/responsibilities/[responsibilityId]/page.tsx
+ M app/team/[peerId]/responsibilities/page.tsx
+ M app/team/[peerId]/review/page.tsx
+ M app/team/[peerId]/settings/page.tsx
+ M app/team/[peerId]/work/page.tsx
+ M docs/IMPLEMENTATION.md
+ M docs/product/README.md
+ M features/home/handoff/HandoffHome.tsx
+ M features/marketing-workspace/MarketingWorkspaceLayout.tsx
+ M features/marketing-workspace/__tests__/marketing-campaigns-section.test.ts
+ M features/marketing-workspace/components/MarketingPeerPresenceHeader.tsx
+ M features/marketing-workspace/styles/marketing-workspace.css
+ M features/studio/marketing-peer/MarketingPeerPageFrame.tsx
+ M lib/peer-experience/marketing/__tests__/marketing-workspace-routing.test.ts
+ M lib/peer-experience/marketing/navigation/marketing-peer-links.ts
+ M lib/peer-experience/marketing/view-models/__tests__/build-marketing-workspace-shell.test.ts
+ M lib/peer-experience/marketing/view-models/__tests__/marketing-campaign-ui.test.ts
+ M lib/peer-experience/marketing/view-models/__tests__/marketing-peer-os.test.ts
+?? .wip-backups/
+?? app/team/[peerId]/done/
+?? app/team/[peerId]/results/
+?? app/team/[peerId]/waiting/
+?? docs/architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md
+?? docs/architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md
+?? docs/reference/
+?? features/customer-v17/
+?? features/hq/__tests__/
+?? features/marketing-workspace/colleague/
+?? features/marketing-workspace/lib/build-peer-attention-items.ts
+?? features/marketing-workspace/view-model/buildPeerWorkspaceColleagueViewModel.ts
+?? lib/customer-v17/
+?? lib/design-system/v17-customer-tokens.ts
+?? lib/i18n/peer-workspace-copy.ts
+?? lib/i18n/v17-command-center-copy.ts
+?? lib/i18n/v17-peer-copy.ts
+?? lib/peer-experience/marketing/colleague/
+?? lib/peer-experience/marketing/navigation/marketing-peer-sections.ts

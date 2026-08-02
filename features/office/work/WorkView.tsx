@@ -53,7 +53,7 @@ function WorkCard({
   return (
     <PgEntityCard
       title={item.name}
-      subtitle={item.nextStep ? `${copy.nextStepLabel} ${item.nextStep}` : null}
+      subtitle={item.nextStep || null}
       status={{ state: GROUP_STATE[group.id], label: item.stageLabel }}
       attention={blockedOnCustomer}
       href={item.href}

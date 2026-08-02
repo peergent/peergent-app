@@ -3,7 +3,14 @@
 import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
+import CampaignEvidenceModal from "@/features/office/campaign/CampaignEvidenceModal";
+import CampaignCompetitorModal from "@/features/office/campaign/CampaignCompetitorModal";
+import CampaignScheduleModal from "@/features/office/campaign/CampaignScheduleModal";
+import CampaignOptimizationPanel from "@/features/office/campaign/CampaignOptimizationPanel";
+import CampaignWebsiteModal from "@/features/office/campaign/CampaignWebsiteModal";
 import VisionCampaignDetailView from "@/features/office/campaign/VisionCampaignDetailView";
+import { useCampaignWorkspaceActions } from "@/features/office/campaign/useCampaignWorkspaceActions";
+import OfficeDeliverableReviewModal from "@/features/office/deliverable/OfficeDeliverableReviewModal";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildCampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
@@ -26,6 +33,7 @@ function CampaignDetailInner() {
     roster,
     openNewCampaign,
     newCampaignModal,
+    workspace,
   } = useOfficePeer();
 
   const model = useMemo(
@@ -35,9 +43,19 @@ function CampaignDetailInner() {
         projectId: campaignId,
         domainInput,
         locale: localePreference,
+        isDemo,
       }),
-    [peerId, campaignId, domainInput, localePreference]
+    [peerId, campaignId, domainInput, isDemo, localePreference]
   );
+
+  const campaignActions = useCampaignWorkspaceActions({
+    peerId,
+    projectId: campaignId,
+    domainInput,
+    localePreference,
+    isDemo,
+    workspace,
+  });
 
   const deskModel = useMemo(
     () =>
@@ -72,9 +90,25 @@ function CampaignDetailInner() {
         {loading ? (
           <PgSkeletonRows rows={4} rowHeight={104} />
         ) : model ? (
-          <VisionCampaignDetailView model={model} locale={localePreference} />
+          <VisionCampaignDetailView
+            model={model}
+            locale={localePreference}
+            onStepClick={(step) => campaignActions.setEvidenceStep(step)}
+            onReviewDeliverable={campaignActions.openReview}
+            onNextStepCta={campaignActions.handleNextStepCta}
+            onApproveAll={campaignActions.handleApproveAll}
+            onSchedule={() => campaignActions.handleOpenScheduleModal()}
+            onPublishDemo={campaignActions.handlePublishCampaign}
+            onSkipWebsite={campaignActions.handleSkipWebsite}
+            onOpenWebsiteModal={() => campaignActions.setWebsiteModalOpen(true)}
+            onEditWebsite={() => campaignActions.setWebsiteModalOpen(true)}
+            onSkipCompetitors={campaignActions.handleSkipCompetitors}
+            onOpenCompetitorModal={() => campaignActions.setCompetitorModalOpen(true)}
+            onOpenOptimization={() => campaignActions.setOptimizationOpen(true)}
+            progressMessage={campaignActions.progressMessage}
+          />
         ) : (
-          <div className="pg-v13-panel p-6">
+          <div className="pg-v13-panel p-6" data-testid="office-campaign-not-found">
             <p className="text-[15px] text-[var(--pg-v13-ink-soft)]">
               {nl ? "Deze campagne is niet gevonden in deze workspace." : "This campaign was not found in this workspace."}
             </p>
@@ -84,6 +118,69 @@ function CampaignDetailInner() {
           </div>
         )}
       </PgOfficeShell>
+
+      <CampaignEvidenceModal
+        open={Boolean(campaignActions.evidenceStep)}
+        onClose={campaignActions.closeEvidence}
+        step={campaignActions.evidenceStep}
+        locale={localePreference}
+        executionMode={model?.executionMode}
+        phase={campaignActions.evidencePhase}
+        errorMessage={campaignActions.evidenceError}
+        onPrimaryAction={campaignActions.handleEvidencePrimary}
+        onRequestChanges={campaignActions.handleEvidenceRequestChanges}
+        onReject={campaignActions.handleEvidenceReject}
+      />
+
+      <CampaignWebsiteModal
+        open={campaignActions.websiteModalOpen}
+        onClose={() => campaignActions.setWebsiteModalOpen(false)}
+        locale={localePreference}
+        initialUrl={campaignActions.storedWebsiteUrl}
+        onSubmit={campaignActions.handleAddWebsiteUrl}
+      />
+
+      <CampaignCompetitorModal
+        open={campaignActions.competitorModalOpen}
+        onClose={() => campaignActions.setCompetitorModalOpen(false)}
+        locale={localePreference}
+        onSubmit={campaignActions.handleAddCompetitors}
+      />
+
+      {model ? (
+        <>
+          <CampaignScheduleModal
+            open={campaignActions.scheduleModalOpen}
+            onClose={() => campaignActions.setScheduleModalOpen(false)}
+            locale={localePreference}
+            initialScheduledAt={model.scheduleInfo?.scheduledAt ?? null}
+            onConfirm={(iso) => campaignActions.handleScheduleCampaign(iso)}
+          />
+          <CampaignOptimizationPanel
+            open={campaignActions.optimizationOpen}
+            onClose={() => campaignActions.closeOptimization()}
+            locale={localePreference}
+            executionMode={model.executionMode}
+            results={model.resultsViewModel}
+            channels={model.channels}
+          />
+        </>
+      ) : null}
+
+      {campaignActions.reviewModel ? (
+        <OfficeDeliverableReviewModal
+          open
+          onClose={campaignActions.closeReview}
+          locale={localePreference}
+          model={campaignActions.reviewModel}
+          reviewProgress={campaignActions.reviewProgress}
+          onApprove={campaignActions.handleDeliverableApprove}
+          onRequestChanges={campaignActions.handleDeliverableChanges}
+          onReject={campaignActions.handleDeliverableReject}
+          detailHref={`/office/${peerId}/content/${campaignActions.reviewModel.draftId}`}
+        />
+      ) : null}
+
       {newCampaignModal}
     </>
   );

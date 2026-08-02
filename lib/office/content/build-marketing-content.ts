@@ -264,7 +264,8 @@ export function buildMarketingContentViewModel(input: {
     const unit = unitForDraft(draft.id, domainInput.workUnits);
     const failed = unit ? isWorkUnitFailed(unit) : false;
     const state = stateForDraft(draft, failed, unit);
-    if (state !== "published") continue;
+    if (filters.state === "published" && state !== "published") continue;
+    if (filters.state === null && state === "draft") continue;
 
     const campaignId = resolveProjectIdForDraft(draft, domainInput.workUnits);
     const channelLabel = channelLabelFor(draft.channel ?? draft.contentType, locale);
@@ -305,7 +306,7 @@ export function buildMarketingContentViewModel(input: {
   items.sort(compareItems);
 
   const filtered = items.filter((item) => {
-    if (item.state !== "published") return false;
+    if (filters.state === "published" && item.state !== "published") return false;
     if (filters.channel && item.channelId !== filters.channel) return false;
     if (filters.campaignId && item.campaignId !== filters.campaignId) return false;
     if (filters.query && !matchesQuery(item, filters.query)) return false;
@@ -319,13 +320,16 @@ export function buildMarketingContentViewModel(input: {
     page * CONTENT_PAGE_SIZE
   );
 
-  const groups: ContentGroup[] = [
-    {
-      state: "published" as ContentState,
-      title: stateTitle("published", locale),
-      items: pageItems,
-    },
-  ].filter((group) => group.items.length > 0);
+  const groups: ContentGroup[] = (filters.state === null
+    ? (["awaiting_review", "approved", "scheduled", "published"] as ContentState[])
+    : (["published"] as ContentState[])
+  )
+    .map((state) => ({
+      state,
+      title: stateTitle(state, locale),
+      items: pageItems.filter((item) => item.state === state),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const href = (patch: Partial<ContentFilters>) => {
     const next = { ...filters, page: 1, ...patch };

@@ -50,7 +50,9 @@ function ContentCard({
       }}
       role="button"
       tabIndex={0}
-      data-testid={`content-item-${item.id}`}
+      data-testid={published ? `published-content-item-${item.id}` : `content-item-${item.id}`}
+      data-campaign-id={item.campaignId ?? undefined}
+      data-content-state={item.state}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

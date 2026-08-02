@@ -95,9 +95,8 @@ describe("Sprint 29C.4 interactions", () => {
       domainInput: domain,
       localePreference: "nl",
     });
-    const active = model.metrics.find((m) => m.id === "active-campaigns");
-    if (active) {
-      expect(active.href).toBe("/team/emma/work");
-    }
+    const running = model.kpis.find((k) => k.id === "campaigns-running");
+    expect(running?.value).toBe("1");
+    expect(running?.href).toBe("/team/emma/work");
   });
 });

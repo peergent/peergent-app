@@ -10,6 +10,7 @@ export type MarketingVisionModalProps = {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  footer?: ReactNode;
   maxWidth?: number;
   closeOnEscape?: boolean;
   closeOnOverlayClick?: boolean;

@@ -90,9 +90,14 @@ export type MarketingProjectCampaignSetup = {
   readonly onboardingCompletedAt?: string;
   readonly startDate?: string;
   readonly endDate?: string;
+  readonly durationPreset?: import("@/lib/office/campaign/campaign-duration").CampaignDurationPreset;
   readonly budgetAmount?: number;
   readonly budgetCurrency?: string;
   readonly approvalMode?: CampaignApprovalMode;
+  /** How the customer started the campaign wizard. */
+  readonly setupMode?: "automatic" | "manual";
+  readonly secondaryGoalIds?: readonly string[];
+  readonly priority?: "low" | "medium" | "high";
 };
 
 export type MarketingProject = {

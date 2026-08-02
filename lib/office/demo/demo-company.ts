@@ -397,22 +397,6 @@ function projects(
 
   return [
     {
-      id: "camp-onboarding",
-      peerId,
-      title: nl ? "In een week live" : "Onboarding in a week",
-      goal: nl
-        ? "Het argument over snel live gaan claimen, dat geen enkele concurrent maakt."
-        : "Own the onboarding-speed argument no competitor is making.",
-      campaignType: "linkedin_campaign",
-      createdAt: iso(now, -34, 9),
-      updatedAt: iso(now, -3, 16),
-      ownerLabel: DEMO_PEER_NAME,
-      rawRequest: nl
-        ? "Maak duidelijk dat wij mensen in een week live hebben, gericht op eigenaren die een lang traject hebben meegemaakt."
-        : "Make the case that we get people live in a week, aimed at owners who've been burned by a long implementation.",
-      origin: "recommendation",
-    },
-    {
       id: "camp-heatpump",
       peerId,
       title: nl ? "Klaar voor het warmtepompseizoen" : "Heat pump season readiness",
@@ -420,29 +404,31 @@ function projects(
         ? "Installateurs bereiken vóór de drukte van het najaar begint."
         : "Reach installers before the autumn heat-pump rush starts.",
       campaignType: "content_series",
-      createdAt: iso(now, -12, 9),
+      createdAt: iso(now, -14, 9),
       updatedAt: iso(now, -1, 11),
       ownerLabel: DEMO_PEER_NAME,
       rawRequest: nl
-        ? "Iets voor de aanloop naar het warmtepompseizoen — de planningsdruk waar installateurs elk najaar tegenaan lopen."
-        : "Something for the run-up to heat pump season — the planning crunch installers hit every autumn.",
-      origin: "responsibility",
-    },
-    {
-      id: "camp-demos",
-      peerId,
-      title: nl ? "Demo-aanjager Q4" : "Q4 demo push",
-      goal: nl
-        ? "Het publiek van LinkedIn omzetten in ingeplande demo's."
-        : "Convert the LinkedIn audience into booked demos.",
-      campaignType: "google_ads",
-      createdAt: iso(now, -3, 14),
-      updatedAt: iso(now, -3, 14),
-      ownerLabel: DEMO_PEER_NAME,
-      rawRequest: nl
-        ? "Betaalde zoekadvertenties om de mensen op te vangen die de organische berichten warm hebben gemaakt."
-        : "Paid search to catch the people the organic posts warmed up.",
-      origin: "manual_assignment",
+        ? "Praktische waarde vóór de piek — checklist en LinkedIn voor eigenaren van installatiebedrijven."
+        : "Practical value before the rush — checklist and LinkedIn for installation company owners.",
+      origin: "recommendation",
+      campaignSetup: {
+        description: nl
+          ? "Emma heeft strategie, kanalen en deliverables voorbereid. Alles wacht op jouw goedkeuring."
+          : "Emma prepared strategy, channels, and deliverables. Everything is waiting for your approval.",
+        primaryGoalId: "generate_leads",
+        secondaryGoalIds: ["brand_awareness"],
+        setupMode: "automatic",
+        priority: "high",
+        approvalMode: "approval_before_publication",
+        selectedChannels: ["linkedin", "email", "blog"],
+        selectedDeliverables: ["social_post", "email", "blog_article"],
+        targetAudience: nl
+          ? "Eigenaren van installatiebedrijven (10–50 monteurs)"
+          : "Installation company owners (10–50 engineers)",
+        startDate: iso(now, -14, 9).slice(0, 10),
+        endDate: iso(now, 45, 9).slice(0, 10),
+        timingDecision: "dated",
+      },
     },
   ];
 }
@@ -467,129 +453,27 @@ type DraftSeed = {
  * draw rather than a single point.
  */
 const DRAFT_SEEDS: Record<string, DraftSeed[]> = {
-  "camp-onboarding": [
+  "camp-heatpump": [
     {
-      id: "draft-onb-1",
-      ref: "onboarding/li-1",
+      id: "draft-hp-email",
+      ref: "heatpump/acq-email",
       title: {
-        nl: "Drie maanden tot live is geen softwareprobleem",
-        en: "Three months to go live is not a software problem",
+        nl: "Acquisition e-mail — warmtepompseizoen",
+        en: "Acquisition email — heat pump season",
       },
       body: {
-        nl: "De meeste installatiebedrijven die ik spreek hebben dit al eens gedaan. Aan de software lag het niet. De implementatie duurde een kwartaal, de planner haakte halverwege af, en het team ging terug naar het whiteboard. Dat is geen ontbrekende functie — dat is de inrichting, en daarom rekenen wij die in dagen.",
-        en: "Most installation companies I speak to have done this once already. The software was fine. The implementation took a quarter, the planner gave up halfway, and the team went back to the whiteboard. That is not a feature gap — it is a setup problem, and it is the reason we time our onboarding in days.",
-      },
-      contentType: "linkedin_post",
-      channel: "linkedin",
-      status: "published",
-      daysAgo: 28,
-      objective: {
-        nl: "Het bezwaar benoemen voordat de klant het doet.",
-        en: "Name the objection before the prospect does.",
-      },
-    },
-    {
-      id: "draft-onb-2",
-      ref: "onboarding/li-2",
-      title: {
-        nl: "Wat we in die vijf dagen echt doen",
-        en: "What we actually do in five days",
-      },
-      body: {
-        nl: "Dag één zetten we je werkhistorie over. Dag twee bouwen we je planning zoals je planner er nu al over denkt. Dag drie krijgen de monteurs de app. Dag vier draai je een week mee in de oude en de nieuwe manier. Dag vijf stop je met de oude.",
-        en: "Day one we import your job history. Day two we rebuild your schedule the way your planner already thinks about it. Day three the engineers get the app. Day four you run a live week in parallel. Day five you stop running it in parallel.",
-      },
-      contentType: "linkedin_post",
-      channel: "linkedin",
-      status: "published",
-      daysAgo: 24,
-      objective: {
-        nl: "De belofte controleerbaar maken.",
-        en: "Make the claim checkable.",
-      },
-    },
-    {
-      id: "draft-onb-3",
-      ref: "onboarding/blog-1",
-      title: {
-        nl: "Waarom implementaties in de buitendienst uitlopen",
-        en: "Why field service implementations run long",
-      },
-      body: {
-        nl: "Het patroon is steeds hetzelfde: de leverancier richt de migratie in op zijn eigen datamodel, niet op dat van jou. Daarna wordt elke uitzondering in je werkhistorie een meerwerkverzoek. Wij draaien het om en accepteren de rommel.",
-        en: "The pattern is consistent: the vendor scopes a migration around their data model, not yours. Then every exception in your job history becomes a change request. We take the opposite approach and accept the mess.",
-      },
-      contentType: "blog_article",
-      channel: "blog",
-      status: "published",
-      daysAgo: 19,
-      objective: {
-        nl: "Scoren op het bezwaar, niet op de categorieterm.",
-        en: "Rank for the objection, not the category term.",
-      },
-    },
-    {
-      id: "draft-onb-4",
-      ref: "onboarding/li-3",
-      title: {
-        nl: "Een uur terug voor de planner",
-        en: "A planner's hour back",
-      },
-      body: {
-        nl: "Eén klant heeft het voor en na gemeten: vijfenvijftig minuten per dag aan herplannen rond spoedklussen, terug naar elf. Dat is niet onze verkooppraat, dat is hun eigen cijfer.",
-        en: "One customer measured it before and after: fifty-five minutes a day spent re-planning around emergency jobs, down to eleven. That is not the sales pitch, that is their number.",
-      },
-      contentType: "linkedin_post",
-      channel: "linkedin",
-      status: "published",
-      daysAgo: 12,
-      objective: {
-        nl: "Bewijs uit de meting van een klant zelf.",
-        en: "Proof from a customer's own measurement.",
-      },
-    },
-    {
-      id: "draft-onb-5",
-      ref: "onboarding/news-1",
-      title: {
-        nl: "In een week live — de notitie van september",
-        en: "Planned in a week — the September note",
-      },
-      body: {
-        nl: "Deze maand: hoe die vijf dagen eruitzien vanaf de kant van de planner, en het ene ding waardoor het misgaat.",
-        en: "This month: what five-day onboarding looks like from the planner's side, and the one thing that makes it fail.",
+        nl: "From: Emma @ Veldwerk <emma@veldwerk.nl>\nTo: Eigenaren van installatiebedrijven (10–50 monteurs)\nSubject: Vóór het warmtepompseizoen begint\nPreheader: Zes dingen die je in september al regelt\nCTA: Bekijk de checklist\n---\nHallo,\n\nElk najaar verdubbelt het aantal klussen. De meeste installateurs die ik spreek wachten tot oktober — en dan is het te laat om je planning om te gooien zonder overtime.\n\nIk heb een korte checklist gemaakt met zes dingen die je nú al kunt regelen: van subsidie-doorlooptijden tot wie op zaterdag de spoedmeldingen oppakt.\n\nGroet,\nEmma",
+        en: "From: Emma @ Veldwerk <emma@veldwerk.nl>\nTo: Installation company owners (10–50 engineers)\nSubject: Before heat pump season starts\nPreheader: Six things to settle in September\nCTA: View the checklist\n---\nHi,\n\nEvery autumn the job count doubles. Most installers I speak to wait until October — then it is too late to reshuffle the schedule without overtime.\n\nI put together a short checklist of six things you can settle now: from subsidy paperwork lead times to who takes emergency calls on a Saturday.\n\nBest,\nEmma",
       },
       contentType: "newsletter",
-      channel: "newsletter",
-      status: "published",
-      daysAgo: 8,
+      channel: "email",
+      status: "ready_for_review",
+      daysAgo: 1,
       objective: {
-        nl: "Het LinkedIn-argument naar de mailinglijst brengen.",
-        en: "Bring the LinkedIn argument to the list.",
+        nl: "Praktische waarde vóór de piek — geen harde verkoop.",
+        en: "Practical value before the rush — no hard sell.",
       },
     },
-    {
-      id: "draft-onb-6",
-      ref: "onboarding/li-4",
-      title: {
-        nl: "De vraag die je elke leverancier moet stellen",
-        en: "The question to ask every vendor",
-      },
-      body: {
-        nl: "Vraag ze de datum waarop je live gaat op papier te zetten, vóór je tekent. Het antwoord zegt meer dan de demo.",
-        en: "Ask them to name the date you go live, in writing, before you sign. The answer tells you more than the demo did.",
-      },
-      contentType: "linkedin_post",
-      channel: "linkedin",
-      status: "published",
-      daysAgo: 4,
-      objective: {
-        nl: "De koper wapenen tegen de concurrentie.",
-        en: "Arm the buyer against the competition.",
-      },
-    },
-  ],
-  "camp-heatpump": [
     {
       id: "draft-hp-1",
       ref: "heatpump/li-1",
@@ -628,28 +512,6 @@ const DRAFT_SEEDS: Record<string, DraftSeed[]> = {
       objective: {
         nl: "Praktische waarde, geen verkooppraatje.",
         en: "Practical value, no product pitch.",
-      },
-    },
-  ],
-  "camp-demos": [
-    {
-      id: "draft-demo-1",
-      ref: "demos/ads-1",
-      title: {
-        nl: "Advertentietekst — planningssoftware installatiebedrijf",
-        en: "Search copy — planningssoftware installatiebedrijf",
-      },
-      body: {
-        nl: "Live in vijf werkdagen. Planning gebouwd voor installatieploegen van 10 tot 50 monteurs. Nederlandse support.",
-        en: "Live in five working days. Scheduling built for installation teams of 10–50 engineers. Dutch support.",
-      },
-      contentType: "google_ads_copy",
-      channel: "google_ads",
-      status: "approved",
-      daysAgo: 1,
-      objective: {
-        nl: "Zoekverkeer met koopintentie opvangen met de belofte over snel live gaan.",
-        en: "Catch high-intent search with the onboarding claim.",
       },
     },
   ],
@@ -1046,74 +908,34 @@ function activityFeed(now: Date, locale: DemoLocale): ActivityFeedItem[] {
 
   return [
     {
-      id: "act-1",
-      timestamp: iso(now, -4, 11),
-      activityType: "published",
-      title: nl
-        ? "“De vraag die je elke leverancier moet stellen” geplaatst"
-        : "Published “The question to ask every vendor”",
-      description: nl
-        ? "Vierde bericht in de campagne over snel live gaan. Ging uit op LinkedIn."
-        : "Fourth post in the onboarding campaign. Went out on LinkedIn.",
-      relatedObject: "onboarding/li-4",
-    },
-    {
       id: "act-2",
-      timestamp: iso(now, -2, 15),
-      activityType: "waiting_approval",
-      title: nl
-        ? "Twee stukken over warmtepompen liggen klaar"
-        : "Two heat pump pieces ready for your read",
-      description: nl
-        ? "Een LinkedIn-bericht en de nieuwsbrief van september, allebei in afwachting."
-        : "A LinkedIn post and the September newsletter, both waiting.",
-      relatedObject: "heatpump/li-1",
-    },
-    {
-      id: "act-4",
-      timestamp: iso(now, -8, 10),
-      activityType: "published",
-      title: nl
-        ? "Nieuwsbrief van september verstuurd"
-        : "Sent the September newsletter",
-      description: nl ? "Geopend door 38% van de lijst." : "Opened by 38% of the list.",
-      relatedObject: "onboarding/news-1",
-    },
-    {
-      id: "act-5",
-      timestamp: iso(now, -1, 16),
+      timestamp: iso(now, -1, 10),
       activityType: "draft_generated",
-      title: nl
-        ? "Checklist voor het warmtepompseizoen geschreven"
-        : "Drafted the heat pump checklist",
+      title: nl ? "Strategie voor warmtepompseizoen vastgelegd" : "Heat pump season strategy recorded",
       description: nl
-        ? "Tweede stuk uit de najaarsreeks, klaar om te lezen."
-        : "Second piece for the autumn series, ready for your read.",
+        ? "Emma koos LinkedIn, e-mail en nieuwsbrief op basis van concurrentie en timing."
+        : "Emma chose LinkedIn, email, and newsletter based on competition and timing.",
+      relatedObject: "heatpump/strategy",
+    },
+    {
+      id: "act-3",
+      timestamp: iso(now, 0, 9),
+      activityType: "draft_generated",
+      title: nl ? "Deliverables voor warmtepompseizoen gemaakt" : "Heat pump season deliverables created",
+      description: nl
+        ? "Drie stukken staan klaar voor jouw review."
+        : "Three pieces are ready for your review.",
       relatedObject: "heatpump/news-1",
     },
     {
-      id: "act-6",
-      timestamp: iso(now, 0, 7),
-      activityType: "published",
-      title: nl
-        ? "“De vraag die je elke leverancier moet stellen” gepubliceerd"
-        : "Published “The question to ask every vendor”",
+      id: "act-4",
+      timestamp: iso(now, -1, 14),
+      activityType: "strategy_completed",
+      title: nl ? "Campagnestrategie gestart — automatische modus" : "Campaign strategy started — automatic mode",
       description: nl
-        ? "Vanmorgen uitgegaan op LinkedIn."
-        : "Went out this morning on LinkedIn.",
-      relatedObject: "onboarding/li-4",
-    },
-    {
-      id: "act-7",
-      timestamp: iso(now, 0, 8),
-      activityType: "draft_approved",
-      title: nl
-        ? "Advertentietekst voor Google Ads goedgekeurd"
-        : "Approved the Google Ads search copy",
-      description: nl
-        ? "Klaar om live te gaan met de demo-aanjager van Q4."
-        : "Ready to go live with the Q4 demo push.",
-      relatedObject: "demos/ads-1",
+        ? "Doel: installateurs bereiken vóór de najaarspiek."
+        : "Goal: reach installers before the autumn rush.",
+      relatedObject: "heatpump/start",
     },
   ];
 }
@@ -1159,7 +981,7 @@ export function buildDemoDomainInput(
     organizationId: undefined,
     userName: options.userName ?? "there",
     peerName: DEMO_PEER_NAME,
-    campaignTitle: locale === "nl" ? "In een week live" : "Onboarding in a week",
+    campaignTitle: locale === "nl" ? "Klaar voor het warmtepompseizoen" : "Heat pump season readiness",
     generating: null,
     generatingActivity: null,
     understanding: understanding(now, locale),
