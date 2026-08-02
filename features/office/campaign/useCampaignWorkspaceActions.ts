@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   addDemoCompetitors,
@@ -30,6 +30,14 @@ import type { DemoCompetitorInput } from "@/lib/office/demo/demo-campaign-store"
 import type { DemoCampaignDomainOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
 
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
+
+/** Derived open state for results panel — URL param or explicit user action. */
+export function resolveOptimizationPanelOpen(
+  viewParam: string | null,
+  manualOpen: boolean
+): boolean {
+  return viewParam === "results" || manualOpen;
+}
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -68,22 +76,21 @@ export function useCampaignWorkspaceActions(input: {
   const [progressMessage, setProgressMessage] = useState<string | null>(null);
   const [websiteModalOpen, setWebsiteModalOpen] = useState(false);
   const [competitorModalOpen, setCompetitorModalOpen] = useState(false);
-  const [optimizationOpen, setOptimizationOpen] = useState(false);
+  const [manualOptimizationOpen, setManualOptimizationOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [reviewProgress, setReviewProgress] = useState<string | null>(null);
 
   const reviewParam = searchParams.get("review");
   const viewParam = searchParams.get("view");
   const activeReviewDraftId = localReviewDraftId ?? reviewParam;
+  const optimizationOpen = resolveOptimizationPanelOpen(viewParam, manualOptimizationOpen);
 
-  useEffect(() => {
-    if (viewParam === "results") {
-      setOptimizationOpen(true);
-    }
-  }, [viewParam]);
+  const openOptimization = useCallback((open = true) => {
+    setManualOptimizationOpen(open);
+  }, []);
 
   const closeOptimization = useCallback(() => {
-    setOptimizationOpen(false);
+    setManualOptimizationOpen(false);
     if (searchParams.get("view") === "results") {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("view");
@@ -349,7 +356,7 @@ export function useCampaignWorkspaceActions(input: {
       return;
     }
     if (cta.action === "open_optimization") {
-      setOptimizationOpen(true);
+      openOptimization();
       return;
     }
     if (cta.action === "schedule") {
@@ -372,7 +379,7 @@ export function useCampaignWorkspaceActions(input: {
       return;
     }
     if (cta.action === "view_analytics") {
-      setOptimizationOpen(true);
+      openOptimization();
       return;
     }
     if (cta.stepId) {
@@ -381,7 +388,7 @@ export function useCampaignWorkspaceActions(input: {
   }, [
     domainInput,
     handlePublishCampaign,
-    handleScheduleCampaign,
+    openOptimization,
     isDemo,
     localePreference,
     openReview,
@@ -475,7 +482,7 @@ export function useCampaignWorkspaceActions(input: {
     scheduleModalOpen,
     setScheduleModalOpen,
     optimizationOpen,
-    setOptimizationOpen,
+    setOptimizationOpen: openOptimization,
     closeOptimization,
     progressMessage,
     reviewProgress,

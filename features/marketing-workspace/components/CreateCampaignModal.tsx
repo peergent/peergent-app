@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import type { CampaignApprovalMode } from "@/lib/campaign";
 import MarketingVisionModal from "./MarketingVisionModal";
 import {
@@ -78,7 +78,7 @@ function applyDurationPreset(preset: CampaignDurationPreset) {
   };
 }
 
-export default function CreateCampaignModal({
+function CreateCampaignModalContent({
   open,
   onClose,
   setupMode = "automatic",
@@ -101,14 +101,6 @@ export default function CreateCampaignModal({
   const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateCreateCampaignForm>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setValues(createEmptyCreateCampaignForm(setupMode));
-      setFieldErrors({});
-      setSubmitError(null);
-    }
-  }, [open, setupMode]);
 
   const handleClose = () => {
     if (submitting) return;
@@ -575,4 +567,26 @@ export default function CreateCampaignModal({
       </form>
     </MarketingVisionModal>
   );
+}
+
+export default function CreateCampaignModal(props: CreateCampaignModalProps) {
+  const { open, onClose, setupMode = "automatic", presentation = "default" } = props;
+
+  if (!open) {
+    return (
+      <MarketingVisionModal
+        open={false}
+        onClose={onClose}
+        title="Create campaign"
+        subtitle=""
+        maxWidth={560}
+        presentation={presentation === "v17" ? "v17" : "default"}
+        testId="create-campaign-modal"
+      >
+        {null}
+      </MarketingVisionModal>
+    );
+  }
+
+  return <CreateCampaignModalContent key={setupMode} {...props} />;
 }
