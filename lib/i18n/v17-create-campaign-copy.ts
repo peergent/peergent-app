@@ -19,23 +19,35 @@ export type V17CreateCampaignCopy = {
   submitError: string;
   goalLabels: Record<CreateCampaignPrimaryGoalId, string>;
   approvalLabels: Record<string, string>;
+  channelsLabel: string;
+  executionModeLabel: string;
+  intentNotesLabel: string;
+  intentNotesHint: string;
+  executionModes: Record<"manual" | "semi_automatic" | "fully_automatic", { title: string; description: string }>;
+  channelsHint: string;
+  approvalSummaryLabel: string;
+  approvalSummaryText: string;
 };
 
 const goalNl: V17CreateCampaignCopy["goalLabels"] = {
   generate_leads: "Leads genereren",
-  brand_awareness: "Naamsbekendheid vergroten",
-  product_launch: "Product of dienst lanceren",
+  brand_awareness: "Naamsbekendheid",
+  product_launch: "Product lanceren",
+  customer_retention: "Klanten behouden",
+  upsell: "Upsell",
   promote_offer: "Aanbieding promoten",
-  recruit: "Mensen werven",
+  recruit: "Recruitment",
   custom: "Anders",
 };
 
 const goalEn: V17CreateCampaignCopy["goalLabels"] = {
   generate_leads: "Generate leads",
-  brand_awareness: "Build brand awareness",
-  product_launch: "Launch a product or service",
+  brand_awareness: "Brand awareness",
+  product_launch: "Product launch",
+  customer_retention: "Customer retention",
+  upsell: "Upsell",
   promote_offer: "Promote an offer",
-  recruit: "Recruit people",
+  recruit: "Recruitment",
   custom: "Custom goal",
 };
 
@@ -58,6 +70,28 @@ const nl: V17CreateCampaignCopy = {
   submitError: "De campagne kon niet worden aangemaakt. Probeer het opnieuw.",
   goalLabels: goalNl,
   approvalLabels: {},
+  channelsLabel: "Kanalen",
+  executionModeLabel: "Uitvoeringsmodus",
+  intentNotesLabel: "Extra context",
+  intentNotesHint: "optioneel — Emma bepaalt zelf de kanalen en deliverables",
+  channelsHint: "Emma kiest de kanalen en deliverables op basis van je doel.",
+  executionModes: {
+    manual: {
+      title: "Handmatig",
+      description: "Emma wacht op jou vóór elke belangrijke stap.",
+    },
+    semi_automatic: {
+      title: "Semi-automatisch",
+      description: "Emma maakt alles; jij keurt goed vóór publicatie.",
+    },
+    fully_automatic: {
+      title: "Volledig automatisch",
+      description: "Emma voert de workflow uit; jij volgt de voortgang.",
+    },
+  },
+  approvalSummaryLabel: "Goedkeuring",
+  approvalSummaryText:
+    "Emma bereidt alles voor en publiceert pas na jouw goedkeuring.",
 };
 
 const en: V17CreateCampaignCopy = {
@@ -79,6 +113,28 @@ const en: V17CreateCampaignCopy = {
   submitError: "We could not create this campaign. Try again in a moment.",
   goalLabels: goalEn,
   approvalLabels: {},
+  channelsLabel: "Channels",
+  executionModeLabel: "Execution mode",
+  intentNotesLabel: "Additional context",
+  intentNotesHint: "optional — Emma chooses channels and deliverables",
+  channelsHint: "Emma selects channels and deliverables based on your goal.",
+  executionModes: {
+    manual: {
+      title: "Manual",
+      description: "Emma waits for you before each important step.",
+    },
+    semi_automatic: {
+      title: "Semi-automatic",
+      description: "Emma creates everything; you approve before publication.",
+    },
+    fully_automatic: {
+      title: "Fully automatic",
+      description: "Emma runs the workflow; you monitor progress.",
+    },
+  },
+  approvalSummaryLabel: "Approval",
+  approvalSummaryText:
+    "Emma prepares everything and publishes only after your approval.",
 };
 
 export function getV17CreateCampaignCopy(localePreference?: string | null): V17CreateCampaignCopy {

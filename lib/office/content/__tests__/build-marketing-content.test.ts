@@ -118,7 +118,8 @@ describe("Content — published corpus only (Vision v13)", () => {
           draft({ id: "b", status: "ready_for_review" }),
           draft({ id: "e", status: "published" }),
         ],
-      })
+      }),
+      ""
     );
 
     const items = allItems(model);

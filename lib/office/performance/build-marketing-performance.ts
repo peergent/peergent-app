@@ -183,15 +183,12 @@ export function buildMarketingPerformanceViewModelForOffice(input: {
     withinWindow(d.generatedAt, previousStart, periodStart)
   );
 
-  const completedThisPeriod = domainInput.projects.filter((project) => {
-    const status = deriveProjectStatus(
-      project,
-      domainInput.workUnits,
-      domainInput.drafts,
-      new Set()
-    );
-    const finished = ["completed", "archived", "monitoring_results"].includes(status);
-    return finished && withinWindow(project.updatedAt, periodStart, now.getTime());
+  const completedThisPeriod = domainInput.workUnits.filter((unit) => {
+    const finished =
+      unit.status === "review_ready" ||
+      unit.status === "scheduled" ||
+      unit.status === "monitoring";
+    return finished && withinWindow(unit.updatedAt, periodStart, now.getTime());
   });
 
   const earliest = scoped

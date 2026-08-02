@@ -4,11 +4,13 @@ import Link from "next/link";
 import PgMarketInsights from "@/components/design-system/PgMarketInsights";
 import type { DeskViewModel } from "@/lib/office/desk/types";
 import type { DeskBriefing } from "@/lib/office/desk/briefing-types";
+import type { DeskCampaignOverview } from "@/lib/office/desk/build-desk-campaign-overview";
 import { officeHref } from "@/lib/office/links";
 
 export type VisionDeskViewProps = {
   model: DeskViewModel;
   briefing?: DeskBriefing | null;
+  campaignOverview?: DeskCampaignOverview | null;
   locale?: string | null;
   onDecisionPrimary?: (decisionId: string) => void;
 };
@@ -21,37 +23,101 @@ function SparkPath() {
   );
 }
 
-/**
- * Vision v13 Bureau — matches docs/reference/peergent-vision-v13 mockup Bureau subview.
- * Uses existing desk VM + briefing; presentation only.
- */
+function CampaignRow({
+  row,
+  locale,
+}: {
+  row: DeskCampaignOverview["live"][0];
+  locale?: string | null;
+}) {
+  const nl = locale === "nl";
+
+  if (row.isLive) {
+    return (
+      <Link href={row.href} className="pg-v13-settings-row pg-v13-settings-row--link mb-2 block no-underline">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="pg-v13-settings-name truncate">{row.name}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-[12px] font-semibold text-[var(--pg-v13-ink-soft)]">
+              <span className="inline-flex items-center gap-1.5 text-[var(--pg-v13-marketing)]">
+                <span className="inline-block h-2 w-2 rounded-full bg-[var(--pg-v13-marketing)]" aria-hidden />
+                LIVE
+              </span>
+              {row.runningLabel ? <span>{row.runningLabel}</span> : null}
+            </p>
+            {row.dateRangeLabel ? (
+              <p className="pg-v13-mono mt-1 text-[10px] text-[var(--pg-v13-ink-faint)]">{row.dateRangeLabel}</p>
+            ) : null}
+            {row.runningStatusLabel ? (
+              <p className="pg-v13-mono mt-0.5 text-[10px] text-[var(--pg-v13-ink-faint)]">
+                {row.runningStatusLabel}
+              </p>
+            ) : null}
+          </div>
+          {row.quickActionLabel ? (
+            <span className="shrink-0 text-[12px] font-semibold text-[var(--pg-v13-blue)]">
+              {row.quickActionLabel} →
+            </span>
+          ) : null}
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <Link href={row.href} className="pg-v13-settings-row pg-v13-settings-row--link mb-2 block no-underline">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="pg-v13-settings-name truncate">{row.name}</p>
+          <p className="pg-v13-settings-desc">{row.statusLabel}</p>
+          {row.startDateLabel ? (
+            <p className="pg-v13-mono mt-1 text-[10px] text-[var(--pg-v13-ink-faint)]">
+              {row.startDateLabel}
+              {row.daysRemaining != null
+                ? ` · ${row.daysRemaining} ${nl ? "dagen resterend" : "days left"}`
+                : ""}
+            </p>
+          ) : null}
+        </div>
+        {row.quickActionLabel ? (
+          <span className="shrink-0 text-[12px] font-semibold text-[var(--pg-v13-blue)]">
+            {row.quickActionLabel} →
+          </span>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
 export default function VisionDeskView({
   model,
   briefing = null,
+  campaignOverview = null,
   locale,
   onDecisionPrimary,
 }: VisionDeskViewProps) {
   const peerId = model.peerId;
-  const copy = model.copy;
 
   const doneItems =
     model.completed.length > 0
       ? model.completed
       : (briefing?.changes.slice(0, 5).map((c) => ({ id: c.id, label: c.label })) ?? []);
 
-  const nextItems = briefing?.nextStep
-    ? [briefing.nextStep.label]
-    : briefing?.panels.find((p) => p.id === "work")?.stats.slice(0, 2).map((s) => s.hint ?? s.label) ?? [];
-
   const primaryKpi = briefing?.kpis.find((k) => k.emphasis === "outcome") ?? briefing?.kpis[0];
   const leadsKpi = briefing?.kpis.find((k) => k.id.includes("lead") || k.label.toLowerCase().includes("lead"));
+
+  const hasCampaignSections =
+    campaignOverview &&
+    (campaignOverview.needsApproval.length > 0 ||
+      campaignOverview.live.length > 0 ||
+      campaignOverview.scheduled.length > 0);
 
   return (
     <div data-testid="office-desk-view">
       {model.decisions.length > 0 ? (
         <section className="pg-v13-sec">
           <p className="pg-v13-sec-label pg-v13-sec-label--attn">
-            {copy.decisionsHeading(model.decisions.length)}
+            {model.copy.decisionsHeading(model.decisions.length)}
           </p>
           {model.decisions.map((decision) => (
             <div key={decision.id} className="pg-v13-decision mb-2">
@@ -77,6 +143,55 @@ export default function VisionDeskView({
         </section>
       ) : null}
 
+      {hasCampaignSections ? (
+        <>
+          {campaignOverview!.needsApproval.length > 0 ? (
+            <section className="pg-v13-sec" data-testid="desk-needs-approval">
+              <p className="pg-v13-sec-label pg-v13-sec-label--attn">
+                {locale === "nl" ? "Wacht op goedkeuring" : "Needs approval"}
+              </p>
+              {campaignOverview!.needsApproval.map((row) => (
+                <CampaignRow key={row.id} row={row} locale={locale} />
+              ))}
+            </section>
+          ) : null}
+
+          {campaignOverview!.live.length > 0 ? (
+            <section className="pg-v13-sec" data-testid="desk-live-campaigns">
+              <p className="pg-v13-sec-label">{locale === "nl" ? "Live campagnes" : "Live campaigns"}</p>
+              {campaignOverview!.live.map((row) => (
+                <CampaignRow key={row.id} row={row} locale={locale} />
+              ))}
+            </section>
+          ) : null}
+
+          {campaignOverview!.scheduled.length > 0 ? (
+            <section className="pg-v13-sec" data-testid="desk-scheduled-campaigns">
+              <p className="pg-v13-sec-label">
+                {locale === "nl" ? "Ingeplande campagnes" : "Scheduled campaigns"}
+              </p>
+              {campaignOverview!.scheduled.map((row) => (
+                <CampaignRow key={row.id} row={row} locale={locale} />
+              ))}
+            </section>
+          ) : null}
+        </>
+      ) : null}
+
+      {model.inFlight.length > 0 ? (
+        <section className="pg-v13-sec">
+          <p className="pg-v13-sec-label">{model.copy.inFlightHeading}</p>
+          {model.inFlight.map((item) => (
+            <div key={item.id} className="pg-v13-next-row">
+              <p className="font-semibold text-[var(--pg-v13-ink)]">{item.what}</p>
+              {item.nextStep ? (
+                <p className="text-[13px] text-[var(--pg-v13-ink-soft)]">{item.nextStep}</p>
+              ) : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {doneItems.length > 0 ? (
         <section className="pg-v13-sec">
           <p className="pg-v13-sec-label">
@@ -91,14 +206,12 @@ export default function VisionDeskView({
         </section>
       ) : null}
 
-      {nextItems.length > 0 ? (
-        <section className="pg-v13-sec">
-          <p className="pg-v13-sec-label">{locale === "nl" ? "Hierna" : "Up next"}</p>
-          {nextItems.map((row) => (
-            <div key={row} className="pg-v13-next-row">
-              {row}
-            </div>
-          ))}
+      {model.empty ? (
+        <section className="pg-v13-sec pg-v13-panel p-5" data-testid="desk-empty-state">
+          <p className="text-[15px] font-semibold text-[var(--pg-v13-ink)]">{model.empty.voice}</p>
+          {model.empty.next ? (
+            <p className="mt-2 text-[14px] text-[var(--pg-v13-ink-soft)]">{model.empty.next}</p>
+          ) : null}
         </section>
       ) : null}
 
@@ -134,8 +247,8 @@ export default function VisionDeskView({
               id: "desk-1",
               text:
                 locale === "nl"
-                  ? "Routeplan test video-advertenties in jullie categorie"
-                  : "Routeplan is testing video ads in your category",
+                  ? "LinkedIn engagement stijgt in jouw sector — Emma past contenttiming aan"
+                  : "LinkedIn engagement is rising in your sector — Emma adjusts content timing",
             },
             {
               id: "desk-2",
@@ -143,13 +256,6 @@ export default function VisionDeskView({
                 locale === "nl"
                   ? "Google Ads CPC stijgt licht — Emma houdt het in de gaten"
                   : "Google Ads CPC is edging up — Emma is watching it",
-            },
-            {
-              id: "desk-3",
-              text:
-                locale === "nl"
-                  ? "Warmtepomp-zoekvolume piekt in augustus"
-                  : "Heat pump search volume peaks in August",
             },
           ]}
           testId="desk-market-insights"

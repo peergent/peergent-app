@@ -603,7 +603,7 @@ body {
   isolation: isolate;
 }
 
-[data-pg-theme="light"] body > :not(.pg-bright-atmosphere) {
+[data-pg-theme="light"] body > :not(.pg-bright-atmosphere):not(.pg-v13-modal-backdrop) {
   position: relative;
   z-index: 1;
 }

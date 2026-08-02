@@ -6,6 +6,7 @@ import VisionDeskView from "@/features/office/desk/VisionDeskView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { buildMarketingDeskBriefing } from "@/lib/office/desk/build-marketing-briefing";
+import { buildDeskCampaignOverview } from "@/lib/office/desk/build-desk-campaign-overview";
 
 /**
  * §4.1 Desk — the office's front door.
@@ -62,6 +63,16 @@ function OfficeDeskInner() {
     [domainInput, peerName, peerRole, localePreference, model]
   );
 
+  const campaignOverview = useMemo(
+    () =>
+      buildDeskCampaignOverview({
+        domainInput,
+        locale: localePreference,
+        isDemo,
+      }),
+    [domainInput, isDemo, localePreference]
+  );
+
   return (
     <>
       <PgOfficeShell
@@ -87,6 +98,7 @@ function OfficeDeskInner() {
           <VisionDeskView
             model={model}
             briefing={briefing}
+            campaignOverview={campaignOverview}
             locale={localePreference}
           />
         )}

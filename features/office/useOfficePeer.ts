@@ -23,6 +23,12 @@ import {
   subscribeDemoWorkspace,
 } from "@/lib/office/demo/demo-workspace-state";
 import {
+  getDemoCampaignSnapshot,
+  getDemoCampaignSnapshotServer,
+  subscribeDemoCampaignStore,
+} from "@/lib/office/demo/demo-campaign-store";
+import { mergeDemoCampaignSnapshot } from "@/lib/office/demo/merge-demo-domain";
+import {
   buildLiveVisionRoster,
   DEMO_VISION_ROSTER,
 } from "@/lib/office/vision-roster";
@@ -88,6 +94,12 @@ export function useOfficePeer() {
     getDemoResponsibilitiesServerSnapshot
   );
 
+  const demoCampaignSnapshot = useSyncExternalStore(
+    subscribeDemoCampaignStore,
+    getDemoCampaignSnapshot,
+    getDemoCampaignSnapshotServer
+  );
+
   const connections = useMemo(
     () => (organizationId && !demo ? loadIntegrationConnections(organizationId) : []),
     [organizationId, demo]
@@ -111,14 +123,13 @@ export function useOfficePeer() {
 
   // Rebuilt when the account changes rather than on every render, so the demo
   // is stable across navigation but still greets the signed-in person.
-  const demoDomainInput = useMemo(
-    () =>
-      buildDemoDomainInput({
-        userName: account?.fullName ?? "there",
-        responsibilities: demoResponsibilities,
-      }),
-    [account?.fullName, demoResponsibilities]
-  );
+  const demoDomainInput = useMemo(() => {
+    const base = buildDemoDomainInput({
+      userName: account?.fullName ?? "there",
+      responsibilities: demoResponsibilities,
+    });
+    return mergeDemoCampaignSnapshot(base, demoCampaignSnapshot);
+  }, [account?.fullName, demoResponsibilities, demoCampaignSnapshot]);
 
   const { openNewCampaign, newCampaignModal } = useOfficeNewCampaign({
     peerId,

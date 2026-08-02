@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/ui/cn";
@@ -16,6 +16,7 @@ export type PgVisionFormModalProps = {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  footer?: ReactNode;
   maxWidth?: number;
   closeOnEscape?: boolean;
   closeOnOverlayClick?: boolean;
@@ -34,6 +35,7 @@ export default function PgVisionFormModal({
   title,
   subtitle,
   children,
+  footer,
   maxWidth = 560,
   closeOnEscape = true,
   closeOnOverlayClick = true,
@@ -47,6 +49,11 @@ export default function PgVisionFormModal({
   const lastFocus = useRef<HTMLElement | null>(null);
   const focusSessionRef = useRef(createModalFocusSession());
   const onCloseRef = useRef(onClose);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -86,7 +93,7 @@ export default function PgVisionFormModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, closeOnEscape]);
 
-  if (!open || typeof document === "undefined") return null;
+  if (!open || !mounted) return null;
 
   return createPortal(
     <div
@@ -123,6 +130,7 @@ export default function PgVisionFormModal({
           </button>
         </div>
         <div className="pg-v13-modal-body">{children}</div>
+        {footer ? <div className="pg-v13-modal-footer">{footer}</div> : null}
       </div>
     </div>,
     document.body

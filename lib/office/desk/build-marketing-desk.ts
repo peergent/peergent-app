@@ -72,6 +72,7 @@ export function buildMarketingDeskViewModel(input: {
   peerName: string;
   peerRole: string;
   localePreference?: string | null;
+  now?: Date;
   /** §4.1a Supplied by the autonomy engine when every condition is met. */
   autonomyRequest?: DeskAutonomyRequest | null;
 }): DeskViewModel {
@@ -147,7 +148,11 @@ export function buildMarketingDeskViewModel(input: {
       : [];
 
   // --- Since you were last here -------------------------------------------
-  const completed = buildDeduplicatedCompletedOutcomes({ domainInput, locale })
+  const completed = buildDeduplicatedCompletedOutcomes({
+    domainInput,
+    locale,
+    now: input.now,
+  })
     .filter((outcome) => outcome.group === "today" || outcome.group === "yesterday")
     .map((outcome) => ({
       id: outcome.id,

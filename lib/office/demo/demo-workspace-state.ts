@@ -2,6 +2,10 @@ import type { MarketingResponsibility } from "@/lib/peer-experience/marketing/re
 import type { AgreementKnowledge } from "@/lib/office/agreement/types";
 import type { KnowledgeAmendments } from "@/lib/office/agreement/build-marketing-agreement";
 import { DEMO_PEER_ID, demoResponsibilities } from "./demo-company";
+import {
+  resetDemoCampaignStore,
+  isDemoCampaignStoreModified,
+} from "./demo-campaign-store";
 
 /**
  * In-memory state for the Demo Workspace.
@@ -149,13 +153,20 @@ function knowledgeIsModified(): boolean {
 
 /** True once anything has been changed, so the UI can offer a reset. */
 export function isDemoWorkspaceModified(): boolean {
-  return current !== defaults || knowledgeIsModified();
+  return (
+    current !== defaults ||
+    knowledgeIsModified() ||
+    isDemoCampaignStoreModified()
+  );
 }
 
 /** Restores the canonical Veldwerk defaults. */
 export function resetDemoWorkspace(): void {
-  if (current === defaults && !knowledgeIsModified()) return;
+  if (current === defaults && !knowledgeIsModified() && !isDemoCampaignStoreModified()) {
+    return;
+  }
   current = defaults;
   knowledgeAmendments = emptyKnowledgeAmendments;
+  resetDemoCampaignStore();
   emit();
 }

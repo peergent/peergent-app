@@ -17,6 +17,7 @@ import {
   peerAccentCssVar,
   type VisionRosterPeer,
 } from "@/lib/office/vision-roster";
+import DemoResetControl from "@/features/office/demo/DemoResetControl";
 
 function canvasLayoutClass(active?: OfficeDestinationId): string {
   switch (active) {
@@ -241,6 +242,7 @@ export default function PgVisionShell({
           <div className="pg-v13-you-avatar" aria-hidden />
           <span className="pg-v13-you-name">{copy.you}</span>
         </div>
+        {isDemo ? <DemoResetControl locale={locale} /> : null}
       </div>
     </>
   );

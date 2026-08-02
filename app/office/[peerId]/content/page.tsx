@@ -1,19 +1,27 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PgContentPreviewModal, PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
+import OfficeDeliverableReviewModal from "@/features/office/deliverable/OfficeDeliverableReviewModal";
 import VisionContentView from "@/features/office/content/VisionContentView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildMarketingContentViewModel } from "@/lib/office/content/build-marketing-content";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { previewStatsForContent } from "@/lib/office/content/demo-preview-stats";
+import {
+  getDemoCampaignSnapshot,
+  setDemoDraftStatus,
+} from "@/lib/office/demo/demo-campaign-store";
+import { buildDeliverableReviewModel } from "@/lib/office/deliverable/build-deliverable-review";
 import type { ContentItem } from "@/lib/office/content/types";
 
 function OfficeContentInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const previewId = searchParams.get("preview");
+  const [localPreviewId, setLocalPreviewId] = useState<string | null>(null);
+  const activePreviewId = localPreviewId ?? previewId;
 
   const {
     peerId,
@@ -27,6 +35,7 @@ function OfficeContentInner() {
     roster,
     openNewCampaign,
     newCampaignModal,
+    workspace,
   } = useOfficePeer();
 
   const model = useMemo(
@@ -53,13 +62,27 @@ function OfficeContentInner() {
   );
 
   const previewItem: ContentItem | null = useMemo(() => {
-    if (!previewId) return null;
+    if (!activePreviewId) return null;
     for (const group of model.groups) {
-      const found = group.items.find((item) => item.id === previewId);
+      const found = group.items.find((item) => item.id === activePreviewId);
       if (found) return found;
     }
     return null;
-  }, [model.groups, previewId]);
+  }, [model.groups, activePreviewId]);
+
+  const reviewModel = useMemo(() => {
+    if (!activePreviewId) return null;
+    const draft = domainInput.drafts.find((d) => d.id === activePreviewId);
+    if (draft?.status !== "ready_for_review") return null;
+    return buildDeliverableReviewModel({
+      draftId: activePreviewId,
+      domainInput,
+      locale: localePreference,
+      approvalHistory: isDemo ? getDemoCampaignSnapshot().approvalHistory : undefined,
+    });
+  }, [activePreviewId, domainInput, isDemo, localePreference]);
+
+  const nl = localePreference === "nl";
 
   const previewStats = previewItem
     ? previewStatsForContent({
@@ -69,20 +92,40 @@ function OfficeContentInner() {
       })
     : [];
 
-  const closePreview = () => {
+  const closePreview = useCallback(() => {
+    setLocalPreviewId(null);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("preview");
     const q = params.toString();
     router.replace(q ? `/office/${peerId}/content?${q}` : `/office/${peerId}/content`, {
       scroll: false,
     });
-  };
+  }, [peerId, router, searchParams]);
 
-  const openPreview = (item: ContentItem) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("preview", item.id);
-    router.push(`/office/${peerId}/content?${params.toString()}`, { scroll: false });
-  };
+  const openPreview = useCallback(
+    (item: ContentItem) => {
+      setLocalPreviewId(item.id);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("preview", item.id);
+      router.push(`/office/${peerId}/content?${params.toString()}`, { scroll: false });
+    },
+    [peerId, router, searchParams]
+  );
+
+  const handleApprove = useCallback(
+    (draftId: string) => {
+      if (isDemo) {
+        setDemoDraftStatus(peerId, draftId, "approved", {
+          action: "approved",
+          by: nl ? "Jij" : "You",
+        });
+      } else {
+        workspace.handleDraftStatus(draftId, "approved");
+      }
+      closePreview();
+    },
+    [closePreview, isDemo, nl, peerId, workspace]
+  );
 
   return (
     <>
@@ -114,7 +157,40 @@ function OfficeContentInner() {
       </PgOfficeShell>
       {newCampaignModal}
 
-      {previewItem ? (
+      {reviewModel ? (
+        <OfficeDeliverableReviewModal
+          open
+          onClose={closePreview}
+          locale={localePreference}
+          model={reviewModel}
+          onApprove={handleApprove}
+          onRequestChanges={(draftId, notes) => {
+            if (isDemo) {
+              setDemoDraftStatus(peerId, draftId, "ready_for_review", {
+                action: "changes_requested",
+                by: nl ? "Jij" : "You",
+                notes,
+              });
+            } else {
+              workspace.handleDraftStatus(draftId, "rejected");
+            }
+            closePreview();
+          }}
+          onReject={(draftId, notes) => {
+            if (isDemo) {
+              setDemoDraftStatus(peerId, draftId, "rejected", {
+                action: "rejected",
+                by: nl ? "Jij" : "You",
+                notes,
+              });
+            } else {
+              workspace.handleDraftStatus(draftId, "rejected");
+            }
+            closePreview();
+          }}
+          detailHref={`/office/${peerId}/content/${reviewModel.draftId}`}
+        />
+      ) : previewItem ? (
         <PgContentPreviewModal
           open
           onClose={closePreview}
