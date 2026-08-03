@@ -15,7 +15,7 @@ import {
   type CampaignDurationPreset,
 } from "./campaign-duration";
 
-/** Canonical demo seed campaign — uses Veldwerk fixture narrative intentionally. */
+/** Canonical demo seed campaign — uses Peergent fixture narrative. */
 export const SEED_CAMPAIGN_ID = "camp-heatpump";
 
 export type ContextAvailability =

@@ -44,23 +44,23 @@ function seedTemplateForGoal(goalId: string, campaignName: string, nl: boolean):
   if (nl) {
     return {
       objective: lead
-        ? "Demo-aanvragen genereren bij installatie-eigenaren"
+        ? "Demo-aanvragen genereren bij MKB-directeuren"
         : brand
-          ? "Naamsbekendheid vergroten in de installatiesector"
+          ? "Merkbekendheid vergroten voor AI-werkplek"
           : `Doel van campagne: ${campaignName}`,
       linkedinTitle: lead
-        ? "Waarom planning nu het verschil maakt voor installateurs"
-        : "Wat Veldwerk anders doet — en waarom het ertoe doet",
+        ? "Waarom een AI-werkplek nu het verschil maakt"
+        : "Wat Peergent anders doet — en waarom het ertoe doet",
       linkedinBody: lead
-        ? "Elk najaar verdubbelt het aantal klussen. De meeste installateurs die ik spreek wachten tot oktober."
-        : "Veldwerk krijgt een installatieploeg in een week ingepland — niet in een kwartaal.",
-      emailSubject: lead ? "Checklist: klaar voor het seizoen vóór de piek" : "Eén ding dat installateurs nu al kunnen regelen",
+        ? "Q4 komt sneller dan je denkt. De meeste teams wachten tot oktober."
+        : "Peergent is het AI Workforce Operating System — rustig, context-gedreven, outcome-first.",
+      emailSubject: lead ? "Checklist: klaar voor Q4 vóór budgetseizoen" : "Eén ding dat teams nu al kunnen regelen",
       emailBody:
-        "From: Emma @ Veldwerk <emma@veldwerk.nl>\nTo: Eigenaren van installatiebedrijven\n---\nHallo,\n\nChecklist met zes dingen die je nú al kunt regelen.\n\nGroet,\nEmma",
-      newsletterTitle: "Vóór de piek: wat slimme installateurs nu al regelen",
-      newsletterBody: "Zes dingen die je in september beter regelt voor het warmtepompseizoen.",
-      adsBody: `Campaign: ${campaignName}\nHeadline 1: Planning in een week live\nHeadline 2: Gebouwd voor installatieploegen`,
-      landingBody: "Hero: Klaar vóór het seizoen begint\nCTA: Download de checklist",
+        "From: Emma @ Peergent <emma@peergent.com>\nTo: MKB-directeuren\n---\nHallo,\n\nChecklist met vijf dingen die je nú al kunt regelen.\n\nGroet,\nEmma",
+      newsletterTitle: "Vóór Q4: wat slimme teams nu al regelen",
+      newsletterBody: "Vijf dingen die je in september beter regelt voor je AI-werkplek.",
+      adsBody: `Campaign: ${campaignName}\nHeadline 1: AI-collega's die meewerken\nHeadline 2: Gebouwd voor rust en resultaat`,
+      landingBody: "Hero: Klaar vóór Q4 begint\nCTA: Download de checklist",
       channelRationale: {
         linkedin: "LinkedIn bereikt eigenaren waar ze peers volgen.",
         email: "E-mail levert hoge intentie vóór het seizoen begint.",
@@ -71,15 +71,15 @@ function seedTemplateForGoal(goalId: string, campaignName: string, nl: boolean):
     };
   }
   return {
-    objective: lead ? "Generate demo requests from installation company owners" : `Campaign goal: ${campaignName}`,
-    linkedinTitle: lead ? "Why planning matters now for installers" : "What Veldwerk does differently",
-    linkedinBody: "Every autumn the job count doubles. Most installers wait until October.",
-    emailSubject: lead ? "Checklist: ready before the rush" : "One thing installers can settle now",
-    emailBody: "From: Emma @ Veldwerk\n---\nHi,\n\nShort checklist.\n\nBest,\nEmma",
-    newsletterTitle: "Before the rush: what smart installers settle now",
-    newsletterBody: "Six things worth deciding before heat pump season.",
-    adsBody: `Campaign: ${campaignName}\nHeadline 1: Planned in one week`,
-    landingBody: "Hero: Ready before the season starts\nCTA: Download the checklist",
+    objective: lead ? "Generate demo requests from SMB executives" : `Campaign goal: ${campaignName}`,
+    linkedinTitle: lead ? "Why an AI workspace matters now" : "What Peergent does differently",
+    linkedinBody: "Q4 arrives faster than you think. Most teams wait until October.",
+    emailSubject: lead ? "Checklist: ready before Q4" : "One thing teams can settle now",
+    emailBody: "From: Emma @ Peergent\n---\nHi,\n\nShort checklist.\n\nBest,\nEmma",
+    newsletterTitle: "Before Q4: what smart teams settle now",
+    newsletterBody: "Five things worth deciding before budget season.",
+    adsBody: `Campaign: ${campaignName}\nHeadline 1: AI colleagues that collaborate`,
+    landingBody: "Hero: Ready before Q4 starts\nCTA: Download the checklist",
     channelRationale: {
       linkedin: "LinkedIn reaches owners where they follow peers.",
       email: "Email delivers high intent before the season.",

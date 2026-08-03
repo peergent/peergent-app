@@ -29,12 +29,9 @@
  *
  * ## The company
  *
- * Veldwerk sells scheduling software to installation companies — solar and
- * heat-pump installers running ten to fifty engineers. Its wedge is onboarding
- * speed: the incumbents take months to set up, and none of them market against
- * that. Every campaign, every piece of content and every recommendation in this
- * workspace traces back to that single observation, which is what makes the
- * demo read as one company rather than a pile of plausible rows.
+ * Peergent is the AI Workforce Operating System — AI colleagues for marketing,
+ * sales, and support. Every campaign and recommendation in this demo traces
+ * back to that positioning.
  */
 
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
@@ -54,7 +51,7 @@ import type { ActivityFeedItem } from "@/lib/marketing-workspace";
 export const DEMO_PEER_ID = "demo";
 export const DEMO_PEER_NAME = "Emma";
 export const DEMO_PEER_ROLE = "Marketing";
-export const DEMO_COMPANY_NAME = "Veldwerk";
+export const DEMO_COMPANY_NAME = "Peergent";
 
 export function isDemoPeer(peerId: string | null | undefined): boolean {
   return peerId === DEMO_PEER_ID;
@@ -87,179 +84,148 @@ function understanding(now: Date, locale: DemoLocale): MarketingUnderstanding {
     gaps: ["existingContent"],
     brand: {
       mission: nl
-        ? "Een installatieploeg fatsoenlijk ingepland krijgen, zonder implementatietraject van een kwartaal."
-        : "Get an installation team planned properly, without a three-month implementation.",
+        ? "Teams laten werken met AI-collega's die context begrijpen en resultaat leveren."
+        : "Help teams work with AI colleagues that understand context and deliver outcomes.",
       values: [
-        { id: "v1", name: nl ? "Gewone taal" : "Plain language", priority: 1 },
+        { id: "v1", name: nl ? "Rust" : "Calm", priority: 1 },
         {
           id: "v2",
-          name: nl ? "Respect voor de dag van de monteur" : "Respect for the engineer's day",
+          name: nl ? "Context vóór actie" : "Context before action",
           priority: 2,
         },
       ],
       toneOfVoice: {
         summary: nl
-          ? "Direct en praktisch, geen jargon. Praat met eigenaren, niet met IT."
-          : "Direct, practical, no jargon. Talks to owners, not to IT.",
+          ? "Rustig, premium, direct — geen SaaS-clichés."
+          : "Calm, premium, direct — no SaaS clichés.",
         personality: nl
-          ? ["Recht door zee", "Rustig", "Concreet"]
-          : ["Straightforward", "Calm", "Concrete"],
+          ? ["Redactioneel", "Rustig", "Concreet"]
+          : ["Editorial", "Calm", "Concrete"],
         dos: nl
-          ? ["Noem echte cijfers", "Benoem het probleem gewoon"]
-          : ["Use real numbers", "Name the problem plainly"],
-        donts: nl ? ["Buzzwords", "Corporate taal"] : ["Buzzwords", "Enterprise-speak"],
+          ? ["Noem echte uitkomsten", "Benoem de context gewoon"]
+          : ["Name real outcomes", "State context plainly"],
+        donts: nl ? ["Dashboard-taal", "Buzzwords"] : ["Dashboard speak", "Buzzwords"],
       },
       positioningStatement: nl
-        ? "Veldwerk krijgt een installatieploeg in een week ingepland, niet in een kwartaal."
-        : "Veldwerk gets an installation team planned in a week, not a quarter.",
-      tagline: nl ? "In een week live." : "Planned in a week.",
+        ? "Peergent is het AI Workforce Operating System voor teams die slimmer willen werken zonder dashboard-chaos."
+        : "Peergent is the AI Workforce Operating System for teams that want to work smarter without dashboard chaos.",
+      tagline: nl ? "Gepland in rust." : "Planned with calm.",
       valueProposition: nl
-        ? "Planning gebouwd voor installatiebedrijven met 10 tot 50 monteurs, live in vijf werkdagen."
-        : "Scheduling built for installation companies of 10–50 engineers, live in five working days.",
+        ? "Premium AI-werkplek met Emma en je team — outcome-first, rustig, context-gedreven."
+        : "Premium AI workspace with Emma and your team — outcome-first, calm, context-driven.",
       keyMessages: nl
         ? [
-            "Live in vijf werkdagen",
-            "Gebouwd voor de dag van de monteur, niet voor de backoffice",
-            "Nederlandse support, Nederlandse facturatie",
+            "AI-collega's, geen chatbots",
+            "Context vóór actie",
+            "Eén primaire actie per scherm",
           ]
         : [
-            "Live in five working days",
-            "Built for the engineer's day, not the back office",
-            "Dutch support, Dutch invoicing",
+            "AI colleagues, not chatbots",
+            "Context before action",
+            "One primary action per screen",
           ],
-      marketCategory: nl ? "Planning voor buitendienst" : "Field service scheduling",
+      marketCategory: nl ? "AI-werkpleksoftware" : "AI workforce software",
     },
     products: [
       {
-        id: "prod-planner",
-        name: "Veldwerk Planner",
+        id: "prod-office",
+        name: "Peergent Office",
         description: nl
-          ? "Slepen en neerzetten, met reistijd die vanzelf klopt."
-          : "Drag-and-drop scheduling with automatic travel time.",
+          ? "Command center en inbox voor je AI-team."
+          : "Command center and inbox for your AI team.",
         category: nl ? "Software" : "Software",
       },
       {
-        id: "prod-mobile",
-        name: "Veldwerk Mobiel",
+        id: "prod-studio",
+        name: "Peer Studio",
         description: nl
-          ? "Werkbon-app voor de monteur, werkt ook zonder bereik."
-          : "Offline-capable job app for engineers in the field.",
+          ? "Werkruimte per AI-collega — marketing, sales, support."
+          : "Workspace per AI colleague — marketing, sales, support.",
         category: "Software",
       },
     ],
     services: [
       {
         id: "svc-onboarding",
-        name: nl ? "Inrichting in vijf dagen" : "Five-day onboarding",
+        name: nl ? "Pilot & rollout" : "Pilot & rollout",
         description: nl
-          ? "Data overzetten, planning inrichten en monteurs opleiden in één week."
-          : "Data import, schedule setup and engineer training in one week.",
+          ? "Peergent inrichten met je team, peers en werksafspraken in één traject."
+          : "Set up Peergent with your team, peers, and working agreements in one journey.",
         category: nl ? "Dienst" : "Service",
       },
     ],
     customerSegments: [
       {
         id: "seg-owners",
-        name: nl ? "Eigenaren van installatiebedrijven" : "Installation company owners",
+        name: nl ? "MKB-directeuren" : "SMB executives",
         description: nl
-          ? "Installateurs van zonnepanelen en warmtepompen met 10 tot 50 monteurs."
-          : "Solar and heat-pump installers running 10–50 engineers.",
+          ? "Directeuren en operations leads bij organisaties van 10–200 mensen."
+          : "Executives and operations leads at organizations of 10–200 people.",
         painPoints: nl
           ? [
-              "De planner is elke dag een uur kwijt aan herplannen",
-              "Monteurs rijden routes die niemand heeft geoptimaliseerd",
-              "Gemiste reactietijden kosten onderhoudscontracten",
+              "Te veel tools, te weinig samenhang",
+              "AI voelt als experiment, niet als collega",
+              "Teams verdrinken in dashboards",
             ]
           : [
-              "The planner spends an hour a day re-planning around emergencies",
-              "Engineers drive routes nobody optimised",
-              "Missed SLAs cost service contracts",
+              "Too many tools, not enough coherence",
+              "AI feels like an experiment, not a colleague",
+              "Teams drown in dashboards",
             ],
         buyingTriggers: nl
           ? [
-              "Doorgroeien voorbij wat één planner aankan",
-              "Een onderhoudscontract verliezen op reactietijd",
-              "Een mislukte implementatie bij een vorige leverancier",
+              "Marketing of sales wil sneller schalen zonder extra headcount",
+              "Een mislukte generieke AI-tool eerder dit jaar",
+              "Behoefte aan rust en overzicht in het werk",
             ]
           : [
-              "Hiring past the point one planner can handle",
-              "Losing a maintenance contract over response times",
-              "A failed implementation with a previous vendor",
+              "Marketing or sales needs to scale without extra headcount",
+              "A failed generic AI tool earlier this year",
+              "Need for calm and clarity at work",
             ],
       },
     ],
-    /**
-     * The competitive picture that every recommendation in this workspace
-     * rests on. Note what is absent: none of the three claims fast onboarding,
-     * and two are on record as slow. That shared gap is the argument, and the
-     * Market page infers it from these notes rather than being told.
-     */
     competitors: [
       {
-        id: "comp-routeplan",
-        name: "Routeplan",
+        id: "comp-generic-ai",
+        name: nl ? "Generieke AI-assistenten" : "Generic AI assistants",
         strengths: nl
-          ? ["Laagste prijs per gebruiker", "Lange staat van dienst bij vloten van 200+ monteurs"]
-          : ["Lowest price per seat", "Long track record with 200+ engineer fleets"],
+          ? ["Breed inzetbaar", "Snel te proberen"]
+          : ["Broadly applicable", "Quick to try"],
         weaknesses: nl
-          ? ["Traag om een ploeg live te krijgen", "Support en documentatie alleen in het Engels"]
-          : ["Slow to get a team live", "Support and documentation in English only"],
-        differentiators: nl
-          ? ["Routeoptimalisatie op grote schaal"]
-          : ["Route optimisation at large fleet scale"],
+          ? ["Geen teamcontext", "Geen werkplek — alleen chat", "Geen doorlopende teamcontext"]
+          : ["No team context", "No workspace — chat only", "No ongoing team context"],
+        differentiators: nl ? ["Laagdrempelig"] : ["Low barrier to entry"],
       },
       {
-        id: "comp-servicedesk",
-        name: "Servicedesk Pro",
+        id: "comp-agency",
+        name: nl ? "Traditionele bureaus" : "Traditional agencies",
         strengths: nl
-          ? ["Breedste functieaanbod", "Sterke module voor facturatie en contracten"]
-          : ["Broadest feature set", "Strong invoicing and contract module"],
+          ? ["Menselijke creativiteit", "Bekende samenwerkingsvorm"]
+          : ["Human creativity", "Familiar collaboration model"],
         weaknesses: nl
-          ? [
-              "Traag om een ploeg live te krijgen",
-              "Te zwaar voor ploegen onder de vijftig monteurs",
-              "Geen offline modus in de app",
-            ]
-          : [
-              "Slow to get a team live",
-              "Too heavy for teams under fifty engineers",
-              "No offline mode in the field app",
-            ],
-        differentiators: nl ? ["Alles-in-één backoffice"] : ["All-in-one back office"],
-      },
-      {
-        id: "comp-fieldly",
-        name: "Fieldly",
-        strengths: nl
-          ? ["Mooiste mobiele app in de categorie"]
-          : ["Best-looking mobile app in the category"],
-        weaknesses: nl
-          ? ["Geen Nederlandse taal of facturatie", "Magere rapportage"]
-          : ["No Dutch language or Dutch invoicing", "Reporting is thin"],
-        differentiators: nl
-          ? ["Mobiel-eerst voor de monteur"]
-          : ["Mobile-first for engineers"],
+          ? ["Traag", "Duur per campagne", "Kennis verdwijnt na project", "Geen doorlopende teamcontext"]
+          : ["Slow", "Expensive per campaign", "Knowledge leaves after the project", "No ongoing team context"],
+        differentiators: nl ? ["Full-service uitvoering"] : ["Full-service execution"],
       },
     ],
     goals: [
       {
         id: "goal-demos",
-        title: nl ? "40 demo-afspraken per kwartaal" : "40 booked demos per quarter",
+        title: nl ? "40 demo-aanvragen per kwartaal" : "40 demo requests per quarter",
         description: nl
-          ? "Genoeg pijplijn om twee nieuwe accountmanagers te dragen."
-          : "Enough qualified pipeline to support two new account executives.",
+          ? "Genoeg pipeline voor groei in Benelux MKB."
+          : "Enough pipeline for Benelux SMB growth.",
         status: "active",
         timeframe: nl ? "Q4" : "Q4",
         priority: 1,
       },
       {
-        id: "goal-ttfv",
-        title: nl
-          ? "Binnen zeven dagen waarde leveren"
-          : "Keep time-to-first-value under seven days",
+        id: "goal-awareness",
+        title: nl ? "Merkbekendheid AI-werkplek" : "AI workspace brand awareness",
         description: nl
-          ? "De belofte over inrichting houdt alleen stand als de levering standhoudt."
-          : "The onboarding claim only holds if delivery holds.",
+          ? "Peergent positioneren als premium alternief voor dashboard-chaos."
+          : "Position Peergent as the premium alternative to dashboard chaos.",
         status: "active",
         timeframe: nl ? "Doorlopend" : "Ongoing",
         priority: 2,
@@ -286,7 +252,7 @@ function strategy(now: Date, locale: DemoLocale): MarketingStrategy {
       : "Grounded in three recorded competitors and a positioning statement the customer wrote themselves.",
     targetAudiences: [
       {
-        segment: nl ? "Eigenaren van installatiebedrijven" : "Installation company owners",
+        segment: nl ? "MKB-directeuren" : "SMB executives",
         priority: "primary",
         rationale: {
           why: nl
@@ -352,7 +318,7 @@ function strategy(now: Date, locale: DemoLocale): MarketingStrategy {
     ],
     seoOpportunities: [
       {
-        topic: "planningssoftware installatiebedrijf",
+        topic: "ai workforce platform marketing",
         intent: nl ? "commercieel" : "commercial",
         rationale: {
           why: nl
@@ -399,17 +365,17 @@ function projects(
     {
       id: "camp-heatpump",
       peerId,
-      title: nl ? "Klaar voor het warmtepompseizoen" : "Heat pump season readiness",
+      title: nl ? "AI-werkplek lanceren" : "Launch AI workspace awareness",
       goal: nl
-        ? "Installateurs bereiken vóór de drukte van het najaar begint."
-        : "Reach installers before the autumn heat-pump rush starts.",
+        ? "MKB-directeuren bereiken vóór het Q4-budgetseizoen."
+        : "Reach SMB executives before Q4 budget season.",
       campaignType: "content_series",
       createdAt: iso(now, -14, 9),
       updatedAt: iso(now, -1, 11),
       ownerLabel: DEMO_PEER_NAME,
       rawRequest: nl
-        ? "Praktische waarde vóór de piek — checklist en LinkedIn voor eigenaren van installatiebedrijven."
-        : "Practical value before the rush — checklist and LinkedIn for installation company owners.",
+        ? "Praktische waarde vóór Q4 — checklist en LinkedIn voor MKB-directeuren."
+        : "Practical value before Q4 — checklist and LinkedIn for SMB executives.",
       origin: "recommendation",
       campaignSetup: {
         description: nl
@@ -423,8 +389,8 @@ function projects(
         selectedChannels: ["linkedin", "email", "blog"],
         selectedDeliverables: ["social_post", "email", "blog_article"],
         targetAudience: nl
-          ? "Eigenaren van installatiebedrijven (10–50 monteurs)"
-          : "Installation company owners (10–50 engineers)",
+          ? "MKB-directeuren (10–200 medewerkers)"
+          : "SMB executives (10–200 employees)",
         startDate: iso(now, -14, 9).slice(0, 10),
         endDate: iso(now, 45, 9).slice(0, 10),
         timingDecision: "dated",
@@ -456,14 +422,14 @@ const DRAFT_SEEDS: Record<string, DraftSeed[]> = {
   "camp-heatpump": [
     {
       id: "draft-hp-email",
-      ref: "heatpump/acq-email",
+      ref: "launch/acq-email",
       title: {
-        nl: "Acquisition e-mail — warmtepompseizoen",
-        en: "Acquisition email — heat pump season",
+        nl: "Acquisition e-mail — AI-werkplek",
+        en: "Acquisition email — AI workspace",
       },
       body: {
-        nl: "From: Emma @ Veldwerk <emma@veldwerk.nl>\nTo: Eigenaren van installatiebedrijven (10–50 monteurs)\nSubject: Vóór het warmtepompseizoen begint\nPreheader: Zes dingen die je in september al regelt\nCTA: Bekijk de checklist\n---\nHallo,\n\nElk najaar verdubbelt het aantal klussen. De meeste installateurs die ik spreek wachten tot oktober — en dan is het te laat om je planning om te gooien zonder overtime.\n\nIk heb een korte checklist gemaakt met zes dingen die je nú al kunt regelen: van subsidie-doorlooptijden tot wie op zaterdag de spoedmeldingen oppakt.\n\nGroet,\nEmma",
-        en: "From: Emma @ Veldwerk <emma@veldwerk.nl>\nTo: Installation company owners (10–50 engineers)\nSubject: Before heat pump season starts\nPreheader: Six things to settle in September\nCTA: View the checklist\n---\nHi,\n\nEvery autumn the job count doubles. Most installers I speak to wait until October — then it is too late to reshuffle the schedule without overtime.\n\nI put together a short checklist of six things you can settle now: from subsidy paperwork lead times to who takes emergency calls on a Saturday.\n\nBest,\nEmma",
+        nl: "From: Emma @ Peergent <emma@peergent.com>\nTo: MKB-directeuren\nSubject: Vóór Q4 begint\nPreheader: Vijf dingen die je nú al kunt regelen\nCTA: Bekijk de checklist\n---\nHallo,\n\nQ4 is budgetseizoen. De meeste teams die ik spreek wachten tot oktober — en dan is het te laat om je AI-werkplek serieus te positioneren.\n\nIk heb een korte checklist gemaakt met vijf dingen die je nú al kunt regelen.\n\nGroet,\nEmma",
+        en: "From: Emma @ Peergent <emma@peergent.com>\nTo: SMB executives\nSubject: Before Q4 starts\nPreheader: Five things to settle now\nCTA: View the checklist\n---\nHi,\n\nQ4 is budget season. Most teams I speak to wait until October — then it is too late to position an AI workspace seriously.\n\nI put together a short checklist of five things you can settle now.\n\nBest,\nEmma",
       },
       contentType: "newsletter",
       channel: "email",
@@ -476,34 +442,34 @@ const DRAFT_SEEDS: Record<string, DraftSeed[]> = {
     },
     {
       id: "draft-hp-1",
-      ref: "heatpump/li-1",
+      ref: "launch/li-1",
       title: {
-        nl: "Elk najaar dezelfde piek",
-        en: "Every autumn the same crunch",
+        nl: "Q4 begint altijd te vroeg",
+        en: "Q4 always starts too soon",
       },
       body: {
-        nl: "Het warmtepompseizoen verdubbelt het aantal klussen en niemand neemt voor drie maanden een tweede planner aan. Dit is wat dat met een planning doet, en wat je nu al kunt besluiten.",
-        en: "Heat pump season doubles the job count and nobody hires a second planner for three months. Here is what that does to a schedule, and what you can decide now.",
+        nl: "Budgetseizoen komt sneller dan je denkt — en niemand neemt drie maanden een extra planner aan. Dit is wat dat betekent voor je marketingteam, en wat je nu al kunt besluiten.",
+        en: "Budget season arrives faster than you think — and nobody hires extra planners for three months. Here is what that means for your marketing team, and what you can decide now.",
       },
       contentType: "linkedin_post",
       channel: "linkedin",
       status: "ready_for_review",
       daysAgo: 2,
       objective: {
-        nl: "Installateurs bereiken vóór de piek, niet tijdens.",
-        en: "Catch installers before the rush, not during it.",
+        nl: "MKB-directeuren bereiken vóór Q4, niet tijdens.",
+        en: "Reach SMB executives before Q4, not during it.",
       },
     },
     {
       id: "draft-hp-2",
-      ref: "heatpump/news-1",
+      ref: "launch/news-1",
       title: {
-        nl: "Voor de warmtepompdrukte: een checklist voor je planning",
-        en: "Before the heat pump rush: a planning checklist",
+        nl: "Vóór Q4: een checklist voor je AI-werkplek",
+        en: "Before Q4: a checklist for your AI workspace",
       },
       body: {
-        nl: "Zes dingen die je in september beter regelt, van doorlooptijden voor subsidiepapieren tot wie op zaterdag de spoedmeldingen oppakt.",
-        en: "Six things worth settling in September, from subsidy paperwork lead times to who takes the emergency calls on a Saturday.",
+        nl: "Vijf dingen die je in september beter regelt, van teamcontext tot wie campagnes goedkeurt.",
+        en: "Five things worth settling in September, from team context to who approves campaigns.",
       },
       contentType: "newsletter",
       channel: "newsletter",
@@ -529,14 +495,14 @@ function drafts(now: Date, locale: DemoLocale): MarketingContentDraft[] {
       channel: seed.channel,
       objective: seed.objective[locale],
       targetAudience: nl
-        ? "Eigenaren van installatiebedrijven"
-        : "Installation company owners",
+        ? "MKB-directeuren"
+        : "SMB executives",
       title: seed.title[locale],
       body: seed.body[locale],
       callToAction: nl
-        ? "Bekijk hoe een inrichting van vijf dagen verloopt"
-        : "See how a five-day onboarding runs",
-      keywords: ["planningssoftware", "installatiebedrijf", "onboarding"],
+        ? "Bekijk hoe een Peergent-pilot verloopt"
+        : "See how a Peergent pilot runs",
+      keywords: ["ai-werkplek", "marketing", "peergent"],
       rationale: {
         why: nl
           ? "Begint met de tijd tot live, de claim die geen enkele concurrent bestrijdt."
@@ -589,8 +555,8 @@ function workUnits(now: Date, peerId: string, locale: DemoLocale): WorkUnit[] {
         channel: seed.channel,
         objective: seed.objective[locale],
         audience: nl
-          ? "Eigenaren van installatiebedrijven"
-          : "Installation company owners",
+          ? "MKB-directeuren"
+          : "SMB executives",
         needsVisual: seed.contentType === "linkedin_post",
         recurrence: "once",
         automationTrigger: null,
@@ -911,7 +877,7 @@ function activityFeed(now: Date, locale: DemoLocale): ActivityFeedItem[] {
       id: "act-2",
       timestamp: iso(now, -1, 10),
       activityType: "draft_generated",
-      title: nl ? "Strategie voor warmtepompseizoen vastgelegd" : "Heat pump season strategy recorded",
+      title: nl ? "Strategie voor AI-werkplek vastgelegd" : "AI workspace strategy recorded",
       description: nl
         ? "Emma koos LinkedIn, e-mail en nieuwsbrief op basis van concurrentie en timing."
         : "Emma chose LinkedIn, email, and newsletter based on competition and timing.",
@@ -921,7 +887,7 @@ function activityFeed(now: Date, locale: DemoLocale): ActivityFeedItem[] {
       id: "act-3",
       timestamp: iso(now, 0, 9),
       activityType: "draft_generated",
-      title: nl ? "Deliverables voor warmtepompseizoen gemaakt" : "Heat pump season deliverables created",
+      title: nl ? "Deliverables voor AI-werkplek gemaakt" : "AI workspace deliverables created",
       description: nl
         ? "Drie stukken staan klaar voor jouw review."
         : "Three pieces are ready for your review.",
@@ -933,8 +899,8 @@ function activityFeed(now: Date, locale: DemoLocale): ActivityFeedItem[] {
       activityType: "strategy_completed",
       title: nl ? "Campagnestrategie gestart — automatische modus" : "Campaign strategy started — automatic mode",
       description: nl
-        ? "Doel: installateurs bereiken vóór de najaarspiek."
-        : "Goal: reach installers before the autumn rush.",
+        ? "Doel: MKB-directeuren bereiken vóór Q4."
+        : "Goal: reach SMB executives before Q4.",
       relatedObject: "heatpump/start",
     },
   ];
@@ -949,7 +915,7 @@ export type DemoWorkspaceOptions = {
   /** Injected by tests so date-derived output stays deterministic. */
   now?: Date;
   /**
-   * Defaults to Dutch: Veldwerk is a Dutch company selling to Dutch installers,
+   * Defaults to Dutch: Peergent is positioned for Benelux SMB teams.
    * and the app's own locale is Dutch. English is kept for demos abroad.
    */
   locale?: DemoLocale;
@@ -981,7 +947,7 @@ export function buildDemoDomainInput(
     organizationId: undefined,
     userName: options.userName ?? "there",
     peerName: DEMO_PEER_NAME,
-    campaignTitle: locale === "nl" ? "Klaar voor het warmtepompseizoen" : "Heat pump season readiness",
+    campaignTitle: locale === "nl" ? "AI-werkplek lanceren" : "Launch AI workspace awareness",
     generating: null,
     generatingActivity: null,
     understanding: understanding(now, locale),

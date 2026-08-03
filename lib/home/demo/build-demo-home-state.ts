@@ -103,7 +103,7 @@ export function buildDemoHomeState(input?: {
     canonicalPeers: peers,
     copy,
     retry: () => undefined,
-    previewBanner: locale === "nl" ? "Demo — Veldwerk" : "Demo — Veldwerk",
+    previewBanner: locale === "nl" ? "Demo — Peergent" : "Demo — Peergent",
     inboxCount: viewModel.needsYou.length,
   };
 }

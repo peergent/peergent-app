@@ -539,6 +539,7 @@ export function buildCampaignWorkflowViewModel(input: {
   const steps: CampaignWorkflowStep[] = STEP_ORDER.map((stepId) => {
     const evidence = buildCampaignStepEvidence({
       stepId,
+      peerId,
       project,
       domainInput,
       locale: input.locale,

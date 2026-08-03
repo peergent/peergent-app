@@ -8,13 +8,11 @@ import {
 import { buildStructuredStrategyEvidence } from "./build-structured-strategy-evidence";
 import { generateSimulatedCopy } from "./generate-campaign-simulation";
 import { readDemoCampaignOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
-import type { CampaignEvidenceSection, CampaignWorkflowStepId } from "./workflow-types";
+import { buildBrainStepEvidence } from "@/lib/brain/integration/build-brain-step-evidence";
+import type { EvidenceBundle } from "./build-campaign-workflow-evidence-types";
+import type { CampaignWorkflowStepId } from "./workflow-types";
 
-type EvidenceBundle = {
-  title: string;
-  intro?: string;
-  sections: readonly CampaignEvidenceSection[];
-};
+export type { EvidenceBundle } from "./build-campaign-workflow-evidence-types";
 
 function isNl(locale?: string | null): boolean {
   return locale === "nl";
@@ -43,13 +41,33 @@ function dedupeItems(items: string[], exclude: Set<string>): string[] {
  */
 export function buildCampaignStepEvidence(input: {
   stepId: CampaignWorkflowStepId;
+  peerId?: string;
   project: MarketingProject;
   domainInput: MarketingPeerDomainInput;
   locale?: string | null;
 }): EvidenceBundle | null {
   const { stepId, project, domainInput } = input;
+  const peerId = input.peerId ?? project.peerId;
   const nl = isNl(input.locale);
   const ctx = resolveContext(project, domainInput);
+
+  if (stepId === "business_analyzed" || stepId === "website_analyzed") {
+    if (stepId === "website_analyzed" && ctx.websiteState === "skipped") {
+      // Keep explicit skipped UX — brain path does not apply.
+    } else {
+      const brainEvidence = buildBrainStepEvidence({
+        stepId,
+        peerId,
+        project,
+        domainInput,
+        locale: input.locale,
+      });
+      if (brainEvidence) return brainEvidence;
+      if (stepId === "business_analyzed" && ctx.companyContextState === "missing") return null;
+      if (stepId === "website_analyzed" && ctx.websiteState === "missing") return null;
+    }
+  }
+
   const seed = isSeedCampaign(project.id);
   const understanding = domainInput.understanding;
   const setup = project.campaignSetup;
