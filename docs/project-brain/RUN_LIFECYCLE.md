@@ -1,28 +1,54 @@
-# Run lifecycle
+# Run Lifecycle
 
-## BrainRun statuses
+Sprint 4 implements strict runtime lifecycle with explicit transitions.
+
+## Status flow
+
+```
+queued
+  ↓
+gathering_context
+  ↓
+ready
+  ↓
+running
+  ↓
+completed
+```
+
+## Branches
 
 | Status | Meaning |
 |--------|---------|
-| `queued` | Accepted, not started |
-| `gathering_context` | Assembling BrainSnapshot |
-| `ready` | Context complete, awaiting execution |
-| `running` | Capability in progress |
-| `waiting_for_input` | Blocked on user input |
-| `waiting_for_approval` | Blocked on approval |
-| `completed` | Success |
-| `partial` | Some outputs, some failures |
+| `waiting_for_input` | Insufficient readiness — customer must supply context |
+| `waiting_for_approval` | Policy requires approval before action proposals proceed |
+| `blocked` | Policy or budget block |
+| `partial` | Capability ran with incomplete context |
 | `failed` | Terminal failure |
 | `cancelled` | User or system cancelled |
-| `blocked` | Policy or dependency block |
 
-## Metadata
+## Transition rules
 
-Each `BrainRun` includes:
+Illegal transitions throw `BrainRunTransitionError`.
 
-- `traceId`, `parentRunId`, `childRunIds` — distributed tracing
-- `usage` — token placeholders (no provider in Sprint 1)
-- `budget` — run budget caps
-- `provider` — provider id placeholder
+Examples:
+- `queued` → `gathering_context` ✓
+- `running` → `completed` ✓
+- `completed` → `running` ✗
 
-Sprint 1 defines types only; no run executor yet.
+Use `assertValidTransition(from, to)` to validate.
+
+## Run metadata
+
+Each `BrainRunRecord` includes:
+- Identity: `id`, `traceId`, `parentRunId`, `childRunIds`
+- Scope: `organizationId`, `peerId`, `campaignId`, `environment`, `capabilityId`
+- Runtime: `status`, `usage`, `budget`
+- Audit refs: `contextHash`, `snapshotVersion`, `policyDecision`, `outputId`
+
+## Resume and cancel
+
+- **Resume:** `waiting_for_input` or `waiting_for_approval` → re-execute
+- **Cancel:** any non-terminal status → `cancelled`
+
+Sprint 1 defined types; Sprint 4 implements the state machine in `lib/brain/runtime/state-machine.ts`.

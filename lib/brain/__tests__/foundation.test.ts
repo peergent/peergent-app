@@ -239,10 +239,17 @@ describe("Project Brain foundation", () => {
     });
 
     it("returns deterministic demo output in demo environment", async () => {
+      const { buildPeergentCompanyProfile } = await import("@/lib/brain/demo/peergent-company-profile");
+      const { buildCompanySnapshot } = await import("@/lib/brain/company/snapshot-builder");
       const provider = createDemoBrainProvider();
+      const profile = buildPeergentCompanyProfile("en");
+      const { snapshot: companySnapshot } = buildCompanySnapshot({
+        organizationId: profile.organizationId,
+        companyProfile: profile,
+      });
       const output = await provider.execute({
         context: {
-          organizationId: "org-demo",
+          organizationId: profile.organizationId,
           peerId: "demo",
           environment: "demo",
           actorId: "demo-user",
@@ -252,6 +259,7 @@ describe("Project Brain foundation", () => {
         },
         snapshot: emptyBrainSnapshot("2026-08-01T00:00:00.000Z"),
         capabilityId: "strategy",
+        companySnapshot,
       });
       expect(output.findings[0]?.provenance[0]?.kind).toBe("demo_fixture");
       expect(getBrainCapability("strategy").version).toBe(output.capabilityVersion);

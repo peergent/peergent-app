@@ -3,50 +3,59 @@ import type { BrainRunContext } from "../context/run-context";
 import type { BrainSnapshot } from "../context/snapshot";
 import type { BrainCapabilityId } from "../capabilities/registry";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
+import type { CompanySnapshot } from "../company/snapshot";
 import { assertDemoEnvironmentOnly } from "../context/resolve-environment";
 import { getBrainCapability } from "../capabilities/registry";
 import { emptyBrainStructuredOutput } from "../evidence/structured-output";
 import { executeCompanyUnderstanding } from "../capabilities/company-understanding";
 import { executeWebsiteUnderstanding } from "../capabilities/website-understanding";
-import { buildPeergentCompanyProfile } from "./peergent-company-profile";
-import { buildCompanySnapshot } from "../company/snapshot-builder";
-import { getDemoWebsiteSnapshot, seedPeergentDemoWebsiteSnapshotSync } from "./demo-intelligence-store";
+
+type ProviderInput = {
+  context: BrainRunContext;
+  snapshot: BrainSnapshot;
+  capabilityId: BrainCapabilityId;
+  companySnapshot?: CompanySnapshot;
+};
 
 /**
  * Deterministic demo provider — same runtime, demo adapter only.
- * Uses Peergent company profile and simulated website snapshots.
+ * Uses assembled company snapshot from runtime context assembly.
  */
 export class DemoBrainCapabilityProvider implements BrainCapabilityProvider {
   readonly id = "demo";
 
-  async execute(input: {
-    context: BrainRunContext;
-    snapshot: BrainSnapshot;
-    capabilityId: BrainCapabilityId;
-  }): Promise<BrainStructuredOutput> {
+  executeSync(input: ProviderInput): BrainStructuredOutput {
     assertDemoEnvironmentOnly(input.context.environment);
 
     const def = getBrainCapability(input.capabilityId);
     const generatedAt = new Date().toISOString();
     const locale = input.context.locale === "nl" ? "nl" : "en";
+    const companySnapshot = input.companySnapshot;
 
-    const companyProfile = buildPeergentCompanyProfile(locale, generatedAt);
-    const websiteSnapshot =
-      getDemoWebsiteSnapshot(companyProfile.organizationId) ?? seedPeergentDemoWebsiteSnapshotSync();
-
-    const { snapshot: companySnapshot } = buildCompanySnapshot({
-      organizationId: companyProfile.organizationId,
-      companyProfile,
-      websiteSnapshot,
-      assembledAt: generatedAt,
-    });
+    if (!companySnapshot) {
+      return {
+        ...emptyBrainStructuredOutput(input.capabilityId, def.version, generatedAt),
+        warnings: [
+          {
+            id: "warn-no-company-snapshot",
+            code: "insufficient_company_context",
+            message: "No company snapshot available for demo execution.",
+            provenance: [{ kind: "demo_fixture", refId: input.context.organizationId }],
+          },
+        ],
+      };
+    }
 
     if (input.capabilityId === "company_understanding") {
       return executeCompanyUnderstanding({ companySnapshot, locale });
     }
 
     if (input.capabilityId === "website_understanding") {
-      return executeWebsiteUnderstanding({ companySnapshot, websiteSnapshot, locale });
+      return executeWebsiteUnderstanding({
+        companySnapshot,
+        websiteSnapshot: companySnapshot.website ?? undefined,
+        locale,
+      });
     }
 
     return {
@@ -68,6 +77,10 @@ export class DemoBrainCapabilityProvider implements BrainCapabilityProvider {
         },
       ],
     };
+  }
+
+  async execute(input: ProviderInput): Promise<BrainStructuredOutput> {
+    return this.executeSync(input);
   }
 }
 

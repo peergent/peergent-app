@@ -12,6 +12,8 @@ Sprint 2 adds **Company & Website Intelligence** (profiles, snapshots, capabilit
 
 Sprint 3 adds **Context Assembly** — one canonical Company Snapshot via `CompanyContextAssembler`.
 
+Sprint 4 adds **Brain Runtime** — provider-neutral capability execution orchestrator.
+
 ## Package location
 
 ```
@@ -56,6 +58,11 @@ Brain orchestrates and structures output; upstream systems remain authoritative.
 | [READINESS.md](./READINESS.md) | Readiness scoring and missing information |
 | [WEBSITE_EXECUTION.md](./WEBSITE_EXECUTION.md) | Website scan executor and providers |
 | [DEPENDENCY_GRAPH.md](./DEPENDENCY_GRAPH.md) | Invalidation cascade and context hashes |
+| [RUNTIME.md](./RUNTIME.md) | BrainRuntime orchestrator |
+| [CAPABILITY_EXECUTION.md](./CAPABILITY_EXECUTION.md) | How capabilities execute through runtime |
+| [CONTEXT_PROJECTION.md](./CONTEXT_PROJECTION.md) | Slice projection and cache keys |
+| [RUNTIME_SECURITY.md](./RUNTIME_SECURITY.md) | Isolation and audit security |
+| [RUNTIME_ERRORS.md](./RUNTIME_ERRORS.md) | Runtime error catalog |
 | [ROADMAP.md](./ROADMAP.md) | Sprint 2+ direction |
 
 ## Office migration shims

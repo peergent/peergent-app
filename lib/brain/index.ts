@@ -294,3 +294,76 @@ export type {
   CacheInvalidationTrigger,
 } from "./change-detection/contracts";
 export { WEBSITE_CHANGE_AFFECTED_CAPABILITIES } from "./change-detection/contracts";
+
+/* Sprint 4 — Brain Runtime */
+
+export type { BrainRunRequest, BrainRuntimeBudgetLimits, BrainRunRequestWithBudget } from "./runtime/run-request";
+export type { BrainRunResult, BrainRunSubmitResult } from "./runtime/run-result";
+export type { BrainRuntimeDeps } from "./runtime/brain-runtime";
+export { BrainRuntime, createBrainRuntime } from "./runtime/brain-runtime";
+
+export {
+  BrainRuntimeError,
+  BrainRunTransitionError,
+  BrainRunNotFoundError,
+  BrainRunBudgetExceededError,
+  BrainRunReadinessError,
+  BrainOutputValidationError,
+  BrainRunIsolationError,
+} from "./runtime/errors";
+
+export { assertValidTransition, canTransition, transitionStatus } from "./runtime/state-machine";
+
+export type {
+  BrainRunRecord,
+  BrainRunRepository,
+  BrainOutputRepository,
+  BrainAuditRepository,
+  BrainIdempotencyRepository,
+} from "./runtime/repositories/contracts";
+export { InMemoryBrainRunRepository } from "./runtime/repositories/in-memory-run-repository";
+export { InMemoryBrainOutputRepository } from "./runtime/repositories/in-memory-output-repository";
+export { InMemoryBrainAuditRepository } from "./runtime/repositories/in-memory-audit-repository";
+export { InMemoryBrainIdempotencyRepository } from "./runtime/repositories/in-memory-idempotency-repository";
+
+export type { CapabilityExecutionRequirements, ReadinessGateResult } from "./runtime/readiness-gate";
+export {
+  getCapabilityExecutionRequirements,
+  evaluateReadinessGate,
+  capabilityContextSlices,
+} from "./runtime/readiness-gate";
+
+export type { ProjectedBrainContext } from "./runtime/context-projection";
+export { projectBrainContext, buildCacheKeyParts } from "./runtime/context-projection";
+
+export type { BudgetValidationResult } from "./runtime/budget-validator";
+export {
+  validateRuntimeBudget,
+  assertBudgetAllowed,
+  createRunBudget,
+  recordZeroProviderUsage,
+} from "./runtime/budget-validator";
+
+export {
+  validateBrainStructuredOutput,
+  assertValidBrainOutput,
+  outputHasCustomerExplanation,
+} from "./runtime/output-validator";
+
+export type { ProviderSelectionResult } from "./runtime/provider-selector";
+export { selectBrainProvider } from "./runtime/provider-selector";
+
+export type { BrainRunAuditMetadata } from "./runtime/audit-builder";
+export { buildRunAuditRecord, buildRunAuditMetadata } from "./runtime/audit-builder";
+
+export {
+  createDefaultBrainRuntime,
+  getDefaultBrainRuntime,
+  resetDefaultBrainRuntime,
+  createBrainRuntimeWithAssembly,
+} from "./integration/brain-runtime-factory";
+
+export {
+  executeBrainForWorkflowStep,
+  executeBrainForWorkflowStepSync,
+} from "./integration/execute-brain-for-workflow-step";
