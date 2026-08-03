@@ -1,7 +1,15 @@
-import type { BrainRunBudget } from "./run-lifecycle";
+import type { BrainRunBudget, BrainUsageMetadata } from "./run-lifecycle";
 import type { BrainRuntimeBudgetLimits } from "./run-request";
 import type { BrainContextProjection } from "../providers/token-strategy";
 import { BrainRunBudgetExceededError } from "./errors";
+
+export type ProviderUsageRecord = {
+  providerId: string;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostCents: number;
+  cacheHit: boolean;
+};
 
 export type BudgetValidationResult = {
   allowed: boolean;
@@ -69,18 +77,26 @@ export function createRunBudget(limits?: BrainRuntimeBudgetLimits): BrainRunBudg
 }
 
 /** Deterministic providers record zero cost honestly. */
-export function recordZeroProviderUsage(providerId: string): {
-  providerId: string;
-  inputTokens: number;
-  outputTokens: number;
-  estimatedCostCents: number;
-  cacheHit: boolean;
-} {
+export function recordZeroProviderUsage(providerId: string): ProviderUsageRecord {
   return {
     providerId,
     inputTokens: 0,
     outputTokens: 0,
     estimatedCostCents: 0,
     cacheHit: false,
+  };
+}
+
+/** Records LLM provider usage from runtime metadata. */
+export function recordProviderUsage(
+  providerId: string,
+  metadata: BrainUsageMetadata
+): ProviderUsageRecord {
+  return {
+    providerId: metadata.providerId ?? providerId,
+    inputTokens: metadata.inputTokens ?? 0,
+    outputTokens: metadata.outputTokens ?? 0,
+    estimatedCostCents: metadata.estimatedCostCents ?? 0,
+    cacheHit: metadata.cacheHit ?? false,
   };
 }

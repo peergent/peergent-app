@@ -24,9 +24,11 @@ import { BrainRunNotFoundError, BrainRuntimeError } from "./errors";
 import {
   assertBudgetAllowed,
   createRunBudget,
+  recordProviderUsage,
   recordZeroProviderUsage,
   validateRuntimeBudget,
 } from "./budget-validator";
+import { isBrainProviderWithUsage } from "../providers/llm-brain-provider";
 import {
   capabilityContextSlices,
   evaluateReadinessGate,
@@ -549,7 +551,13 @@ export class BrainRuntime {
       }
     }
 
-    const usage = recordZeroProviderUsage(provider.id);
+    let usage = recordZeroProviderUsage(provider.id);
+    if (isBrainProviderWithUsage(provider)) {
+      const llmUsage = provider.consumeLastUsage();
+      if (llmUsage) {
+        usage = recordProviderUsage(provider.id, llmUsage);
+      }
+    }
     usage.cacheHit = cacheHit;
 
     let finalStatus = readinessGate.partial ? "partial" : "completed";
@@ -662,6 +670,7 @@ export class BrainRuntime {
       capabilityId: input.capabilityId,
       companySnapshot: input.projected.companySnapshot,
       executionContext,
+      projection: input.projected.projection,
     });
     return this.finalizeProviderOutput(raw, input.capabilityId, input.request.upstreamOutputs);
   }
@@ -684,6 +693,7 @@ export class BrainRuntime {
       capabilityId: input.capabilityId,
       companySnapshot: input.projected.companySnapshot,
       executionContext,
+      projection: input.projected.projection,
     });
     const validationIssues = validateBrainStructuredOutput(raw);
     if (validationIssues.length > 0) {

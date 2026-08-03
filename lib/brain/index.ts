@@ -466,3 +466,32 @@ export {
   getPersistentOutputLineage,
   toCustomerSafeRunSummary,
 } from "./admin/persistence-read-models";
+
+/* Sprint 7 — Generic LLM layer */
+
+export { isBrainUseOpenAIEnabled, BRAIN_FEATURE_FLAGS } from "./config/brain-feature-flags";
+export { createLlmBrainProvider, isBrainProviderWithUsage } from "./providers/llm-brain-provider";
+export { createBrainLlmClient } from "./llm/client";
+export { createLlmRequest } from "./llm/request";
+export { strategyPromptBuilder, StrategyPromptBuilder } from "./prompts/strategy-prompt-builder";
+export { buildStrategyProjectedContext } from "./prompts/projected-context";
+export {
+  validateStrategyLlmPayload,
+  mapStrategyPayloadToBrainOutput,
+} from "./llm/response-validator";
+export {
+  registerBrainLlmProvider,
+  getBrainLlmProvider,
+  getDefaultBrainLlmProvider,
+  resetBrainLlmProviderRegistry,
+} from "./llm/provider-registry";
+export { resetPromptContextCache } from "./llm/prompt-cache";
+export { recordProviderUsage } from "./runtime/budget-validator";
+export type { BrainLlmProvider } from "./llm/provider";
+export type { BrainLlmRequest, BrainLlmResponse, BrainLlmUsage } from "./llm/types";
+export {
+  BrainLlmError,
+  BrainLlmValidationError,
+  BrainLlmParseError,
+  BrainLlmMissingKeyError,
+} from "./llm/errors";

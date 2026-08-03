@@ -127,6 +127,7 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "high",
     freshnessPolicy: "always_fresh",
     cacheable: false,
+    providerSupport: ["deterministic", "llm"],
   }),
   withDeps({
     id: "channel_planning",
