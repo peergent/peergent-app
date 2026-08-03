@@ -4,6 +4,7 @@ import type { BrainCapabilityId } from "../capabilities/registry";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
 
 import type { CompanySnapshot } from "../company/snapshot";
+import type { CapabilityExecutionContext } from "../capabilities/execution-context";
 
 /** Provider contract — Sprint 1 has no AI implementations. */
 export interface BrainCapabilityProvider {
@@ -13,12 +14,13 @@ export interface BrainCapabilityProvider {
     snapshot: BrainSnapshot;
     capabilityId: BrainCapabilityId;
     companySnapshot?: CompanySnapshot;
+    executionContext?: CapabilityExecutionContext;
   }): Promise<BrainStructuredOutput>;
-  /** Optional synchronous path for deterministic demo providers. */
   executeSync?(input: {
     context: BrainRunContext;
     snapshot: BrainSnapshot;
     capabilityId: BrainCapabilityId;
     companySnapshot?: CompanySnapshot;
+    executionContext?: CapabilityExecutionContext;
   }): BrainStructuredOutput;
 }

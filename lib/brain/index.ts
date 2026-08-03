@@ -366,4 +366,36 @@ export {
 export {
   executeBrainForWorkflowStep,
   executeBrainForWorkflowStepSync,
+  primaryCapabilityForWorkflowStep,
 } from "./integration/execute-brain-for-workflow-step";
+
+export type { CapabilityExecutionContext, DemoPerformanceMetric, CapabilityExecutionResult } from "./capabilities/execution-context";
+export {
+  CAPABILITY_DEPENDENCIES,
+  CAPABILITY_OPTIONAL_DEPENDENCIES,
+  getCapabilityDependencies,
+  resolveCapabilityExecutionOrder,
+  validateCapabilityDependencyGraphAcyclic,
+  dependentsOf,
+} from "./capabilities/capability-dependencies";
+export { executeBrandUnderstanding } from "./capabilities/brand-understanding";
+export { executeCompetitorUnderstanding } from "./capabilities/competitor-understanding";
+export { executeStrategy } from "./capabilities/strategy";
+export { executeChannelPlanning } from "./capabilities/channel-planning";
+export { executeCreativeGeneration } from "./capabilities/creative-generation";
+export { executePerformanceInterpretation } from "./capabilities/performance-interpretation";
+export { executeOptimization } from "./capabilities/optimization";
+export {
+  buildCapabilityExecutionContext,
+  hashUpstreamOutputVersions,
+} from "./integration/build-capability-execution-context";
+export {
+  validateCapabilityOutputQuality,
+  collapseDuplicateFindings,
+} from "./capabilities/shared/output-quality";
+export type { CapabilityInspectionReadModel, CapabilityDependencyStatus } from "./admin/capability-read-models";
+export {
+  buildCapabilityInspectionReadModel,
+  listCapabilityInspectionReadModels,
+  staleDependentsForCapability,
+} from "./admin/capability-read-models";

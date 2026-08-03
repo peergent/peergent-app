@@ -1,5 +1,6 @@
 import type { BrainEnvironment } from "../domain/environment";
 import type { BrainSnapshot } from "../context/snapshot";
+import { CAPABILITY_DEPENDENCIES } from "./capability-dependencies";
 
 /** Snapshot slice keys capabilities may require or optionally consume. */
 export type BrainSnapshotSliceKey = keyof Omit<
@@ -32,16 +33,30 @@ export type BrainCapabilityDefinition = {
   version: string;
   requiredContext: readonly BrainSnapshotSliceKey[];
   optionalContext: readonly BrainSnapshotSliceKey[];
+  dependencies: readonly BrainCapabilityId[];
   outputSchema: string;
   allowedEnvironments: readonly BrainEnvironment[];
   approvalRequirement: BrainApprovalRequirement;
   costClass: BrainCostClass;
   freshnessPolicy: BrainFreshnessPolicy;
   cacheable: boolean;
+  providerSupport: readonly ("deterministic" | "llm")[];
 };
 
+function withDeps(
+  def: Omit<BrainCapabilityDefinition, "dependencies" | "providerSupport"> & {
+    providerSupport?: readonly ("deterministic" | "llm")[];
+  }
+): BrainCapabilityDefinition {
+  return {
+    ...def,
+    dependencies: CAPABILITY_DEPENDENCIES[def.id] ?? [],
+    providerSupport: def.providerSupport ?? ["deterministic"],
+  };
+}
+
 export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] = [
-  {
+  withDeps({
     id: "company_understanding",
     version: "1.0.0",
     requiredContext: ["organization", "business"],
@@ -52,8 +67,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "low",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "website_understanding",
     version: "1.0.0",
     requiredContext: ["website"],
@@ -64,8 +79,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "brand_understanding",
     version: "1.0.0",
     requiredContext: ["brand"],
@@ -76,8 +91,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "low",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "market_understanding",
     version: "1.0.0",
     requiredContext: ["market"],
@@ -88,8 +103,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "competitor_understanding",
     version: "1.0.0",
     requiredContext: ["business"],
@@ -100,8 +115,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "strategy",
     version: "1.0.0",
     requiredContext: ["campaign", "business"],
@@ -112,8 +127,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "high",
     freshnessPolicy: "always_fresh",
     cacheable: false,
-  },
-  {
+  }),
+  withDeps({
     id: "channel_planning",
     version: "1.0.0",
     requiredContext: ["campaign"],
@@ -124,8 +139,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "creative_generation",
     version: "1.0.0",
     requiredContext: ["campaign", "brand"],
@@ -136,8 +151,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "high",
     freshnessPolicy: "always_fresh",
     cacheable: false,
-  },
-  {
+  }),
+  withDeps({
     id: "performance_interpretation",
     version: "1.0.0",
     requiredContext: ["performance", "campaign"],
@@ -148,8 +163,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "low",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "optimization",
     version: "1.0.0",
     requiredContext: ["performance", "campaign"],
@@ -160,8 +175,8 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
-  },
-  {
+  }),
+  withDeps({
     id: "memory",
     version: "1.0.0",
     requiredContext: ["memory", "organization"],
@@ -172,7 +187,7 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "free",
     freshnessPolicy: "immutable",
     cacheable: true,
-  },
+  }),
 ];
 
 const capabilityMap = new Map(

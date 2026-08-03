@@ -68,6 +68,33 @@ export function buildCampaignStepEvidence(input: {
     }
   }
 
+  /** Sprint 5 — runtime-backed evidence with office simulation fallback below. */
+  const brainBackedSteps: CampaignWorkflowStepId[] = [
+    "competitors_analyzed",
+    "strategy_determined",
+    "channels_selected",
+    "deliverables_created",
+    "optimizing",
+  ];
+  if (brainBackedSteps.includes(stepId) && peerId === "demo") {
+    const brainReady =
+      (stepId !== "competitors_analyzed" || ctx.competitorContextState !== "missing") &&
+      (stepId !== "strategy_determined" || ctx.companyContextState !== "missing");
+    if (brainReady) {
+      const brainEvidence = buildBrainStepEvidence({
+        stepId,
+        peerId,
+        project,
+        domainInput,
+        locale: input.locale,
+      });
+      if (brainEvidence && !brainEvidence.sections.some((s) => s.id === "needs-info")) {
+        return brainEvidence;
+      }
+    }
+    // Fallback: office simulation paths below (documented compatibility boundary).
+  }
+
   const seed = isSeedCampaign(project.id);
   const understanding = domainInput.understanding;
   const setup = project.campaignSetup;

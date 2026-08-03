@@ -14,6 +14,8 @@ Sprint 3 adds **Context Assembly** — one canonical Company Snapshot via `Compa
 
 Sprint 4 adds **Brain Runtime** — provider-neutral capability execution orchestrator.
 
+Sprint 5 adds **Marketing Intelligence Capabilities** — seven deterministic capabilities (brand, competitor, strategy, channels, deliverables, performance, optimization) with dependency graph, quality safeguards, and demo orchestration.
+
 ## Package location
 
 ```
@@ -47,6 +49,15 @@ Brain orchestrates and structures output; upstream systems remain authoritative.
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Layers, data flow, migration |
 | [ENVIRONMENTS.md](./ENVIRONMENTS.md) | Live, demo, test separation |
 | [CAPABILITIES.md](./CAPABILITIES.md) | Registry and workflow mapping |
+| [CAPABILITY_DEPENDENCIES.md](./CAPABILITY_DEPENDENCIES.md) | Capability dependency graph |
+| [BRAND_UNDERSTANDING.md](./BRAND_UNDERSTANDING.md) | Brand capability contract |
+| [COMPETITOR_UNDERSTANDING.md](./COMPETITOR_UNDERSTANDING.md) | Competitor capability contract |
+| [CAMPAIGN_STRATEGY.md](./CAMPAIGN_STRATEGY.md) | Strategy capability contract |
+| [CHANNEL_PLANNING.md](./CHANNEL_PLANNING.md) | Channel planning contract |
+| [DELIVERABLE_PLANNING.md](./DELIVERABLE_PLANNING.md) | Deliverable planning contract |
+| [PERFORMANCE_INTERPRETATION.md](./PERFORMANCE_INTERPRETATION.md) | Performance interpretation contract |
+| [OPTIMIZATION_PLANNING.md](./OPTIMIZATION_PLANNING.md) | Optimization planning contract |
+| [TOKEN_PROJECTIONS.md](./TOKEN_PROJECTIONS.md) | Future provider context projections |
 | [RUN_LIFECYCLE.md](./RUN_LIFECYCLE.md) | BrainRun states and metadata |
 | [EVIDENCE.md](./EVIDENCE.md) | Structured output and presentation |
 | [MEMORY.md](./MEMORY.md) | Memory candidate design |

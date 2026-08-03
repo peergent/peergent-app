@@ -1,39 +1,39 @@
-# Capabilities
+# Project Brain — Capabilities (Sprint 5)
 
-Sprint 1 defines a **registry only** — no capability implementations.
+Sprint 5 adds seven deterministic marketing intelligence capabilities. Registry ids map to product names as follows:
 
-## Registered capabilities
+| Registry id | Product name |
+|---|---|
+| `strategy` | Campaign strategy |
+| `creative_generation` | Deliverable planning |
+| `optimization` | Optimization planning |
 
-| ID | Required context | Approval |
-|----|------------------|----------|
-| `company_understanding` | organization, business | none |
-| `website_understanding` | website | none |
-| `brand_understanding` | brand | none |
-| `market_understanding` | market | none |
-| `competitor_understanding` | business | none |
-| `strategy` | campaign, business | before_action |
-| `channel_planning` | campaign | before_action |
-| `creative_generation` | campaign, brand | before_publish |
-| `performance_interpretation` | performance, campaign | none |
-| `optimization` | performance, campaign | before_action |
-| `memory` | memory, organization | none |
+## Architecture
 
-Each definition includes: version, required/optional context slices, output schema, allowed environments, cost class, freshness policy, cacheability.
+- **Composable capabilities** — no monolithic MarketingBrain.
+- Each capability declares required/optional context, dependencies, readiness, version, and output schema.
+- Execution flows through **BrainRuntime** only (request → assembly → readiness → projection → policy → budget → provider → validation → audit).
+- **CapabilityExecutionContext** carries task-specific projection: company snapshot, campaign context, upstream outputs, performance metrics, locale.
 
-## Workflow mapping
+## Implemented capabilities (deterministic)
 
-**One canonical source:** `WORKFLOW_STEP_BRAIN_MODULES` (legacy module ids).
+1. `brand_understanding`
+2. `competitor_understanding`
+3. `strategy` (campaign strategy)
+4. `channel_planning`
+5. `creative_generation` (deliverable planning)
+6. `performance_interpretation`
+7. `optimization` (optimization planning)
 
-Capabilities derive via:
+## What capabilities do not own
 
-```
-WORKFLOW_STEP_BRAIN_MODULES
-  → LEGACY_MODULE_TO_CAPABILITY
-  → WORKFLOW_STEP_CAPABILITIES
-```
+- LLM inference (Sprint 6+)
+- External scraping, publishing, or budget mutation
+- React/Next.js UI state
+- Direct campaign repository access
 
-Use `capabilitiesForWorkflowStep(stepId)` — do not duplicate mappings elsewhere.
+## Provider support
 
-## Module contract
+All Sprint 5 capabilities declare `providerSupport: ["deterministic"]`. Future LLM providers implement the same contracts.
 
-`BrainCapabilityModule.execute({ context, snapshot })` replaces legacy `ProjectBrainModule.analyze()`.
+See per-capability docs and `CAPABILITY_DEPENDENCIES.md`.

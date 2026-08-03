@@ -1,38 +1,26 @@
 # Roadmap
 
-## Sprint 1 (complete)
+## Sprint 1–4 (complete)
 
-- Shared `lib/brain/` package
-- Environment resolution (live / demo / test)
-- BrainRunContext, BrainSnapshot
-- Capability registry + workflow mapping
-- Structured output model + provenance
-- Run lifecycle types
-- Policy, execution pipeline contracts
-- Token strategy, cache, memory design
-- Audit + admin read models
-- Demo provider (deterministic, no AI)
-- Presentation adapter → CampaignEvidenceSection
-- Office migration shims
-- Tests and documentation
+Foundation, company/website intelligence, context assembly, Brain Runtime.
 
-**Not in Sprint 1:** AI providers, scraping, generation, admin UI, run executor.
+## Sprint 5 (complete)
 
-## Sprint 2 (recommended)
+- Seven deterministic marketing capabilities through BrainRuntime
+- Capability dependency graph and orchestration
+- Quality safeguards and provenance extensions
+- Presentation adapters and admin capability read models
+- Marketing Workspace integration (demo peer, with office fallbacks)
+- Comprehensive tests (`capabilities-sprint5.test.ts`)
 
-1. **Context assembly** — wire Context Engine + business-brain + brand-brain into `BrainSnapshot` builder
-2. **Run executor** — queue → gather context → execute capability → audit
-3. **Wire presentation** — connect `presentBrainOutputForCampaign()` to campaign workflow evidence builder (without changing Vision v13 layout)
-4. **Persistent cache** — backing store with org-scoped keys
-5. **First live capability** — e.g. `company_understanding` reading business-brain only (no LLM)
-6. **Admin API** — expose BrainHealth / BrainRunSummary read models
+## Sprint 6 (recommended)
 
-## Sprint 3+
-
-- LLM provider adapter (behind `BrainCapabilityProvider`)
-- Memory persistence and review workflow
-- Cross-peer capability sharing
-- Cost and token telemetry in admin
+1. **LLM provider adapter** — implement `BrainCapabilityProvider` for strategy, brand, competitor with token projections
+2. **Performance slice population** — wire real metrics into `BrainSnapshot.performance`
+3. **Persistent run/output stores** — beyond in-memory repositories
+4. **Memory review workflow** — persist and approve memory candidates
+5. **Live peer brain path** — extend beyond demo-only brain-backed evidence steps
+6. **Admin API** — expose `CapabilityInspectionReadModel`
 
 ## Principles (unchanged)
 

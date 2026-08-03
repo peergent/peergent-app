@@ -6,6 +6,7 @@ import { buildCacheKey } from "../cache/store";
 import { hashContextSlices } from "../providers/token-strategy";
 import { resolveBrainEnvironment } from "../context/resolve-environment";
 import { getBrainCapability } from "../capabilities/registry";
+import type { BrainCapabilityId } from "../capabilities/registry";
 import { evaluateBrainPolicy } from "../policy/approval-policy";
 import type { BrainRunRequestWithBudget } from "./run-request";
 import type { BrainRunRecord } from "./repositories/contracts";
@@ -37,6 +38,11 @@ import {
 import { buildRunAuditMetadata, buildRunAuditRecord } from "./audit-builder";
 import { assertRunOrganizationMatch } from "./repositories/in-memory-run-repository";
 import type { ReadinessDimension } from "../context/readiness";
+import { buildCapabilityExecutionContext, hashUpstreamOutputVersions } from "../integration/build-capability-execution-context";
+import {
+  validateCapabilityOutputQuality,
+  collapseDuplicateFindings,
+} from "../capabilities/shared/output-quality";
 
 export type BrainRuntimeDeps = {
   runRepository: BrainRunRepository;
@@ -273,14 +279,14 @@ export class BrainRuntime {
       throw new BrainRuntimeError("sync_not_supported", "Provider does not support synchronous execution.");
     }
 
-    const output = provider.executeSync({
-      context: runContext,
-      snapshot: projected.snapshot,
+    const output = this.executeProviderSync({
+      provider,
+      runContext,
+      projected,
+      request,
+      assembly,
       capabilityId: request.capabilityId,
-      companySnapshot: projected.companySnapshot,
     });
-
-    assertValidBrainOutput(output);
 
     const usage = recordZeroProviderUsage(provider.id);
     const finalStatus = readinessGate.partial ? "partial" : "completed";
@@ -399,7 +405,7 @@ export class BrainRuntime {
       includeUnknowns: true,
     });
 
-    const { provider, providerClass } = selectBrainProvider({
+    const { provider } = selectBrainProvider({
       environment,
       capabilityId: request.capabilityId,
       providers: this.deps.providers,
@@ -442,7 +448,10 @@ export class BrainRuntime {
       policyDecision: policy.decision,
     });
 
-    const payloadHash = hashContextSlices([request.payloadRefId ?? "none"]);
+    const payloadHash = hashContextSlices([
+      request.payloadRefId ?? "none",
+      hashUpstreamOutputVersions(request.upstreamOutputs),
+    ]);
     const cacheKey = buildCacheKeyParts({
       organizationId: request.organizationId,
       capabilityId: request.capabilityId,
@@ -480,23 +489,14 @@ export class BrainRuntime {
     run = this.transitionRun(run, "running");
 
     if (!output) {
-      output = await provider.execute({
-        context: runContext,
-        snapshot: projected.snapshot,
+      output = await this.executeProviderAsync({
+        provider,
+        runContext,
+        projected,
+        request,
+        assembly,
         capabilityId: request.capabilityId,
-        companySnapshot: projected.companySnapshot,
       });
-
-      const validationIssues = validateBrainStructuredOutput(output);
-      if (validationIssues.length > 0 && providerClass === "demo") {
-        assertValidBrainOutput(output);
-      }
-      if (!outputHasCustomerExplanation(output)) {
-        throw new BrainRuntimeError(
-          "output_missing_explanation",
-          "Output lacks customer-safe explanation."
-        );
-      }
 
       if (capabilityDef.cacheable && !cacheHit) {
         this.deps.cache.set(
@@ -545,6 +545,92 @@ export class BrainRuntime {
       presentation: null,
       cacheHit,
     };
+  }
+
+  private finalizeProviderOutput(
+    output: import("../evidence/structured-output").BrainStructuredOutput,
+    capabilityId: BrainCapabilityId,
+    upstreamOutputs?: Partial<Record<BrainCapabilityId, import("../evidence/structured-output").BrainStructuredOutput>>
+  ): import("../evidence/structured-output").BrainStructuredOutput {
+    let finalized = collapseDuplicateFindings(output);
+    assertValidBrainOutput(finalized);
+
+    const qualityIssues = validateCapabilityOutputQuality({
+      capabilityId,
+      output: finalized,
+      upstreamCapabilityIds: Object.keys(upstreamOutputs ?? {}) as BrainCapabilityId[],
+    });
+    if (qualityIssues.length > 0) {
+      finalized = {
+        ...finalized,
+        warnings: [
+          ...finalized.warnings,
+          ...qualityIssues.map((q, i) => ({
+            id: `quality-${i}`,
+            code: q.code,
+            message: q.message,
+            provenance: [{ kind: "assumption" as const, refId: "quality-check" }],
+          })),
+        ],
+      };
+    }
+
+    if (!outputHasCustomerExplanation(finalized)) {
+      throw new BrainRuntimeError(
+        "output_missing_explanation",
+        "Output lacks customer-safe explanation."
+      );
+    }
+
+    return finalized;
+  }
+
+  private executeProviderSync(input: {
+    provider: BrainCapabilityProvider;
+    runContext: BrainRunContext;
+    projected: ReturnType<typeof projectBrainContext>;
+    request: BrainRunRequestWithBudget;
+    assembly: ContextAssemblyResult;
+    capabilityId: BrainCapabilityId;
+  }): import("../evidence/structured-output").BrainStructuredOutput {
+    const executionContext = buildCapabilityExecutionContext({
+      assembly: input.assembly,
+      request: input.request,
+    });
+    const raw = input.provider.executeSync!({
+      context: input.runContext,
+      snapshot: input.projected.snapshot,
+      capabilityId: input.capabilityId,
+      companySnapshot: input.projected.companySnapshot,
+      executionContext,
+    });
+    return this.finalizeProviderOutput(raw, input.capabilityId, input.request.upstreamOutputs);
+  }
+
+  private async executeProviderAsync(input: {
+    provider: BrainCapabilityProvider;
+    runContext: BrainRunContext;
+    projected: ReturnType<typeof projectBrainContext>;
+    request: BrainRunRequestWithBudget;
+    assembly: ContextAssemblyResult;
+    capabilityId: BrainCapabilityId;
+  }): Promise<import("../evidence/structured-output").BrainStructuredOutput> {
+    const executionContext = buildCapabilityExecutionContext({
+      assembly: input.assembly,
+      request: input.request,
+    });
+    const raw = await input.provider.execute({
+      context: input.runContext,
+      snapshot: input.projected.snapshot,
+      capabilityId: input.capabilityId,
+      companySnapshot: input.projected.companySnapshot,
+      executionContext,
+    });
+    const validationIssues = validateBrainStructuredOutput(raw);
+    if (validationIssues.length > 0) {
+      assertValidBrainOutput(raw);
+    }
+    return this.finalizeProviderOutput(raw, input.capabilityId, input.request.upstreamOutputs);
   }
 
   private transitionRun(

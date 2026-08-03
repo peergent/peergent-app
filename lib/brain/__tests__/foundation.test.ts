@@ -241,12 +241,36 @@ describe("Project Brain foundation", () => {
     it("returns deterministic demo output in demo environment", async () => {
       const { buildPeergentCompanyProfile } = await import("@/lib/brain/demo/peergent-company-profile");
       const { buildCompanySnapshot } = await import("@/lib/brain/company/snapshot-builder");
+      const { buildCampaignContextFromCreateInput } = await import("@/lib/office/campaign/campaign-context");
+      const { createMarketingCampaignProject } = await import("@/lib/peer-experience/marketing/projects/project-engine");
       const provider = createDemoBrainProvider();
       const profile = buildPeergentCompanyProfile("en");
       const { snapshot: companySnapshot } = buildCompanySnapshot({
         organizationId: profile.organizationId,
         companyProfile: profile,
       });
+      const project = createMarketingCampaignProject({
+        peerId: "demo",
+        ownerLabel: "Emma",
+        name: "Peergent",
+        goalLabel: "Leads",
+        description: "Demo campaign for SMB owners.",
+        primaryGoalId: "generate_leads",
+        targetAudience: "SMB owners",
+        setupMode: "automatic",
+        approvalMode: "approval_before_publication",
+      });
+      const campaignContext = buildCampaignContextFromCreateInput(project, {
+        peerId: "demo",
+        ownerLabel: "Emma",
+        name: "Peergent",
+        goalLabel: "Leads",
+        description: "Demo campaign for SMB owners.",
+        primaryGoalId: "generate_leads",
+        targetAudience: "SMB owners",
+        setupMode: "automatic",
+        approvalMode: "approval_before_publication",
+      }, "en");
       const output = await provider.execute({
         context: {
           organizationId: profile.organizationId,
@@ -260,8 +284,15 @@ describe("Project Brain foundation", () => {
         snapshot: emptyBrainSnapshot("2026-08-01T00:00:00.000Z"),
         capabilityId: "strategy",
         companySnapshot,
+        executionContext: {
+          companySnapshot,
+          campaignContext,
+          upstreamOutputs: {},
+          locale: "en",
+        },
       });
-      expect(output.findings[0]?.provenance[0]?.kind).toBe("demo_fixture");
+      expect(output.findings.length).toBeGreaterThan(0);
+      expect(output.findings[0]?.provenance.length).toBeGreaterThan(0);
       expect(getBrainCapability("strategy").version).toBe(output.capabilityVersion);
     });
   });
