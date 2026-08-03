@@ -1,5 +1,5 @@
 /** Freshness state for company profile, website snapshot, brand, market. */
-export type FreshnessState = "fresh" | "stale" | "expired" | "unknown";
+export type FreshnessState = "fresh" | "stale" | "expired" | "invalid" | "unknown";
 
 export type FreshnessMetadata = {
   freshness: FreshnessState;

@@ -10,7 +10,7 @@ import { executeCompanyUnderstanding } from "../capabilities/company-understandi
 import { executeWebsiteUnderstanding } from "../capabilities/website-understanding";
 import { buildPeergentCompanyProfile } from "./peergent-company-profile";
 import { buildCompanySnapshot } from "../company/snapshot-builder";
-import { getDemoWebsiteSnapshot, seedPeergentDemoWebsiteSnapshot } from "./demo-intelligence-store";
+import { getDemoWebsiteSnapshot, seedPeergentDemoWebsiteSnapshotSync } from "./demo-intelligence-store";
 
 /**
  * Deterministic demo provider — same runtime, demo adapter only.
@@ -32,7 +32,7 @@ export class DemoBrainCapabilityProvider implements BrainCapabilityProvider {
 
     const companyProfile = buildPeergentCompanyProfile(locale, generatedAt);
     const websiteSnapshot =
-      getDemoWebsiteSnapshot(companyProfile.organizationId) ?? seedPeergentDemoWebsiteSnapshot();
+      getDemoWebsiteSnapshot(companyProfile.organizationId) ?? seedPeergentDemoWebsiteSnapshotSync();
 
     const { snapshot: companySnapshot } = buildCompanySnapshot({
       organizationId: companyProfile.organizationId,

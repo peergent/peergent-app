@@ -175,7 +175,112 @@ export {
 } from "./demo/demo-intelligence-store";
 
 export { resolveCompanyIntelligence, resolveOrganizationId } from "./integration/resolve-company-intelligence";
-export { buildBrainStepEvidence } from "./integration/build-brain-step-evidence";
+export {
+  resolveCompanyIntelligenceAsync,
+  resolveCompanyIntelligenceLegacy,
+} from "./integration/resolve-company-intelligence";
+export { buildBrainStepEvidence, buildBrainStepEvidenceAsync } from "./integration/build-brain-step-evidence";
+
+/* Sprint 3 — Context Assembly */
+
+export type {
+  ContextAssemblyResult,
+  ContextAssemblyWarning,
+  ContextAssemblyIssue,
+  ContextAssemblyState,
+  ContextAssemblySource,
+} from "./context/assembly-types";
+
+export type { CompanyContextAssemblerInput } from "./context/company-context-assembler";
+export {
+  CompanyContextAssembler,
+  companyContextAssembler,
+  assembleCompanyContext,
+  assembleCompanyContextSync,
+  formatMissingInformationMessage,
+} from "./context/company-context-assembler";
+
+export type {
+  ReadinessDimension,
+  ReadinessScore,
+  ContextReadinessReport,
+} from "./context/readiness";
+export {
+  buildReadinessReport,
+  readinessNeedsMoreInfo,
+  scoreCompanyProfile,
+  scoreWebsite,
+} from "./context/readiness";
+
+export type {
+  MissingInformationPriority,
+  MissingInformationItem,
+} from "./context/missing-information";
+export { detectMissingInformation } from "./context/missing-information";
+
+export type { SnapshotVersionMetadata } from "./context/snapshot-versioning";
+export { buildSnapshotVersionMetadata, bumpSnapshotVersion } from "./context/snapshot-versioning";
+
+export type {
+  ContextAssemblyAuditEntry,
+  ContextAssemblyAuditTrace,
+} from "./context/assembly-audit";
+export { createAssemblyAuditTrace } from "./context/assembly-audit";
+
+export { buildBrainSnapshotFromCompany } from "./context/brain-snapshot-builder";
+export { resolveContextFreshness } from "./context/freshness-resolver";
+
+export type { InvalidationNode, InvalidationEvent, ContextHashSlice } from "./invalidation/dependency-graph";
+export {
+  INVALIDATION_DEPENDENCIES,
+  resolveInvalidationCascade,
+  invalidationForCorrection,
+  createInvalidationEvent,
+  CONTEXT_HASH_SLICES,
+  slicesForInvalidationTrigger,
+} from "./invalidation/dependency-graph";
+
+export type {
+  WebsiteFetchRequest,
+  WebsiteFetchResult,
+  WebsiteExtractionResult,
+  WebsiteNormalizationResult,
+  WebsiteSnapshotResult,
+  WebsiteScanExecutor,
+  WebsiteExecutionPhase,
+} from "./website/execution-types";
+export { WEBSITE_EXECUTION_PHASES } from "./website/execution-types";
+
+export type { WebsiteProvider, WebsiteProviderScanInput } from "./website/providers/website-provider";
+export {
+  DemoWebsiteProvider,
+  createDemoWebsiteProvider,
+  buildDemoWebsiteSnapshotSync,
+} from "./website/providers/demo-website-provider";
+
+export {
+  DemoWebsiteScanExecutor,
+  createDemoWebsiteScanExecutor,
+} from "./website/website-scan-executor";
+
+export {
+  applyCorrectionToListValue,
+  defaultInvalidationsForField,
+} from "./company/corrections";
+
+export {
+  buildAndStoreDemoWebsiteSnapshotSync,
+  seedPeergentDemoWebsiteSnapshotSync,
+} from "./demo/demo-intelligence-store";
+
+export type {
+  CompanyReadinessReadModel,
+  WebsiteFreshnessReadModel,
+  SnapshotVersionReadModel,
+  InvalidationQueueReadModel,
+  CapabilityReadinessReadModel,
+  AssemblyAuditReadModel,
+} from "./admin/assembly-read-models";
 
 export type {
   CompanyHealth,

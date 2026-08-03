@@ -5,7 +5,7 @@ import { resolveFreshness } from "../domain/freshness";
 import type { CompanyProfile } from "./profile";
 import { emptyCompanyProfile } from "./profile";
 import type { CustomerCorrection } from "./corrections";
-import { applyCorrectionToFieldValue } from "./corrections";
+import { applyCorrectionToFieldValue, applyCorrectionToListValue } from "./corrections";
 import { fieldFromValue, fieldFromListValue, winningSource, type CompanyFactSource } from "./source-priority";
 import type { WebsiteSnapshot } from "../website/types";
 import type {
@@ -22,15 +22,25 @@ function applyCorrections(profile: CompanyProfile, corrections?: readonly Custom
   const next = { ...profile };
   for (const correction of corrections) {
     const key = correction.fieldKey as keyof CompanyProfile;
-    if (key === "targetAudiences" && correction.correctedListValue) {
-      next.targetAudiences = {
-        value: correction.correctedListValue,
-        source: "customer_confirmed",
-        lastUpdatedAt: correction.correctedAt,
-        freshness: "fresh",
-        confidence: "high",
-        customerConfirmed: true,
-      };
+    if (key === "targetAudiences") {
+      const listValue = applyCorrectionToListValue(
+        profile.targetAudiences.value,
+        correction.action === "remove" || correction.action === "reject_inference"
+          ? correction
+          : correction.correctedListValue
+            ? correction
+            : undefined
+      );
+      if (correction.correctedListValue || correction.action === "remove" || correction.action === "reject_inference") {
+        next.targetAudiences = {
+          value: listValue,
+          source: "customer_confirmed",
+          lastUpdatedAt: correction.correctedAt,
+          freshness: "fresh",
+          confidence: "high",
+          customerConfirmed: true,
+        };
+      }
       continue;
     }
     const field = next[key];

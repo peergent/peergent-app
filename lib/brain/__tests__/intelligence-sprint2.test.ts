@@ -46,6 +46,7 @@ describe("Project Brain Sprint 2 — Company & Website Intelligence", () => {
         id: "c1",
         organizationId: "org-1",
         fieldKey: "industry",
+        action: "replace",
         correctedValue: "Professional services",
         correctedAt: "2026-08-01T00:00:00.000Z",
         correctedBy: "user-1",
@@ -75,8 +76,8 @@ describe("Project Brain Sprint 2 — Company & Website Intelligence", () => {
       expect(snapshot.findings.every((f) => f.evidence.length > 0)).toBe(true);
     });
 
-    it("stores demo website snapshot on URL add flow", () => {
-      const snapshot = buildAndStoreDemoWebsiteSnapshot({
+    it("stores demo website snapshot on URL add flow", async () => {
+      const snapshot = await buildAndStoreDemoWebsiteSnapshot({
         url: "https://peergent.com",
         companyName: "Peergent",
       });
@@ -164,6 +165,7 @@ describe("Project Brain Sprint 2 — Company & Website Intelligence", () => {
         id: "c-audience",
         organizationId: profile.organizationId,
         fieldKey: "targetAudiences",
+        action: "replace",
         correctedValue: null,
         correctedListValue: ["SMB executives"],
         correctedAt: "2026-08-01T00:00:00.000Z",

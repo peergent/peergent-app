@@ -19,7 +19,7 @@ import {
   type DemoCampaignSimulationBundle,
   type DemoStepApprovalStatus,
 } from "./demo-workflow-simulation";
-import { buildAndStoreDemoWebsiteSnapshot } from "@/lib/brain/demo/demo-intelligence-store";
+import { buildAndStoreDemoWebsiteSnapshotSync } from "@/lib/brain/demo/demo-intelligence-store";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import { computeEndDateFromPreset } from "@/lib/office/campaign/campaign-duration";
 import type {
@@ -521,7 +521,7 @@ export function addDemoWebsiteUrl(peerId: string, projectId: string, url: string
   const ctx = snapshot.campaignContexts[projectId];
   if (!ctx) return;
   const trimmed = url.trim();
-  buildAndStoreDemoWebsiteSnapshot({
+  buildAndStoreDemoWebsiteSnapshotSync({
     url: trimmed,
     companyName: ctx.companyName,
   });

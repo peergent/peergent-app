@@ -8,6 +8,10 @@ Customers never see Brain modules, prompts, reasoning, token usage, or traces. T
 
 Sprint 1 delivers **contracts and architecture only** — no AI providers, scraping, or generation.
 
+Sprint 2 adds **Company & Website Intelligence** (profiles, snapshots, capabilities).
+
+Sprint 3 adds **Context Assembly** — one canonical Company Snapshot via `CompanyContextAssembler`.
+
 ## Package location
 
 ```
@@ -48,6 +52,10 @@ Brain orchestrates and structures output; upstream systems remain authoritative.
 | [APPROVAL.md](./APPROVAL.md) | Policy and Working Agreement integration |
 | [AUDIT.md](./AUDIT.md) | Admin trace model |
 | [COMPANY_INTELLIGENCE.md](./COMPANY_INTELLIGENCE.md) | Company Profile, snapshot builder, source priority |
+| [CONTEXT_ASSEMBLY.md](./CONTEXT_ASSEMBLY.md) | CompanyContextAssembler pipeline |
+| [READINESS.md](./READINESS.md) | Readiness scoring and missing information |
+| [WEBSITE_EXECUTION.md](./WEBSITE_EXECUTION.md) | Website scan executor and providers |
+| [DEPENDENCY_GRAPH.md](./DEPENDENCY_GRAPH.md) | Invalidation cascade and context hashes |
 | [ROADMAP.md](./ROADMAP.md) | Sprint 2+ direction |
 
 ## Office migration shims

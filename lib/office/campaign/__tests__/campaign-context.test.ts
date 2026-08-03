@@ -56,7 +56,7 @@ describe("CampaignContext isolation", () => {
     expect(bundle.stepApprovals.business_analyzed).toBe("approved");
   });
 
-  it("returns null website evidence when website missing", () => {
+  it("returns honest website evidence when website missing", () => {
     const project = createMarketingCampaignProject(peergentInput);
     const domain = buildDemoDomainInput({ locale: "nl" });
     const evidence = buildCampaignStepEvidence({
@@ -65,7 +65,9 @@ describe("CampaignContext isolation", () => {
       domainInput: domain,
       locale: "nl",
     });
-    expect(evidence).toBeNull();
+    expect(evidence).not.toBeNull();
+    expect(evidence?.title).toBe("Websitecontext");
+    expect(evidence?.intro).toContain("website-snapshot");
   });
 
   it("returns null competitor evidence when competitor context missing", () => {
