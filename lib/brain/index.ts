@@ -361,6 +361,7 @@ export {
   getDefaultBrainRuntime,
   resetDefaultBrainRuntime,
   createBrainRuntimeWithAssembly,
+  createLiveBrainRuntime,
 } from "./integration/brain-runtime-factory";
 
 export {
@@ -399,3 +400,69 @@ export {
   listCapabilityInspectionReadModels,
   staleDependentsForCapability,
 } from "./admin/capability-read-models";
+
+/* Sprint 6 — Persistence & Live Integration */
+
+export type {
+  PersistedBrainOutputRecord,
+  PersistedSnapshotRecord,
+  PersistedIdempotencyRecord,
+  PersistedDependencyState,
+  InvalidationQueueItem,
+  PersistedCacheMetadata,
+  PersistedApprovalRecord,
+  BrainRecoveryClassification,
+  BrainRecoveryAssessment,
+  UpstreamOutputResolution,
+  StoredMemoryCandidate,
+} from "./persistence/types";
+
+export type {
+  AsyncBrainRunRepository,
+  AsyncBrainOutputRepository,
+  AsyncBrainAuditRepository,
+  AsyncBrainIdempotencyRepository,
+  BrainSnapshotRepository,
+  CustomerCorrectionRepository,
+  BrainMemoryCandidateRepository,
+  BrainDependencyStateRepository,
+  BrainInvalidationQueueRepository,
+  BrainCacheMetadataRepository,
+  BrainApprovalRepository,
+  AsyncBrainRepositories,
+  RepositoryStorageMode,
+} from "./persistence/contracts";
+
+export {
+  createPersistentInMemoryRepositories,
+  resetPersistentBrainStores,
+} from "./persistence/in-memory-persistent-repositories";
+
+export {
+  createBrainRepositories,
+  assertLiveNeverUsesDemoStorage,
+  assertDemoNeverUsesLiveStorage,
+  resetBrainRepositoryStores,
+  resolveRepositoryStorageMode,
+} from "./persistence/repository-factory";
+
+export type { BrainRepositoryBundle } from "./persistence/repository-factory";
+export { BrainInvalidationService } from "./persistence/invalidation-service";
+export { UpstreamOutputResolver } from "./persistence/upstream-output-resolver";
+export { classifyBrainRunRecovery } from "./persistence/run-recovery";
+export { logBrainOperation } from "./persistence/brain-logger";
+export { assembleLiveCompanyContext } from "./integration/live-company-intelligence";
+export type { LiveCompanyIntelligenceInput } from "./integration/live-company-intelligence";
+
+export {
+  getBrainRunDetail,
+  listBrainRuns,
+  getBrainRuntimeHealth,
+  getCapabilityHealth,
+  getCompanyReadiness,
+  getWebsiteFreshness,
+  listInvalidations,
+  listMemoryCandidates,
+  getPersistentOutputLineage,
+  toCustomerSafeRunSummary,
+} from "./admin/persistence-read-models";

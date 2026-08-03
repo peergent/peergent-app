@@ -1,26 +1,31 @@
 # Roadmap
 
-## Sprint 1–4 (complete)
+## Sprint 1–5 (complete)
 
-Foundation, company/website intelligence, context assembly, Brain Runtime.
+Foundation, company/website intelligence, context assembly, Brain Runtime, seven deterministic marketing capabilities.
 
-## Sprint 5 (complete)
+## Sprint 6 (complete)
 
-- Seven deterministic marketing capabilities through BrainRuntime
-- Capability dependency graph and orchestration
-- Quality safeguards and provenance extensions
-- Presentation adapters and admin capability read models
-- Marketing Workspace integration (demo peer, with office fallbacks)
-- Comprehensive tests (`capabilities-sprint5.test.ts`)
+- Persistent Brain runs, outputs, audit, snapshots, corrections, memory candidates
+- Organization-scoped repository factory (demo / test / live separation)
+- Supabase migration with RLS (`20250803100000_brain_persistence.sql`)
+- Invalidation execution and upstream output lineage
+- Live context assembly without demo fixture fallback
+- Admin persistence read services
+- Run recovery classification
+- Comprehensive tests (`persistence-sprint6.test.ts`)
 
-## Sprint 6 (recommended)
+## Sprint 7 (recommended)
 
-1. **LLM provider adapter** — implement `BrainCapabilityProvider` for strategy, brand, competitor with token projections
-2. **Performance slice population** — wire real metrics into `BrainSnapshot.performance`
-3. **Persistent run/output stores** — beyond in-memory repositories
-4. **Memory review workflow** — persist and approve memory candidates
-5. **Live peer brain path** — extend beyond demo-only brain-backed evidence steps
-6. **Admin API** — expose `CapabilityInspectionReadModel`
+1. **LLM provider adapter** — implement real `BrainCapabilityProvider` for strategy, brand, competitor (OpenAI/Anthropic when approved)
+2. **Full Supabase adapters** — snapshot, correction, queue repos currently delegate to in-memory
+3. **Regenerate `database.types.ts`** after migration applied locally
+4. **Background invalidation worker** — process `brain_invalidation_queue` asynchronously
+5. **Memory review workflow UI** — approve/reject memory candidates
+6. **Real website crawling** — replace demo website provider for live orgs
+7. **Performance slice population** — wire real metrics into `BrainSnapshot.performance`
+8. **Admin API routes** — expose persistence read models behind admin auth
+9. **RLS integration tests** — Supabase test harness for negative cross-org cases
 
 ## Principles (unchanged)
 

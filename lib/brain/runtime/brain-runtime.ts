@@ -14,8 +14,12 @@ import type { BrainRunRepository } from "./repositories/contracts";
 import type { BrainOutputRepository } from "./repositories/contracts";
 import type { BrainAuditRepository } from "./repositories/contracts";
 import type { BrainIdempotencyRepository } from "./repositories/contracts";
+import type { AsyncBrainRepositories, RepositoryStorageMode } from "../persistence/contracts";
+import { hashIdempotencyRequest, hashOutputContent } from "../persistence/sync-async-adapters";
+import { logBrainOperation } from "../persistence/brain-logger";
 import type { BrainRunResult, BrainRunSubmitResult } from "./run-result";
 import { transitionStatus } from "./state-machine";
+import { isTerminalBrainRunStatus } from "./run-lifecycle";
 import { BrainRunNotFoundError, BrainRuntimeError } from "./errors";
 import {
   assertBudgetAllowed,
@@ -49,6 +53,8 @@ export type BrainRuntimeDeps = {
   outputRepository: BrainOutputRepository;
   auditRepository: BrainAuditRepository;
   idempotencyRepository: BrainIdempotencyRepository;
+  asyncRepositories?: AsyncBrainRepositories;
+  storageMode?: RepositoryStorageMode;
   cache: BrainCacheStore;
   providers: readonly BrainCapabilityProvider[];
   assembleContext: (request: BrainRunRequestWithBudget) => Promise<ContextAssemblyResult> | ContextAssemblyResult;
@@ -336,19 +342,28 @@ export class BrainRuntime {
     });
     const runContext = toRunContext(request, environment);
     const capabilityDef = getBrainCapability(request.capabilityId);
+    const persistent = Boolean(this.deps.asyncRepositories);
+    const requestHash = request.idempotencyKey
+      ? hashIdempotencyRequest({
+          organizationId: request.organizationId,
+          capabilityId: request.capabilityId,
+          payloadRefId: request.payloadRefId,
+          campaignId: request.campaignId,
+        })
+      : undefined;
 
     let run: BrainRunRecord;
     if (existingRunId) {
-      run = this.lookupRun(request.organizationId, existingRunId);
+      run = await this.lookupRunAsync(request.organizationId, existingRunId);
     } else {
-      const submitted = this.submitRun(request);
-      run = this.lookupRun(request.organizationId, submitted.runId);
-      if (submitted.idempotentReplay && run.status === "completed") {
-        const output = this.deps.outputRepository.getByRunId(request.organizationId, run.id);
+      const submitted = await this.submitRunAsync(request, requestHash);
+      run = await this.lookupRunAsync(request.organizationId, submitted.runId);
+      if (submitted.idempotentReplay && isTerminalBrainRunStatus(run.status)) {
+        const output = await this.getOutputAsync(request.organizationId, run.id);
         return {
           run,
           assembly: await Promise.resolve(this.deps.assembleContext(request)),
-          output: output,
+          output,
           policy: { decision: "allow", reason: "Idempotent replay." },
           presentation: null,
           cacheHit: Boolean(run.usage.cacheHit),
@@ -356,7 +371,16 @@ export class BrainRuntime {
       }
     }
 
-    run = this.transitionRun(run, "gathering_context");
+    run = await this.transitionRunAsync(run, "gathering_context");
+    logBrainOperation({
+      level: "info",
+      event: "run_transition",
+      runId: run.id,
+      correlationId: run.traceId,
+      organizationRef: run.organizationId,
+      capability: run.capabilityId,
+      transition: "gathering_context",
+    });
 
     const assembly = await Promise.resolve(this.deps.assembleContext(request));
     const dimensionScores = dimensionScoreMap(assembly);
@@ -374,7 +398,7 @@ export class BrainRuntime {
 
     if (!readinessGate.ok) {
       const status = readinessGate.status;
-      run = this.transitionRun(run, status, {
+      run = await this.transitionRunAsync(run, status, {
         readinessState: assembly.state,
         contextHash: assembly.version.contextHash,
         snapshotVersion: String(assembly.version.version),
@@ -386,7 +410,7 @@ export class BrainRuntime {
         approvalPolicy: request.approvalPolicy ?? "approval_required",
         capabilityApprovalRequirement: capabilityDef.approvalRequirement,
       });
-      this.writeAudit(run, assembly, {
+      await this.writeAuditAsync(run, assembly, {
         contextHash: assembly.version.contextHash,
         includedSlices: [],
         excludedSlices: [],
@@ -416,9 +440,13 @@ export class BrainRuntime {
       limits: request.budget,
       budget: run.budget,
       projection: projected.projection,
-      orgRunCount: this.deps.runRepository.countByOrganization(request.organizationId),
+      orgRunCount: persistent
+        ? await this.deps.asyncRepositories!.runs.countByOrganization(request.organizationId)
+        : this.deps.runRepository.countByOrganization(request.organizationId),
       childRunCount: request.parentRunId
-        ? this.deps.runRepository.countChildRuns(request.organizationId, request.parentRunId)
+        ? persistent
+          ? await this.deps.asyncRepositories!.runs.countChildRuns(request.organizationId, request.parentRunId)
+          : this.deps.runRepository.countChildRuns(request.organizationId, request.parentRunId)
         : 0,
       providerId: provider.id,
     });
@@ -431,7 +459,7 @@ export class BrainRuntime {
     });
 
     if (policy.decision === "block") {
-      run = this.transitionRun(run, "blocked", {
+      run = await this.transitionRunAsync(run, "blocked", {
         policyDecision: policy.decision,
         readinessState: assembly.state,
         contextHash: projected.projection.contextHash,
@@ -441,7 +469,7 @@ export class BrainRuntime {
       return { run, assembly, output: null, policy, presentation: null, cacheHit: false };
     }
 
-    run = this.transitionRun(run, "ready", {
+    run = await this.transitionRunAsync(run, "ready", {
       readinessState: assembly.state,
       contextHash: projected.projection.contextHash,
       snapshotVersion: String(assembly.version.version),
@@ -486,7 +514,7 @@ export class BrainRuntime {
       };
     }
 
-    run = this.transitionRun(run, "running");
+    run = await this.transitionRunAsync(run, "running");
 
     if (!output) {
       output = await this.executeProviderAsync({
@@ -505,6 +533,19 @@ export class BrainRuntime {
           projected.projection.contextHash,
           86_400_000
         );
+        if (this.deps.asyncRepositories) {
+          await this.deps.asyncRepositories.cacheMetadata.upsert({
+            organizationId: request.organizationId,
+            cacheKey,
+            capabilityId: request.capabilityId,
+            capabilityVersion: capabilityDef.version,
+            contextHash: projected.projection.contextHash,
+            payloadHash,
+            providerClass: provider.id,
+            freshness: "fresh",
+            hitCount: 0,
+          });
+        }
       }
     }
 
@@ -516,14 +557,21 @@ export class BrainRuntime {
       finalStatus = "waiting_for_approval";
     }
 
-    const outputId = this.deps.outputRepository.store({
+    const outputId = await this.storeOutputAsync({
       organizationId: request.organizationId,
       runId: run.id,
       output,
       storedAt: new Date().toISOString(),
+      capabilityId: request.capabilityId,
+      capabilityVersion: capabilityDef.version,
+      providerClass: provider.id,
+      contentHash: hashOutputContent(output),
+      contextHash: projected.projection.contextHash,
+      snapshotVersion: String(assembly.version.version),
+      campaignId: request.campaignId,
     });
 
-    run = this.transitionRun(run, finalStatus as typeof run.status, {
+    run = await this.transitionRunAsync(run, finalStatus as typeof run.status, {
       outputId,
       usage: {
         providerId: usage.providerId,
@@ -535,7 +583,18 @@ export class BrainRuntime {
       completedAt: new Date().toISOString(),
     });
 
-    this.writeAudit(run, assembly, projected.projection, policy, cacheHit, Date.now() - startedMs, output);
+    await this.writeAuditAsync(run, assembly, projected.projection, policy, cacheHit, Date.now() - startedMs, output);
+    logBrainOperation({
+      level: "info",
+      event: "run_completed",
+      runId: run.id,
+      correlationId: run.traceId,
+      organizationRef: run.organizationId,
+      capability: run.capabilityId,
+      transition: finalStatus,
+      durationMs: Date.now() - startedMs,
+      repositoryOutcome: "ok",
+    });
 
     return {
       run,
@@ -631,6 +690,140 @@ export class BrainRuntime {
       assertValidBrainOutput(raw);
     }
     return this.finalizeProviderOutput(raw, input.capabilityId, input.request.upstreamOutputs);
+  }
+
+  private async submitRunAsync(
+    request: BrainRunRequestWithBudget,
+    requestHash?: string
+  ): Promise<BrainRunSubmitResult> {
+    if (request.idempotencyKey && this.deps.asyncRepositories) {
+      const existing = await this.deps.asyncRepositories.idempotency.get(
+        request.organizationId,
+        request.capabilityId,
+        request.idempotencyKey
+      );
+      if (existing) {
+        if (requestHash && existing.requestHash !== requestHash) {
+          throw new BrainRuntimeError(
+            "idempotency_mismatch",
+            "Idempotency key reused with different request payload."
+          );
+        }
+        const run = await this.deps.asyncRepositories.runs.getById(request.organizationId, existing.runId);
+        if (run) {
+          return { runId: run.id, status: run.status, idempotentReplay: true };
+        }
+      }
+    } else if (request.idempotencyKey) {
+      return this.submitRun(request);
+    }
+
+    const run = initialRun(request);
+    if (this.deps.asyncRepositories) {
+      await this.deps.asyncRepositories.runs.create(run);
+      if (request.idempotencyKey && requestHash) {
+        await this.deps.asyncRepositories.idempotency.set({
+          organizationId: request.organizationId,
+          capabilityId: request.capabilityId,
+          idempotencyKey: request.idempotencyKey,
+          runId: run.id,
+          requestHash,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      return { runId: run.id, status: run.status, idempotentReplay: false };
+    }
+
+    return this.submitRun(request);
+  }
+
+  private async lookupRunAsync(organizationId: string, runId: string): Promise<BrainRunRecord> {
+    if (this.deps.asyncRepositories) {
+      const run = await this.deps.asyncRepositories.runs.getById(organizationId, runId);
+      if (!run) throw new BrainRunNotFoundError(runId);
+      assertRunOrganizationMatch(run, organizationId);
+      return run;
+    }
+    return this.lookupRun(organizationId, runId);
+  }
+
+  private async transitionRunAsync(
+    run: BrainRunRecord,
+    to: BrainRunRecord["status"],
+    patch: Partial<BrainRunRecord> = {}
+  ): Promise<BrainRunRecord> {
+    const status = transitionStatus(run.status, to);
+    const updated = {
+      ...run,
+      ...patch,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    if (this.deps.asyncRepositories) {
+      return this.deps.asyncRepositories.runs.update(updated);
+    }
+    return this.deps.runRepository.update(updated);
+  }
+
+  private async getOutputAsync(
+    organizationId: string,
+    runId: string
+  ): Promise<import("../evidence/structured-output").BrainStructuredOutput | null> {
+    if (this.deps.asyncRepositories) {
+      return this.deps.asyncRepositories.outputs.getByRunId(organizationId, runId);
+    }
+    return this.deps.outputRepository.getByRunId(organizationId, runId);
+  }
+
+  private async storeOutputAsync(input: {
+    organizationId: string;
+    runId: string;
+    output: import("../evidence/structured-output").BrainStructuredOutput;
+    storedAt: string;
+    capabilityId: BrainCapabilityId;
+    capabilityVersion: string;
+    providerClass?: string;
+    contentHash: string;
+    contextHash?: string;
+    snapshotVersion?: string;
+    campaignId?: string;
+  }): Promise<string> {
+    if (this.deps.asyncRepositories) {
+      return this.deps.asyncRepositories.outputs.store(input);
+    }
+    return this.deps.outputRepository.store({
+      organizationId: input.organizationId,
+      runId: input.runId,
+      output: input.output,
+      storedAt: input.storedAt,
+    });
+  }
+
+  private async writeAuditAsync(
+    run: BrainRunRecord,
+    assembly: ContextAssemblyResult,
+    projection: import("../providers/token-strategy").BrainContextProjection,
+    policy: import("../policy/approval-policy").BrainPolicyResult,
+    cacheHit: boolean,
+    durationMs: number,
+    output?: import("../evidence/structured-output").BrainStructuredOutput
+  ): Promise<void> {
+    const record = buildRunAuditRecord({
+      run,
+      assembly,
+      projection,
+      policy,
+      output,
+      providerId: run.usage.providerId ?? "unknown",
+      cacheHit,
+      durationMs,
+    });
+    if (this.deps.asyncRepositories) {
+      await this.deps.asyncRepositories.audit.append(record);
+    } else {
+      this.deps.auditRepository.append(record);
+    }
+    void buildRunAuditMetadata({ assembly, projection, providerId: run.usage.providerId ?? "unknown", cacheHit, output });
   }
 
   private transitionRun(

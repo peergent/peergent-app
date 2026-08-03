@@ -10,6 +10,7 @@ export type BrainRunRecord = BrainRun & {
   readonly outputId?: string;
   readonly errorCode?: string;
   readonly errorMessage?: string;
+  readonly version?: number;
 };
 
 export interface BrainRunRepository {

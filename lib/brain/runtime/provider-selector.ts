@@ -40,11 +40,18 @@ export function selectBrainProvider(input: {
   }
 
   const live = input.providers.find((p) => p.id !== "demo");
-  if (!live) {
-    throw new BrainRuntimeError(
-      "provider_not_found",
-      `No live provider registered for ${input.capabilityId}`
-    );
+  if (live) {
+    return { provider: live, providerClass: "live" };
   }
-  return { provider: live, providerClass: "live" };
+
+  /** Sprint 6: deterministic demo provider serves live until LLM adapters are connected. */
+  const deterministic = input.providers.find((p) => p.id === "demo");
+  if (deterministic) {
+    return { provider: deterministic, providerClass: "demo" };
+  }
+
+  throw new BrainRuntimeError(
+    "provider_not_found",
+    `No live provider registered for ${input.capabilityId}`
+  );
 }

@@ -16,6 +16,8 @@ Sprint 4 adds **Brain Runtime** — provider-neutral capability execution orches
 
 Sprint 5 adds **Marketing Intelligence Capabilities** — seven deterministic capabilities (brand, competitor, strategy, channels, deliverables, performance, optimization) with dependency graph, quality safeguards, and demo orchestration.
 
+Sprint 6 adds **Persistent Intelligence & Live Brain Integration** — org-scoped repositories, snapshot versioning, corrections, invalidation execution, upstream output lineage, live context assembly, and admin read services.
+
 ## Package location
 
 ```
