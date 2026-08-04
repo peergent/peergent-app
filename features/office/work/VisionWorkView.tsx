@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/ui/cn";
 import type { WorkGroup, WorkGroupId, WorkItem, WorkViewModel } from "@/lib/office/work/types";
 
 export type VisionWorkViewProps = {
   model: WorkViewModel;
   locale?: string | null;
-  onOpenCampaign?: (item: WorkItem) => void;
   onOpenPreview?: (item: WorkItem) => void;
 };
 
@@ -18,7 +18,7 @@ const GROUP_INDICATOR: Record<WorkGroupId, string> = {
   finished: "pg-v13-ind--done",
 };
 
-function statusTagClass(groupId: WorkGroupId, item: WorkItem): string {
+function statusTagClass(groupId: WorkGroupId): string {
   if (groupId === "blocked_on_you") return "pg-v13-status-tag";
   if (groupId === "finished") return "pg-v13-status-tag pg-v13-status-tag--done";
   return "pg-v13-status-tag pg-v13-status-tag--progress";
@@ -28,31 +28,24 @@ function WorkCard({
   item,
   group,
   locale,
-  onOpenCampaign,
   onOpenPreview,
 }: {
   item: WorkItem;
   group: WorkGroup;
   locale?: string | null;
-  onOpenCampaign?: (item: WorkItem) => void;
   onOpenPreview?: (item: WorkItem) => void;
 }) {
-  const waiting = group.id === "blocked_on_you";
   const finished = group.id === "finished";
-  const inProduction = group.id === "moving";
-  const clickable = waiting || finished || inProduction;
-
-  const handleClick = () => {
-    if (waiting || inProduction) onOpenCampaign?.(item);
-    else if (finished) onOpenPreview?.(item);
-  };
+  const waiting = group.id === "blocked_on_you";
+  const primaryLine = item.primaryText ?? item.nextStep;
+  const actionText = item.actionLabel;
 
   if (finished) {
     return (
       <div
         className="pg-v13-work-card pg-v13-work-card--compact pg-v13-work-card--clickable"
-        onClick={handleClick}
-        onKeyDown={(e) => e.key === "Enter" && handleClick()}
+        onClick={() => onOpenPreview?.(item)}
+        onKeyDown={(e) => e.key === "Enter" && onOpenPreview?.(item)}
         role="button"
         tabIndex={0}
         data-testid={`work-item-${item.id}`}
@@ -60,33 +53,42 @@ function WorkCard({
         <div>
           <h4>{item.name}</h4>
           <span className="pg-v13-work-meta pg-v13-work-meta--link">
-            {locale === "nl" ? "Bekijk hoe het verstuurd is →" : "See how it was sent →"}
+            {actionText ??
+              (locale === "nl" ? "Bekijk hoe het verstuurd is →" : "See how it was sent →")}
           </span>
         </div>
-        <span className={statusTagClass(group.id, item)}>{item.stageLabel}</span>
+        <span className={statusTagClass(group.id)}>{item.stageLabel}</span>
       </div>
     );
   }
 
   return (
-    <div
+    <Link
+      href={item.href}
       className={cn(
-        "pg-v13-work-card",
-        waiting && "pg-v13-work-card--waiting",
-        clickable && "pg-v13-work-card--clickable"
+        "pg-v13-work-card pg-v13-work-card--clickable block no-underline",
+        waiting && "pg-v13-work-card--waiting"
       )}
-      onClick={clickable ? handleClick : undefined}
-      onKeyDown={clickable ? (e) => e.key === "Enter" && handleClick() : undefined}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
       data-testid={`work-item-${item.id}`}
+      aria-label={
+        locale === "nl"
+          ? `${item.name} — ${item.stageLabel}${actionText ? ` — ${actionText}` : ""}`
+          : `${item.name} — ${item.stageLabel}${actionText ? ` — ${actionText}` : ""}`
+      }
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h4>{item.name}</h4>
-          <div className="pg-v13-work-meta">{item.nextStep ?? item.expectedLabel}</div>
+          <h4 className="text-[var(--pg-v13-ink)]">{item.name}</h4>
+          {primaryLine ? (
+            <div className="pg-v13-work-meta text-[var(--pg-v13-ink-soft)]">{primaryLine}</div>
+          ) : null}
+          {item.secondaryText ? (
+            <div className="pg-v13-work-meta mt-1 text-[var(--pg-v13-ink-faint)]">
+              {item.secondaryText}
+            </div>
+          ) : null}
         </div>
-        <span className={statusTagClass(group.id, item)}>{item.stageLabel}</span>
+        <span className={statusTagClass(group.id)}>{item.stageLabel}</span>
       </div>
       {waiting && item.blockedBy ? (
         <>
@@ -98,60 +100,28 @@ function WorkCard({
             {item.blockedBy}
             {item.expectedLabel ? ` · ${item.expectedLabel}` : ""}
           </p>
-          <p className="pg-v13-work-meta pg-v13-work-meta--link mt-2.5">
-            {locale === "nl" ? "Open campagne →" : "Open campaign →"}
-          </p>
         </>
       ) : null}
-      {!waiting && item.channels.length > 0 ? (
-        <div className="pg-v13-work-meta mt-2">
+      {!waiting && item.channels.length > 0 && group.id !== "queued" ? (
+        <div className="pg-v13-work-meta mt-2 text-[var(--pg-v13-ink-faint)]">
           {item.channels.map((channel) => channel.label).join(" · ")}
         </div>
       ) : null}
-      {!waiting && item.nextStep ? (
-        <div className="pg-v13-work-meta mt-1">{item.nextStep}</div>
+      {actionText ? (
+        <p className="pg-v13-work-meta pg-v13-work-meta--link mt-2.5">{actionText} →</p>
       ) : null}
-    </div>
-  );
-}
-
-
-function displayGroups(groups: WorkGroup[]): WorkGroup[] {
-  const moving = groups.find((group) => group.id === "moving");
-  const queued = groups.find((group) => group.id === "queued");
-  if (!moving || !queued?.items.length) return groups;
-
-  const merged: WorkGroup = {
-    id: "moving",
-    title: moving.title,
-    items: [...moving.items, ...queued.items],
-    collapsedByDefault: false,
-  };
-
-  const order: WorkGroupId[] = [
-    "blocked_on_you",
-    "blocked_elsewhere",
-    "moving",
-    "finished",
-  ];
-
-  const withoutMerged = groups.filter((group) => group.id !== "moving" && group.id !== "queued");
-  return [...withoutMerged, merged].sort(
-    (a, b) => order.indexOf(a.id) - order.indexOf(b.id)
+    </Link>
   );
 }
 
 export default function VisionWorkView({
   model,
   locale,
-  onOpenCampaign,
   onOpenPreview,
 }: VisionWorkViewProps) {
-  const groups = displayGroups(model.groups);
-
   return (
     <div data-testid="office-work-view">
-      {groups.map((group) => (
+      {model.groups.map((group) => (
         <section key={group.id} className="pg-v13-sec">
           <p
             className={cn(
@@ -174,7 +144,6 @@ export default function VisionWorkView({
               item={item}
               group={group}
               locale={locale}
-              onOpenCampaign={onOpenCampaign}
               onOpenPreview={onOpenPreview}
             />
           ))}

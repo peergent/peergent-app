@@ -16,8 +16,6 @@ import { InMemoryBrainIdempotencyRepository } from "../runtime/repositories/in-m
 import { InMemoryBrainCacheStore } from "../cache/store";
 import { createDemoBrainProvider } from "../demo/demo-provider";
 import { createDeterministicBrainProvider } from "../providers/deterministic-provider";
-import { createLlmBrainProvider } from "../providers/llm-brain-provider";
-import { isBrainUseOpenAIEnabled } from "../config/brain-feature-flags";
 import type {
   BrainRunRepository,
   BrainOutputRepository,
@@ -58,13 +56,9 @@ export function resolveRepositoryStorageMode(input: CreateBrainRepositoriesInput
   return "in_memory";
 }
 
+/** Client-safe live providers — LLM registration lives in repository-factory-server.ts. */
 function createLiveCapabilityProviders(): readonly BrainCapabilityProvider[] {
-  const providers: BrainCapabilityProvider[] = [];
-  if (isBrainUseOpenAIEnabled()) {
-    providers.push(createLlmBrainProvider());
-  }
-  providers.push(createDeterministicBrainProvider(), createDemoBrainProvider());
-  return providers;
+  return [createDeterministicBrainProvider(), createDemoBrainProvider()];
 }
 
 /** Canonical repository factory — demo never selects live storage. */

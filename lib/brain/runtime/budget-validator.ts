@@ -5,10 +5,35 @@ import { BrainRunBudgetExceededError } from "./errors";
 
 export type ProviderUsageRecord = {
   providerId: string;
+  modelId?: string;
   inputTokens: number;
   outputTokens: number;
   estimatedCostCents: number;
   cacheHit: boolean;
+  initialProviderId?: string;
+  finalProviderId?: string;
+  fallbackReason?: string;
+  upstreamStrategyFound?: boolean;
+  upstreamChannelsFound?: boolean;
+  strategyVersionCompatible?: boolean;
+  channelVersionCompatible?: boolean;
+  selectedChannelCount?: number;
+  businessValidationCategory?: string;
+  businessValidationSubreason?: string;
+  approvedCanonicalChannels?: string;
+  generatedCanonicalChannels?: string;
+  unmatchedChannels?: string;
+  requestStarted?: boolean;
+  validationAttempts?: number;
+  validationRepairCount?: number;
+  initialRequestDurationMs?: number;
+  repairRequestDurationMs?: number;
+  fallbackDurationMs?: number;
+  timeoutOwner?: string;
+  configuredTimeoutMs?: number;
+  timeoutAttemptNumber?: number;
+  responseHeadersReceived?: boolean;
+  responseBodyStarted?: boolean;
 };
 
 export type BudgetValidationResult = {
@@ -93,10 +118,35 @@ export function recordProviderUsage(
   metadata: BrainUsageMetadata
 ): ProviderUsageRecord {
   return {
-    providerId: metadata.providerId ?? providerId,
+    providerId: metadata.finalProviderId ?? metadata.providerId ?? providerId,
+    modelId: metadata.modelId,
     inputTokens: metadata.inputTokens ?? 0,
     outputTokens: metadata.outputTokens ?? 0,
     estimatedCostCents: metadata.estimatedCostCents ?? 0,
     cacheHit: metadata.cacheHit ?? false,
+    initialProviderId: metadata.initialProviderId ?? providerId,
+    finalProviderId: metadata.finalProviderId ?? metadata.providerId ?? providerId,
+    fallbackReason: metadata.fallbackReason,
+    upstreamStrategyFound: metadata.upstreamStrategyFound,
+    upstreamChannelsFound: metadata.upstreamChannelsFound,
+    strategyVersionCompatible: metadata.strategyVersionCompatible,
+    channelVersionCompatible: metadata.channelVersionCompatible,
+    selectedChannelCount: metadata.selectedChannelCount,
+    businessValidationCategory: metadata.businessValidationCategory,
+    businessValidationSubreason: metadata.businessValidationSubreason,
+    approvedCanonicalChannels: metadata.approvedCanonicalChannels,
+    generatedCanonicalChannels: metadata.generatedCanonicalChannels,
+    unmatchedChannels: metadata.unmatchedChannels,
+    requestStarted: metadata.requestStarted,
+    validationAttempts: metadata.validationAttempts,
+    validationRepairCount: metadata.validationRepairCount,
+    initialRequestDurationMs: metadata.initialRequestDurationMs,
+    repairRequestDurationMs: metadata.repairRequestDurationMs,
+    fallbackDurationMs: metadata.fallbackDurationMs,
+    timeoutOwner: metadata.timeoutOwner,
+    configuredTimeoutMs: metadata.configuredTimeoutMs,
+    timeoutAttemptNumber: metadata.timeoutAttemptNumber,
+    responseHeadersReceived: metadata.responseHeadersReceived,
+    responseBodyStarted: metadata.responseBodyStarted,
   };
 }

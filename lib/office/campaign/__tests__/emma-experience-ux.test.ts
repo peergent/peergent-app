@@ -103,7 +103,7 @@ describe("Emma experience UX regressions", () => {
       locale: "nl",
     });
     expect(evidence?.intro).toContain("peergent.com");
-    expect(evidence?.intro?.toLowerCase()).toContain("geen echte websitecrawl");
+    expect(evidence?.intro?.toLowerCase()).toContain("opgeslagen als context");
     const workflow = buildCampaignWorkflowViewModel({
       peerId: "demo",
       project,

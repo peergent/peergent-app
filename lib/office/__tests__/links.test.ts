@@ -92,7 +92,7 @@ describe("toOfficeHref is total — nothing escapes the Office", () => {
   });
 
   it("maps concepts to the destination that owns them", () => {
-    expect(toOfficeHref(PEER, "/team/emma/projects/p1")).toBe("/office/emma/work");
+    expect(toOfficeHref(PEER, "/team/emma/projects/p1")).toBe("/office/emma/work/campaigns/p1");
     expect(toOfficeHref(PEER, "/team/emma/content/abc")).toBe("/office/emma/content");
     expect(toOfficeHref(PEER, "/team/emma/results")).toBe("/office/emma/performance");
     expect(toOfficeHref(PEER, "/team/emma/connections")).toBe("/office/emma/agreement");
@@ -100,9 +100,15 @@ describe("toOfficeHref is total — nothing escapes the Office", () => {
     expect(toOfficeHref(PEER, "/team/emma/waiting")).toBe("/office/emma");
   });
 
-  it("sends a review item where decisions are reviewed", () => {
+  it("sends a review item to the campaign workspace", () => {
     expect(toOfficeHref(PEER, "/team/emma/projects/p1/review/r1")).toBe(
-      "/office/emma/content?state=awaiting_review"
+      "/office/emma/work/campaigns/p1?review=r1"
+    );
+  });
+
+  it("sends a project detail link to the campaign workspace", () => {
+    expect(toOfficeHref(PEER, "/team/emma/projects/p1")).toBe(
+      "/office/emma/work/campaigns/p1"
     );
   });
 

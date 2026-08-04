@@ -34,6 +34,9 @@ export type CampaignWorkflowStep = {
   evidenceTitle: string;
   evidenceIntro?: string;
   evidenceSections: readonly CampaignEvidenceSection[];
+  /** When true, customer must supply missing context before advancing. */
+  evidenceBlocked?: boolean;
+  evidenceMissingCtas?: readonly import("./evidence-readiness").EvidenceMissingCta[];
 };
 
 export type CampaignDeliverableStatus =
@@ -83,9 +86,34 @@ export type CampaignWorkflowViewModel = {
       | "view_published"
       | "view_analytics"
       | "open_optimization"
-      | "continue";
+      | "continue"
+      | "add_context"
+      | "add_website"
+      | "add_competitors"
+      | "working"
+      | "retry_strategy"
+      | "view_context";
     draftId?: string;
     stepId?: CampaignWorkflowStepId;
+    workingStage?: string;
+    runStatus?: import("./strategy-run-types").StrategyRunStatus;
+    failureMessage?: string;
+    devDiagnostics?: {
+      runId?: string;
+      lastStatus?: string;
+      provider?: string;
+      failureCode?: string;
+      fallbackUsed?: boolean;
+      traceLastStage?: string;
+      triggerKey?: string;
+      actionInvocationCount?: number;
+      actionDurationMs?: number;
+      inFlightReused?: boolean;
+      terminalState?: string;
+      model?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+    };
   };
   steps: readonly CampaignWorkflowStep[];
   deliverables: readonly CampaignDeliverable[];

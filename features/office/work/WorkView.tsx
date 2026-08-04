@@ -53,13 +53,14 @@ function WorkCard({
   return (
     <PgEntityCard
       title={item.name}
-      subtitle={item.nextStep || null}
+      subtitle={item.primaryText ?? item.nextStep ?? null}
       status={{ state: GROUP_STATE[group.id], label: item.stageLabel }}
       attention={blockedOnCustomer}
       href={item.href}
       meta={
         <PgMeta
           items={[
+            item.secondaryText,
             item.expectedLabel,
             ...item.channels.map((channel) =>
               channel.connected ? channel.label : `${channel.label} ⚠`

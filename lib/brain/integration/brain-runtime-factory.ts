@@ -84,7 +84,17 @@ export function resetDefaultBrainRuntime(): void {
 export function createBrainRuntimeWithAssembly(
   assembleContext: (
     request: BrainRunRequestWithBudget
-  ) => Promise<ContextAssemblyResult> | ContextAssemblyResult
+  ) => Promise<ContextAssemblyResult> | ContextAssemblyResult,
+  options: {
+    peerId: string;
+    environment: BrainEnvironment;
+    repositories?: BrainRepositoryBundle;
+  }
 ): BrainRuntime {
-  return createDefaultBrainRuntime({ assembleContext });
+  return createDefaultBrainRuntime({
+    assembleContext,
+    peerId: options.peerId,
+    environment: options.environment,
+    repositories: options.repositories,
+  });
 }

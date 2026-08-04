@@ -67,7 +67,7 @@ describe("CampaignContext isolation", () => {
     });
     expect(evidence).not.toBeNull();
     expect(evidence?.title).toBe("Websitecontext");
-    expect(evidence?.intro).toContain("website-snapshot");
+    expect(evidence?.intro).toMatch(/website toe|add a website/i);
   });
 
   it("returns null competitor evidence when competitor context missing", () => {

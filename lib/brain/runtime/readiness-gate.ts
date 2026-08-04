@@ -1,6 +1,8 @@
 import type { BrainCapabilityId, BrainSnapshotSliceKey } from "../capabilities/registry";
 import type { ReadinessDimension } from "../context/readiness";
 import { getBrainCapability } from "../capabilities/registry";
+import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
+import { evaluateStrategyContextReadiness } from "@/lib/office/campaign/strategy-context-readiness";
 
 export type CapabilityExecutionRequirements = {
   minimumReadinessScore: number;
@@ -94,7 +96,20 @@ export function evaluateReadinessGate(input: {
   dimensionScores: Readonly<Record<ReadinessDimension, number>>;
   missingCriticalFields: readonly string[];
   assemblyState: import("../context/assembly-types").ContextAssemblyState;
+  campaignContext?: CampaignContext | null;
 }): ReadinessGateResult {
+  if (input.capabilityId === "strategy" && input.campaignContext) {
+    const strategyReadiness = evaluateStrategyContextReadiness(input.campaignContext);
+    if (strategyReadiness.ready) {
+      return { ok: true, partial: false };
+    }
+    return {
+      ok: false,
+      status: "waiting_for_input",
+      reasons: [...strategyReadiness.machineReasonCodes],
+    };
+  }
+
   const req = getCapabilityExecutionRequirements(input.capabilityId);
   const reasons: string[] = [];
 

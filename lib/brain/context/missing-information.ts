@@ -110,8 +110,14 @@ const CHECKS: readonly MissingCheck[] = [
 export function detectMissingInformation(input: {
   profile: CompanyProfile;
   website: WebsiteSnapshot | null;
+  websiteSkipped?: boolean;
+  competitorsSkipped?: boolean;
 }): MissingInformationItem[] {
-  return CHECKS.filter((c) => c.missing(input)).map((c) => ({
+  return CHECKS.filter((c) => {
+    if (c.fieldKey === "website" && input.websiteSkipped) return false;
+    if (c.fieldKey === "mainCompetitors" && input.competitorsSkipped) return false;
+    return c.missing({ profile: input.profile, website: input.website });
+  }).map((c) => ({
     id: c.id,
     fieldKey: c.fieldKey,
     label: c.label,
@@ -129,7 +135,46 @@ export function formatMissingInformationMessage(
   if (items.length === 0) {
     return nl ? "Ik heb genoeg context." : "I have enough context.";
   }
-  const labels = items.slice(0, 3).map((i) => i.label.toLowerCase());
+  const labels = items.slice(0, 3).map((i) => localizedMissingFieldLabel(i.fieldKey, i.label, nl));
   const prefix = nl ? "Ik heb nog nodig: " : "I still need: ";
   return prefix + labels.join(nl ? ", " : ", ") + (items.length > 3 ? "…" : ".");
+}
+
+const NL_FIELD_LABELS: Record<string, string> = {
+  website: "website",
+  industry: "branche",
+  uniqueSellingPoints: "unieke voordelen",
+  targetAudiences: "doelgroep",
+  mainCompetitors: "concurrenten",
+  tone: "tone of voice",
+  mission: "missie",
+  goals: "doelen",
+};
+
+export function localizedMissingFieldLabel(
+  fieldKey: string,
+  fallbackLabel: string,
+  nl: boolean
+): string {
+  if (!nl) return fallbackLabel.toLowerCase();
+  return NL_FIELD_LABELS[fieldKey] ?? fallbackLabel.toLowerCase();
+}
+
+const UNKNOWN_KEY_LABELS: Record<string, { nl: string; en: string }> = {
+  company_name: { nl: "bedrijfsnaam", en: "company name" },
+  industry: { nl: "branche", en: "industry" },
+  positioning: { nl: "positionering", en: "positioning" },
+  target_audiences: { nl: "doelgroep", en: "target audience" },
+  website_snapshot: { nl: "website", en: "website" },
+  mission: { nl: "missie", en: "mission" },
+};
+
+export function localizeUnknownFieldKeys(keys: readonly string[], nl: boolean): string {
+  return keys
+    .map((key) => {
+      const mapped = UNKNOWN_KEY_LABELS[key];
+      if (mapped) return nl ? mapped.nl : mapped.en;
+      return key.replace(/_/g, " ");
+    })
+    .join(nl ? ", " : ", ");
 }

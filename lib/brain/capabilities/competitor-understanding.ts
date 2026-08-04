@@ -74,16 +74,22 @@ export function executeCompetitorUnderstanding(
     ],
   }));
 
-  const recommendations = list.slice(0, 2).map((c, i) => ({
-    id: `rec-diff-${i + 1}`,
-    label: nl ? "Differentiatiekans" : "Differentiation opportunity",
-    priority: "medium" as const,
-    provenance: [
-      c.source === "campaign"
-        ? campaignProvenance(campaign!.projectId, "competitors")
-        : profileProvenance(orgId, "mainCompetitors"),
-    ],
-  }));
+  const recommendations = list.length > 0
+    ? [
+        {
+          id: "rec-diff-merged",
+          label: nl
+            ? `Differentieer t.o.v. ${list.map((c) => c.name).join(" en ")} door te focussen op wat ${profile.companyName.value ?? campaign?.companyName ?? "jouw bedrijf"} uniek maakt voor deze campagne.`
+            : `Differentiate vs ${list.map((c) => c.name).join(" and ")} by focusing on what makes ${profile.companyName.value ?? campaign?.companyName ?? "your company"} unique for this campaign.`,
+          priority: "medium" as const,
+          provenance: list.map((c) =>
+            c.source === "campaign"
+              ? campaignProvenance(campaign!.projectId, "competitors")
+              : profileProvenance(orgId, "mainCompetitors")
+          ),
+        },
+      ]
+    : [];
 
   return {
     ...base,

@@ -11,6 +11,8 @@ export type CampaignScheduleModalProps = {
   locale?: string | null;
   onConfirm: (scheduledAtIso: string) => void;
   initialScheduledAt?: string | null;
+  /** Live Office — internal schedule only; no external publish implied. */
+  liveMode?: boolean;
 };
 
 function tomorrowAtNine(): Date {
@@ -40,6 +42,7 @@ export default function CampaignScheduleModal({
   locale,
   onConfirm,
   initialScheduledAt,
+  liveMode = false,
 }: CampaignScheduleModalProps) {
   const nl = locale === "nl";
   const [choice, setChoice] = useState<ScheduleChoice>("tomorrow");
@@ -79,16 +82,22 @@ export default function CampaignScheduleModal({
           {nl ? "Campagne inplannen" : "Schedule campaign"}
         </h3>
         <p className="mt-2 text-[14px] text-[var(--pg-v13-ink-soft)]">
-          {nl
-            ? "Kies wanneer je campagne live mag gaan. Na inplannen publiceer ik op het gekozen moment."
-            : "Choose when your campaign may go live. After scheduling, I publish at the chosen time."}
+          {liveMode
+            ? nl
+              ? "Kies wanneer deze campagne intern ingepland staat. Publicatiekoppelingen zijn nog niet actief — er wordt niets extern gepubliceerd."
+              : "Choose when this campaign is scheduled internally. Publishing connections are not active yet — nothing is published externally."
+            : nl
+              ? "Kies wanneer je campagne live mag gaan. Na inplannen publiceer ik op het gekozen moment."
+              : "Choose when your campaign may go live. After scheduling, I publish at the chosen time."}
         </p>
       </div>
 
       <div className="space-y-3 px-7 py-6">
         {(
           [
-            { id: "now" as const, label: nl ? "Nu publiceren" : "Publish now", desc: nl ? "Direct live" : "Go live immediately" },
+            ...(liveMode
+              ? []
+              : [{ id: "now" as const, label: nl ? "Nu publiceren" : "Publish now", desc: nl ? "Direct live" : "Go live immediately" }]),
             { id: "tomorrow" as const, label: nl ? "Morgen om 09:00" : "Tomorrow at 09:00", desc: nl ? "Volgende werkdag ochtend" : "Next weekday morning" },
             { id: "custom" as const, label: nl ? "Eigen datum & tijd" : "Custom date & time", desc: nl ? "Kies zelf" : "Pick yourself" },
           ] as const

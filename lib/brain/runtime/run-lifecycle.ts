@@ -42,6 +42,33 @@ export type BrainUsageMetadata = {
   outputTokens?: number;
   estimatedCostCents?: number;
   cacheHit?: boolean;
+  /** Dev-safe provider id selected before execution. */
+  initialProviderId?: string;
+  /** Dev-safe terminal provider after fallback, if any. */
+  finalProviderId?: string;
+  /** Dev-safe failure category when fallback occurred. */
+  fallbackReason?: string;
+  upstreamStrategyFound?: boolean;
+  upstreamChannelsFound?: boolean;
+  strategyVersionCompatible?: boolean;
+  channelVersionCompatible?: boolean;
+  selectedChannelCount?: number;
+  businessValidationCategory?: string;
+  businessValidationSubreason?: string;
+  approvedCanonicalChannels?: string;
+  generatedCanonicalChannels?: string;
+  unmatchedChannels?: string;
+  requestStarted?: boolean;
+  validationAttempts?: number;
+  validationRepairCount?: number;
+  initialRequestDurationMs?: number;
+  repairRequestDurationMs?: number;
+  fallbackDurationMs?: number;
+  timeoutOwner?: string;
+  configuredTimeoutMs?: number;
+  timeoutAttemptNumber?: number;
+  responseHeadersReceived?: boolean;
+  responseBodyStarted?: boolean;
 };
 
 export type BrainRunBudget = {

@@ -54,6 +54,22 @@ import { revertWorkUnitFromFailedExecution } from "@/lib/peer-workflow/work-unit
 import type { WorkAutomation, WorkUnit } from "@/lib/peer-workflow/work-unit";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import {
+  persistLiveCampaignWebsiteSkip,
+  persistLiveCampaignWebsiteUrl,
+  persistLiveCampaignCompetitors,
+  persistLiveCampaignCompetitorSkip,
+  persistLiveCampaignBrandContext,
+  persistLiveCampaignBusinessAnalysisApproval,
+  persistLiveCampaignStepApproval,
+  persistLiveCampaignStrategyOutput,
+  type LiveWebsiteDecision,
+  type LiveCompetitorDecision,
+  type LiveCampaignBrandContext,
+  type LiveBusinessAnalysisDecision,
+} from "@/lib/office/campaign/live-campaign-context-store";
+import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
+import type { DemoStepApprovalStatus } from "@/lib/office/demo/demo-workflow-simulation";
+import {
   applyCampaignOnboardingToProject,
   CampaignOnboardingValidationError,
   type CampaignOnboardingInput,
@@ -2267,6 +2283,97 @@ export function useMarketingWorkspace(
     [buildReviewHandlerDeps]
   );
 
+  const updateCampaignWebsiteDecision = useCallback(
+    (projectId: string, decision: LiveWebsiteDecision): MarketingProject | null => {
+      if (!peerId) return null;
+      const updated =
+        decision.kind === "url"
+          ? persistLiveCampaignWebsiteUrl(peerId, projectId, decision.url)
+          : persistLiveCampaignWebsiteSkip(peerId, projectId);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const updateCampaignCompetitorDecision = useCallback(
+    (projectId: string, decision: LiveCompetitorDecision): MarketingProject | null => {
+      if (!peerId) return null;
+      const updated =
+        decision.kind === "list"
+          ? persistLiveCampaignCompetitors(peerId, projectId, decision.competitors)
+          : persistLiveCampaignCompetitorSkip(peerId, projectId);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const updateCampaignBrandContext = useCallback(
+    (projectId: string, context: LiveCampaignBrandContext): MarketingProject | null => {
+      if (!peerId) return null;
+      const updated = persistLiveCampaignBrandContext(peerId, projectId, context);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const updateCampaignBusinessAnalysisDecision = useCallback(
+    (projectId: string, decision: LiveBusinessAnalysisDecision): MarketingProject | null => {
+      if (!peerId || decision.kind !== "approved") return null;
+      const updated = persistLiveCampaignBusinessAnalysisApproval(peerId, projectId);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const updateCampaignStepApproval = useCallback(
+    (
+      projectId: string,
+      stepId: CampaignWorkflowStepId,
+      status: DemoStepApprovalStatus
+    ): MarketingProject | null => {
+      if (!peerId) return null;
+      const updated = persistLiveCampaignStepApproval(peerId, projectId, stepId, status);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const markCampaignStrategyGenerated = useCallback(
+    (projectId: string): MarketingProject | null => {
+      if (!peerId) return null;
+      const updated = persistLiveCampaignStrategyOutput(peerId, projectId);
+      if (!updated) return null;
+      const next = projectsRef.current.map((p) => (p.id === projectId ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [peerId, updateProjects]
+  );
+
+  const applyLiveCampaignProjectUpdate = useCallback(
+    (updated: MarketingProject): MarketingProject => {
+      const next = projectsRef.current.map((p) => (p.id === updated.id ? updated : p));
+      updateProjects(next);
+      return updated;
+    },
+    [updateProjects]
+  );
+
   return {
     peer,
     pageState,
@@ -2346,5 +2453,12 @@ export function useMarketingWorkspace(
     handleApproveResponsibilityPlan,
     updateResponsibilities,
     recordWorkspaceActivity,
+    updateCampaignWebsiteDecision,
+    updateCampaignCompetitorDecision,
+    updateCampaignBrandContext,
+    updateCampaignBusinessAnalysisDecision,
+    updateCampaignStepApproval,
+    markCampaignStrategyGenerated,
+    applyLiveCampaignProjectUpdate,
   };
 }

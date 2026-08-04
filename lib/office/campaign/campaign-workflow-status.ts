@@ -61,6 +61,11 @@ export function workflowBasedStatusLabel(input: {
     case "scheduled":
       return nl ? "Ingepland" : "Scheduled";
     case "published":
+      if (input.lifecycleScheduled && !input.lifecyclePublished) {
+        return nl
+          ? "Publicatiekoppelingen zijn nog niet actief"
+          : "Publishing connections are not active yet";
+      }
       return nl ? "Wordt gepubliceerd" : "Publishing";
     case "optimizing":
       return nl ? "Wordt geoptimaliseerd" : "Optimizing";
@@ -74,6 +79,13 @@ export function evidencePrimaryActionLabel(
   executionMode: CampaignContext["executionMode"],
   nl: boolean
 ): string {
+  if (
+    stepId === "business_analyzed" ||
+    stepId === "website_analyzed" ||
+    stepId === "competitors_analyzed"
+  ) {
+    return nl ? "Sluiten" : "Close";
+  }
   if (evidenceApprovalRequired(stepId, executionMode)) {
     if (stepId === "strategy_determined") return nl ? "Strategie goedkeuren" : "Approve strategy";
     if (stepId === "channels_selected") return nl ? "Kanaalkeuze goedkeuren" : "Approve channels";
@@ -83,7 +95,7 @@ export function evidencePrimaryActionLabel(
   if (stepId === "strategy_determined") return nl ? "Verder naar kanaalkeuze" : "Continue to channels";
   if (stepId === "channels_selected") return nl ? "Verder naar campagneonderdelen" : "Continue to deliverables";
   if (stepId === "deliverables_created") return nl ? "Verder naar goedkeuring" : "Continue to approval";
-  return nl ? "Verder" : "Continue";
+  return nl ? "Sluiten" : "Close";
 }
 
 export function evidenceSuccessMessage(stepId: CampaignWorkflowStepId, nl: boolean): string {

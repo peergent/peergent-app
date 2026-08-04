@@ -4,7 +4,7 @@ import type { CompanyProfile } from "../company/profile";
 import type { CustomerCorrection } from "../company/corrections";
 import type { WebsiteSnapshot } from "../website/types";
 import type { WebsiteProvider } from "../website/providers/website-provider";
-import { createDemoWebsiteProvider } from "../website/providers/demo-website-provider";
+import { buildCustomerSuppliedWebsiteSnapshot } from "../website/build-customer-supplied-snapshot";
 import { buildCompanySnapshot } from "../company/snapshot-builder";
 import { buildBrainSnapshotFromCompany } from "./brain-snapshot-builder";
 import { buildReadinessReport, readinessNeedsMoreInfo } from "./readiness";
@@ -64,8 +64,19 @@ function buildAssemblyResult(input: {
   });
 
   const companySnapshot = builderResult.snapshot;
-  const brandAvailable = Boolean(assemblerInput.marketingUnderstanding?.brand);
-  const businessAvailable = Boolean(assemblerInput.marketingUnderstanding?.available);
+  const campaignCtx = assemblerInput.campaignContext;
+  const campaignHasBrandFacts = Boolean(
+    campaignCtx?.brandContext?.tone?.trim() || campaignCtx?.brandContext?.positioning?.trim()
+  );
+  const campaignHasBusinessFacts = Boolean(
+    campaignCtx?.brandContext?.productsAndServices?.length ||
+      campaignCtx?.brandContext?.uniqueSellingPoints?.length ||
+      campaignCtx?.description?.trim()
+  );
+  const brandAvailable =
+    Boolean(assemblerInput.marketingUnderstanding?.brand) || campaignHasBrandFacts;
+  const businessAvailable =
+    Boolean(assemblerInput.marketingUnderstanding?.available) || campaignHasBusinessFacts;
   const correctionsApplied = assemblerInput.corrections ?? [];
 
   recordSource(audit, "organization", assemblerInput.organizationId, "used");
@@ -100,6 +111,8 @@ function buildAssemblyResult(input: {
   const missingInformation = detectMissingInformation({
     profile: companySnapshot.profile,
     website: companySnapshot.website,
+    websiteSkipped: assemblerInput.campaignContext?.websiteState === "skipped",
+    competitorsSkipped: assemblerInput.campaignContext?.competitorsSkipped,
   });
 
   const warnings: ContextAssemblyWarning[] = missingInformation.map((m) => ({
@@ -164,9 +177,24 @@ export class CompanyContextAssembler {
       organizationId: input.organizationId,
       assembledAt,
     });
+    let website = input.websiteSnapshot ?? null;
+    if (
+      !website &&
+      input.websiteUrl?.trim() &&
+      input.campaignContext?.websiteState !== "skipped"
+    ) {
+      website = buildCustomerSuppliedWebsiteSnapshot({
+        organizationId: input.organizationId,
+        url: input.websiteUrl.trim(),
+        companyName:
+          input.companyProfile?.companyName.value ??
+          input.campaignContext?.brandName ??
+          input.campaignContext?.companyName,
+      });
+    }
     return buildAssemblyResult({
       assemblerInput: input,
-      website: input.websiteSnapshot ?? null,
+      website,
       assembledAt,
       audit,
     });
@@ -181,13 +209,30 @@ export class CompanyContextAssembler {
     });
 
     let website = input.websiteSnapshot ?? null;
-    if (!website && input.websiteUrl?.trim()) {
-      const provider = input.websiteProvider ?? createDemoWebsiteProvider();
-      website = await provider.scan({
-        organizationId: input.organizationId,
-        url: input.websiteUrl.trim(),
-        companyName: input.companyProfile?.companyName.value ?? input.campaignContext?.companyName,
-      });
+    if (
+      !website &&
+      input.websiteUrl?.trim() &&
+      input.campaignContext?.websiteState !== "skipped"
+    ) {
+      if (input.websiteProvider) {
+        website = await input.websiteProvider.scan({
+          organizationId: input.organizationId,
+          url: input.websiteUrl.trim(),
+          companyName:
+            input.companyProfile?.companyName.value ??
+            input.campaignContext?.brandName ??
+            input.campaignContext?.companyName,
+        });
+      } else {
+        website = buildCustomerSuppliedWebsiteSnapshot({
+          organizationId: input.organizationId,
+          url: input.websiteUrl.trim(),
+          companyName:
+            input.companyProfile?.companyName.value ??
+            input.campaignContext?.brandName ??
+            input.campaignContext?.companyName,
+        });
+      }
     }
 
     return buildAssemblyResult({

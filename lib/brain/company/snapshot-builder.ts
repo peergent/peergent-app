@@ -1,5 +1,6 @@
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
+import { shouldUseOrganizationIntelligence } from "@/lib/office/campaign/campaign-brand-boundary";
 import type { BrainProvenanceRef } from "../domain/provenance";
 import { resolveFreshness } from "../domain/freshness";
 import type { CompanyProfile } from "./profile";
@@ -131,31 +132,120 @@ function mergeCampaignInput(
   at: string
 ): CompanyProfile {
   const next = { ...profile };
-  if (ctx.description.trim()) {
-    const source: CompanyFactSource = "customer_entered";
-    next.goals = fieldFromListValue([ctx.description.trim()], source, {
+  const source: CompanyFactSource = "customer_entered";
+
+  const goalValues = [
+    ...ctx.goals.filter(Boolean),
+    ...(ctx.description.trim() ? [ctx.description.trim()] : []),
+  ];
+  const uniqueGoals = [...new Set(goalValues.map((g) => g.trim()).filter(Boolean))];
+  if (uniqueGoals.length) {
+    next.goals = fieldFromListValue(uniqueGoals, source, {
       lastUpdatedAt: at,
       freshness: "fresh",
-      confidence: "medium",
+      confidence: "high",
+      customerConfirmed: true,
     });
   }
+
   if (ctx.audience.trim()) {
     const existing = next.targetAudiences.value ?? [];
     const merged = [...new Set([...existing, ctx.audience.trim()])];
-    const source = winningSource(next.targetAudiences.source, "customer_entered");
-    next.targetAudiences = fieldFromListValue(merged, source, {
+    const audienceSource = winningSource(next.targetAudiences.source, "customer_entered");
+    next.targetAudiences = fieldFromListValue(merged, audienceSource, {
       lastUpdatedAt: at,
       freshness: "fresh",
-      confidence: source === "customer_confirmed" ? "high" : "medium",
+      confidence: audienceSource === "customer_confirmed" ? "high" : "medium",
       customerConfirmed: next.targetAudiences.customerConfirmed,
     });
   }
-  if (ctx.companyName.trim() && !next.companyName.value) {
+
+  const resolvedBrandName = ctx.brandName.trim() || ctx.brandContext?.brandName?.trim();
+  if (resolvedBrandName) {
+    next.companyName = fieldFromValue(resolvedBrandName, "customer_entered", {
+      lastUpdatedAt: at,
+      freshness: "fresh",
+      confidence: ctx.usesExternalBrand ? "high" : "medium",
+      customerConfirmed: ctx.usesExternalBrand,
+    });
+  } else if (ctx.companyName.trim() && !next.companyName.value) {
     next.companyName = fieldFromValue(ctx.companyName.trim(), "customer_entered", {
       lastUpdatedAt: at,
       freshness: "fresh",
     });
   }
+
+  if (!ctx.competitorsSkipped && ctx.competitors.length > 0) {
+    const competitorNames = ctx.competitors.map((c) => c.name.trim()).filter(Boolean);
+    if (competitorNames.length) {
+      next.mainCompetitors = fieldFromListValue(competitorNames, source, {
+        lastUpdatedAt: at,
+        freshness: "fresh",
+        confidence: "high",
+        customerConfirmed: true,
+      });
+    }
+  }
+
+  return next;
+}
+
+function mergeCampaignBrandContext(
+  profile: CompanyProfile,
+  ctx: CampaignContext,
+  at: string
+): CompanyProfile {
+  const brand = ctx.brandContext;
+  if (!brand) return profile;
+
+  const next = { ...profile };
+  const source: CompanyFactSource = "customer_entered";
+
+  const applyField = (key: keyof CompanyProfile, value: string | null | undefined) => {
+    if (!value?.trim()) return;
+    const field = next[key];
+    if (field && typeof field === "object" && "value" in field && "source" in field) {
+      (next as Record<string, unknown>)[key] = fieldFromValue(value.trim(), source, {
+        lastUpdatedAt: at,
+        freshness: "fresh",
+        confidence: "high",
+        customerConfirmed: true,
+      });
+    }
+  };
+
+  applyField("companyName", brand.brandName ?? ctx.brandName);
+  applyField("industry", brand.industry);
+  applyField("mission", brand.mission);
+  applyField("positioning", brand.positioning);
+  applyField("tone", brand.tone);
+
+  if (brand.uniqueSellingPoints?.length) {
+    next.uniqueSellingPoints = fieldFromListValue(brand.uniqueSellingPoints, source, {
+      lastUpdatedAt: at,
+      freshness: "fresh",
+      confidence: "high",
+      customerConfirmed: true,
+    });
+  }
+  if (brand.productsAndServices?.length) {
+    next.products = fieldFromListValue(brand.productsAndServices, source, {
+      lastUpdatedAt: at,
+      freshness: "fresh",
+      confidence: "high",
+      customerConfirmed: true,
+    });
+  }
+  if (brand.targetAudience?.trim()) {
+    const merged = [...new Set([...(next.targetAudiences.value ?? []), brand.targetAudience.trim()])];
+    next.targetAudiences = fieldFromListValue(merged, source, {
+      lastUpdatedAt: at,
+      freshness: "fresh",
+      confidence: "high",
+      customerConfirmed: true,
+    });
+  }
+
   return next;
 }
 
@@ -256,10 +346,17 @@ export class CompanySnapshotBuilder {
   }): CompanySnapshotBuilderResult {
     const assembledAt = input.assembledAt ?? new Date().toISOString();
     let profile = input.companyProfile ?? emptyCompanyProfile(input.organizationId);
-    if (input.marketingUnderstanding?.available) {
+    const useOrgIntelligence = shouldUseOrganizationIntelligence({
+      usesExternalBrand: input.campaignContext?.usesExternalBrand ?? false,
+      isSeedCampaign: input.campaignContext?.isSeedCampaign ?? false,
+    });
+    if (input.marketingUnderstanding?.available && useOrgIntelligence) {
       profile = mergeMarketingUnderstanding(profile, input.marketingUnderstanding, assembledAt);
     }
-    if (input.campaignContext) profile = mergeCampaignInput(profile, input.campaignContext, assembledAt);
+    if (input.campaignContext) {
+      profile = mergeCampaignInput(profile, input.campaignContext, assembledAt);
+      profile = mergeCampaignBrandContext(profile, input.campaignContext, assembledAt);
+    }
     return this.build({
       organizationId: input.organizationId,
       companyProfile: profile,

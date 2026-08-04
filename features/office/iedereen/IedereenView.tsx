@@ -8,7 +8,7 @@ import { getV17CommandCenterCopy } from "@/lib/i18n/v17-command-center-copy";
 import { formatHomeRelativeTime } from "@/lib/i18n";
 import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
 import { v17AttentionCtas } from "@/lib/customer-v17/build-v17-cc-attention";
-import { officeHref } from "@/lib/office/links";
+import { officeHref, toOfficeHref } from "@/lib/office/links";
 import { DEMO_PEER_ID } from "@/lib/office/demo/demo-company";
 
 type HomeTrendCard = {
@@ -159,10 +159,31 @@ export default function IedereenView({
   const completedRows = demoCompleted ?? model.completedToday;
   const performanceRows = demoPerformance ?? model.performance;
 
-  const attentionHref = (href: string) => {
-    if (!isDemo) return href;
-    if (href.includes("/team/")) return officeHref(DEMO_PEER_ID, "work");
-    return href;
+  const attentionHref = (href: string, peerId?: string) => {
+    if (href.startsWith("/company")) {
+      return officeHref(peerId ?? DEMO_PEER_ID, "agreement");
+    }
+    const mapped = toOfficeHref(peerId ?? DEMO_PEER_ID, href);
+    if (isDemo && href.includes("/team/")) return officeHref(DEMO_PEER_ID, "work");
+    return mapped;
+  };
+
+  const performanceHref = (row: (typeof performanceRows)[number]) => {
+    const peer = "peerId" in row && row.peerId ? row.peerId : DEMO_PEER_ID;
+    if ("resultsHref" in row && row.resultsHref) {
+      return toOfficeHref(peer, row.resultsHref);
+    }
+    return officeHref(peer, "performance");
+  };
+
+  const completedHref = (row: (typeof completedRows)[number]) => {
+    if ("href" in row && row.href) {
+      return toOfficeHref(DEMO_PEER_ID, row.href);
+    }
+    if (row.serviceKey === "marketing") {
+      return officeHref(DEMO_PEER_ID, "work");
+    }
+    return officeHref(DEMO_PEER_ID, "desk");
   };
 
   return (
@@ -198,7 +219,7 @@ export default function IedereenView({
                   <span>{card.contextLine}</span>
                 </div>
                 <Link
-                  href={attentionHref(ctas.primary.href)}
+                  href={attentionHref(ctas.primary.href, card.peerId)}
                   className="pg-v13-btn pg-v13-btn--sm no-underline"
                 >
                   {ctas.primary.label}
@@ -213,7 +234,11 @@ export default function IedereenView({
         <section className="pg-v13-sec">
           <p className="pg-v13-sec-label">{nl ? "Vandaag afgerond" : v17Copy.completedToday}</p>
           {completedRows.map((row) => (
-            <div key={row.id} className="pg-v13-done-row">
+            <Link
+              key={row.id}
+              href={completedHref(row)}
+              className="pg-v13-done-row block no-underline transition-opacity hover:opacity-90"
+            >
               <span
                 className="pg-v13-dot2"
                 style={{
@@ -226,7 +251,7 @@ export default function IedereenView({
                 }}
               />
               <strong>{row.peerLabel}</strong> — {row.summary}
-            </div>
+            </Link>
           ))}
         </section>
       ) : null}
@@ -236,7 +261,11 @@ export default function IedereenView({
           <p className="pg-v13-sec-label">{nl ? "Je team" : v17Copy.performanceTitle}</p>
           <div className="pg-v13-row-list">
             {performanceRows.map((row) => (
-              <div key={row.id} className="pg-v13-row-item">
+              <Link
+                key={row.id}
+                href={performanceHref(row)}
+                className="pg-v13-row-item no-underline transition-opacity hover:opacity-90"
+              >
                 <span className="font-semibold text-[var(--pg-v13-ink)]">{row.label}</span>
                 <span className="flex items-center gap-2">
                   <span className="pg-v13-row-src">
@@ -246,7 +275,7 @@ export default function IedereenView({
                     {row.performancePct != null ? `${row.performancePct}%` : "—"}
                   </span>
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -291,15 +320,18 @@ export default function IedereenView({
                 <TrendCard key={card.id} card={card} />
               ))}
             </div>
-          ) : model.weeklyImpact.showSection && model.weeklyImpact.metrics.length > 2 ? (
-            <div className="pg-v13-trend-grid">
-              {model.weeklyImpact.metrics.slice(2, 4).map((metric) => (
+          ) : model.weeklyImpact.showSection && model.weeklyImpact.metrics.length > 0 ? (
+            <div className="pg-v13-trend-grid pg-v13-trend-grid--two">
+              {model.weeklyImpact.metrics.slice(0, 2).map((metric, index) => (
                 <div key={metric.id} className="pg-v13-trend-card pg-v13-trend-card--sm">
                   <div className="pg-v13-trend-head">
                     <div className="pg-v13-trend-lbl">{metric.label}</div>
                     <div className="pg-v13-trend-valrow">
                       <span className="pg-v13-trend-val">{metric.value}</span>
                     </div>
+                  </div>
+                  <div className="pg-v13-trend-chart pg-v13-trend-chart--mini">
+                    <HomeTrendSpark variant={index === 1 ? "b" : "a"} />
                   </div>
                 </div>
               ))}

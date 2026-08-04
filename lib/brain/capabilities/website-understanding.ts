@@ -30,11 +30,46 @@ export function executeWebsiteUnderstanding(
           id: "warn-no-website",
           code: "website_unavailable",
           message: nl
-            ? "Dat weet ik nog niet — er is nog geen website-snapshot beschikbaar."
-            : "I don't know yet — no website snapshot is available.",
+            ? "Er is nog geen website opgegeven voor deze campagne."
+            : "No website has been supplied for this campaign yet.",
           provenance: [
             { kind: "website", refId: input.companySnapshot.organizationId, label: "missing" },
           ],
+        },
+      ],
+    };
+  }
+
+  const isUrlOnly =
+    website.source.method === "customer_supplied" && website.findings.length === 0;
+
+  if (isUrlOnly) {
+    return {
+      ...base,
+      findings: [
+        {
+          id: "finding-url-supplied",
+          label: nl ? "Opgegeven URL" : "Supplied URL",
+          value: website.source.url,
+          confidence: "high",
+          provenance: [
+            {
+              kind: "website",
+              refId: website.source.url,
+              label: "customer_supplied",
+              capturedAt: website.assembledAt,
+            },
+          ],
+        },
+      ],
+      warnings: [
+        {
+          id: "warn-url-only",
+          code: "website_url_only",
+          message: nl
+            ? "De URL is opgeslagen. Een volledige websiteanalyse is nog niet beschikbaar."
+            : "The URL is saved. A full website analysis is not available yet.",
+          provenance: [{ kind: "website", refId: website.source.url }],
         },
       ],
     };

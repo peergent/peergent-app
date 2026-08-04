@@ -18,6 +18,7 @@ import {
   EMMA_PLAN_STEPS_NL,
 } from "./build-structured-strategy-evidence";
 import { workflowBasedStatusLabel } from "./campaign-workflow-status";
+import { readCampaignScheduleRecord } from "./campaign-schedule-state";
 import { buildOptimizationMetrics, formatOfficeDate } from "./campaign-optimization";
 import { buildCampaignResultsViewModel } from "./build-campaign-results";
 import type { CampaignExecutionMode } from "./workflow-types";
@@ -58,6 +59,8 @@ export type CampaignScheduleInfo = {
   scheduledAtLabel: string;
   channels: string[];
   deliverableLabels: string[];
+  /** Live Office — truthful note when external publish is unavailable. */
+  integrationsNote?: string;
 };
 
 export type CampaignDetailViewModel = {
@@ -175,13 +178,16 @@ export function buildCampaignDetailViewModel(input: {
     new Set()
   );
 
-  const scheduleRecord = overlay.demoCampaignSchedule?.[projectId];
+  const scheduleRecord = readCampaignScheduleRecord(project, domainInput, isDemo);
   const publishedRecord = overlay.demoCampaignPublished?.[projectId];
   const hasPublished = drafts.some((d) => d.status === "published");
   const hasPending = drafts.some((d) => d.status === "ready_for_review");
+  const deliverablesApproved =
+    project.campaignSetup?.stepApprovals?.deliverables_created === "approved";
   const allApproved =
-    drafts.length > 0 &&
-    drafts.every((d) => d.status === "approved" || d.status === "ready_to_publish" || d.status === "published");
+    (drafts.length > 0 &&
+      drafts.every((d) => d.status === "approved" || d.status === "ready_to_publish" || d.status === "published")) ||
+    deliverablesApproved;
 
   let lifecycleStatus: CampaignDetailViewModel["lifecycleStatus"] = "planning";
   if (hasPublished || publishedRecord) lifecycleStatus = "published";
@@ -346,7 +352,9 @@ export function buildCampaignDetailViewModel(input: {
       : null;
 
   const websiteEditUrl =
-    campaignContext.websiteState === "simulated_analysis_complete" && campaignContext.websiteUrl
+    (campaignContext.websiteState === "simulated_analysis_complete" ||
+      campaignContext.websiteState === "available") &&
+    campaignContext.websiteUrl
       ? campaignContext.websiteUrl
       : null;
 
@@ -453,12 +461,19 @@ export function buildCampaignDetailViewModel(input: {
   const scheduleInfo: CampaignScheduleInfo | null = scheduleRecord
     ? {
         scheduledAt: scheduleRecord.scheduledAt,
-        scheduledAtLabel: new Date(scheduleRecord.scheduledAt).toLocaleString(nl ? "nl-NL" : "en-GB"),
+        scheduledAtLabel: new Date(scheduleRecord.scheduledAt).toLocaleString(nl ? "nl-NL" : "en-GB", {
+          timeZone: scheduleRecord.timezone,
+        }),
         channels: scheduleRecord.channels.map((c) => channelLabel(c, nl)),
         deliverableLabels: scheduleRecord.deliverableIds.map((id) => {
           const draft = drafts.find((d) => d.id === id);
           return draft?.title ?? id;
         }),
+        integrationsNote: !isDemo
+          ? nl
+            ? "Publicatiekoppelingen zijn nog niet actief."
+            : "Publishing connections are not active yet."
+          : undefined,
       }
     : null;
 

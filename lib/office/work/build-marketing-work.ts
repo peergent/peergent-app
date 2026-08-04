@@ -1,9 +1,9 @@
 import { resolveMarketingCampaignLocale } from "@/lib/i18n/marketing-campaign-copy";
 import { getV17PeerCopy } from "@/lib/i18n/v17-peer-copy";
+import { readCampaignScheduleRecord } from "@/lib/office/campaign/campaign-schedule-state";
 import { buildMarketingPeerAttentionItems } from "@/features/marketing-workspace/lib/build-peer-attention-items";
 import {
   deriveProjectNextStep,
-  deriveProjectStatus,
   primaryWorkUnitForProject,
   projectStatusLabel,
 } from "@/lib/peer-experience/marketing/projects/project-engine";
@@ -14,14 +14,33 @@ import type {
   MarketingProjectStatus,
 } from "@/lib/peer-experience/marketing/projects/types";
 import type { IntegrationConnection, IntegrationProviderId } from "@/lib/integrations/types";
-import { presentExpectedDate, presentNextStep } from "../presentation";
+import {
+  presentExpectedDate,
+  presentNextStep,
+  presentPublishingNotConnectedText,
+  presentScheduledPrimaryText,
+} from "../presentation";
+import { officeCampaignHref } from "../links";
+import {
+  resolveMarketingWorkBucket,
+  workGroupIdFromBucket,
+  type MarketingWorkBucket,
+} from "./resolve-marketing-work-bucket";
+import type {
+  WorkChannel,
+  WorkCopy,
+  WorkGroup,
+  WorkGroupId,
+  WorkItem,
+  WorkProposal,
+  WorkProposalTerm,
+  WorkProposalTerms,
+  WorkStagePreview,
+  WorkViewModel,
+} from "./types";
 
 /**
  * Stage labels, translated at the presentation boundary.
- *
- * The domain's own `MARKETING_PROJECT_STATUS_LABELS` stays English on purpose —
- * it is vocabulary, not copy, and other surfaces depend on it. This is the same
- * split the next-step and expected-date presenters already use.
  */
 const STAGE_LABELS: Record<string, Record<MarketingProjectStatus, string>> = {
   en: {
@@ -52,34 +71,6 @@ function stageLabelFor(
 ): string {
   return (STAGE_LABELS[locale] ?? STAGE_LABELS.en)[status] ?? projectStatusLabel(status);
 }
-import { officeHref } from "../links";
-import { resolveProjectIdForDraft } from "../attribution";
-import type {
-  WorkChannel,
-  WorkCopy,
-  WorkGroup,
-  WorkGroupId,
-  WorkItem,
-  WorkProposal,
-  WorkProposalTerm,
-  WorkProposalTerms,
-  WorkStagePreview,
-  WorkViewModel,
-} from "./types";
-
-/**
- * Marketing adapter for Work (§4.2).
- *
- * Reuses project-engine for every marketing meaning — status, next step,
- * primary work unit — and the shared attention builder to determine what is
- * genuinely blocked on the customer. Nothing about marketing is re-derived
- * here; this file only maps those results onto the peer-agnostic shape.
- */
-
-const FINISHED_STATUSES: readonly MarketingProjectStatus[] = [
-  "completed",
-  "archived",
-];
 
 /** Publishing channels the customer chose, mapped to the provider that serves them. */
 const CHANNEL_PROVIDER: Partial<Record<CampaignSetupChannel, IntegrationProviderId>> = {
@@ -138,7 +129,7 @@ function groupTitle(id: WorkGroupId, locale: "en" | "nl"): string {
     blocked_on_you: "Waiting on you",
     blocked_elsewhere: "Waiting on something else",
     moving: "Moving",
-    queued: "Queued",
+    queued: "Scheduled",
     finished: "Recently finished",
   };
   const nl: Record<WorkGroupId, string> = {
@@ -168,42 +159,96 @@ function channelsForProject(
       return {
         id: channel,
         label: CHANNEL_LABEL[channel] ?? channel,
-        // Channels with no provider (e.g. "other") are never reported as a
-        // missing connection — there is nothing to connect.
         connected: provider ? connection?.status === "connected" : true,
       };
     });
 }
 
-/**
- * §4.2 The blocker attribution. Resolved in priority order so the customer can
- * identify their own blocking items in under five seconds.
- */
-function resolveGroup(input: {
-  status: MarketingProjectStatus;
-  awaitingCustomer: boolean;
-  paused: boolean;
-  disconnectedChannel: WorkChannel | undefined;
-  hasStarted: boolean;
-}): WorkGroupId {
-  if (FINISHED_STATUSES.includes(input.status)) return "finished";
-  if (input.status === "monitoring_results") return "moving";
-  if (input.awaitingCustomer) return "blocked_on_you";
-  if (input.paused || input.disconnectedChannel) return "blocked_elsewhere";
-  if (!input.hasStarted) return "queued";
-  return "moving";
+function actionLabelForBucket(bucket: MarketingWorkBucket, locale: "en" | "nl"): string | null {
+  switch (bucket) {
+    case "attention":
+      return locale === "nl" ? "Beoordelen" : "Review";
+    case "scheduled":
+      return locale === "nl" ? "Open campagne" : "Open campaign";
+    case "blocked":
+      return locale === "nl" ? "Probleem bekijken" : "View issue";
+    case "recently_completed":
+      return locale === "nl" ? "Resultaat bekijken" : "View results";
+    case "running":
+      return locale === "nl" ? "Open campagne" : "Open campaign";
+    default:
+      return null;
+  }
 }
 
-/**
- * §4.2 Emma proposes rather than apologises. The proposal is grounded in real
- * business understanding when it exists; when it does not, she asks plainly
- * rather than inventing an audience.
- */
-/**
- * The real campaign lifecycle, phrased for customers. Describing how work
- * actually moves is not fabrication — it is the product's own process, and
- * seeing it up front is what makes starting feel safe.
- */
+function buildCardCopy(input: {
+  project: MarketingProject;
+  domainInput: MarketingPeerDomainInput;
+  isDemo: boolean;
+  locale: "en" | "nl";
+  bucket: MarketingWorkBucket;
+  projectStatus: MarketingProjectStatus;
+  publishingState: import("@/lib/office/campaign/campaign-lifecycle").CampaignPublishingState;
+  workUnits: MarketingPeerDomainInput["workUnits"];
+}): Pick<WorkItem, "primaryText" | "secondaryText" | "nextStep"> {
+  const { project, domainInput, isDemo, locale, bucket, projectStatus, publishingState } =
+    input;
+
+  if (bucket === "scheduled") {
+    const record = readCampaignScheduleRecord(project, domainInput, isDemo);
+    const primaryText = record ? presentScheduledPrimaryText(record, locale) : null;
+    const secondaryText =
+      publishingState === "not_configured"
+        ? presentPublishingNotConnectedText(locale)
+        : null;
+    return { primaryText, secondaryText, nextStep: primaryText };
+  }
+
+  const rawNext = presentNextStep(
+    deriveProjectNextStep(projectStatus, input.workUnits, project.id),
+    locale
+  );
+
+  if (bucket === "blocked" && publishingState === "failed") {
+    return {
+      primaryText:
+        locale === "nl" ? "Publicatie is mislukt" : "Publication failed",
+      secondaryText: locale === "nl" ? "Bekijk wat er misging" : "See what went wrong",
+      nextStep: rawNext,
+    };
+  }
+
+  return {
+    primaryText: rawNext,
+    secondaryText: null,
+    nextStep: rawNext,
+  };
+}
+
+function blockedByLabel(input: {
+  bucket: MarketingWorkBucket;
+  reason: import("./resolve-marketing-work-bucket").MarketingWorkBucketReason;
+  locale: "en" | "nl";
+  copy: WorkCopy;
+  disconnectedChannel?: WorkChannel;
+}): string | null {
+  if (input.bucket !== "blocked") return null;
+
+  if (input.reason === "publication_failed") {
+    return input.locale === "nl" ? "publicatie mislukt" : "publication failed";
+  }
+  if (input.reason === "terminal_failure") {
+    return input.locale === "nl" ? "strategie mislukt" : "strategy failed";
+  }
+  if (input.reason === "integration_blocked_during_publish" && input.disconnectedChannel) {
+    return input.copy.notConnectedLabel(input.disconnectedChannel.label);
+  }
+  if (input.reason === "paused") {
+    return input.locale === "nl" ? "gepauzeerd" : "paused";
+  }
+  return input.locale === "nl" ? "geblokkeerd" : "blocked";
+}
+
 function stagePreview(locale: "en" | "nl"): WorkStagePreview[] {
   if (locale === "nl") {
     return [
@@ -223,23 +268,6 @@ function stagePreview(locale: "en" | "nl"): WorkStagePreview[] {
   ];
 }
 
-/**
- * §4.2 Emma proposes rather than apologises. The proposal is grounded in real
- * business understanding when it exists; when it does not, she asks plainly
- * rather than inventing an audience.
- */
-/**
- * §4.2 The terms of the proposal, quoted rather than predicted.
- *
- * A recorded strategy already states what a campaign idea is *for* and why it
- * was suggested. Repeating those here is reporting, not forecasting. The one
- * fact that is not quoted is what the customer has to do — and that is a fact
- * about the product's own lifecycle, counted from the stages themselves.
- *
- * Deliberately absent: expected results, projected revenue and effort in hours.
- * None of those exist anywhere in the system, and inventing them is exactly the
- * confident-sounding fiction §12 forbids.
- */
 function buildProposalTerms(
   domainInput: MarketingPeerDomainInput,
   stages: WorkStagePreview[],
@@ -282,7 +310,6 @@ function buildProposalTerms(
     });
   }
 
-  // What it costs you — counted from the lifecycle, not estimated.
   const approvals = stages.filter((stage) => stage.needsYou).length;
   if (approvals > 0) {
     items.push({
@@ -360,15 +387,13 @@ export function buildMarketingWorkViewModel(input: {
   const { domainInput } = input;
   const peerId = domainInput.peerId;
   const v17Copy = getV17PeerCopy(locale);
+  const isDemo = peerId === "demo";
 
-  // Which projects the customer is genuinely blocking, per the shared builder.
   const attention = buildMarketingPeerAttentionItems({
     domainInput,
     locale,
     primaryCtaLabel: v17Copy.reviewCta,
   });
-  // Match on stable project identity, never on title — two campaigns sharing a
-  // title must not both read as blocked on the customer.
   const awaitingProjectIds = new Set(
     attention.map((item) => item.projectId).filter(Boolean) as string[]
   );
@@ -376,54 +401,58 @@ export function buildMarketingWorkViewModel(input: {
   const buckets = new Map<WorkGroupId, WorkItem[]>();
 
   for (const project of domainInput.projects) {
-    const status = deriveProjectStatus(
-      project,
-      domainInput.workUnits,
-      domainInput.drafts,
-      new Set()
-    );
-
     const unit = primaryWorkUnitForProject(project.id, domainInput.workUnits);
     const channels = channelsForProject(project, domainInput.connections);
     const disconnectedChannel = channels.find((c) => !c.connected);
 
-    const awaitingCustomer =
-      status === "waiting_for_review" || awaitingProjectIds.has(project.id);
-
-    const group = resolveGroup({
-      status,
-      awaitingCustomer,
-      paused: Boolean(unit?.paused),
+    const bucketResult = resolveMarketingWorkBucket({
+      project,
+      domainInput,
+      isDemo,
+      awaitingProjectIds,
       disconnectedChannel,
-      hasStarted: Boolean(unit),
+      paused: Boolean(unit?.paused),
+    });
+
+    const group = workGroupIdFromBucket(bucketResult.bucket);
+    const stageLabel = stageLabelFor(bucketResult.projectStatus, locale);
+    const cardCopy = buildCardCopy({
+      project,
+      domainInput,
+      isDemo,
+      locale,
+      bucket: bucketResult.bucket,
+      projectStatus: bucketResult.projectStatus,
+      publishingState: bucketResult.publishingState,
+      workUnits: domainInput.workUnits,
     });
 
     const blockedBy =
-      group === "blocked_on_you"
+      bucketResult.bucket === "attention"
         ? locale === "nl"
           ? "jou"
           : "you"
-        : group === "blocked_elsewhere"
-          ? disconnectedChannel
-            ? copy.notConnectedLabel(disconnectedChannel.label)
-            : locale === "nl"
-              ? "gepauzeerd"
-              : "paused"
-          : null;
+        : blockedByLabel({
+            bucket: bucketResult.bucket,
+            reason: bucketResult.reason,
+            locale,
+            copy,
+            disconnectedChannel,
+          });
 
     const item: WorkItem = {
       id: project.id,
       name: project.title,
-      stageLabel: stageLabelFor(status, locale),
-      // Mapped at the presentation boundary — the domain keeps its vocabulary.
-      nextStep: presentNextStep(
-        deriveProjectNextStep(status, domainInput.workUnits, project.id),
-        locale
-      ),
+      stageLabel,
+      primaryText: cardCopy.primaryText,
+      secondaryText: cardCopy.secondaryText,
+      actionLabel: actionLabelForBucket(bucketResult.bucket, locale),
+      nextStep: cardCopy.nextStep,
       blockedBy,
       expectedLabel: presentExpectedDate(unit?.estimatedCompletionAt, locale),
-      href: officeHref(peerId, "work", { campaign: project.id }),
+      href: officeCampaignHref(peerId, project.id),
       channels,
+      bucket: bucketResult.bucket,
     };
 
     const existing = buckets.get(group) ?? [];
@@ -453,4 +482,21 @@ export function buildMarketingWorkViewModel(input: {
     proposal: hasAnyWork ? null : buildProposal(domainInput, locale),
     copy,
   };
+}
+
+/** Filter counts keyed by Work page filter id. */
+export function workFilterCounts(model: WorkViewModel): Record<WorkGroupId | "all", number> {
+  const counts: Record<WorkGroupId | "all", number> = {
+    all: 0,
+    blocked_on_you: 0,
+    blocked_elsewhere: 0,
+    moving: 0,
+    queued: 0,
+    finished: 0,
+  };
+  for (const group of model.groups) {
+    counts[group.id] = group.items.length;
+    counts.all += group.items.length;
+  }
+  return counts;
 }

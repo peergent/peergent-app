@@ -107,7 +107,7 @@ describe("buildHomeViewModel", () => {
 
     expect(model.needsYou).toHaveLength(1);
     expect(model.needsYou[0]?.title).toBe(copy.needsYouItems.reviewDraft);
-    expect(model.needsYou[0]?.href).toBe("/team/peer-maya");
+    expect(model.needsYou[0]?.href).toBe("/office/peer-maya/work");
     expect(model.suggestedStart?.ctaLabel).toBe(copy.needsYouItems.reviewDraft);
     expect(model.suggestedStart?.headline).toBe("Q1 Launch Post");
     expect(model.narrative.headline).toContain("Maya");

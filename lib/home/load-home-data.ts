@@ -1,11 +1,11 @@
 import type { PeerRow } from "@/lib/peer-display";
 import type { MarketingWorkspacePersistedState } from "@/lib/marketing-workspace/types";
 import { loadMarketingWorkspaceState } from "@/lib/marketing-workspace/storage";
-import { marketingPeerWorkspaceHref } from "@/lib/config/peer-studio";
+import { officeHref } from "@/lib/office/links";
 import type { HomePeerWorkspaceSnapshot } from "./types";
 
 export function marketingWorkspaceHref(peerId: string): string {
-  return marketingPeerWorkspaceHref(peerId);
+  return officeHref(peerId, "work");
 }
 
 export function peerWorkspaceHref(peer: PeerRow): string {

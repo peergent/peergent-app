@@ -1,7 +1,7 @@
 import { getOpenAIApiKey, getOpenAIModel } from "@/lib/ai-runtime/env";
 import type { BrainLlmProvider } from "./provider";
 import type { BrainLlmProviderConfig, BrainLlmRequest } from "./types";
-import { BrainLlmError, BrainLlmMissingKeyError } from "./errors";
+import { BrainLlmError, BrainLlmMissingKeyError, BrainLlmTimeoutError } from "./errors";
 import { buildLlmUsage } from "./usage";
 import { isRetryableHttpStatus } from "./retry";
 
@@ -11,7 +11,16 @@ type OpenAIResponsesPayload = {
   input: string;
   temperature: number;
   max_output_tokens: number;
-  text?: { format: { type: "json_object" } };
+  text?: {
+    format:
+      | { type: "json_object" }
+      | {
+          type: "json_schema";
+          name: string;
+          strict: boolean;
+          schema: Record<string, unknown>;
+        };
+  };
 };
 
 type OpenAIResponsesApiResponse = {
@@ -43,26 +52,48 @@ export class OpenAIBrainLlmProvider implements BrainLlmProvider {
 
   constructor(private readonly config: BrainLlmProviderConfig = {}) {}
 
-  async complete(request: BrainLlmRequest): Promise<{ rawText: string; usage: ReturnType<typeof buildLlmUsage> }> {
+  async complete(
+    request: BrainLlmRequest,
+    options?: { attemptNumber?: number }
+  ): Promise<{ rawText: string; usage: ReturnType<typeof buildLlmUsage> }> {
     const apiKey = this.config.apiKey ?? getOpenAIApiKey();
     if (!apiKey) throw new BrainLlmMissingKeyError("openai");
 
     const model = request.model ?? this.config.defaultModel ?? getOpenAIModel();
     const fetchImpl = this.config.fetchImpl ?? fetch;
-    const timeoutMs = this.config.timeoutMs ?? 60_000;
+    const timeoutMs = request.timeoutMs ?? this.config.timeoutMs ?? 60_000;
+    const attemptNumber = options?.attemptNumber ?? 1;
     const baseUrl = this.config.baseUrl ?? "https://api.openai.com/v1/responses";
+
+    const usesStrictSchema = Boolean(request.jsonSchema && Object.keys(request.jsonSchema).length > 0);
 
     const payload: OpenAIResponsesPayload = {
       model,
       instructions: request.systemPrompt,
-      input: `${request.userPrompt}\n\nRespond with strict JSON matching the required schema. No markdown.`,
+      input: usesStrictSchema
+        ? request.userPrompt
+        : `${request.userPrompt}\n\nRespond with strict JSON matching the required schema. No markdown.`,
       temperature: request.temperature ?? 0.3,
       max_output_tokens: request.maxOutputTokens ?? 4096,
-      text: { format: { type: "json_object" } },
+      text: usesStrictSchema
+        ? {
+            format: {
+              type: "json_schema",
+              name: `${request.capabilityId}_output`,
+              strict: true,
+              schema: request.jsonSchema,
+            },
+          }
+        : { format: { type: "json_object" } },
     };
 
+    const requestStartedAt = new Date().toISOString();
     const startedAt = Date.now();
     const controller = new AbortController();
+    let responseHeadersReceived = false;
+    let responseBodyStarted = false;
+    let httpStatus: number | undefined;
+
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     let response: Response;
@@ -76,18 +107,29 @@ export class OpenAIBrainLlmProvider implements BrainLlmProvider {
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
+      responseHeadersReceived = true;
+      httpStatus = response.status;
     } catch (error) {
       clearTimeout(timer);
-      const retryable = error instanceof Error && error.name === "AbortError";
-      throw new BrainLlmError(
-        retryable ? "timeout" : "network_error",
-        retryable ? "OpenAI request timed out." : "Network failure contacting OpenAI.",
-        { retryable }
-      );
+      const aborted = error instanceof Error && error.name === "AbortError";
+      if (aborted) {
+        throw new BrainLlmTimeoutError("OpenAI request timed out.", {
+          timeoutOwner: "openai_provider_abort_controller",
+          configuredTimeoutMs: timeoutMs,
+          attemptNumber,
+          requestStartedAt,
+          requestAbortedAt: new Date().toISOString(),
+          responseHeadersReceived,
+          responseBodyStarted,
+          httpStatus,
+        });
+      }
+      throw new BrainLlmError("network_error", "Network failure contacting OpenAI.", { retryable: true });
     } finally {
       clearTimeout(timer);
     }
 
+    responseBodyStarted = true;
     const body = (await response.json().catch(() => ({}))) as OpenAIResponsesApiResponse;
 
     if (!response.ok) {

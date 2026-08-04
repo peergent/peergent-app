@@ -4,9 +4,21 @@ import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/
 import { deriveProjectStatus } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { officeHref } from "../links";
 import { resolveProjectIdForDraft } from "../attribution";
-import { buildCampaignStepEvidence } from "./build-campaign-workflow-evidence";
+import { buildCampaignStepEvidence, isLiveBrainDeferredStep } from "./build-campaign-workflow-evidence";
 import { buildCampaignContext } from "./campaign-context";
+import { isCampaignScheduled as resolveCampaignScheduled } from "./campaign-schedule-state";
+import {
+  isCampaignPublished as resolveCampaignPublished,
+  resolveCampaignPublishingState,
+  resolvePublishedStepState,
+  workflowStatusHintForStep,
+} from "./campaign-lifecycle";
 import { buildOptimizationMetrics } from "./campaign-optimization";
+import {
+  CampaignIntelligenceOrchestrator,
+  orchestrationPrimaryActionToCta,
+} from "./campaign-intelligence-orchestrator";
+import { strategyOutputCurrent } from "./live-strategy-run-service";
 import { readDemoCampaignOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
 import {
   executionModeFromApprovalMode,
@@ -123,6 +135,8 @@ function resolveStepState(
     readyToPublishCount: number;
     isCampaignScheduled: boolean;
     isCampaignPublished: boolean;
+    isDemo?: boolean;
+    publishingState?: import("./campaign-lifecycle").CampaignPublishingState;
     scheduledCount: number;
     projectStatus: ReturnType<typeof deriveProjectStatus>;
     isNewCampaign: boolean;
@@ -184,6 +198,8 @@ function resolveStepStateWithApprovals(
     readyToPublishCount: number;
     isCampaignScheduled: boolean;
     isCampaignPublished: boolean;
+    isDemo?: boolean;
+    publishingState?: import("./campaign-lifecycle").CampaignPublishingState;
     projectStatus: ReturnType<typeof deriveProjectStatus>;
     stepApprovals?: Partial<Record<CampaignWorkflowStepId, DemoStepApprovalStatus>>;
     deliverablesUnlocked?: boolean;
@@ -215,7 +231,14 @@ function resolveStepStateWithApprovals(
 
   if (ctx.isCampaignScheduled && !ctx.isCampaignPublished) {
     if (preScheduleSteps.includes(stepId) || stepId === "scheduled") return "done";
-    if (stepId === "published") return "active";
+    if (stepId === "published") {
+      return resolvePublishedStepState({
+        isCampaignScheduled: true,
+        isCampaignPublished: false,
+        isDemo: false,
+        publishingState: "not_configured",
+      });
+    }
   }
 
   if (approvals[stepId] === "approved") {
@@ -233,7 +256,8 @@ function resolveStepStateWithApprovals(
     cc.competitorContextState !== "skipped" &&
     (cc.competitorContextState === "simulated_analysis_complete" ||
       cc.competitorContextState === "simulated" ||
-      cc.competitorContextState === "real_analysis_complete")
+      cc.competitorContextState === "real_analysis_complete" ||
+      cc.competitorContextState === "available")
   ) {
     return "done";
   }
@@ -241,8 +265,16 @@ function resolveStepStateWithApprovals(
   if (
     !ctx.isCampaignScheduled &&
     ctx.pendingCount === 0 &&
-    ctx.approvedCount > 0 &&
+    (ctx.approvedCount > 0 || approvals.deliverables_created === "approved") &&
     (stepId === "deliverables_created" || stepId === "waiting_for_approval")
+  ) {
+    return "done";
+  }
+
+  if (
+    approvals.deliverables_created === "approved" &&
+    ctx.pendingCount === 0 &&
+    stepId === "waiting_for_approval"
   ) {
     return "done";
   }
@@ -280,8 +312,16 @@ function resolveStepStateWithApprovals(
   } else if (ctx.isCampaignPublished) {
     activeStep = "optimizing";
   } else if (ctx.isCampaignScheduled) {
-    activeStep = "published";
+    if (ctx.isDemo && ctx.publishingState && ctx.publishingState !== "not_configured") {
+      activeStep = "published";
+    }
   } else if (ctx.approvedCount > 0 && ctx.deliverablesUnlocked && ctx.pendingCount === 0) {
+    activeStep = "scheduled";
+  } else if (
+    approvals.deliverables_created === "approved" &&
+    ctx.deliverablesUnlocked &&
+    ctx.pendingCount === 0
+  ) {
     activeStep = "scheduled";
   } else {
     for (const step of applicableGate) {
@@ -303,6 +343,7 @@ function buildNextStep(input: {
   approvedCount: number;
   isCampaignScheduled: boolean;
   isCampaignPublished: boolean;
+  publishingState?: import("./campaign-lifecycle").CampaignPublishingState;
   activeStepId?: CampaignWorkflowStepId;
   locale?: string | null;
 }): string {
@@ -318,6 +359,11 @@ function buildNextStep(input: {
       : "Campaign is live — view published content and results.";
   }
   if (input.isCampaignScheduled) {
+    if (input.publishingState === "not_configured" || !input.publishingState) {
+      return isNl
+        ? "Campagne is ingepland. Automatische publicatie is nog niet gekoppeld."
+        : "Campaign is scheduled. Automatic publishing is not connected yet.";
+    }
     return isNl
       ? "Campagne is ingepland — publicatie kan starten wanneer je klaar bent."
       : "Campaign is scheduled — publication can start when you are ready.";
@@ -393,6 +439,14 @@ function buildNextStepCta(input: {
   ) {
     return {
       label: isNl ? "Campagne inplannen" : "Schedule campaign",
+      action: "schedule",
+      stepId: "scheduled",
+    };
+  }
+
+  if (input.isCampaignScheduled && !input.isCampaignPublished && !input.isDemo) {
+    return {
+      label: isNl ? "Planning wijzigen" : "Edit schedule",
       action: "schedule",
       stepId: "scheduled",
     };
@@ -496,11 +550,41 @@ export function buildCampaignWorkflowViewModel(input: {
   const readyToPublishDrafts = drafts.filter((d) => d.status === "ready_to_publish");
 
   const stepApprovals = overlay.demoCampaignStepApprovals?.[project.id];
-  const isCampaignScheduled = Boolean(overlay.demoCampaignSchedule?.[project.id]);
-  const isCampaignPublished = Boolean(overlay.demoCampaignPublished?.[project.id]);
+  const liveStepApprovals = project.campaignSetup?.stepApprovals;
+  const effectiveStepApprovals: Partial<
+    Record<CampaignWorkflowStepId, DemoStepApprovalStatus>
+  > | undefined = stepApprovals ?? (liveStepApprovals && Object.keys(liveStepApprovals).length > 0
+    ? liveStepApprovals
+    : undefined);
+  const isCampaignScheduled = resolveCampaignScheduled(project, domainInput, isDemo);
+  const isCampaignPublished = resolveCampaignPublished(project, domainInput, isDemo);
+  const publishingState = resolveCampaignPublishingState({
+    project,
+    domainInput,
+    connections: domainInput.connections,
+    isCampaignPublished,
+    isDemo,
+  });
   const storedContext = overlay.demoCampaignContexts?.[project.id];
   const campaignContext =
     storedContext ?? buildCampaignContext({ project, domainInput, locale: input.locale });
+
+  const orchestration = !isDemo
+    ? CampaignIntelligenceOrchestrator.evaluate({
+        project,
+        campaignContext,
+        locale: input.locale,
+        stepApprovals: effectiveStepApprovals,
+        strategyOutputReady: strategyOutputCurrent(project),
+        pendingDeliverableCount: pendingDrafts.length,
+        approvedDeliverableCount: approvedDrafts.length,
+        isCampaignScheduled,
+        isCampaignPublished,
+        isDemo,
+        publishingState,
+        pendingDraftId: pendingDrafts[0]?.id,
+      })
+    : null;
 
   const projectStatus = deriveProjectStatus(
     project,
@@ -513,11 +597,11 @@ export function buildCampaignWorkflowViewModel(input: {
     project.origin === "campaign_wizard" &&
     drafts.length === 0 &&
     projectStatus === "planning" &&
-    !stepApprovals;
+    !effectiveStepApprovals;
 
   const deliverablesUnlocked =
-    Boolean(stepApprovals) &&
-    (stepApprovals?.channels_selected === "approved" ||
+    Boolean(effectiveStepApprovals) &&
+    (effectiveStepApprovals?.channels_selected === "approved" ||
       drafts.some((d) => d.status === "ready_for_review" || d.status === "approved"));
 
   const ctx = {
@@ -528,10 +612,12 @@ export function buildCampaignWorkflowViewModel(input: {
     readyToPublishCount: readyToPublishDrafts.length,
     isCampaignScheduled,
     isCampaignPublished,
+    isDemo,
+    publishingState,
     scheduledCount: readyToPublishDrafts.length,
     projectStatus,
     isNewCampaign,
-    stepApprovals,
+    stepApprovals: effectiveStepApprovals,
     deliverablesUnlocked,
     campaignContext,
   };
@@ -544,19 +630,28 @@ export function buildCampaignWorkflowViewModel(input: {
       domainInput,
       locale: input.locale,
     });
-    const state = resolveStepState(stepId, ctx);
-    const statusHint =
-      state === "skipped"
-        ? isNl
-          ? "Overgeslagen"
-          : "Skipped"
-        : state === "active"
-          ? isNl
-            ? "Actief — jouw input nodig"
-            : "Active — your input needed"
-          : undefined;
+    const state: CampaignWorkflowStepState = orchestration
+      ? CampaignIntelligenceOrchestrator.resolveWorkflowStepState(stepId, orchestration, {
+          pendingDeliverableCount: pendingDrafts.length,
+          isCampaignScheduled,
+          isCampaignPublished,
+          hasDrafts: drafts.length > 0 && deliverablesUnlocked,
+          stepApprovals: effectiveStepApprovals,
+          isDemo,
+          publishingState,
+        })
+      : resolveStepState(stepId, ctx);
+    const statusHint = workflowStatusHintForStep({
+      stepId,
+      state,
+      isCampaignScheduled,
+      isCampaignPublished,
+      publishingState,
+      locale: input.locale,
+    });
+    const brainDeferred = isLiveBrainDeferredStep(peerId, stepId);
     const hasEvidence =
-      Boolean(evidence?.sections.length) &&
+      (Boolean(evidence?.sections.length) || brainDeferred) &&
       (state === "done" || state === "active" || state === "skipped") &&
       stepId !== "waiting_for_approval" &&
       stepId !== "scheduled" &&
@@ -609,10 +704,10 @@ export function buildCampaignWorkflowViewModel(input: {
     project.campaignSetup?.approvalMode
   );
 
-  const activeStep = steps.find((s) => s.state === "active");
+  const activeStep = orchestration?.activeCustomerStepId ?? steps.find((s) => s.state === "active")?.id;
   const websiteMissing =
-    campaignContext.websiteState === "missing" &&
-    activeStep?.id === "website_analyzed";
+    orchestration?.readiness.websiteDecision === "missing" &&
+    activeStep === "website_analyzed";
 
   const rawChannels = [
     ...new Set(drafts.map((d) => d.channel).filter(Boolean) as string[]),
@@ -635,22 +730,28 @@ export function buildCampaignWorkflowViewModel(input: {
       approvedCount: approvedDrafts.length,
       isCampaignScheduled,
       isCampaignPublished,
-      activeStepId: activeStep?.id,
+      publishingState,
+      activeStepId: activeStep,
       locale: input.locale,
     }),
-    nextStepCta: buildNextStepCta({
-      pendingCount: pendingDrafts.length,
-      approvedCount: approvedDrafts.length,
-      publishedCount: publishedDrafts.length,
-      isCampaignScheduled,
-      isCampaignPublished,
-      isDemo,
-      pendingDraftId: pendingDrafts[0]?.id,
-      activeStepId: activeStep?.id,
-      locale: input.locale,
-      websiteMissing,
-      optimizationHasData,
-    }),
+    nextStepCta: orchestration
+      ? orchestrationPrimaryActionToCta(
+          orchestration.primaryAction,
+          project.campaignSetup?.strategyRun
+        )
+      : buildNextStepCta({
+          pendingCount: pendingDrafts.length,
+          approvedCount: approvedDrafts.length,
+          publishedCount: publishedDrafts.length,
+          isCampaignScheduled,
+          isCampaignPublished,
+          isDemo,
+          pendingDraftId: pendingDrafts[0]?.id,
+          activeStepId: activeStep,
+          locale: input.locale,
+          websiteMissing,
+          optimizationHasData,
+        }),
     steps,
     deliverables,
     approvalCenter: {

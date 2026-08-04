@@ -21,6 +21,7 @@ export type BrainLlmRequest = {
   contextHash: string;
   model?: string;
   maxOutputTokens?: number;
+  timeoutMs?: number;
   temperature?: number;
 };
 

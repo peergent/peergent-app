@@ -8,6 +8,12 @@ import type {
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { DEMO_COMPANY_NAME } from "@/lib/office/demo/demo-company";
 import {
+  campaignUsesExternalBrand,
+  inferCampaignBrandName,
+  resolveAccountOrganizationName,
+  type CampaignBrandContextFields,
+} from "@/lib/office/campaign/campaign-brand-boundary";
+import {
   buildDurationAtCreation,
   computeEndDateFromPreset,
   durationDaysForPreset,
@@ -17,6 +23,9 @@ import {
 
 /** Canonical demo seed campaign — uses Peergent fixture narrative. */
 export const SEED_CAMPAIGN_ID = "camp-heatpump";
+
+import type { CampaignWorkflowStepId } from "./workflow-types";
+import type { DemoStepApprovalStatus } from "@/lib/office/demo/demo-workflow-simulation";
 
 export type ContextAvailability =
   | "missing"
@@ -35,8 +44,17 @@ export type CampaignCompetitorEntry = {
   url?: string;
 };
 
+export type CampaignBrandContext = CampaignBrandContextFields;
+
 export type CampaignContext = {
   projectId: string;
+  /** Brand/client being marketed in this campaign. */
+  brandName: string;
+  /** Account organization operating the campaign (may differ from brand). */
+  accountOrganizationName: string | null;
+  /** When true, org-level Business/Brand Brain must not bleed into this campaign. */
+  usesExternalBrand: boolean;
+  /** @deprecated Use brandName — kept for backward-compatible call sites. */
   companyName: string;
   campaignName: string;
   goals: readonly string[];
@@ -47,6 +65,8 @@ export type CampaignContext = {
   websiteSource: WebsiteSource;
   websiteState: ContextAvailability;
   companyContextState: ContextAvailability;
+  brandContext: CampaignBrandContext | null;
+  businessAnalyzedApproved: boolean;
   competitors: readonly CampaignCompetitorEntry[];
   competitorsSkipped: boolean;
   competitorContextState: ContextAvailability;
@@ -60,6 +80,10 @@ export type CampaignContext = {
   startDate: string | null;
   endDate: string | null;
   durationDays: number | null;
+  /** Live Office — monotonic context version for Brain output invalidation. */
+  contextVersion?: number;
+  /** Live Office — customer review gates copied from project setup. */
+  stepApprovals?: Partial<Record<CampaignWorkflowStepId, DemoStepApprovalStatus>>;
 };
 
 export function isSeedCampaign(projectId: string): boolean {
@@ -115,6 +139,7 @@ export function buildCampaignContext(input: {
   websiteUrl?: string | null;
   competitors?: readonly CampaignCompetitorEntry[];
   competitorsSkipped?: boolean;
+  accountOrganizationName?: string | null;
 }): CampaignContext {
   const { project, domainInput } = input;
   const nl = input.locale === "nl";
@@ -130,14 +155,37 @@ export function buildCampaignContext(input: {
   const description = setup?.description?.trim() || project.rawRequest?.trim() || "";
   const extraContext = project.rawRequest?.trim() || description;
 
-  const companyName = seed
+  const brandName = seed
     ? DEMO_COMPANY_NAME
-    : project.title.trim() || DEMO_COMPANY_NAME;
+    : inferCampaignBrandName(project.title, setup);
+  const campaignName = project.title.trim() || brandName;
+  const accountOrganizationName =
+    input.accountOrganizationName ??
+    resolveAccountOrganizationName(domainInput.understanding ?? null);
+  const usesExternalBrand = campaignUsesExternalBrand({
+    brandName,
+    accountOrganizationName,
+    isSeedCampaign: seed,
+  });
+  const brandContext = setup?.campaignBrandContext
+    ? {
+        brandName: setup.campaignBrandContext.brandName ?? brandName,
+        industry: setup.campaignBrandContext.industry,
+        mission: setup.campaignBrandContext.mission,
+        uniqueSellingPoints: setup.campaignBrandContext.uniqueSellingPoints,
+        productsAndServices: setup.campaignBrandContext.productsAndServices,
+        positioning: setup.campaignBrandContext.positioning,
+        tone: setup.campaignBrandContext.tone,
+        targetAudience: setup.campaignBrandContext.targetAudience,
+      }
+    : null;
+  const businessAnalyzedApproved = Boolean(setup?.businessAnalyzedApproved);
 
-  const websiteUrl = input.websiteUrl ?? null;
-  const websiteSkipped = Boolean(input.websiteSkipped);
-  const storedCompetitors = input.competitors ?? [];
-  const competitorsSkipped = Boolean(input.competitorsSkipped);
+  const websiteUrl = input.websiteUrl ?? setup?.websiteUrl ?? null;
+  const websiteSkipped = Boolean(input.websiteSkipped ?? setup?.websiteSkipped);
+  const setupCompetitors = setup?.campaignCompetitors ?? [];
+  const storedCompetitors = input.competitors ?? setupCompetitors;
+  const competitorsSkipped = Boolean(input.competitorsSkipped ?? setup?.competitorsSkipped);
 
   let websiteState: ContextAvailability = "missing";
   let websiteSource: WebsiteSource = "missing";
@@ -145,17 +193,22 @@ export function buildCampaignContext(input: {
     websiteState = "skipped";
     websiteSource = "skipped";
   } else if (websiteUrl) {
-    websiteState = "simulated_analysis_complete";
+    websiteState = seed ? "simulated_analysis_complete" : "available";
     websiteSource = "supplied_by_customer";
   }
 
-  const hasCompanyProfile =
-    seed ||
+  const hasCampaignBrandContext = Boolean(brandContext?.brandName?.trim());
+  const hasOrgProfileForOwnBrand =
+    !usesExternalBrand &&
     Boolean(domainInput.understanding?.available && domainInput.understanding.brand?.positioningStatement);
 
   let companyContextState: ContextAvailability = "missing";
-  if (seed || hasCompanyProfile) {
+  if (seed || businessAnalyzedApproved) {
     companyContextState = seed ? "simulated_analysis_complete" : "available";
+  } else if (hasCampaignBrandContext) {
+    companyContextState = "available";
+  } else if (hasOrgProfileForOwnBrand) {
+    companyContextState = "available";
   } else if (description || audience) {
     companyContextState = "available";
   }
@@ -165,7 +218,7 @@ export function buildCampaignContext(input: {
   if (competitorsSkipped) {
     competitorContextState = "skipped";
   } else if (storedCompetitors.length > 0) {
-    competitorContextState = "simulated_analysis_complete";
+    competitorContextState = seed ? "simulated_analysis_complete" : "available";
   } else if (seed && domainCompetitors.length > 0) {
     competitorContextState = "simulated";
   }
@@ -183,8 +236,11 @@ export function buildCampaignContext(input: {
 
   return {
     projectId: project.id,
-    companyName,
-    campaignName: project.title,
+    brandName,
+    accountOrganizationName,
+    usesExternalBrand,
+    companyName: brandName,
+    campaignName,
     goals: goalLabels(setup, nl),
     audience,
     description,
@@ -193,6 +249,8 @@ export function buildCampaignContext(input: {
     websiteSource,
     websiteState,
     companyContextState,
+    brandContext,
+    businessAnalyzedApproved,
     competitors: storedCompetitors,
     competitorsSkipped,
     competitorContextState,
@@ -206,6 +264,8 @@ export function buildCampaignContext(input: {
     startDate: setup?.startDate ?? null,
     endDate: setup?.endDate ?? null,
     durationDays: durationDaysForPreset(durationPreset),
+    contextVersion: setup?.campaignContextVersion ?? 0,
+    stepApprovals: setup?.stepApprovals,
   };
 }
 
@@ -250,6 +310,9 @@ export function buildCampaignContextFromCreateInput(
 
   return {
     projectId: project.id,
+    brandName: input.name.trim(),
+    accountOrganizationName: null,
+    usesExternalBrand: false,
     companyName: input.name.trim(),
     campaignName: input.name.trim(),
     goals,
@@ -260,6 +323,8 @@ export function buildCampaignContextFromCreateInput(
     websiteSource: "missing",
     websiteState: "missing",
     companyContextState: input.description.trim() || input.targetAudience?.trim() ? "available" : "missing",
+    brandContext: null,
+    businessAnalyzedApproved: false,
     competitors: [],
     competitorsSkipped: false,
     competitorContextState: "missing",

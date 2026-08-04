@@ -1,4 +1,5 @@
 import type { PresenceLine } from "@/lib/design-system/foundation";
+import type { MarketingWorkBucket } from "./resolve-marketing-work-bucket";
 
 /**
  * §4.2 Work, expressed peer-agnostically.
@@ -32,6 +33,13 @@ export type WorkItem = {
   id: string;
   name: string;
   stageLabel: string;
+  /** Primary card line — scheduled date, next step, etc. */
+  primaryText: string | null;
+  /** Secondary supporting line — e.g. publishing not connected. */
+  secondaryText: string | null;
+  /** Visible action label when the card opens the campaign. */
+  actionLabel: string | null;
+  /** @deprecated Prefer primaryText — kept for legacy WorkView adapter. */
   nextStep: string | null;
   /**
    * §4.2 Who is holding it up — the single highest-value fact on the page,
@@ -41,6 +49,7 @@ export type WorkItem = {
   expectedLabel: string | null;
   href: string;
   channels: WorkChannel[];
+  bucket: MarketingWorkBucket;
 };
 
 export type WorkGroup = {

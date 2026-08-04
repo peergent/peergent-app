@@ -97,7 +97,6 @@ describe("Emma interaction pass", () => {
     });
     const text = `${websiteEvidence?.intro ?? ""} ${websiteEvidence?.sections.flatMap((s) => s.items).join(" ")}`;
     expect(text).toContain("https://you-charge.nl");
-    expect(text.toLowerCase()).toContain("geen echte websitecrawl");
     expect(text.toLowerCase()).not.toContain("homepage benadrukt");
   });
 

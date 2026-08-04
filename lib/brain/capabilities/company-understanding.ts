@@ -1,4 +1,5 @@
 import type { CompanySnapshot } from "../company/snapshot";
+import { localizeUnknownFieldKeys } from "../context/missing-information";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
 import { emptyBrainStructuredOutput } from "../evidence/structured-output";
 import { getBrainCapability } from "../capabilities/registry";
@@ -91,8 +92,8 @@ export function executeCompanyUnderstanding(
             id: "warn-gaps",
             code: "company_gaps",
             message: nl
-              ? `Nog onbekend: ${snapshot.unknowns.join(", ")}`
-              : `Still unknown: ${snapshot.unknowns.join(", ")}`,
+              ? `Nog onbekend: ${localizeUnknownFieldKeys(snapshot.unknowns, true)}`
+              : `Still unknown: ${localizeUnknownFieldKeys(snapshot.unknowns, false)}`,
             provenance: [{ kind: "company_profile", refId: snapshot.organizationId }],
           },
         ]

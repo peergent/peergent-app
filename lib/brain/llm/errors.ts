@@ -12,6 +12,27 @@ export class BrainLlmError extends Error {
   }
 }
 
+export type BrainLlmTimeoutDiagnostics = {
+  timeoutOwner: string;
+  configuredTimeoutMs: number;
+  attemptNumber: number;
+  requestStartedAt: string;
+  requestAbortedAt: string;
+  responseHeadersReceived: boolean;
+  responseBodyStarted: boolean;
+  httpStatus?: number;
+};
+
+export class BrainLlmTimeoutError extends BrainLlmError {
+  readonly timeoutDiagnostics: BrainLlmTimeoutDiagnostics;
+
+  constructor(message: string, timeoutDiagnostics: BrainLlmTimeoutDiagnostics) {
+    super("timeout", message, { retryable: false });
+    this.name = "BrainLlmTimeoutError";
+    this.timeoutDiagnostics = timeoutDiagnostics;
+  }
+}
+
 export class BrainLlmValidationError extends BrainLlmError {
   readonly issues: readonly string[];
 
@@ -19,6 +40,59 @@ export class BrainLlmValidationError extends BrainLlmError {
     super("validation_failed", message, { retryable: false });
     this.name = "BrainLlmValidationError";
     this.issues = issues;
+  }
+}
+
+export type BrainLlmBusinessValidationIssue = {
+  code: string;
+  path: string;
+  expected?: string;
+  actual?: string;
+  summary: string;
+};
+
+export class BrainLlmBusinessValidationError extends BrainLlmValidationError {
+  readonly structuredIssues: readonly BrainLlmBusinessValidationIssue[];
+
+  constructor(
+    message: string,
+    structuredIssues: readonly BrainLlmBusinessValidationIssue[],
+    issueMessages?: readonly string[]
+  ) {
+    super(message, issueMessages ?? structuredIssues.map((issue) => issue.summary));
+    this.name = "BrainLlmBusinessValidationError";
+    this.structuredIssues = structuredIssues;
+  }
+}
+
+export class BrainLlmValidationRetryExhaustedError extends BrainLlmValidationError {
+  readonly attemptCount: number;
+  readonly validationRepairCount: number;
+  readonly lastUsage?: import("./types").BrainLlmUsage;
+  readonly failureCategory: "schema_validation_failed" | "business_validation_failed";
+  readonly structuredIssues?: readonly BrainLlmBusinessValidationIssue[];
+  readonly generatedChannelIds?: readonly string[];
+
+  constructor(
+    message: string,
+    input: {
+      issues?: readonly string[];
+      structuredIssues?: readonly BrainLlmBusinessValidationIssue[];
+      generatedChannelIds?: readonly string[];
+      attemptCount: number;
+      validationRepairCount?: number;
+      lastUsage?: import("./types").BrainLlmUsage;
+      failureCategory: "schema_validation_failed" | "business_validation_failed";
+    }
+  ) {
+    super(message, input.issues ?? input.structuredIssues?.map((issue) => issue.summary) ?? []);
+    this.name = "BrainLlmValidationRetryExhaustedError";
+    this.attemptCount = input.attemptCount;
+    this.validationRepairCount = input.validationRepairCount ?? Math.max(0, input.attemptCount - 1);
+    this.lastUsage = input.lastUsage;
+    this.failureCategory = input.failureCategory;
+    this.structuredIssues = input.structuredIssues;
+    this.generatedChannelIds = input.generatedChannelIds;
   }
 }
 

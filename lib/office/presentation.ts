@@ -99,3 +99,55 @@ export function presentExpectedDate(
 
   return locale === "nl" ? `Verwacht ${formatted}` : `Expected ${formatted}`;
 }
+
+/** Locale-aware scheduled date/time for Work cards — no seconds, no raw ISO. */
+export function presentScheduledPrimaryText(
+  record: {
+    scheduledAt: string;
+    timezone?: string;
+  },
+  locale: MarketingCampaignLocale
+): string | null {
+  const at = new Date(record.scheduledAt);
+  if (!Number.isFinite(at.getTime())) return null;
+
+  const timeZone = record.timezone ?? "UTC";
+
+  if (locale === "nl") {
+    const datePart = new Intl.DateTimeFormat("nl-NL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone,
+    }).format(at);
+    const timePart = new Intl.DateTimeFormat("nl-NL", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone,
+    }).format(at);
+    return `Ingepland voor ${datePart} om ${timePart}`;
+  }
+
+  const datePart = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone,
+  }).format(at);
+  const timePart = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone,
+  }).format(at);
+  return `Scheduled for ${datePart} at ${timePart}`;
+}
+
+export function presentPublishingNotConnectedText(
+  locale: MarketingCampaignLocale
+): string {
+  return locale === "nl"
+    ? "Automatische publicatie is nog niet gekoppeld"
+    : "Automatic publishing is not connected yet";
+}

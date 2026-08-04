@@ -1,4 +1,4 @@
-import { knowledgeSectionHref } from "@/lib/knowledge";
+import { officeHref } from "@/lib/office/links";
 import { getHomeCopy } from "@/lib/i18n";
 import type { HomePeerWorkspaceSnapshot } from "@/lib/home/types";
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
@@ -75,7 +75,7 @@ function focusToInboxItem(
         subtitle: peerName,
         peerId,
         peerName,
-        href: knowledgeSectionHref(focus.knowledgeSection),
+        href: officeHref(peerId, "agreement"),
       };
     case "ready_for_strategy":
       return {

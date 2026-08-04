@@ -470,7 +470,8 @@ export {
 /* Sprint 7 — Generic LLM layer */
 
 export { isBrainUseOpenAIEnabled, BRAIN_FEATURE_FLAGS } from "./config/brain-feature-flags";
-export { createLlmBrainProvider, isBrainProviderWithUsage } from "./providers/llm-brain-provider";
+export { createLlmBrainProvider } from "./providers/llm-brain-provider";
+export { isBrainProviderWithUsage } from "./providers/provider-usage";
 export { createBrainLlmClient } from "./llm/client";
 export { createLlmRequest } from "./llm/request";
 export { strategyPromptBuilder, StrategyPromptBuilder } from "./prompts/strategy-prompt-builder";

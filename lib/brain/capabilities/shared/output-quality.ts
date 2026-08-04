@@ -66,14 +66,6 @@ export function validateCapabilityOutputQuality(input: {
     issues.push({ code: "channel_without_strategy", message: "Channel plan must reference strategy output." });
   }
 
-  if (input.capabilityId === "creative_generation") {
-    for (const f of output.findings) {
-      if (f.value.length > 400) {
-        issues.push({ code: "generated_copy_in_plan", message: "Deliverable plan must not contain final generated copy." });
-      }
-    }
-  }
-
   if (input.capabilityId === "optimization") {
     const hasPerformanceRef = output.actionProposals.some((p) =>
       p.provenance.some((pr) => pr.kind === "capability_output" || pr.refId.includes("performance"))

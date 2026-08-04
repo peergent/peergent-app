@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import VisionWorkView from "@/features/office/work/VisionWorkView";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
-import { buildMarketingWorkViewModel } from "@/lib/office/work/build-marketing-work";
+import { buildMarketingWorkViewModel, workFilterCounts } from "@/lib/office/work/build-marketing-work";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { officeHref } from "@/lib/office/links";
 import { firstPublishedDraftForProject } from "@/lib/office/content/demo-preview-stats";
@@ -69,6 +69,8 @@ function OfficeWorkContent() {
     [domainInput, peerName, peerRole, localePreference]
   );
 
+  const filterCounts = useMemo(() => workFilterCounts(model), [model]);
+
   const filteredModel = useMemo(() => {
     if (!filterParam || filterParam === "all") return model;
     return {
@@ -76,13 +78,6 @@ function OfficeWorkContent() {
       groups: model.groups.filter((g) => g.id === filterParam),
     };
   }, [model, filterParam]);
-
-  const openCampaign = useCallback(
-    (item: WorkItem) => {
-      router.push(`/office/${peerId}/work/campaigns/${item.id}`);
-    },
-    [peerId, router]
-  );
 
   const openContentPreview = useCallback(
     (item: WorkItem) => {
@@ -131,24 +126,28 @@ function OfficeWorkContent() {
         ) : (
           <>
             <div className="mb-6 flex flex-wrap gap-2">
-              {WORK_FILTERS.map((filter) => (
-                <Link
-                  key={filter.id}
-                  href={filterHref(filter.id)}
-                  className={
-                    filterParam === filter.id
-                      ? "pg-v13-chip pg-v13-chip--active no-underline"
-                      : "pg-v13-chip no-underline"
-                  }
-                >
-                  {nl ? filter.labelNl : filter.labelEn}
-                </Link>
-              ))}
+              {WORK_FILTERS.map((filter) => {
+                const count =
+                  filter.id === "all" ? filterCounts.all : filterCounts[filter.id];
+                return (
+                  <Link
+                    key={filter.id}
+                    href={filterHref(filter.id)}
+                    className={
+                      filterParam === filter.id
+                        ? "pg-v13-chip pg-v13-chip--active no-underline"
+                        : "pg-v13-chip no-underline"
+                    }
+                  >
+                    {nl ? filter.labelNl : filter.labelEn}
+                    {count > 0 ? ` (${count})` : ""}
+                  </Link>
+                );
+              })}
             </div>
             <VisionWorkView
               model={filteredModel}
               locale={localePreference}
-              onOpenCampaign={openCampaign}
               onOpenPreview={openContentPreview}
             />
           </>

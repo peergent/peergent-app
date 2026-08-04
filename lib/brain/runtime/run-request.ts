@@ -31,6 +31,8 @@ export type BrainRunRequest = {
   marketingUnderstanding?: MarketingUnderstanding | null;
   /** Upstream capability outputs for dependent capabilities. */
   upstreamOutputs?: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>;
+  /** Reuse persisted campaign output — skips provider execution (session cache). */
+  reuseStoredOutput?: BrainStructuredOutput;
   /** Demo/test performance metrics — never fabricated in live. */
   performanceMetrics?: readonly DemoPerformanceMetric[];
 };

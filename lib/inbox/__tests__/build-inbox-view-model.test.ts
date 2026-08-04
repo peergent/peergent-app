@@ -108,7 +108,7 @@ describe("buildInboxViewModel", () => {
     expect(model.urgentCount).toBe(1);
     expect(model.items[0]?.kind).toBe("draft_review");
     expect(model.items[0]?.title).toBe(copy.needsYouItems.reviewDraft);
-    expect(model.items[0]?.href).toBe("/team/peer-maya");
+    expect(model.items[0]?.href).toBe("/office/peer-maya/work");
   });
 
   it("includes strategy-complete as a normal inbox item", () => {

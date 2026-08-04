@@ -21,6 +21,8 @@ export type VisionCampaignDetailViewProps = {
   onSkipCompetitors?: () => void;
   onOpenCompetitorModal?: () => void;
   onOpenOptimization?: () => void;
+  onRetryStrategy?: () => void;
+  onViewCampaignContext?: () => void;
   progressMessage?: string | null;
 };
 
@@ -39,6 +41,8 @@ export default function VisionCampaignDetailView({
   onSkipCompetitors,
   onOpenCompetitorModal,
   onOpenOptimization,
+  onRetryStrategy,
+  onViewCampaignContext,
   progressMessage,
 }: VisionCampaignDetailViewProps) {
   const nl = locale === "nl";
@@ -84,6 +88,8 @@ export default function VisionCampaignDetailView({
         onOpenCompetitorModal={onOpenCompetitorModal}
         onOpenOptimization={onOpenOptimization}
         onOpenSchedule={onSchedule}
+        onRetryStrategy={onRetryStrategy}
+        onViewCampaignContext={onViewCampaignContext}
       />
     </div>
   );

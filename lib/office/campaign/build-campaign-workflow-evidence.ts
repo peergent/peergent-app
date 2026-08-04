@@ -5,14 +5,51 @@ import {
   isSeedCampaign,
   type CampaignContext,
 } from "./campaign-context";
+import {
+  evaluateCampaignContextReadiness,
+  strategyContextReady,
+} from "./campaign-context-readiness";
 import { buildStructuredStrategyEvidence } from "./build-structured-strategy-evidence";
 import { generateSimulatedCopy } from "./generate-campaign-simulation";
 import { readDemoCampaignOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
-import { buildBrainStepEvidence } from "@/lib/brain/integration/build-brain-step-evidence";
+import { buildBrainStepEvidence, buildBrainStepEvidenceAsync } from "@/lib/brain/integration/build-brain-step-evidence";
+import type { ExecuteBrainForWorkflowStepOptions } from "@/lib/brain/integration/execute-brain-for-workflow-step";
+import { isDemoPeer } from "@/lib/office/demo/demo-company";
 import type { EvidenceBundle } from "./build-campaign-workflow-evidence-types";
 import type { CampaignWorkflowStepId } from "./workflow-types";
 
 export type { EvidenceBundle } from "./build-campaign-workflow-evidence-types";
+
+/** Steps backed by Brain Runtime — simulation is explicit fallback only. */
+export const BRAIN_BACKED_STEPS: readonly CampaignWorkflowStepId[] = [
+  "competitors_analyzed",
+  "strategy_determined",
+  "channels_selected",
+  "deliverables_created",
+  "optimizing",
+];
+
+export function isLiveBrainDeferredStep(
+  peerId: string,
+  stepId: CampaignWorkflowStepId
+): boolean {
+  return !isDemoPeer(peerId) && BRAIN_BACKED_STEPS.includes(stepId);
+}
+
+function isBrainStepReady(stepId: CampaignWorkflowStepId, ctx: CampaignContext): boolean {
+  const readiness = evaluateCampaignContextReadiness(ctx);
+  if (stepId === "competitors_analyzed" && readiness.competitorDecision === "missing") {
+    return false;
+  }
+  if (stepId === "strategy_determined" && !strategyContextReady(readiness)) {
+    return false;
+  }
+  return true;
+}
+
+function hasNeedsInfoEvidence(bundle: EvidenceBundle): boolean {
+  return bundle.sections.some((section) => section.id === "needs-info");
+}
 
 function isNl(locale?: string | null): boolean {
   return locale === "nl";
@@ -68,19 +105,12 @@ export function buildCampaignStepEvidence(input: {
     }
   }
 
-  /** Sprint 5 — runtime-backed evidence with office simulation fallback below. */
-  const brainBackedSteps: CampaignWorkflowStepId[] = [
-    "competitors_analyzed",
-    "strategy_determined",
-    "channels_selected",
-    "deliverables_created",
-    "optimizing",
-  ];
-  if (brainBackedSteps.includes(stepId) && peerId === "demo") {
-    const brainReady =
-      (stepId !== "competitors_analyzed" || ctx.competitorContextState !== "missing") &&
-      (stepId !== "strategy_determined" || ctx.companyContextState !== "missing");
-    if (brainReady) {
+  /** Sprint 7.5 — Brain-backed evidence for all peers; live defers to async loader. */
+  if (BRAIN_BACKED_STEPS.includes(stepId)) {
+    if (isLiveBrainDeferredStep(peerId, stepId)) {
+      return null;
+    }
+    if (isBrainStepReady(stepId, ctx)) {
       const brainEvidence = buildBrainStepEvidence({
         stepId,
         peerId,
@@ -88,11 +118,11 @@ export function buildCampaignStepEvidence(input: {
         domainInput,
         locale: input.locale,
       });
-      if (brainEvidence && !brainEvidence.sections.some((s) => s.id === "needs-info")) {
+      if (brainEvidence && !hasNeedsInfoEvidence(brainEvidence)) {
         return brainEvidence;
       }
     }
-    // Fallback: office simulation paths below (documented compatibility boundary).
+    // Demo explicit fallback: office simulation paths below.
   }
 
   const seed = isSeedCampaign(project.id);
@@ -153,9 +183,27 @@ export function buildCampaignStepEvidence(input: {
               id: "skipped",
               title: nl ? "Status" : "Status",
               items: [
+                nl ? "Website overgeslagen — geen URL opgeslagen." : "Website skipped — no URL stored.",
+              ],
+            },
+          ],
+        };
+      }
+      if (ctx.websiteState === "available" && ctx.websiteUrl) {
+        return {
+          title: nl ? "Websitecontext" : "Website context",
+          intro: nl
+            ? `Website toegevoegd: ${ctx.websiteUrl}. De URL is opgeslagen als context — er is geen echte crawl uitgevoerd.`
+            : `Website added: ${ctx.websiteUrl}. The URL is saved as context — no real crawl was performed.`,
+          sections: [
+            {
+              id: "source",
+              title: nl ? "Bron" : "Source",
+              items: [
+                nl ? `Opgegeven URL: ${ctx.websiteUrl}` : `Supplied URL: ${ctx.websiteUrl}`,
                 nl
-                  ? "We gaan verder zonder website-analyse."
-                  : "We continue without website analysis.",
+                  ? "Opgeslagen als campagnecontext — geen websitecrawl."
+                  : "Stored as campaign context — no website crawl.",
               ],
             },
           ],
@@ -270,6 +318,32 @@ export function buildCampaignStepEvidence(input: {
           ],
         };
       }
+      if (ctx.competitorContextState === "available") {
+        const supplied = ctx.competitors;
+        if (supplied.length === 0) return null;
+        return {
+          title: nl ? "Concurrentiecontext" : "Competitor context",
+          intro: nl
+            ? "Concurrenten toegevoegd als context. Emma vergelijkt alleen de informatie die jij hebt opgegeven."
+            : "Competitors added as context. Emma compares only the information you provided.",
+          sections: [
+            {
+              id: "competitors",
+              title: nl ? "Concurrenten" : "Competitors",
+              items: supplied.map((c) => (c.url ? `${c.name} (${c.url})` : c.name)),
+            },
+            {
+              id: "limitation",
+              title: nl ? "Beperking" : "Limitation",
+              items: [
+                nl
+                  ? "Geen live marktonderzoek — alleen door jou opgegeven namen en URL's."
+                  : "No live market research — only customer-supplied names and URLs.",
+              ],
+            },
+          ],
+        };
+      }
       const supplied = ctx.competitors;
       const domainCompetitors = understanding?.competitors ?? [];
       const competitorNames =
@@ -319,6 +393,7 @@ export function buildCampaignStepEvidence(input: {
     }
 
     case "strategy_determined": {
+      if (isLiveBrainDeferredStep(peerId, stepId)) return null;
       if (seed) {
         return {
           title: nl ? "Strategie" : "Strategy",
@@ -372,6 +447,50 @@ export function buildCampaignStepEvidence(input: {
     default:
       return null;
   }
+}
+
+/**
+ * Async evidence loader for live Office — Brain Runtime first, simulation only on demo fallback.
+ */
+export async function buildCampaignStepEvidenceAsync(
+  input: {
+    stepId: CampaignWorkflowStepId;
+    peerId?: string;
+    project: MarketingProject;
+    domainInput: MarketingPeerDomainInput;
+    locale?: string | null;
+  },
+  options?: ExecuteBrainForWorkflowStepOptions
+): Promise<EvidenceBundle | null> {
+  const { stepId, project, domainInput } = input;
+  const peerId = input.peerId ?? project.peerId;
+  const ctx = resolveContext(project, domainInput);
+
+  if (!isLiveBrainDeferredStep(peerId, stepId)) {
+    return buildCampaignStepEvidence(input);
+  }
+
+  if (!isBrainStepReady(stepId, ctx)) {
+    return buildCampaignStepEvidence(input);
+  }
+
+  const brainEvidence = await buildBrainStepEvidenceAsync(
+    {
+      stepId,
+      peerId,
+      project,
+      domainInput,
+      locale: input.locale,
+    },
+    options
+  );
+
+  if (brainEvidence && !hasNeedsInfoEvidence(brainEvidence)) {
+    return brainEvidence;
+  }
+
+  // Live: never overwrite Brain output with simulation — return Brain result or null.
+  return brainEvidence;
 }
 
 function channelLabel(channel: string, nl: boolean): string {

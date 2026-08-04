@@ -31,6 +31,11 @@ export function officeHref(
   return query ? `${base}?${query}` : base;
 }
 
+/** Canonical Office campaign detail route — `/office/{peerId}/work/campaigns/{projectId}`. */
+export function officeCampaignHref(peerId: string, projectId: string): string {
+  return `${officeHref(peerId, "work")}/campaigns/${projectId}`;
+}
+
 /** Splits a href into its path and search parts, tolerating absolute URLs. */
 function splitHref(href: string): { path: string; search: string } {
   const withoutOrigin = href.replace(/^https?:\/\/[^/]+/i, "");
@@ -71,11 +76,19 @@ export function toOfficeHref(peerId: string, href: string | null | undefined): s
   const [first, , third] = rest;
 
   switch (first) {
-    case "projects":
-      // A review item is a decision; it opens where decisions are reviewed.
-      return third === "review"
-        ? officeHref(peerId, "content", { state: "awaiting_review" })
-        : officeHref(peerId, "work");
+    case "projects": {
+      const projectId = rest[1];
+      if (third === "review" && projectId) {
+        const reviewId = rest[3];
+        return reviewId
+          ? `${officeHref(peerId, "work")}/campaigns/${projectId}?review=${reviewId}`
+          : `${officeHref(peerId, "work")}/campaigns/${projectId}`;
+      }
+      if (projectId) {
+        return `${officeHref(peerId, "work")}/campaigns/${projectId}`;
+      }
+      return officeHref(peerId, "work");
+    }
 
     case "work":
       return officeHref(peerId, "work");

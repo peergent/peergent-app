@@ -6,6 +6,8 @@ import type { CampaignWorkflowStep } from "@/lib/office/campaign/workflow-types"
 import CampaignEmmaIntro from "./CampaignEmmaIntro";
 import CampaignLifecycleBar, { resolveLifecyclePhase } from "./CampaignLifecycleBar";
 import CampaignWorkflowTimeline from "./CampaignWorkflowTimeline";
+import CampaignWorkingStatus from "./CampaignWorkingStatus";
+import CampaignStrategyDevDiagnostics from "./CampaignStrategyDevDiagnostics";
 
 export type CampaignWorkspaceCoreProps = {
   model: CampaignDetailViewModel;
@@ -24,6 +26,8 @@ export type CampaignWorkspaceCoreProps = {
   onOpenCompetitorModal?: () => void;
   onOpenOptimization?: () => void;
   onOpenSchedule?: () => void;
+  onRetryStrategy?: () => void;
+  onViewCampaignContext?: () => void;
   onClose?: () => void;
 };
 
@@ -44,6 +48,8 @@ export default function CampaignWorkspaceCore({
   onOpenCompetitorModal,
   onOpenOptimization,
   onOpenSchedule,
+  onRetryStrategy,
+  onViewCampaignContext,
   onClose,
 }: CampaignWorkspaceCoreProps) {
   const nl = locale === "nl";
@@ -64,12 +70,18 @@ export default function CampaignWorkspaceCore({
     !model.competitorPrompt &&
     model.lifecycleStatus === "planning";
   const primaryDisabled =
-    cta.action === "continue" && cta.stepId === "optimizing" && !model.performanceActionable;
+    (cta.action === "continue" && !cta.stepId) ||
+    (cta.action === "continue" && cta.stepId === "optimizing" && !model.performanceActionable);
 
   const suppressPrimaryCta =
-    Boolean(model.websitePrompt) &&
-    cta.action === "continue" &&
-    cta.stepId === "website_analyzed";
+    cta.action === "working" ||
+    (cta.action === "continue" && !cta.stepId) ||
+    (Boolean(model.websitePrompt) &&
+      cta.action === "continue" &&
+      cta.stepId === "website_analyzed");
+
+  const showStrategyFailure =
+    cta.action === "retry_strategy" || cta.action === "view_context";
 
   const handlePrimaryCta = () => {
     if (cta.action === "open_optimization") {
@@ -270,7 +282,97 @@ export default function CampaignWorkspaceCore({
         </section>
       ) : null}
 
-      {!inModal && cta && !suppressPrimaryCta ? (
+      {!inModal && cta.action === "working" ? (
+        <section className="pg-v13-sec mb-6" data-testid="campaign-primary-working">
+          <CampaignWorkingStatus
+            headline={cta.label}
+            stageLabel={cta.workingStage}
+            runStatus={cta.runStatus}
+            locale={locale}
+          />
+          {cta.devDiagnostics ? (
+            <CampaignStrategyDevDiagnostics
+              runId={cta.devDiagnostics.runId}
+              lastStatus={cta.devDiagnostics.lastStatus}
+              provider={cta.devDiagnostics.provider}
+              failureCode={cta.devDiagnostics.failureCode}
+              fallbackUsed={cta.devDiagnostics.fallbackUsed}
+              traceLastStage={cta.devDiagnostics.traceLastStage}
+              locale={locale}
+              triggerKey={cta.devDiagnostics.triggerKey}
+              actionInvocationCount={cta.devDiagnostics.actionInvocationCount}
+              actionDurationMs={cta.devDiagnostics.actionDurationMs}
+              inFlightReused={cta.devDiagnostics.inFlightReused}
+              terminalState={cta.devDiagnostics.terminalState}
+              model={cta.devDiagnostics.model}
+              inputTokens={cta.devDiagnostics.inputTokens}
+              outputTokens={cta.devDiagnostics.outputTokens}
+            />
+          ) : null}
+          <p className="mt-2 text-[12px] text-[var(--pg-v13-ink-soft)]">{workflow.nextStep}</p>
+        </section>
+      ) : null}
+
+      {!inModal && showStrategyFailure ? (
+        <section className="pg-v13-sec mb-6" data-testid="campaign-strategy-failure">
+          {cta.failureMessage ? (
+            <p className="text-[14px] text-[var(--pg-v13-ink-soft)]">{cta.failureMessage}</p>
+          ) : null}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            {cta.action === "retry_strategy" ? (
+              <button
+                type="button"
+                className="pg-v13-btn w-full sm:w-auto"
+                onClick={onRetryStrategy}
+                data-testid="campaign-retry-strategy"
+              >
+                {cta.label}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="pg-v13-btn w-full sm:w-auto"
+                onClick={onViewCampaignContext}
+                data-testid="campaign-view-context-primary"
+              >
+                {cta.label}
+              </button>
+            )}
+            {cta.action === "retry_strategy" ? (
+              <button
+                type="button"
+                className="pg-v13-btn pg-v13-btn--ghost w-full sm:w-auto"
+                onClick={onViewCampaignContext}
+                data-testid="campaign-view-context-secondary"
+              >
+                {nl ? "Campagnecontext bekijken" : "View campaign context"}
+              </button>
+            ) : null}
+          </div>
+          {cta.devDiagnostics ? (
+            <CampaignStrategyDevDiagnostics
+              runId={cta.devDiagnostics.runId}
+              lastStatus={cta.devDiagnostics.lastStatus}
+              provider={cta.devDiagnostics.provider}
+              failureCode={cta.devDiagnostics.failureCode}
+              fallbackUsed={cta.devDiagnostics.fallbackUsed}
+              traceLastStage={cta.devDiagnostics.traceLastStage}
+              locale={locale}
+              triggerKey={cta.devDiagnostics.triggerKey}
+              actionInvocationCount={cta.devDiagnostics.actionInvocationCount}
+              actionDurationMs={cta.devDiagnostics.actionDurationMs}
+              inFlightReused={cta.devDiagnostics.inFlightReused}
+              terminalState={cta.devDiagnostics.terminalState}
+              model={cta.devDiagnostics.model}
+              inputTokens={cta.devDiagnostics.inputTokens}
+              outputTokens={cta.devDiagnostics.outputTokens}
+            />
+          ) : null}
+          <p className="mt-2 text-[12px] text-[var(--pg-v13-ink-soft)]">{workflow.nextStep}</p>
+        </section>
+      ) : null}
+
+      {!inModal && cta && !suppressPrimaryCta && !showStrategyFailure ? (
         <section className="pg-v13-sec mb-6" data-testid="campaign-primary-cta">
           {primaryDisabled ? (
             <p className="text-[14px] font-semibold text-[var(--pg-v13-ink-soft)]">{cta.label}</p>
@@ -410,6 +512,11 @@ export default function CampaignWorkspaceCore({
           {model.scheduleInfo.channels.length > 0 ? (
             <p className="mt-1 text-[12px] text-[var(--pg-v13-ink-faint)]">
               {nl ? "Kanalen" : "Channels"}: {model.scheduleInfo.channels.join(", ")}
+            </p>
+          ) : null}
+          {model.scheduleInfo.integrationsNote ? (
+            <p className="mt-2 text-[12px] text-[var(--pg-v13-ink-soft)]" data-testid="schedule-integrations-note">
+              {model.scheduleInfo.integrationsNote}
             </p>
           ) : null}
           {onOpenSchedule ? (

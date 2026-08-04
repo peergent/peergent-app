@@ -4,6 +4,7 @@ import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import CampaignEvidenceModal from "@/features/office/campaign/CampaignEvidenceModal";
+import CampaignCompanyContextModal from "@/features/office/campaign/CampaignCompanyContextModal";
 import CampaignCompetitorModal from "@/features/office/campaign/CampaignCompetitorModal";
 import CampaignScheduleModal from "@/features/office/campaign/CampaignScheduleModal";
 import CampaignOptimizationPanel from "@/features/office/campaign/CampaignOptimizationPanel";
@@ -105,6 +106,8 @@ function CampaignDetailInner() {
             onSkipCompetitors={campaignActions.handleSkipCompetitors}
             onOpenCompetitorModal={() => campaignActions.setCompetitorModalOpen(true)}
             onOpenOptimization={() => campaignActions.setOptimizationOpen(true)}
+            onRetryStrategy={campaignActions.handleRetryStrategy}
+            onViewCampaignContext={campaignActions.handleViewCampaignContext}
             progressMessage={campaignActions.progressMessage}
           />
         ) : (
@@ -126,8 +129,11 @@ function CampaignDetailInner() {
         locale={localePreference}
         executionMode={model?.executionMode}
         phase={campaignActions.evidencePhase}
+        progressLabel={campaignActions.evidenceProgressLabel}
+        devDiagnostics={campaignActions.evidenceDevDiagnostics}
         errorMessage={campaignActions.evidenceError}
         onPrimaryAction={campaignActions.handleEvidencePrimary}
+        onMissingAction={campaignActions.handleEvidenceMissingAction}
         onRequestChanges={campaignActions.handleEvidenceRequestChanges}
         onReject={campaignActions.handleEvidenceReject}
       />
@@ -136,6 +142,7 @@ function CampaignDetailInner() {
         open={campaignActions.websiteModalOpen}
         onClose={() => campaignActions.setWebsiteModalOpen(false)}
         locale={localePreference}
+        isDemo={isDemo}
         initialUrl={campaignActions.storedWebsiteUrl}
         onSubmit={campaignActions.handleAddWebsiteUrl}
       />
@@ -147,12 +154,21 @@ function CampaignDetailInner() {
         onSubmit={campaignActions.handleAddCompetitors}
       />
 
+      <CampaignCompanyContextModal
+        open={campaignActions.companyContextModalOpen}
+        onClose={() => campaignActions.setCompanyContextModalOpen(false)}
+        locale={localePreference}
+        initialValues={campaignActions.companyContextInitialValues}
+        onSubmit={campaignActions.handleSaveCompanyContext}
+      />
+
       {model ? (
         <>
           <CampaignScheduleModal
             open={campaignActions.scheduleModalOpen}
             onClose={() => campaignActions.setScheduleModalOpen(false)}
             locale={localePreference}
+            liveMode={!isDemo}
             initialScheduledAt={model.scheduleInfo?.scheduledAt ?? null}
             onConfirm={(iso) => campaignActions.handleScheduleCampaign(iso)}
           />

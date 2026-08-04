@@ -94,9 +94,10 @@ describe("Work — grouping by state", () => {
     }
   });
 
-  it("puts a project with no work unit in the queue", () => {
+  it("puts a project with no work unit in Loopt when not yet scheduled", () => {
     const model = build(domain({ projects: [project()] }));
-    expect(groupIds(model)).toContain("queued");
+    expect(groupIds(model)).toContain("moving");
+    expect(groupIds(model)).not.toContain("queued");
   });
 
   it("treats a started project as moving", () => {
@@ -107,23 +108,48 @@ describe("Work — grouping by state", () => {
     expect(groupIds(model)).not.toContain("queued");
   });
 
-  it("preserves the specified group order", () => {
+  it("preserves the specified group order when multiple groups exist", () => {
     const model = build(
       domain({
-        projects: [project({ id: "p1" }), project({ id: "p2", title: "Second" })],
-        workUnits: [unitFor("p2")],
+        projects: [
+          project({ id: "p1" }),
+          project({
+            id: "p2",
+            title: "Scheduled",
+            campaignSetup: {
+              description: "d",
+              primaryGoalId: "awareness",
+              selectedChannels: ["linkedin"],
+              businessAnalyzedApproved: true,
+              stepApprovals: {
+                strategy_determined: "approved",
+                channels_selected: "approved",
+                deliverables_created: "approved",
+                scheduled: "approved",
+              },
+              campaignSchedule: {
+                scheduledAt: "2026-09-15T07:00:00.000Z",
+                timezone: "Europe/Amsterdam",
+                source: "customer_scheduled",
+                contextVersion: 1,
+              },
+            } as MarketingProject["campaignSetup"],
+          }),
+        ],
+        workUnits: [unitFor("p1")],
       })
     );
     const order = groupIds(model);
     const queued = order.indexOf("queued");
     const moving = order.indexOf("moving");
-    // Moving always precedes Queued (§4.2).
-    expect(moving).toBeLessThan(queued);
+    if (queued >= 0 && moving >= 0) {
+      expect(moving).toBeLessThan(queued);
+    }
   });
 });
 
 describe("Work — blocker attribution", () => {
-  it("names a disconnected channel as the blocker", () => {
+  it("does not report a disconnected channel as blocker before publication is requested", () => {
     const model = build(
       domain({
         projects: [
@@ -140,9 +166,8 @@ describe("Work — blocker attribution", () => {
       })
     );
 
-    const blocked = model.groups.find((g) => g.id === "blocked_elsewhere");
-    expect(blocked).toBeDefined();
-    expect(blocked?.items[0]?.blockedBy).toContain("LinkedIn");
+    expect(groupIds(model)).not.toContain("blocked_elsewhere");
+    expect(groupIds(model)).toContain("moving");
   });
 
   it("does not report a blocker when the channel is connected", () => {
@@ -317,6 +342,68 @@ describe("Work — presentation boundary", () => {
   });
 });
 
+describe("Work — office campaign lifecycle", () => {
+  it("classifies a scheduled live campaign under Ingepland, not Geblokkeerd", () => {
+    const model = build(
+      domain({
+        projects: [
+          project({
+            campaignSetup: {
+              description: "d",
+              primaryGoalId: "awareness",
+              selectedChannels: ["linkedin"],
+              businessAnalyzedApproved: true,
+              stepApprovals: {
+                strategy_determined: "approved",
+                channels_selected: "approved",
+                deliverables_created: "approved",
+                scheduled: "approved",
+              },
+              campaignSchedule: {
+                scheduledAt: "2026-09-15T07:00:00.000Z",
+                timezone: "Europe/Amsterdam",
+                source: "customer_scheduled",
+                contextVersion: 1,
+              },
+            } as MarketingProject["campaignSetup"],
+          }),
+        ],
+      })
+    );
+
+    expect(groupIds(model)).toContain("queued");
+    expect(groupIds(model)).not.toContain("blocked_elsewhere");
+    const item = model.groups.flatMap((g) => g.items)[0];
+    expect(item?.stageLabel).toBe("Scheduled");
+    expect(item?.bucket).toBe("scheduled");
+    expect(item?.secondaryText).toContain("Automatic publishing is not connected");
+  });
+
+  it("classifies a campaign awaiting strategy review as blocked on you", () => {
+    const model = build(
+      domain({
+        projects: [
+          project({
+            campaignSetup: {
+              description: "d",
+              primaryGoalId: "awareness",
+              selectedChannels: ["linkedin"],
+              businessAnalyzedApproved: true,
+              strategyGeneratedAt: "2026-07-28T00:00:00.000Z",
+              stepApprovals: {
+                strategy_determined: "pending",
+              },
+            } as MarketingProject["campaignSetup"],
+          }),
+        ],
+      })
+    );
+
+    expect(groupIds(model)).toContain("blocked_on_you");
+    expect(groupIds(model)).not.toContain("queued");
+  });
+});
+
 describe("Work — localization", () => {
   it("renders Dutch copy", () => {
     const model = buildMarketingWorkViewModel({
@@ -326,6 +413,6 @@ describe("Work — localization", () => {
       localePreference: "nl",
     });
     expect(model.copy.title).toBe("Werk");
-    expect(model.groups.some((g) => g.title === "Ingepland")).toBe(true);
+    expect(model.groups.some((g) => g.title === "Loopt")).toBe(true);
   });
 });

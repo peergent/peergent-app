@@ -28,7 +28,7 @@ import {
   recordZeroProviderUsage,
   validateRuntimeBudget,
 } from "./budget-validator";
-import { isBrainProviderWithUsage } from "../providers/llm-brain-provider";
+import { isBrainProviderWithUsage } from "../providers/provider-usage";
 import {
   capabilityContextSlices,
   evaluateReadinessGate,
@@ -210,6 +210,7 @@ export class BrainRuntime {
       dimensionScores,
       missingCriticalFields: missingCritical,
       assemblyState: assembly.state,
+      campaignContext: request.campaignContext,
     });
 
     const policy = evaluateBrainPolicy({
@@ -281,6 +282,39 @@ export class BrainRuntime {
       return { run, assembly, output: null, policy, presentation: null, cacheHit: false };
     }
 
+    if (request.reuseStoredOutput) {
+      const output = request.reuseStoredOutput;
+      run = this.transitionRun(run, "running");
+      const finalStatus = readinessGate.partial ? "partial" : "completed";
+      const outputId = this.deps.outputRepository.store({
+        organizationId: request.organizationId,
+        runId: run.id,
+        output,
+        storedAt: new Date().toISOString(),
+      });
+      run = this.transitionRun(run, finalStatus, {
+        outputId,
+        usage: {
+          providerId: "llm",
+          cacheHit: true,
+          inputTokens: 0,
+          outputTokens: 0,
+          requestStarted: false,
+        },
+        completedAt: new Date().toISOString(),
+      });
+      this.writeAudit(
+        run,
+        assembly,
+        projected.projection,
+        policy,
+        true,
+        Date.now() - startedMs,
+        output
+      );
+      return { run, assembly, output, policy, presentation: null, cacheHit: true };
+    }
+
     run = this.transitionRun(run, "running");
 
     if (!provider.executeSync) {
@@ -309,10 +343,14 @@ export class BrainRuntime {
       outputId,
       usage: {
         providerId: usage.providerId,
+        modelId: usage.modelId,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         estimatedCostCents: usage.estimatedCostCents,
         cacheHit: false,
+        initialProviderId: usage.initialProviderId,
+        finalProviderId: usage.finalProviderId,
+        fallbackReason: usage.fallbackReason,
       },
       completedAt: new Date().toISOString(),
     });
@@ -396,6 +434,7 @@ export class BrainRuntime {
       dimensionScores,
       missingCriticalFields: missingCritical,
       assemblyState: assembly.state,
+      campaignContext: request.campaignContext,
     });
 
     if (!readinessGate.ok) {
@@ -516,6 +555,46 @@ export class BrainRuntime {
       };
     }
 
+    if (request.reuseStoredOutput) {
+      output = request.reuseStoredOutput;
+      cacheHit = true;
+      run = await this.transitionRunAsync(run, "running");
+
+      let finalStatus = readinessGate.partial ? "partial" : "completed";
+      if (policy.decision === "require_approval" && output.actionProposals.some((a) => a.requiresApproval)) {
+        finalStatus = "waiting_for_approval";
+      }
+
+      const outputId = await this.storeOutputAsync({
+        organizationId: request.organizationId,
+        runId: run.id,
+        output,
+        storedAt: new Date().toISOString(),
+        capabilityId: request.capabilityId,
+        capabilityVersion: capabilityDef.version,
+        providerClass: "campaign_cache",
+        contentHash: hashOutputContent(output),
+        contextHash: projected.projection.contextHash,
+        snapshotVersion: String(assembly.version.version),
+        campaignId: request.campaignId,
+      });
+
+      run = await this.transitionRunAsync(run, finalStatus as typeof run.status, {
+        outputId,
+        usage: {
+          providerId: "llm",
+          cacheHit: true,
+          inputTokens: 0,
+          outputTokens: 0,
+          requestStarted: false,
+        },
+        completedAt: new Date().toISOString(),
+      });
+
+      await this.writeAuditAsync(run, assembly, projected.projection, policy, true, Date.now() - startedMs, output);
+      return { run, assembly, output, policy, presentation: null, cacheHit: true };
+    }
+
     run = await this.transitionRunAsync(run, "running");
 
     if (!output) {
@@ -583,10 +662,35 @@ export class BrainRuntime {
       outputId,
       usage: {
         providerId: usage.providerId,
+        modelId: usage.modelId,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         estimatedCostCents: usage.estimatedCostCents,
         cacheHit: usage.cacheHit,
+        initialProviderId: usage.initialProviderId,
+        finalProviderId: usage.finalProviderId,
+        fallbackReason: usage.fallbackReason,
+        upstreamStrategyFound: usage.upstreamStrategyFound,
+        upstreamChannelsFound: usage.upstreamChannelsFound,
+        strategyVersionCompatible: usage.strategyVersionCompatible,
+        channelVersionCompatible: usage.channelVersionCompatible,
+        selectedChannelCount: usage.selectedChannelCount,
+        businessValidationCategory: usage.businessValidationCategory,
+        businessValidationSubreason: usage.businessValidationSubreason,
+        approvedCanonicalChannels: usage.approvedCanonicalChannels,
+        generatedCanonicalChannels: usage.generatedCanonicalChannels,
+        unmatchedChannels: usage.unmatchedChannels,
+        requestStarted: usage.requestStarted,
+        validationAttempts: usage.validationAttempts,
+        validationRepairCount: usage.validationRepairCount,
+        initialRequestDurationMs: usage.initialRequestDurationMs,
+        repairRequestDurationMs: usage.repairRequestDurationMs,
+        fallbackDurationMs: usage.fallbackDurationMs,
+        timeoutOwner: usage.timeoutOwner,
+        configuredTimeoutMs: usage.configuredTimeoutMs,
+        timeoutAttemptNumber: usage.timeoutAttemptNumber,
+        responseHeadersReceived: usage.responseHeadersReceived,
+        responseBodyStarted: usage.responseBodyStarted,
       },
       completedAt: new Date().toISOString(),
     });

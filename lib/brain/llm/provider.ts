@@ -3,5 +3,8 @@ import type { BrainLlmRequest, BrainLlmResponse, BrainLlmProviderId } from "./ty
 /** Generic LLM provider contract — Brain Runtime never depends on OpenAI directly. */
 export interface BrainLlmProvider {
   readonly id: BrainLlmProviderId;
-  complete(request: BrainLlmRequest): Promise<Omit<BrainLlmResponse, "parsed">>;
+  complete(
+    request: BrainLlmRequest,
+    options?: { attemptNumber?: number }
+  ): Promise<Omit<BrainLlmResponse, "parsed">>;
 }

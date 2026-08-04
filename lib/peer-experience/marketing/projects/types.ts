@@ -1,3 +1,5 @@
+import type { StrategyRunState } from "@/lib/office/campaign/strategy-run-types";
+
 /** Customer-facing assignment — Emma's private WorkUnits execute underneath. */
 
 export type MarketingProjectStatus =
@@ -74,6 +76,14 @@ export type CampaignSetupDeliverable =
   | "other"
   | "decide_later";
 
+import type { BrainStructuredOutput } from "@/lib/brain/evidence/structured-output";
+import type { BrainCapabilityId } from "@/lib/brain/capabilities/registry";
+
+/** Session-persisted Brain capability outputs for live campaign workflow reuse. */
+export type CampaignBrainOutputs = {
+  readonly contextVersion: number;
+} & Partial<Record<Extract<BrainCapabilityId, "strategy" | "channel_planning" | "creative_generation">, BrainStructuredOutput>>;
+
 export type MarketingProjectCampaignSetup = {
   readonly description: string;
   readonly primaryGoalId: string;
@@ -98,6 +108,69 @@ export type MarketingProjectCampaignSetup = {
   readonly setupMode?: "automatic" | "manual";
   readonly secondaryGoalIds?: readonly string[];
   readonly priority?: "low" | "medium" | "high";
+  /** Live Office — customer-supplied website URL (no crawl implied). */
+  readonly websiteUrl?: string;
+  /** Live Office — customer explicitly skipped website context. */
+  readonly websiteSkipped?: boolean;
+  readonly websiteDecisionAt?: string;
+  readonly websiteDecisionSource?: "customer_supplied" | "customer_skipped";
+  /** Live Office — customer-supplied competitors (no market scan implied). */
+  readonly campaignCompetitors?: readonly { name: string; url?: string }[];
+  /** Live Office — customer explicitly skipped competitor analysis. */
+  readonly competitorsSkipped?: boolean;
+  readonly competitorsDecisionAt?: string;
+  readonly competitorsDecisionSource?: "customer_supplied" | "customer_skipped";
+  /** Live Office — brand/client being marketed (may differ from account org). */
+  readonly campaignBrandName?: string;
+  /** Live Office — customer-supplied brand/company context for this campaign. */
+  readonly campaignBrandContext?: {
+    readonly brandName?: string;
+    readonly industry?: string;
+    readonly mission?: string;
+    readonly uniqueSellingPoints?: readonly string[];
+    readonly productsAndServices?: readonly string[];
+    readonly positioning?: string;
+    readonly tone?: string;
+    readonly targetAudience?: string;
+  };
+  readonly campaignBrandContextAt?: string;
+  readonly campaignBrandContextSource?: "customer_supplied";
+  /** Live Office — business analysis step completed after successful output. */
+  readonly businessAnalyzedApproved?: boolean;
+  readonly businessAnalyzedAt?: string;
+  /** Live Office — monotonic context version for invalidation. */
+  readonly campaignContextVersion?: number;
+  /** Live Office — customer review gates (strategy, channels, deliverables). */
+  readonly stepApprovals?: Partial<
+    Record<
+      import("@/lib/office/campaign/workflow-types").CampaignWorkflowStepId,
+      import("@/lib/office/demo/demo-workflow-simulation").DemoStepApprovalStatus
+    >
+  >;
+  /** Live Office — strategy capability produced output at this time. */
+  readonly strategyGeneratedAt?: string;
+  /** Live Office — persisted strategy execution lifecycle. */
+  readonly strategyRun?: StrategyRunState;
+  /**
+   * Live Office — customer-safe structured Brain outputs keyed by capability.
+   * Bridged via session workspace storage until durable server persistence exists.
+   */
+  readonly campaignBrainOutputs?: CampaignBrainOutputs;
+  /** Live Office — internal scheduling decision (no external publish implied). */
+  readonly campaignSchedule?: LiveCampaignSchedule;
+};
+
+/** Live campaign internal schedule — session-persisted until server storage exists. */
+export type LiveCampaignSchedule = {
+  readonly scheduledAt: string;
+  readonly scheduledDate: string;
+  readonly scheduledTime: string;
+  readonly timezone: string;
+  readonly scheduledDecisionAt: string;
+  readonly source: "customer_scheduled";
+  readonly contextVersion: number;
+  readonly channels?: readonly string[];
+  readonly deliverableIds?: readonly string[];
 };
 
 export type MarketingProject = {

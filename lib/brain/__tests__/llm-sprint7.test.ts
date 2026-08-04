@@ -19,6 +19,7 @@ import {
 } from "@/lib/brain";
 import { missingCriticalFieldsFromAssembly } from "@/lib/brain/runtime/readiness-gate";
 import { createBrainRepositories } from "@/lib/brain/persistence/repository-factory";
+import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
 import { InMemoryBrainRunRepository } from "@/lib/brain/runtime/repositories/in-memory-run-repository";
 import { InMemoryBrainOutputRepository } from "@/lib/brain/runtime/repositories/in-memory-output-repository";
 import { InMemoryBrainAuditRepository } from "@/lib/brain/runtime/repositories/in-memory-audit-repository";
@@ -143,14 +144,76 @@ function validStrategyPayload() {
   };
 }
 
+function validChannelPayload() {
+  return {
+    findings: [
+      {
+        id: "channel-linkedin",
+        label: "Channel: linkedin",
+        value: "Selected — role: strategy fit for B2B audience.",
+        confidence: "medium",
+      },
+      {
+        id: "channel-email",
+        label: "Channel: email",
+        value: "Selected — role: nurture and conversion.",
+        confidence: "medium",
+      },
+    ],
+    decisions: [
+      {
+        id: "dec-channel-1",
+        label: "Primary channel mix",
+        rationale: "LinkedIn and email align with SMB owner targeting.",
+        confidence: "medium",
+      },
+    ],
+    recommendations: [
+      {
+        id: "rec-channel-1",
+        label: "Channel priority: linkedin",
+        priority: "high",
+      },
+    ],
+    actionProposals: [
+      {
+        id: "act-channel-1",
+        actionType: "approve_channels",
+        label: "Confirm channels",
+        requiresApproval: true,
+      },
+    ],
+    warnings: [],
+  };
+}
+
+function strategyReadyCampaignContext(orgId: string) {
+  const project = createMarketingCampaignProject(peergentInput);
+  const base = buildCampaignContextFromCreateInput(project, peergentInput, "en");
+  return {
+    ...base,
+    websiteUrl: "https://peergent.com",
+    websiteSource: "supplied_by_customer" as const,
+    websiteState: "available" as const,
+    competitorsSkipped: true,
+    competitorContextState: "skipped" as const,
+    brandContext: {
+      brandName: "Peergent",
+      industry: "AI software",
+      productsAndServices: ["AI marketing colleagues for SMB teams"],
+      uniqueSellingPoints: ["Premium AI workspace with human-like colleagues"],
+      targetAudience: "SMB owners",
+    },
+  };
+}
+
 function strategyAssembly(orgId: string) {
   const profile = buildPeergentCompanyProfile("en");
   const website = buildDemoWebsiteSnapshotSync({
     organizationId: orgId,
     url: "https://peergent.com",
   });
-  const project = createMarketingCampaignProject(peergentInput);
-  const campaignContext = buildCampaignContextFromCreateInput(project, peergentInput, "en");
+  const campaignContext = strategyReadyCampaignContext(orgId);
   return assembleCompanyContextSync({
     organizationId: orgId,
     companyProfile: { ...profile, organizationId: orgId },
@@ -206,14 +269,20 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
       expect(selection.providerClass).toBe("live");
     });
 
-    it("registers llm provider in live factory when flag enabled", () => {
+    it("registers llm provider in live server factory when flag enabled", () => {
       vi.stubEnv("BRAIN_USE_OPENAI", "true");
-      const bundle = createBrainRepositories({ environment: "live" });
+      const bundle = createBrainRepositoriesForServer({ environment: "live" });
       expect(bundle.providers.some((p) => p.id === "llm")).toBe(true);
     });
 
-    it("does not register llm provider when flag disabled", () => {
+    it("does not register llm provider in client-safe factory when flag enabled", () => {
+      vi.stubEnv("BRAIN_USE_OPENAI", "true");
       const bundle = createBrainRepositories({ environment: "live" });
+      expect(bundle.providers.some((p) => p.id === "llm")).toBe(false);
+    });
+
+    it("does not register llm provider when flag disabled", () => {
+      const bundle = createBrainRepositoriesForServer({ environment: "live" });
       expect(bundle.providers.some((p) => p.id === "llm")).toBe(false);
     });
   });
@@ -235,11 +304,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
           peerId: "demo",
           capabilityId: "strategy",
           actorId: "test",
-          campaignContext: buildCampaignContextFromCreateInput(
-            createMarketingCampaignProject(peergentInput),
-            peergentInput,
-            "en"
-          ),
+          campaignContext: strategyReadyCampaignContext("org-test"),
           locale: "en",
         },
       });
@@ -400,13 +465,15 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
       expect(init?.method).toBe("POST");
       const body = JSON.parse(String(init?.body));
       expect(body.instructions).toBe("sys");
-      expect(body.text?.format?.type).toBe("json_object");
+      expect(body.text?.format?.type).toBe("json_schema");
+      expect(body.text?.format?.strict).toBe(true);
+      expect(body.text?.format?.name).toBe("strategy_output");
       expect(response.usage.inputTokens).toBe(100);
       expect(response.usage.outputTokens).toBe(50);
       expect(response.usage.estimatedCostCents).toBeGreaterThanOrEqual(0);
     });
 
-    it("marks timeout as retryable", async () => {
+    it("marks timeout as non-retryable", async () => {
       const fetchImpl = vi.fn(async (_url, init) => {
         const signal = init?.signal as AbortSignal | undefined;
         signal?.dispatchEvent(new Event("abort"));
@@ -430,7 +497,23 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
             contextHash: "ctx-test",
           })
         )
-      ).rejects.toMatchObject({ code: "timeout", retryable: true });
+      ).rejects.toMatchObject({ code: "timeout", retryable: false });
+      await expect(
+        withLlmRetry(
+          () =>
+            provider.complete(
+              createLlmRequest({
+                capabilityId: "strategy",
+                capabilityVersion: "1.0.0",
+                systemPrompt: "sys",
+                userPrompt: "user",
+                jsonSchema: {},
+                contextHash: "ctx-test",
+              })
+            ),
+          { maxAttempts: 3 }
+        )
+      ).rejects.toMatchObject({ code: "timeout" });
     });
   });
 
@@ -494,11 +577,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
           peerId: "demo",
           capabilityId: "strategy",
           actorId: "test",
-          campaignContext: buildCampaignContextFromCreateInput(
-            createMarketingCampaignProject(peergentInput),
-            peergentInput,
-            "en"
-          ),
+          campaignContext: strategyReadyCampaignContext("org-test"),
           locale: "en",
         },
       });
@@ -523,10 +602,12 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
         projection: projected.projection,
       });
 
-      expect(result.capabilityId).toBe("strategy");
-      expect(result.findings.length).toBeGreaterThan(0);
-      expect(llm.consumeLastUsage()).toBeUndefined();
-    });
+    expect(result.capabilityId).toBe("strategy");
+    expect(result.findings.length).toBeGreaterThan(0);
+    const usage = llm.consumeLastUsage();
+    expect(usage?.providerId).toBe("deterministic");
+    expect(usage?.fallbackReason).toBeTruthy();
+  });
 
     it("records usage when LLM succeeds", async () => {
       const assembly = strategyAssembly("org-usage");
@@ -544,11 +625,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
           peerId: "demo",
           capabilityId: "strategy",
           actorId: "test",
-          campaignContext: buildCampaignContextFromCreateInput(
-            createMarketingCampaignProject(peergentInput),
-            peergentInput,
-            "en"
-          ),
+          campaignContext: strategyReadyCampaignContext("org-test"),
           locale: "en",
         },
       });
@@ -585,6 +662,73 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
       expect(usage?.outputTokens).toBe(80);
       expect(usage?.estimatedCostCents).toBeGreaterThanOrEqual(0);
     });
+
+    it("routes channel_planning through LLM when enabled", async () => {
+      const assembly = strategyAssembly("org-channel-llm");
+      const def = getBrainCapability("channel_planning");
+      const projected = projectBrainContext({
+        fullSnapshot: assembly.brainSnapshot,
+        companySnapshot: assembly.companySnapshot,
+        requiredSlices: def.requiredContext,
+        optionalSlices: def.optionalContext,
+      });
+      const strategyOutput = mapStrategyPayloadToBrainOutput(validStrategyPayload(), {
+        capabilityVersion: getBrainCapability("strategy").version,
+        generatedAt: "2026-08-01T00:00:00.000Z",
+        provenanceRef: "test:strategy",
+      });
+      const execCtx = buildCapabilityExecutionContext({
+        assembly,
+        request: {
+          organizationId: assembly.companySnapshot.organizationId,
+          peerId: "demo",
+          capabilityId: "channel_planning",
+          actorId: "test",
+          campaignContext: strategyReadyCampaignContext("org-channel-llm"),
+          locale: "en",
+        },
+        upstreamOutputs: { strategy: strategyOutput },
+      });
+
+      const llmCalls: string[] = [];
+      const okProvider = mockLlmProvider(async (req) => {
+        llmCalls.push(req.capabilityId);
+        return {
+          rawText: JSON.stringify(validChannelPayload()),
+          usage: buildLlmUsage({
+            provider: "openai",
+            model: "gpt-test",
+            inputTokens: 180,
+            outputTokens: 90,
+            latencyMs: 15,
+          }),
+        };
+      });
+
+      const llm = createLlmBrainProvider({ useOpenAI: true, llmProvider: okProvider });
+      const output = await llm.execute({
+        context: {
+          organizationId: assembly.companySnapshot.organizationId,
+          peerId: "demo",
+          capabilityId: "channel_planning",
+          actorId: "test",
+          environment: "live",
+        },
+        snapshot: projected.snapshot,
+        capabilityId: "channel_planning",
+        companySnapshot: assembly.companySnapshot,
+        executionContext: execCtx,
+        projection: projected.projection,
+      });
+
+      expect(llmCalls).toEqual(["channel_planning"]);
+      expect(output.capabilityId).toBe("channel_planning");
+      expect(output.findings.some((f) => f.label.includes("linkedin"))).toBe(true);
+      const usage = llm.consumeLastUsage();
+      expect(usage?.providerId).toBe("llm");
+      expect(usage?.fallbackReason).toBeUndefined();
+      expect(usage?.inputTokens).toBe(180);
+    });
   });
 
   describe("runtime integration", () => {
@@ -599,6 +743,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
         dimensionScores: dimensionScores as never,
         missingCriticalFields: missingCriticalFieldsFromAssembly("strategy", assembly.missingInformation),
         assemblyState: assembly.state,
+        campaignContext: strategyReadyCampaignContext("org-readiness-check"),
       });
       expect(gate.ok).toBe(true);
     });
@@ -637,11 +782,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
         capabilityId: "strategy",
         actorId: "test",
         environment: "live",
-        campaignContext: buildCampaignContextFromCreateInput(
-          createMarketingCampaignProject(peergentInput),
-          peergentInput,
-          "en"
-        ),
+        campaignContext: strategyReadyCampaignContext(orgId),
       });
 
       expect(result.run.status).not.toBe("waiting_for_input");
@@ -712,11 +853,7 @@ describe("Project Brain Sprint 7 — LLM layer", () => {
           peerId: "demo",
           capabilityId: "strategy",
           actorId: "test",
-          campaignContext: buildCampaignContextFromCreateInput(
-            createMarketingCampaignProject(peergentInput),
-            peergentInput,
-            "en"
-          ),
+          campaignContext: strategyReadyCampaignContext("org-test"),
           locale: "en",
         },
       });

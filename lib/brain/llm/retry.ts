@@ -3,8 +3,11 @@ import { BrainLlmError } from "./errors";
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 export function isRetryableLlmError(error: unknown): boolean {
-  if (error instanceof BrainLlmError) return error.retryable;
-  if (error instanceof Error && error.name === "AbortError") return true;
+  if (error instanceof BrainLlmError) {
+    if (error.code === "timeout") return false;
+    return error.retryable;
+  }
+  if (error instanceof Error && error.name === "AbortError") return false;
   return false;
 }
 

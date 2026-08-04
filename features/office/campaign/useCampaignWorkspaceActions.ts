@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   addDemoCompetitors,
@@ -21,13 +21,41 @@ import {
   draftIdsPendingApproval,
 } from "@/lib/office/deliverable/build-deliverable-review";
 import { buildCampaignWorkflowViewModel } from "@/lib/office/campaign/build-campaign-workflow";
-import { EVIDENCE_NEXT_STEP } from "@/features/office/campaign/CampaignEvidenceModal";
-import type { EvidenceModalPhase } from "@/features/office/campaign/CampaignEvidenceModal";
+import { buildCampaignStepEvidenceAsync, isLiveBrainDeferredStep } from "@/lib/office/campaign/build-campaign-workflow-evidence";
+import { buildLiveCampaignEvidenceAction } from "@/lib/office/campaign/live-campaign-evidence-action";
+import { runWithBoundedTimeout } from "@/lib/office/campaign/strategy-run-timeout";
+import { CREATIVE_GENERATION_CLIENT_ACTION_TIMEOUT_MS } from "@/lib/brain/llm/creative-generation-llm-config";
+import {
+  buildCampaignContext,
+} from "@/lib/office/campaign/campaign-context";
+import { clearLiveStrategyRunForRetry, persistCampaignBrainOutputs, persistLiveCampaignSchedule } from "@/lib/office/campaign/live-campaign-context-store";
+import {
+  buildStrategyTriggerKey,
+  shouldEnqueueLiveStrategyRun,
+} from "@/lib/office/campaign/live-strategy-run-service";
+import { getBrainCapability } from "@/lib/brain/capabilities/registry";
+import { customerSafeStrategyFailureMessage } from "@/lib/office/campaign/strategy-run-types";
+import { triggerLiveStrategyRunViaServer, recoverStaleOptimisticStrategyRun } from "@/lib/office/campaign/live-strategy-run-client";
+import { recoverStaleLiveStrategyRun } from "@/lib/office/campaign/live-campaign-context-store";
+import { isInformationalWorkflowStep } from "@/lib/office/campaign/campaign-orchestration-types";
+import { inferCampaignBrandName } from "@/lib/office/campaign/campaign-brand-boundary";
+import {
+  normalizeCampaignCompanyContext,
+  type CampaignCompanyContextInput,
+} from "@/lib/office/campaign/campaign-company-context-validation";
+import {
+  buildEvidenceMissingCtas,
+  evidenceBlocksWorkflowAdvance,
+} from "@/lib/office/campaign/evidence-readiness";
+import type { BrainDevDiagnostics } from "@/lib/brain/integration/brain-dev-diagnostics";
+import { EVIDENCE_NEXT_STEP, type EvidenceModalPhase } from "@/features/office/campaign/CampaignEvidenceModal";
+import { tryBuildCachedCampaignEvidence } from "@/lib/office/campaign/cached-campaign-evidence";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 import type { CampaignWorkflowStep, CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
 import type { DemoCompetitorInput } from "@/lib/office/demo/demo-campaign-store";
 import type { DemoCampaignDomainOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
+import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
 
@@ -72,10 +100,15 @@ export function useCampaignWorkspaceActions(input: {
   const [evidenceStep, setEvidenceStep] = useState<CampaignWorkflowStep | null>(null);
   const [evidencePhase, setEvidencePhase] = useState<EvidenceModalPhase>("idle");
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [evidenceProgressLabel, setEvidenceProgressLabel] = useState<string | null>(null);
+  const [evidenceDevDiagnostics, setEvidenceDevDiagnostics] = useState<BrainDevDiagnostics | null>(
+    null
+  );
   const [localReviewDraftId, setLocalReviewDraftId] = useState<string | null>(null);
   const [progressMessage, setProgressMessage] = useState<string | null>(null);
   const [websiteModalOpen, setWebsiteModalOpen] = useState(false);
   const [competitorModalOpen, setCompetitorModalOpen] = useState(false);
+  const [companyContextModalOpen, setCompanyContextModalOpen] = useState(false);
   const [manualOptimizationOpen, setManualOptimizationOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [reviewProgress, setReviewProgress] = useState<string | null>(null);
@@ -101,7 +134,131 @@ export function useCampaignWorkspaceActions(input: {
 
   const storedWebsiteUrl = isDemo
     ? getDemoCampaignSnapshot().campaignContexts[projectId]?.websiteUrl
-    : null;
+    : (domainInput.projects.find((p) => p.id === projectId)?.campaignSetup?.websiteUrl ?? null);
+
+  const liveProject = domainInput.projects.find((p) => p.id === projectId);
+  const liveCampaignSetup = liveProject?.campaignSetup;
+  const strategyTriggerKey = useMemo(() => {
+    if (!liveCampaignSetup || liveCampaignSetup.strategyGeneratedAt) return null;
+    return buildStrategyTriggerKey({
+      peerId,
+      projectId,
+      contextVersion: liveCampaignSetup.campaignContextVersion ?? 0,
+      capabilityVersion: getBrainCapability("strategy").version,
+    });
+  }, [liveCampaignSetup, peerId, projectId]);
+  const strategyRunInFlightRef = useRef(false);
+  const triggeredStrategyKeysRef = useRef(new Set<string>());
+
+  const syncLiveProject = useCallback(
+    (updated: MarketingProject) => {
+      workspace.applyLiveCampaignProjectUpdate(updated);
+    },
+    [workspace]
+  );
+
+  const triggerLiveStrategyRun = useCallback(
+    (sourceDomain: MarketingPeerDomainInput) => {
+      if (isDemo || strategyRunInFlightRef.current) return;
+      const project = sourceDomain.projects.find((p) => p.id === projectId);
+      if (!project || !shouldEnqueueLiveStrategyRun(project, sourceDomain, localePreference)) return;
+
+      const triggerKey = buildStrategyTriggerKey({
+        peerId,
+        projectId,
+        contextVersion: project.campaignSetup?.campaignContextVersion ?? 0,
+        capabilityVersion: getBrainCapability("strategy").version,
+      });
+      if (triggeredStrategyKeysRef.current.has(triggerKey)) return;
+
+      triggeredStrategyKeysRef.current.add(triggerKey);
+      strategyRunInFlightRef.current = true;
+      void triggerLiveStrategyRunViaServer({
+        peerId,
+        projectId,
+        domainInput: sourceDomain,
+        locale: localePreference,
+        onProjectUpdate: syncLiveProject,
+      })
+        .then((result) => {
+          if (result.project) syncLiveProject(result.project);
+        })
+        .catch(() => {
+          const current = sourceDomain.projects.find((p) => p.id === projectId);
+          if (!current) return;
+          const recovered = recoverStaleLiveStrategyRun(peerId, projectId, {
+            failureCode: "execution_error",
+            failureMessageSafe: customerSafeStrategyFailureMessage(undefined, localePreference),
+          });
+          if (recovered) syncLiveProject(recovered);
+        })
+        .finally(() => {
+          strategyRunInFlightRef.current = false;
+        });
+    },
+    [isDemo, localePreference, peerId, projectId, syncLiveProject]
+  );
+
+  useEffect(() => {
+    if (isDemo || !liveProject || !strategyTriggerKey) return;
+    if (triggeredStrategyKeysRef.current.has(strategyTriggerKey)) return;
+    const recovered =
+      recoverStaleOptimisticStrategyRun(peerId, projectId, liveProject, localePreference) ??
+      null;
+    if (recovered) {
+      syncLiveProject(recovered);
+      return;
+    }
+    triggerLiveStrategyRun(domainInput);
+  }, [
+    domainInput,
+    isDemo,
+    liveProject,
+    localePreference,
+    peerId,
+    projectId,
+    strategyTriggerKey,
+    syncLiveProject,
+    triggerLiveStrategyRun,
+  ]);
+
+  const companyContextInitialValues = useMemo((): CampaignCompanyContextInput => {
+    const setup = liveProject?.campaignSetup;
+    const brand = setup?.campaignBrandContext;
+    return {
+      brandName: brand?.brandName ?? inferCampaignBrandName(liveProject?.title ?? "", setup),
+      industry: brand?.industry ?? "",
+      mission: brand?.mission ?? "",
+      positioning: brand?.positioning ?? "",
+      tone: brand?.tone ?? "",
+      targetAudience: brand?.targetAudience ?? setup?.targetAudience ?? setup?.confirmedAudience ?? "",
+      productsAndServices: brand?.productsAndServices ?? [],
+      uniqueSellingPoints: brand?.uniqueSellingPoints ?? [],
+    };
+  }, [liveProject]);
+
+  const handleRetryStrategy = useCallback(() => {
+    if (isDemo) return;
+    const cleared = clearLiveStrategyRunForRetry(peerId, projectId);
+    if (!cleared) return;
+    const triggerKey = buildStrategyTriggerKey({
+      peerId,
+      projectId,
+      contextVersion: cleared.campaignSetup?.campaignContextVersion ?? 0,
+      capabilityVersion: getBrainCapability("strategy").version,
+    });
+    triggeredStrategyKeysRef.current.delete(triggerKey);
+    syncLiveProject(cleared);
+    const nextDomain: MarketingPeerDomainInput = {
+      ...domainInput,
+      projects: domainInput.projects.map((p) => (p.id === projectId ? cleared : p)),
+    };
+    triggerLiveStrategyRun(nextDomain);
+  }, [domainInput, isDemo, peerId, projectId, syncLiveProject, triggerLiveStrategyRun]);
+
+  const handleViewCampaignContext = useCallback(() => {
+    setCompanyContextModalOpen(true);
+  }, []);
 
   const openReview = useCallback(
     (draftId: string) => {
@@ -126,7 +283,142 @@ export function useCampaignWorkspaceActions(input: {
     setEvidenceStep(null);
     setEvidencePhase("idle");
     setEvidenceError(null);
+    setEvidenceProgressLabel(null);
+    setEvidenceDevDiagnostics(null);
   }, []);
+
+  const applyEvidenceBundleToStep = useCallback(
+    (
+      step: CampaignWorkflowStep,
+      bundle: NonNullable<Awaited<ReturnType<typeof buildCampaignStepEvidenceAsync>>>,
+      project: NonNullable<ReturnType<typeof domainInput.projects.find>>
+    ): CampaignWorkflowStep => {
+      const blocked = evidenceBlocksWorkflowAdvance(bundle.sections);
+      const campaignContext = buildCampaignContext({
+        project,
+        domainInput,
+        locale: localePreference,
+      });
+      return {
+        ...step,
+        evidenceTitle: bundle.title,
+        evidenceIntro: bundle.intro,
+        evidenceSections: bundle.sections,
+        evidenceBlocked: blocked,
+        evidenceMissingCtas: blocked
+          ? buildEvidenceMissingCtas({
+              sections: bundle.sections,
+              campaignContext,
+              locale: localePreference,
+            })
+          : undefined,
+      };
+    },
+    [domainInput, localePreference]
+  );
+
+  const openEvidenceStep = useCallback(
+    async (step: CampaignWorkflowStep, sourceDomain?: MarketingPeerDomainInput) => {
+      if (!step.hasEvidence) return false;
+
+      const domain = sourceDomain ?? freshDomainInput(domainInput, isDemo);
+      const project = domain.projects.find((p) => p.id === projectId);
+      if (!project) return false;
+
+      setEvidenceError(null);
+      setEvidenceDevDiagnostics(null);
+
+      if (!isDemo && isLiveBrainDeferredStep(peerId, step.id)) {
+        const cachedBundle = tryBuildCachedCampaignEvidence({
+          stepId: step.id,
+          peerId,
+          project,
+          domainInput: domain,
+          locale: localePreference,
+        });
+        if (cachedBundle && cachedBundle.sections.length > 0) {
+          setEvidencePhase("idle");
+          setEvidenceProgressLabel(null);
+          setEvidenceStep(applyEvidenceBundleToStep(step, cachedBundle, project));
+          setEvidenceDevDiagnostics(cachedBundle.devDiagnostics ?? null);
+          return true;
+        }
+
+        setEvidencePhase("loading");
+        setEvidenceProgressLabel(
+          nl ? "Emma verzamelt context" : "Emma is gathering context"
+        );
+        setEvidenceStep({
+          ...step,
+          evidenceIntro: undefined,
+          evidenceSections: [],
+          evidenceBlocked: false,
+          evidenceMissingCtas: undefined,
+        });
+
+        try {
+          const actionPromise = buildLiveCampaignEvidenceAction({
+            peerId,
+            projectId,
+            stepId: step.id,
+            project,
+            domainInput: domain,
+            locale: localePreference,
+          });
+          const actionResult = await (step.id === "deliverables_created"
+            ? runWithBoundedTimeout(
+                actionPromise,
+                CREATIVE_GENERATION_CLIENT_ACTION_TIMEOUT_MS,
+                "deliverables_client_action_timeout"
+              )
+            : actionPromise);
+
+          if (!actionResult.ok) {
+            setEvidencePhase("error");
+            setEvidenceError(
+              nl
+                ? "Emma kon geen strategie genereren. Controleer je campagne-input."
+                : "Emma could not generate strategy. Check your campaign input."
+            );
+            return false;
+          }
+
+          const bundle = actionResult.bundle;
+
+          if (!bundle || bundle.sections.length === 0) {
+            setEvidencePhase("error");
+            setEvidenceError(
+              nl
+                ? "Emma kon geen strategie genereren. Controleer je campagne-input."
+                : "Emma could not generate strategy. Check your campaign input."
+            );
+            return false;
+          }
+
+          setEvidenceStep(applyEvidenceBundleToStep(step, bundle, project));
+          setEvidenceDevDiagnostics(bundle.devDiagnostics ?? null);
+          if (bundle.capabilityOutputs && Object.keys(bundle.capabilityOutputs).length > 0) {
+            const updated = persistCampaignBrainOutputs(peerId, projectId, bundle.capabilityOutputs);
+            if (updated) syncLiveProject(updated);
+          }
+          setEvidencePhase("idle");
+          return true;
+        } catch {
+          setEvidencePhase("error");
+          setEvidenceError(
+            nl ? "Er ging iets mis. Probeer het opnieuw." : "Something went wrong. Please try again."
+          );
+          return false;
+        }
+      }
+
+      setEvidencePhase("idle");
+      setEvidenceProgressLabel(null);
+      setEvidenceStep(step);
+      return true;
+    },
+    [applyEvidenceBundleToStep, domainInput, isDemo, localePreference, nl, peerId, projectId, syncLiveProject]
+  );
 
   const openStepById = useCallback(
     (stepId: CampaignWorkflowStepId, sourceDomain?: MarketingPeerDomainInput) => {
@@ -142,12 +434,10 @@ export function useCampaignWorkspaceActions(input: {
       });
       const step = workflow.steps.find((s) => s.id === stepId);
       if (!step?.hasEvidence) return false;
-      setEvidencePhase("idle");
-      setEvidenceError(null);
-      setEvidenceStep(step);
+      void openEvidenceStep(step, domain);
       return true;
     },
-    [domainInput, isDemo, localePreference, peerId, projectId]
+    [domainInput, isDemo, localePreference, openEvidenceStep, peerId, projectId]
   );
 
   const advanceEvidenceStep = useCallback(
@@ -184,15 +474,35 @@ export function useCampaignWorkspaceActions(input: {
   const completeEvidenceStep = useCallback(
     (stepId: CampaignWorkflowStepId) => {
       if (evidencePhase === "processing") return;
+      if (evidenceStep?.evidenceBlocked) return;
+
+      if (isInformationalWorkflowStep(stepId)) {
+        closeEvidence();
+        return;
+      }
+
       setEvidencePhase("processing");
       setEvidenceError(null);
 
       try {
         if (isDemo) {
           setDemoStepApproval(peerId, projectId, stepId, "approved");
+        } else {
+          const updated = workspace.updateCampaignStepApproval(projectId, stepId, "approved");
+          if (!updated) {
+            throw new Error("approval_persist_failed");
+          }
         }
         setEvidencePhase("success");
-        advanceEvidenceStep(stepId);
+        if (
+          stepId === "strategy_determined" ||
+          stepId === "channels_selected" ||
+          stepId === "deliverables_created"
+        ) {
+          window.setTimeout(() => closeEvidence(), prefersReducedMotion() ? 0 : 500);
+        } else {
+          advanceEvidenceStep(stepId);
+        }
       } catch {
         setEvidencePhase("error");
         setEvidenceError(
@@ -200,14 +510,58 @@ export function useCampaignWorkspaceActions(input: {
         );
       }
     },
-    [advanceEvidenceStep, evidencePhase, isDemo, nl, peerId, projectId]
+    [advanceEvidenceStep, closeEvidence, evidencePhase, evidenceStep?.evidenceBlocked, isDemo, nl, peerId, projectId, workspace]
   );
 
   const handleEvidencePrimary = useCallback(() => {
     const step = evidenceStep;
     if (!step || evidencePhase === "processing" || evidencePhase === "success") return;
+    if (step.evidenceBlocked) return;
     completeEvidenceStep(step.id);
   }, [completeEvidenceStep, evidencePhase, evidenceStep]);
+
+  const handleEvidenceMissingAction = useCallback(
+    (action: import("@/lib/office/campaign/evidence-readiness").EvidenceMissingAction) => {
+      if (action === "add_website") {
+        closeEvidence();
+        setWebsiteModalOpen(true);
+        return;
+      }
+      if (action === "add_company" || action === "add_context") {
+        closeEvidence();
+        setCompanyContextModalOpen(true);
+        return;
+      }
+      if (action === "later") {
+        closeEvidence();
+      }
+    },
+    [closeEvidence]
+  );
+
+  const handleSaveCompanyContext = useCallback(
+    async (context: CampaignCompanyContextInput) => {
+      const normalized = normalizeCampaignCompanyContext(context);
+      const updated = workspace.updateCampaignBrandContext(projectId, normalized);
+      if (!updated) {
+        throw new Error("Failed to persist company context");
+      }
+
+      setCompanyContextModalOpen(false);
+      setProgressMessage(
+        nl ? "Emma verwerkt je campagnecontext…" : "Emma is processing your campaign context…"
+      );
+
+      const nextDomain: MarketingPeerDomainInput = {
+        ...domainInput,
+        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
+      };
+
+      void triggerLiveStrategyRun(nextDomain);
+      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
+    },
+    [domainInput, nl, projectId, triggerLiveStrategyRun, workspace]
+  );
 
   const handleApproveAll = useCallback(() => {
     const pendingIds = draftIdsPendingApproval(domainInput, projectId);
@@ -320,14 +674,32 @@ export function useCampaignWorkspaceActions(input: {
 
   const handleScheduleCampaign = useCallback(
     (scheduledAtIso?: string) => {
-      if (!isDemo) return;
       if (!scheduledAtIso) {
         setScheduleModalOpen(true);
         return;
       }
-      scheduleDemoCampaign(peerId, projectId, scheduledAtIso);
+
+      if (isDemo) {
+        scheduleDemoCampaign(peerId, projectId, scheduledAtIso);
+        setScheduleModalOpen(false);
+        return;
+      }
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const project = domainInput.projects.find((p) => p.id === projectId);
+      const channels =
+        project?.campaignSetup?.selectedChannels?.map((c) => String(c)) ?? [];
+
+      const updated = persistLiveCampaignSchedule(peerId, projectId, {
+        scheduledAt: scheduledAtIso,
+        timezone,
+        channels,
+      });
+      if (!updated) return;
+      syncLiveProject(updated);
+      setScheduleModalOpen(false);
     },
-    [isDemo, peerId, projectId]
+    [domainInput.projects, isDemo, peerId, projectId, syncLiveProject]
   );
 
   const handleOpenScheduleModal = useCallback(() => {
@@ -365,9 +737,7 @@ export function useCampaignWorkspaceActions(input: {
         openReview(pending[0]!);
         return;
       }
-      if (isDemo) {
-        setScheduleModalOpen(true);
-      }
+      setScheduleModalOpen(true);
       return;
     }
     if (cta.action === "publish_demo") {
@@ -382,6 +752,32 @@ export function useCampaignWorkspaceActions(input: {
       openOptimization();
       return;
     }
+    if (cta.action === "add_context") {
+      setCompanyContextModalOpen(true);
+      return;
+    }
+    if (cta.action === "add_website") {
+      setWebsiteModalOpen(true);
+      return;
+    }
+    if (cta.action === "add_competitors") {
+      setCompetitorModalOpen(true);
+      return;
+    }
+    if (cta.action === "retry_strategy") {
+      handleRetryStrategy();
+      return;
+    }
+    if (cta.action === "view_context") {
+      handleViewCampaignContext();
+      return;
+    }
+    if (cta.action === "continue" && !cta.stepId) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[campaign-cta] Unmapped continue action — no handler or stepId.", cta);
+      }
+      return;
+    }
     if (cta.stepId) {
       openStepById(cta.stepId, domain);
     }
@@ -389,55 +785,120 @@ export function useCampaignWorkspaceActions(input: {
     domainInput,
     handlePublishCampaign,
     openOptimization,
-    isDemo,
     localePreference,
     openReview,
     openStepById,
     peerId,
     projectId,
     router,
+    handleRetryStrategy,
+    handleViewCampaignContext,
+    setScheduleModalOpen,
   ]);
 
   const handleSkipWebsite = useCallback(() => {
-    if (!isDemo) return;
-    skipDemoWebsiteAnalysis(peerId, projectId);
-    advanceAfter(
-      nl ? "Emma verwerkt je keuze..." : "Emma is processing your choice...",
-      () => openStepById("competitors_analyzed", freshDomainInput(domainInput, isDemo))
-    );
-  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId]);
+    if (isDemo) {
+      skipDemoWebsiteAnalysis(peerId, projectId);
+      advanceAfter(
+        nl ? "Emma verwerkt je keuze..." : "Emma is processing your choice...",
+        () => openStepById("competitors_analyzed", freshDomainInput(domainInput, isDemo))
+      );
+      return;
+    }
+
+    const updated = workspace.updateCampaignWebsiteDecision(projectId, { kind: "skip" });
+    if (!updated) return;
+    setProgressMessage(nl ? "Website overgeslagen." : "Website skipped.");
+    const nextDomain: MarketingPeerDomainInput = {
+      ...domainInput,
+      projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
+    };
+    void triggerLiveStrategyRun(nextDomain);
+    window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
+  }, [domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace, advanceAfter]);
 
   const handleAddWebsiteUrl = useCallback(
-    (url: string) => {
-      if (!isDemo) return;
-      addDemoWebsiteUrl(peerId, projectId, url);
-      advanceAfter(
-        nl ? "Emma verwerkt je websitecontext..." : "Emma is processing your website context...",
-        () => openStepById("website_analyzed", freshDomainInput(domainInput, isDemo))
+    async (url: string) => {
+      if (isDemo) {
+        addDemoWebsiteUrl(peerId, projectId, url);
+        setWebsiteModalOpen(false);
+        advanceAfter(
+          nl ? "Emma verwerkt je websitecontext..." : "Emma is processing your website context...",
+          () => openStepById("website_analyzed", freshDomainInput(domainInput, isDemo))
+        );
+        return;
+      }
+
+      const updated = workspace.updateCampaignWebsiteDecision(projectId, { kind: "url", url });
+      if (!updated) {
+        throw new Error("Failed to persist website URL");
+      }
+      setWebsiteModalOpen(false);
+      setProgressMessage(
+        nl ? "Website opgeslagen als context." : "Website saved as context."
       );
+      const nextDomain: MarketingPeerDomainInput = {
+        ...domainInput,
+        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
+      };
+      void triggerLiveStrategyRun(nextDomain);
+      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
     },
-    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId]
+    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]
   );
 
   const handleSkipCompetitors = useCallback(() => {
-    if (!isDemo) return;
-    skipDemoCompetitorAnalysis(peerId, projectId);
-    advanceAfter(
-      nl ? "Emma verwerkt je keuze..." : "Emma is processing your choice...",
-      () => openStepById("strategy_determined", freshDomainInput(domainInput, isDemo))
-    );
-  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId]);
+    if (isDemo) {
+      skipDemoCompetitorAnalysis(peerId, projectId);
+      advanceAfter(
+        nl ? "Emma verwerkt je keuze..." : "Emma is processing your choice...",
+        () => openStepById("strategy_determined", freshDomainInput(domainInput, isDemo))
+      );
+      return;
+    }
+
+    const updated = workspace.updateCampaignCompetitorDecision(projectId, { kind: "skip" });
+    if (!updated) return;
+    setProgressMessage(nl ? "Concurrentieanalyse overgeslagen." : "Competitor analysis skipped.");
+    const nextDomain: MarketingPeerDomainInput = {
+      ...domainInput,
+      projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
+    };
+    void triggerLiveStrategyRun(nextDomain);
+    window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
+  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]);
 
   const handleAddCompetitors = useCallback(
-    (competitors: readonly DemoCompetitorInput[]) => {
-      if (!isDemo) return;
-      addDemoCompetitors(peerId, projectId, competitors);
-      advanceAfter(
-        nl ? "Emma vergelijkt je concurrenten..." : "Emma is comparing your competitors...",
-        () => openStepById("competitors_analyzed", freshDomainInput(domainInput, isDemo))
+    async (competitors: readonly DemoCompetitorInput[]) => {
+      if (isDemo) {
+        addDemoCompetitors(peerId, projectId, competitors);
+        setCompetitorModalOpen(false);
+        advanceAfter(
+          nl ? "Emma vergelijkt je concurrenten..." : "Emma is comparing your competitors...",
+          () => openStepById("competitors_analyzed", freshDomainInput(domainInput, isDemo))
+        );
+        return;
+      }
+
+      const updated = workspace.updateCampaignCompetitorDecision(projectId, {
+        kind: "list",
+        competitors,
+      });
+      if (!updated) {
+        throw new Error("Failed to persist competitors");
+      }
+      setCompetitorModalOpen(false);
+      setProgressMessage(
+        nl ? "Concurrenten toegevoegd als context." : "Competitors added as context."
       );
+      const nextDomain: MarketingPeerDomainInput = {
+        ...domainInput,
+        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
+      };
+      void triggerLiveStrategyRun(nextDomain);
+      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
     },
-    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId]
+    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]
   );
 
   const handleEvidenceRequestChanges = useCallback(() => {
@@ -456,7 +917,9 @@ export function useCampaignWorkspaceActions(input: {
     evidenceStep,
     evidencePhase,
     evidenceError,
-    setEvidenceStep,
+    evidenceProgressLabel,
+    evidenceDevDiagnostics,
+    setEvidenceStep: openEvidenceStep,
     closeEvidence,
     openReview,
     closeReview,
@@ -465,7 +928,10 @@ export function useCampaignWorkspaceActions(input: {
     handleDeliverableChanges,
     handleDeliverableReject,
     handleNextStepCta,
+    handleRetryStrategy,
+    handleViewCampaignContext,
     handleEvidencePrimary,
+    handleEvidenceMissingAction,
     handleEvidenceRequestChanges,
     handleEvidenceReject,
     handleScheduleCampaign,
@@ -479,6 +945,10 @@ export function useCampaignWorkspaceActions(input: {
     setWebsiteModalOpen,
     competitorModalOpen,
     setCompetitorModalOpen,
+    companyContextModalOpen,
+    setCompanyContextModalOpen,
+    companyContextInitialValues,
+    handleSaveCompanyContext,
     scheduleModalOpen,
     setScheduleModalOpen,
     optimizationOpen,

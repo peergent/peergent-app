@@ -140,6 +140,7 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "medium",
     freshnessPolicy: "ttl",
     cacheable: true,
+    providerSupport: ["deterministic", "llm"],
   }),
   withDeps({
     id: "creative_generation",
@@ -152,6 +153,7 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "high",
     freshnessPolicy: "always_fresh",
     cacheable: false,
+    providerSupport: ["deterministic", "llm"],
   }),
   withDeps({
     id: "performance_interpretation",
