@@ -13,6 +13,8 @@ export type CampaignWorkspaceCoreProps = {
   model: CampaignDetailViewModel;
   locale?: string | null;
   variant?: "page" | "modal";
+  executiveBriefingActive?: boolean;
+  executiveBriefingPendingApproval?: boolean;
   onStepClick?: (step: CampaignWorkflowStep) => void;
   onReviewDeliverable?: (draftId: string) => void;
   onApproveAll?: () => void;
@@ -35,6 +37,8 @@ export default function CampaignWorkspaceCore({
   model,
   locale,
   variant = "page",
+  executiveBriefingActive = false,
+  executiveBriefingPendingApproval = false,
   onStepClick,
   onReviewDeliverable,
   onApproveAll,
@@ -78,7 +82,10 @@ export default function CampaignWorkspaceCore({
     (cta.action === "continue" && !cta.stepId) ||
     (Boolean(model.websitePrompt) &&
       cta.action === "continue" &&
-      cta.stepId === "website_analyzed");
+      cta.stepId === "website_analyzed") ||
+    (executiveBriefingActive && executiveBriefingPendingApproval);
+
+  const hideLegacyApprovalCentre = executiveBriefingActive && executiveBriefingPendingApproval;
 
   const showStrategyFailure =
     cta.action === "retry_strategy" || cta.action === "view_context";
@@ -109,7 +116,7 @@ export default function CampaignWorkspaceCore({
 
   return (
     <>
-      {model.emmaOpeningLine ? (
+      {model.emmaOpeningLine && !executiveBriefingActive ? (
         <CampaignEmmaIntro
           openingLine={model.emmaOpeningLine}
           planSteps={model.emmaPlanSteps}
@@ -390,9 +397,17 @@ export default function CampaignWorkspaceCore({
         locale={locale}
         onStepClick={handleStepClick}
         compact={inModal}
+        disclosure={
+          executiveBriefingActive
+            ? {
+                label: nl ? "Bekijk onderliggende analyse" : "View underlying analysis",
+                testId: "campaign-technical-reasoning",
+              }
+            : undefined
+        }
       />
 
-      {hasPending ? (
+      {hasPending && !hideLegacyApprovalCentre ? (
         <section className="pg-v13-sec" data-testid="campaign-approval-center">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <p className="pg-v13-sec-label m-0">

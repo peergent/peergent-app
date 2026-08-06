@@ -14,6 +14,7 @@ export function buildCampaignReviewBuildInput(input: {
   campaignsEnabled: boolean;
   continuationRunning?: boolean;
   activeWorkUnitId?: string | null;
+  localePreference?: string | null;
 }): CampaignReviewBuildInput {
   return {
     peerId: input.peerId,
@@ -39,5 +40,8 @@ export function buildCampaignReviewBuildInput(input: {
     campaignReviewDecisionHistoryByWorkUnitId:
       input.domainInput.campaignReviewDecisionHistoryByWorkUnitId,
     campaignArtifactVersionByWorkUnitId: input.domainInput.campaignArtifactVersionByWorkUnitId,
+    campaignApprovalByProjectId: input.domainInput.campaignApprovalByProjectId,
+    domainInput: input.domainInput,
+    localePreference: input.localePreference,
   };
 }

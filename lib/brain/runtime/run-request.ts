@@ -5,6 +5,9 @@ import type { BrainCapabilityId } from "../capabilities/registry";
 import type { BrainExecutionMode } from "../policy/approval-policy";
 import type { DemoPerformanceMetric } from "../capabilities/execution-context";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
+import type { ResearchGraph } from "../layers/research";
+import type { ReasoningGraph } from "../layers/reasoning";
+import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
 
 export type BrainRunRequest = {
   organizationId: string;
@@ -31,6 +34,12 @@ export type BrainRunRequest = {
   marketingUnderstanding?: MarketingUnderstanding | null;
   /** Upstream capability outputs for dependent capabilities. */
   upstreamOutputs?: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>;
+  /** Pre-built Research Layer graph — built automatically when omitted. */
+  researchGraph?: ResearchGraph | null;
+  /** Pre-built Reasoning Layer graph — built automatically from research when omitted. */
+  reasoningGraph?: ReasoningGraph | null;
+  /** Pre-built Marketing Intelligence graph — built from reasoning when omitted. */
+  marketingIntelligenceGraph?: MarketingIntelligenceGraph | null;
   /** Reuse persisted campaign output — skips provider execution (session cache). */
   reuseStoredOutput?: BrainStructuredOutput;
   /** Demo/test performance metrics — never fabricated in live. */

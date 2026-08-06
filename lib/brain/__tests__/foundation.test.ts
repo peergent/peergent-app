@@ -59,7 +59,7 @@ describe("Project Brain foundation", () => {
       const ids = listBrainCapabilities().map((c) => c.id);
       expect(ids).toContain("company_understanding");
       expect(ids).toContain("optimization");
-      expect(ids).toHaveLength(11);
+      expect(ids).toHaveLength(12);
     });
 
     it("allows capabilities in demo environment when configured", () => {

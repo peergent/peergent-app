@@ -19,6 +19,10 @@ import type {
   CampaignReviewDecisionHistoryMap,
   CampaignReviewDecisionMap,
 } from "../campaign-review-decisions";
+import type {
+  CampaignApprovalHistoryMap,
+  CampaignApprovalMap,
+} from "../campaign-approval";
 import type { InsightRotationState } from "../build-insights-engine";
 
 /** Shared inputs for Marketing Peer page view models. */
@@ -53,6 +57,8 @@ export type MarketingPeerDomainInput = {
   campaignReviewDecisionByWorkUnitId?: CampaignReviewDecisionMap;
   campaignReviewDecisionHistoryByWorkUnitId?: CampaignReviewDecisionHistoryMap;
   campaignArtifactVersionByWorkUnitId?: CampaignArtifactVersionMap;
+  campaignApprovalByProjectId?: CampaignApprovalMap;
+  campaignApprovalHistoryByProjectId?: CampaignApprovalHistoryMap;
   insightRotation?: InsightRotationState;
   selectedWorkUnitId?: string | null;
   activeWorkUnitId?: string | null;

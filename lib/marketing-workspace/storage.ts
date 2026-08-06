@@ -7,6 +7,7 @@ import {
   ensureResponsibilityCatalog,
   migrateWorkspaceResponsibilities,
 } from "@/lib/peer-experience/marketing/responsibilities/migrate-responsibilities";
+import { mergeDurableIntoWorkspaceState } from "@/lib/peer-experience/marketing/campaign-execution/durable-campaign-state-store";
 
 const STORAGE_PREFIX = "peergent-marketing-workspace:";
 
@@ -41,6 +42,8 @@ function normalizeStoredState(
       parsed.campaignReviewDecisionHistoryByWorkUnitId ?? {},
     campaignArtifactVersionByWorkUnitId:
       parsed.campaignArtifactVersionByWorkUnitId ?? {},
+    campaignApprovalByProjectId: parsed.campaignApprovalByProjectId ?? {},
+    campaignApprovalHistoryByProjectId: parsed.campaignApprovalHistoryByProjectId ?? {},
     lastUpdated: parsed.lastUpdated,
   };
 
@@ -93,7 +96,8 @@ export function loadMarketingWorkspaceState(
       });
     }
     const parsed = JSON.parse(raw) as MarketingWorkspacePersistedState;
-    return normalizeStoredState(peerId, parsed);
+    const normalized = normalizeStoredState(peerId, parsed);
+    return mergeDurableIntoWorkspaceState(peerId, normalized);
   } catch {
     return {
       drafts: [],
@@ -160,6 +164,14 @@ export function patchMarketingWorkspaceState(
     campaignArtifactVersionByWorkUnitId:
       patch.campaignArtifactVersionByWorkUnitId ??
       stored.campaignArtifactVersionByWorkUnitId ??
+      {},
+    campaignApprovalByProjectId:
+      patch.campaignApprovalByProjectId ??
+      stored.campaignApprovalByProjectId ??
+      {},
+    campaignApprovalHistoryByProjectId:
+      patch.campaignApprovalHistoryByProjectId ??
+      stored.campaignApprovalHistoryByProjectId ??
       {},
   };
   saveMarketingWorkspaceState(peerId, next);

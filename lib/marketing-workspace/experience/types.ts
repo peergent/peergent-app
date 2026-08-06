@@ -31,8 +31,32 @@ export type ActivityType =
   | "publication_prepared"
   | "publication_ready"
   | "published"
+  | "campaign_approved"
+  | "campaign_execution_started"
+  | "campaign_research_complete"
+  | "campaign_reasoning_complete"
+  | "campaign_marketing_intelligence_complete"
+  | "campaign_strategy_complete"
+  | "campaign_planning_complete"
+  | "campaign_creative_complete"
+  | "campaign_validation_complete"
+  | "campaign_scheduling_complete"
+  | "campaign_publication_started"
+  | "campaign_publication_succeeded"
+  | "campaign_publication_failed"
+  | "campaign_publication_retried"
+  | "campaign_memory_updated"
+  | "campaign_execution_completed"
   | "conversation"
   | "focus_updated";
+
+export type ActivityFeedCorrelation = {
+  campaignId?: string;
+  campaignRunId?: string;
+  approvalId?: string;
+  projectId?: string;
+  organizationId?: string;
+};
 
 export type ActivityFeedItem = {
   id: string;
@@ -42,6 +66,7 @@ export type ActivityFeedItem = {
   description: string;
   relatedObject?: string;
   confidence?: string;
+  correlation?: ActivityFeedCorrelation;
 };
 
 export type ConversationRole = "user" | "peer";

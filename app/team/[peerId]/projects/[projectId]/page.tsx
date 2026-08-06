@@ -21,6 +21,7 @@ function ProjectDetailPageInner() {
           onCompleteCampaignOnboarding={workspace.handleCompleteCampaignOnboarding}
           onExecuteMarketingWorkUnit={workspace.handleExecuteMarketingWorkUnit}
           onContinueCampaign={workspace.handleContinueCampaign}
+          onApproveCampaign={workspace.handleApproveCampaign}
           campaignContinuationRunning={workspace.campaignContinuationRunning}
           executingWorkUnitId={workspace.activeWorkUnitId}
         />

@@ -12,6 +12,7 @@ import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-loc
 import { buildV17CampaignDetailViewModel } from "@/lib/customer-v17/build-v17-campaign-detail-view-model";
 import V17CampaignDetailView from "@/features/customer-v17/work/V17CampaignDetailView";
 import { buildCampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
+import type { CampaignApprovalResult } from "@/lib/peer-experience/marketing/campaign-approval";
 import { buildCampaignReviewBuildInput } from "../lib/build-campaign-review-input";
 import { isMarketingCampaignInspectorEnabled } from "@/lib/peer-experience/marketing/campaign-inspector-guard";
 
@@ -40,6 +41,9 @@ export type ProjectDetailTabProps = {
   ) => Promise<
     import("@/lib/peer-experience/marketing/campaign-continuation").CampaignContinuationResult
   >;
+  onApproveCampaign?: (input: {
+    projectId: string;
+  }) => Promise<CampaignApprovalResult>;
   campaignContinuationRunning?: boolean;
   executingWorkUnitId?: string | null;
 };
@@ -49,6 +53,7 @@ export default function ProjectDetailTab({
   projectId,
   domainInput,
   campaignContinuationRunning,
+  onApproveCampaign,
 }: ProjectDetailTabProps) {
   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
   const customerLocalePreference = customerLocalePreferenceFromEnv();
@@ -72,6 +77,7 @@ export default function ProjectDetailTab({
       campaignsEnabled,
       continuationRunning: campaignContinuationRunning,
       activeWorkUnitId: domainInput.activeWorkUnitId,
+      localePreference: customerLocalePreference,
     });
     return buildCampaignReviewViewModel(input);
   }, [
@@ -107,5 +113,10 @@ export default function ProjectDetailTab({
     showInspectorLink: isMarketingCampaignInspectorEnabled(),
   });
 
-  return <V17CampaignDetailView model={v17Detail} />;
+  return (
+    <V17CampaignDetailView
+      model={v17Detail}
+      onApproveCampaign={onApproveCampaign}
+    />
+  );
 }

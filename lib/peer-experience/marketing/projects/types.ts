@@ -1,4 +1,8 @@
 import type { StrategyRunState } from "@/lib/office/campaign/strategy-run-types";
+import type {
+  CampaignPublicationState,
+  CampaignRunState,
+} from "../campaign-execution/campaign-run-types";
 
 /** Customer-facing assignment — Emma's private WorkUnits execute underneath. */
 
@@ -82,7 +86,7 @@ import type { BrainCapabilityId } from "@/lib/brain/capabilities/registry";
 /** Session-persisted Brain capability outputs for live campaign workflow reuse. */
 export type CampaignBrainOutputs = {
   readonly contextVersion: number;
-} & Partial<Record<Extract<BrainCapabilityId, "strategy" | "channel_planning" | "creative_generation">, BrainStructuredOutput>>;
+} & Partial<Record<Extract<BrainCapabilityId, "strategy" | "channel_planning" | "campaign_planning" | "creative_generation">, BrainStructuredOutput>>;
 
 export type MarketingProjectCampaignSetup = {
   readonly description: string;
@@ -158,6 +162,10 @@ export type MarketingProjectCampaignSetup = {
   readonly campaignBrainOutputs?: CampaignBrainOutputs;
   /** Live Office — internal scheduling decision (no external publish implied). */
   readonly campaignSchedule?: LiveCampaignSchedule;
+  /** Sprint 9.5 — durable campaign execution run identity. */
+  readonly campaignRun?: CampaignRunState;
+  /** Sprint 9.5 — explicit publication lifecycle (no boolean flags). */
+  readonly campaignPublication?: CampaignPublicationState;
 };
 
 /** Live campaign internal schedule — session-persisted until server storage exists. */

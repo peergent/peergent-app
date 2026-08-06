@@ -21,6 +21,7 @@ import { v17ServiceKeyFromPeer } from "@/lib/customer-v17/peer-accent";
 import type { HqServiceKey } from "@/lib/hq/hq-service-key";
 import type { MarketingCampaignLocale } from "@/lib/i18n/marketing-campaign-copy";
 import type { PeerRow } from "@/lib/peer-display";
+import { officeHref } from "@/lib/office/links";
 import {
   buildGroundedWeeklyMetrics,
   type GroundedMetric,
@@ -345,7 +346,7 @@ function mapPerformanceCards(
       performancePct,
       sparkValues: service.sparkValues.length ? service.sparkValues : [...CC_FLAT_SPARKLINE.slice(0, 8)],
       sparkMuted: service.sparkMuted,
-      resultsHref: `/team/${peerId}/results`,
+      resultsHref: officeHref(peerId, "performance"),
     });
   }
 

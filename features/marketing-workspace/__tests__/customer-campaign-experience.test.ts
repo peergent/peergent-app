@@ -78,10 +78,10 @@ describe("customer campaign presentation", () => {
       approvalMode: "approval_before_publication",
     });
 
-    expect(vm.reviewQueue).toHaveLength(1);
+    expect(vm.reviewQueue).toHaveLength(0);
     const presentation = extractCustomerPresentation(vm);
-    expect(presentation.campaignStatusLabel).toBe("Waiting for your review");
-    expect(presentation.customerSummary).toContain("1 item");
+    expect(presentation.campaignStatusLabel).toBe("Ready for your review");
+    expect(presentation.customerSummary).toContain("management briefing");
   });
 
   it("shows calm empty attention when nothing to review", () => {

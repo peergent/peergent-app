@@ -23,7 +23,16 @@ import {
   customerStatusLabelForReviewItem,
   isCustomerReviewRelevant,
   resolveCampaignCustomerStatus,
+  resolveCampaignReviewExperienceMode,
 } from "./campaign-review-status";
+import {
+  buildCampaignExecutiveBriefing,
+  isExecutiveBriefingPendingApproval,
+} from "./build-campaign-executive-briefing";
+import {
+  isCampaignPublicationUnlocked,
+  resolveCampaignApprovalForProject,
+} from "../campaign-approval";
 import {
   mergeDecisionIntoReviewItem,
   overlayReviewDecisionOnItem,
@@ -392,6 +401,31 @@ export function buildCampaignReviewViewModel(
   }
 
   const allReviewItems = sortReviewItems(items);
+  const experienceMode = resolveCampaignReviewExperienceMode(input.approvalMode);
+  const executiveBriefing = buildCampaignExecutiveBriefing({
+    project: input.project,
+    domainInput: input.domainInput,
+    allReviewItems,
+    approvalMode: input.approvalMode,
+    locale: input.localePreference,
+  });
+  const campaignApproval = resolveCampaignApprovalForProject({
+    projectId: input.projectId,
+    campaignApprovalByProjectId: input.campaignApprovalByProjectId,
+  });
+  const executiveBriefingPendingApproval = isExecutiveBriefingPendingApproval({
+    project: input.project,
+    allReviewItems,
+    approvalMode: input.approvalMode,
+    campaignApprovalByProjectId: input.campaignApprovalByProjectId,
+    executiveBriefing,
+  });
+  const campaignPublicationUnlocked = isCampaignPublicationUnlocked({
+    project: input.project,
+    approvalMode: input.approvalMode,
+    campaignApproval,
+    executiveBriefing,
+  });
   const reviewQueue = allReviewItems.filter((i) => i.inReviewQueue && i.preview);
   const preparedItems = allReviewItems.filter(
     (i) => i.status === "prepared" && i.preview
@@ -415,6 +449,7 @@ export function buildCampaignReviewViewModel(
     onboardingComplete: input.onboardingComplete,
     hasExecutionWork: input.hasExecutionWork,
     reviewQueueCount: reviewQueue.length,
+    executiveBriefingPending: executiveBriefingPendingApproval,
     preparedCount,
     totalTrackable: totalCount,
     continuationRunning: Boolean(input.continuationRunning),
@@ -467,5 +502,10 @@ export function buildCampaignReviewViewModel(
     hasTechnicalDetails: true,
     lastUpdated,
     allReviewItems,
+    experienceMode,
+    executiveBriefing,
+    executiveBriefingPendingApproval,
+    campaignApproval,
+    campaignPublicationUnlocked,
   };
 }

@@ -18,7 +18,13 @@ export {
   extractCustomerPresentation,
   isCustomerReviewRelevant,
   resolveCampaignCustomerStatus,
+  resolveCampaignReviewExperienceMode,
 } from "./campaign-review-status";
+export {
+  buildCampaignExecutiveBriefing,
+  isExecutiveBriefingPendingApproval,
+  isExecutiveBriefingReady,
+} from "./build-campaign-executive-briefing";
 export { CampaignReviewBuildError } from "./errors";
 export type {
   CampaignReviewArtifactType,

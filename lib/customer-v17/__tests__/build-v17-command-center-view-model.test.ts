@@ -107,7 +107,7 @@ describe("buildV17CommandCenterViewModel", () => {
       localePreference: "en",
     });
     if (model.performance[0]) {
-      expect(v17PerformanceCardHref(model.performance[0])).toBe("/team/emma/results");
+      expect(v17PerformanceCardHref(model.performance[0])).toBe("/office/emma/performance");
     }
   });
 

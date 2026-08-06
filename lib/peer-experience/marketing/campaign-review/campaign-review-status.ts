@@ -1,4 +1,9 @@
 import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
+import {
+  requiresStepByStepReview,
+  resolveCampaignExperienceMode,
+  type CampaignExperienceMode,
+} from "@/lib/office/campaign/campaign-experience-mode";
 
 import type { CampaignReviewViewModel } from "./campaign-review-types";
 
@@ -6,6 +11,7 @@ export type CampaignCustomerStatusInput = {
   readonly onboardingComplete: boolean;
   readonly hasExecutionWork: boolean;
   readonly reviewQueueCount: number;
+  readonly executiveBriefingPending?: boolean;
   readonly preparedCount: number;
   readonly totalTrackable: number;
   readonly continuationRunning: boolean;
@@ -22,13 +28,19 @@ export type CampaignCustomerStatus = {
   readonly primaryActionLabel: string | null;
 };
 
+export function resolveCampaignReviewExperienceMode(
+  approvalMode: CampaignApprovalMode | undefined
+): CampaignExperienceMode {
+  return resolveCampaignExperienceMode(approvalMode);
+}
+
 export function isCustomerReviewRelevant(
   approvalMode: CampaignApprovalMode | undefined
 ): boolean {
   if (!approvalMode) {
     return true;
   }
-  return approvalMode !== "no_approval_required";
+  return requiresStepByStepReview(resolveCampaignExperienceMode(approvalMode));
 }
 
 export function resolveCampaignCustomerStatus(
@@ -53,6 +65,17 @@ export function resolveCampaignCustomerStatus(
       needsAttention: true,
       attentionMessage: input.blockedCustomerMessage,
       primaryActionLabel: "View campaign details",
+    };
+  }
+
+  if (input.executiveBriefingPending) {
+    return {
+      statusLabel: "Ready for your review",
+      customerSummary: "Emma prepared your management briefing — one review, then she can continue.",
+      currentFocus: "Management briefing",
+      needsAttention: true,
+      attentionMessage: "Review Emma's management briefing to approve the campaign approach.",
+      primaryActionLabel: "Review briefing",
     };
   }
 

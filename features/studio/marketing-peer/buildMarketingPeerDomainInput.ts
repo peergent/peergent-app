@@ -41,6 +41,8 @@ export function buildMarketingPeerDomainInput(input: {
     campaignReviewDecisionHistoryByWorkUnitId:
       workspace.campaignReviewDecisionHistoryByWorkUnitId,
     campaignArtifactVersionByWorkUnitId: workspace.campaignArtifactVersionByWorkUnitId,
+    campaignApprovalByProjectId: workspace.campaignApprovalByProjectId,
+    campaignApprovalHistoryByProjectId: workspace.campaignApprovalHistoryByProjectId,
     insightRotation: workspace.insightRotation,
     selectedWorkUnitId: workspace.selectedWorkUnitId,
     activeWorkUnitId: workspace.activeWorkUnitId,

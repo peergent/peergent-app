@@ -4,11 +4,19 @@ import Link from "next/link";
 import type { CampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
 import { officeHref } from "@/lib/office/links";
 import CampaignWorkspaceCore from "./CampaignWorkspaceCore";
-import type { CampaignWorkflowStep } from "@/lib/office/campaign/workflow-types";
+import OfficeExecutiveCampaignReview from "./OfficeExecutiveCampaignReview";
+import type { CampaignWorkflowStep, CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
+import type { ExecutiveCampaignBriefing } from "@/lib/brain/presentation/executive-briefing";
+import type { CampaignApprovalResult } from "@/lib/peer-experience/marketing/campaign-approval";
 
 export type VisionCampaignDetailViewProps = {
   model: CampaignDetailViewModel;
   locale?: string | null;
+  executiveBriefing?: ExecutiveCampaignBriefing | null;
+  executiveBriefingPendingApproval?: boolean;
+  campaignPublicationUnlocked?: boolean;
+  onApproveCampaign?: (input: { projectId: string }) => Promise<CampaignApprovalResult>;
+  onWorkflowStepOpen?: (stepId: CampaignWorkflowStepId) => void;
   onStepClick?: (step: CampaignWorkflowStep) => void;
   onReviewDeliverable?: (draftId: string) => void;
   onNextStepCta?: () => void;
@@ -29,6 +37,11 @@ export type VisionCampaignDetailViewProps = {
 export default function VisionCampaignDetailView({
   model,
   locale,
+  executiveBriefing,
+  executiveBriefingPendingApproval = false,
+  campaignPublicationUnlocked = false,
+  onApproveCampaign,
+  onWorkflowStepOpen,
   onStepClick,
   onReviewDeliverable,
   onNextStepCta,
@@ -46,6 +59,7 @@ export default function VisionCampaignDetailView({
   progressMessage,
 }: VisionCampaignDetailViewProps) {
   const nl = locale === "nl";
+  const showExecutiveBriefing = executiveBriefing != null;
 
   return (
     <div data-testid="office-campaign-detail-view" data-campaign-id={model.projectId}>
@@ -71,10 +85,24 @@ export default function VisionCampaignDetailView({
         </p>
       )}
 
+      {showExecutiveBriefing ? (
+        <OfficeExecutiveCampaignReview
+          briefing={executiveBriefing}
+          pendingApproval={executiveBriefingPendingApproval}
+          publicationUnlocked={campaignPublicationUnlocked}
+          projectId={model.projectId}
+          locale={locale}
+          onApproveCampaign={onApproveCampaign}
+          onWorkflowStepOpen={onWorkflowStepOpen}
+        />
+      ) : null}
+
       <CampaignWorkspaceCore
         model={model}
         locale={locale}
         variant="page"
+        executiveBriefingActive={showExecutiveBriefing}
+        executiveBriefingPendingApproval={executiveBriefingPendingApproval}
         onStepClick={onStepClick}
         onReviewDeliverable={onReviewDeliverable}
         onNextStepCta={onNextStepCta}

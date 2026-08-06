@@ -1,6 +1,12 @@
 import type { CampaignReviewItem } from "../campaign-review/campaign-review-types";
 import { isCustomerReviewRelevant } from "../campaign-review/campaign-review-status";
 import { campaignReviewBlocksContinuation } from "../campaign-review-decisions/can-campaign-continue-after-review-decision";
+import { resolveCampaignExperienceMode } from "@/lib/office/campaign/campaign-experience-mode";
+import {
+  computeCampaignPackageVersion,
+  isCampaignApprovalValid,
+  resolveCampaignApprovalForProject,
+} from "../campaign-approval";
 
 import type {
   CampaignCollaborationBuildInput,
@@ -31,6 +37,27 @@ export function buildCampaignPublishReadinessViewModel(input: {
   }
 
   const needsReview = input.reviewItems.some((i) => i.inReviewQueue);
+  if (needsReview && resolveCampaignExperienceMode(input.buildInput.approvalMode) === "guided") {
+    diagnostics.push("One or more deliverables are awaiting customer review.");
+    return readiness("waiting_for_review", diagnostics);
+  }
+
+  const experienceMode = resolveCampaignExperienceMode(input.buildInput.approvalMode);
+  if (experienceMode === "approval_required") {
+    const project = input.buildInput.project;
+    const approval = resolveCampaignApprovalForProject({
+      projectId: input.buildInput.projectId,
+      campaignApprovalByProjectId: input.buildInput.campaignApprovalByProjectId,
+    });
+    const packageVersion = computeCampaignPackageVersion({ project });
+    if (!isCampaignApprovalValid(approval, packageVersion)) {
+      diagnostics.push("Campaign management briefing awaiting approval.");
+      return readiness("waiting_for_review", diagnostics);
+    }
+    diagnostics.push("Campaign package approved on current version.");
+    return readiness("ready", diagnostics);
+  }
+
   if (needsReview) {
     diagnostics.push("One or more deliverables are awaiting customer review.");
     return readiness("waiting_for_review", diagnostics);

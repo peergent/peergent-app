@@ -42,6 +42,10 @@ export type CampaignWorkflowTimelineProps = {
   locale?: string | null;
   onStepClick?: (step: CampaignWorkflowStep) => void;
   compact?: boolean;
+  disclosure?: {
+    label: string;
+    testId?: string;
+  };
 };
 
 export default function CampaignWorkflowTimeline({
@@ -49,12 +53,13 @@ export default function CampaignWorkflowTimeline({
   locale,
   onStepClick,
   compact = false,
+  disclosure,
 }: CampaignWorkflowTimelineProps) {
   const nl = locale === "nl";
 
-  return (
-    <section className="pg-v13-sec" data-testid="campaign-workflow-timeline">
-      <p className="pg-v13-sec-label">{nl ? "Workflow" : "Workflow"}</p>
+  const timeline = (
+    <section className={disclosure ? "mt-4" : "pg-v13-sec"} data-testid="campaign-workflow-timeline">
+      {!disclosure ? <p className="pg-v13-sec-label">{nl ? "Workflow" : "Workflow"}</p> : null}
       <ol className="pg-v13-workflow-list m-0 list-none p-0">
         {steps.map((step) => {
           const icon =
@@ -118,5 +123,16 @@ export default function CampaignWorkflowTimeline({
         })}
       </ol>
     </section>
+  );
+
+  if (!disclosure) return timeline;
+
+  return (
+    <details className="pg-v13-sec mb-6" data-testid={disclosure.testId ?? "campaign-workflow-disclosure"}>
+      <summary className="cursor-pointer list-none pg-v13-sec-label [&::-webkit-details-marker]:hidden">
+        {disclosure.label}
+      </summary>
+      {timeline}
+    </details>
   );
 }

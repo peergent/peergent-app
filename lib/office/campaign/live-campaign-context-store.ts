@@ -16,6 +16,7 @@ import {
 import { buildCampaignBrainOutputsPatch, type PersistedCampaignBrainCapabilityId } from "@/lib/office/campaign/campaign-brain-outputs";
 import type { BrainCapabilityId } from "@/lib/brain/capabilities/registry";
 import type { BrainStructuredOutput } from "@/lib/brain/evidence/structured-output";
+import { mergeCampaignOutputsWithPlanning } from "@/lib/brain/integration/merge-campaign-planning-outputs";
 
 export type LiveWebsiteDecision =
   | { kind: "url"; url: string }
@@ -431,12 +432,18 @@ export function persistCampaignBrainOutputs(
   const project = stored.projects?.find((p) => p.id === projectId);
   if (!project?.campaignSetup) return null;
 
+  const mergedOutputs = mergeCampaignOutputsWithPlanning({
+    project,
+    peerId,
+    outputs,
+  });
+
   return patchProjectSetup(
     peerId,
     projectId,
     buildCampaignBrainOutputsPatch(
       project.campaignSetup,
-      outputs as Partial<Record<PersistedCampaignBrainCapabilityId, BrainStructuredOutput>>
+      mergedOutputs as Partial<Record<PersistedCampaignBrainCapabilityId, BrainStructuredOutput>>
     )
   );
 }

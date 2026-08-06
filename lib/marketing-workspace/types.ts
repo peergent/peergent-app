@@ -18,6 +18,10 @@ import type {
   CampaignReviewDecisionHistoryMap,
   CampaignReviewDecisionMap,
 } from "@/lib/peer-experience/marketing/campaign-review-decisions";
+import type {
+  CampaignApprovalHistoryMap,
+  CampaignApprovalMap,
+} from "@/lib/peer-experience/marketing/campaign-approval";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { MarketingResponsibility } from "@/lib/peer-experience/marketing/responsibilities/types";
 import type { ActivityFeedItem, ConversationMessage } from "./experience/types";
@@ -42,6 +46,8 @@ export type MarketingWorkspacePersistedState = {
   campaignReviewDecisionByWorkUnitId?: CampaignReviewDecisionMap;
   campaignReviewDecisionHistoryByWorkUnitId?: CampaignReviewDecisionHistoryMap;
   campaignArtifactVersionByWorkUnitId?: CampaignArtifactVersionMap;
+  campaignApprovalByProjectId?: CampaignApprovalMap;
+  campaignApprovalHistoryByProjectId?: CampaignApprovalHistoryMap;
   lastUpdated?: string;
 };
 

@@ -27,6 +27,12 @@ import {
   brainReadyProgressLabel,
 } from "./brain-run-progress";
 import type { BrainEnvironment } from "../domain/environment";
+import { createResearchLayer } from "../layers/research";
+import type { ResearchGraph } from "../layers/research";
+import { createReasoningLayer } from "../layers/reasoning";
+import type { ReasoningGraph } from "../layers/reasoning";
+import { createMarketingIntelligenceLayer } from "../layers/marketing-intelligence";
+import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
 
 /**
  * Sprint 7.5 demo policy (explicit — option A):
@@ -171,7 +177,61 @@ function hasFreshSeededOutput(
   return output.capabilityVersion === getBrainCapability(capabilityId).version;
 }
 
+function resolveResearchGraphForRun(
+  input: ExecuteBrainForWorkflowStepInput,
+  request: BrainRunRequestWithBudget,
+  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>
+): ResearchGraph | null {
+  if (request.researchGraph) return request.researchGraph;
+  if (Object.keys(upstreamOutputs).length === 0) return null;
+
+  const assembly = resolveCompanyIntelligence({
+    peerId: input.peerId,
+    organizationId: request.organizationId,
+    project: input.project,
+    domainInput: input.domainInput,
+    campaignContext: request.campaignContext,
+  });
+
+  return createResearchLayer().collectAndStore({
+    companySnapshot: assembly.companySnapshot,
+    campaignContext: request.campaignContext,
+    upstreamOutputs,
+    campaignId: request.campaignId,
+    correlationId: request.correlationId,
+  }).graph;
+}
+
+function resolveReasoningGraphForRun(
+  researchGraph: ResearchGraph | null,
+  request: BrainRunRequestWithBudget
+): ReasoningGraph | null {
+  if (request.reasoningGraph) return request.reasoningGraph;
+  if (!researchGraph) return null;
+  return createReasoningLayer().reasonAndStore({
+    researchGraph,
+    correlationId: request.correlationId,
+  }).graph;
+}
+
+function resolveMarketingIntelligenceGraphForRun(
+  reasoningGraph: ReasoningGraph | null,
+  researchGraph: ResearchGraph | null,
+  request: BrainRunRequestWithBudget
+): MarketingIntelligenceGraph | null {
+  if (request.marketingIntelligenceGraph) return request.marketingIntelligenceGraph;
+  if (!reasoningGraph) return null;
+  return createMarketingIntelligenceLayer().thinkAndStore({
+    reasoningGraph,
+    researchGraph,
+    campaignContext: request.campaignContext,
+    locale: request.locale === "nl" ? "nl" : "en",
+    correlationId: request.correlationId,
+  }).graph;
+}
+
 function runWithDependenciesSync(
+  input: ExecuteBrainForWorkflowStepInput,
   runtime: ReturnType<typeof buildRuntimeForInput>,
   request: BrainRunRequestWithBudget,
   seededOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>
@@ -192,17 +252,31 @@ function runWithDependenciesSync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
+  const researchGraph = resolveResearchGraphForRun(input, request, upstreamOutputs);
+  const reasoningGraph = resolveReasoningGraphForRun(researchGraph, request);
+  const marketingIntelligenceGraph = resolveMarketingIntelligenceGraphForRun(
+    reasoningGraph,
+    researchGraph,
+    request
+  );
+
   const storedFinal = upstreamOutputs[request.capabilityId];
   const result = hasFreshSeededOutput(request.capabilityId, storedFinal)
     ? runtime.executeRunSync({
         ...request,
         upstreamOutputs,
+        researchGraph,
+        reasoningGraph,
+        marketingIntelligenceGraph,
         reuseStoredOutput: storedFinal,
         correlationId: `${request.correlationId}-final-stored`,
       })
     : runtime.executeRunSync({
         ...request,
         upstreamOutputs,
+        researchGraph,
+        reasoningGraph,
+        marketingIntelligenceGraph,
         correlationId: `${request.correlationId}-final`,
       });
 
@@ -212,6 +286,7 @@ function runWithDependenciesSync(
 }
 
 async function runWithDependenciesAsync(
+  input: ExecuteBrainForWorkflowStepInput,
   runtime: ReturnType<typeof buildRuntimeForInput>,
   request: BrainRunRequestWithBudget,
   seededOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
@@ -255,12 +330,23 @@ async function runWithDependenciesAsync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
+  const researchGraph = resolveResearchGraphForRun(input, request, upstreamOutputs);
+  const reasoningGraph = resolveReasoningGraphForRun(researchGraph, request);
+  const marketingIntelligenceGraph = resolveMarketingIntelligenceGraphForRun(
+    reasoningGraph,
+    researchGraph,
+    request
+  );
+
   const storedFinal = upstreamOutputs[request.capabilityId];
   if (hasFreshSeededOutput(request.capabilityId, storedFinal)) {
     options?.onProgress?.(brainReadyProgressLabel(request.locale));
     const finalResult = await runtime.executeRun({
       ...request,
       upstreamOutputs,
+      researchGraph,
+      reasoningGraph,
+      marketingIntelligenceGraph,
       reuseStoredOutput: storedFinal,
       correlationId: `${request.correlationId}-final-stored`,
     });
@@ -272,6 +358,9 @@ async function runWithDependenciesAsync(
   const finalResult = await runtime.executeRun({
     ...request,
     upstreamOutputs,
+    researchGraph,
+    reasoningGraph,
+    marketingIntelligenceGraph,
     correlationId: `${request.correlationId}-final`,
   });
   options?.onProgress?.(brainFinalizeProgressLabel(request.locale));
@@ -292,6 +381,7 @@ export async function executeBrainForWorkflowStep(
   const runtime = buildRuntimeForInput(input, options);
   const seededOutputs = seedUpstreamOutputs(input);
   return runWithDependenciesAsync(
+    input,
     runtime,
     buildBaseRequest(input, capabilityId),
     seededOutputs,
@@ -307,7 +397,7 @@ export function executeBrainForWorkflowStepSync(
   if (!capabilityId) return null;
   const runtime = buildRuntimeForInput(input);
   const seededOutputs = seedUpstreamOutputs(input);
-  return runWithDependenciesSync(runtime, buildBaseRequest(input, capabilityId), seededOutputs);
+  return runWithDependenciesSync(input, runtime, buildBaseRequest(input, capabilityId), seededOutputs);
 }
 
 export function primaryCapabilityForWorkflowStep(

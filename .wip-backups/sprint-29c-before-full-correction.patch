@@ -1,0 +1,1542 @@
+diff --git a/app/layout.tsx b/app/layout.tsx
+index 1e99ab5..c159e0a 100644
+--- a/app/layout.tsx
++++ b/app/layout.tsx
+@@ -1,5 +1,5 @@
+ import type { Metadata } from "next";
+-import { Geist, Geist_Mono } from "next/font/google";
++import { Geist, Geist_Mono, Manrope, IBM_Plex_Mono } from "next/font/google";
+ import { AccountProvider } from "@/components/account/AccountProvider";
+ import ThemeScript from "@/components/theme/ThemeScript";
+ import { ThemeProvider } from "@/components/theme/ThemeProvider";
+@@ -15,6 +15,18 @@ const geistMono = Geist_Mono({
+   subsets: ["latin"],
+ });
+ 
++const manrope = Manrope({
++  variable: "--font-v17-sans",
++  subsets: ["latin"],
++  weight: ["400", "500", "600", "700", "800"],
++});
++
++const ibmPlexMono = IBM_Plex_Mono({
++  variable: "--font-v17-mono",
++  subsets: ["latin"],
++  weight: ["500"],
++});
++
+ export const metadata: Metadata = {
+   title: "Peergent — AI Workforce",
+   description: "Hire AI colleagues who work like members of your team.",
+@@ -30,7 +42,7 @@ export default function RootLayout({
+       lang="en"
+       suppressHydrationWarning
+       data-pg-theme="dark"
+-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
++      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${ibmPlexMono.variable} h-full antialiased`}
+     >
+       <head>
+         <ThemeScript />
+diff --git a/app/team/[peerId]/connections/page.tsx b/app/team/[peerId]/connections/page.tsx
+index 2add81e..9968f3e 100644
+--- a/app/team/[peerId]/connections/page.tsx
++++ b/app/team/[peerId]/connections/page.tsx
+@@ -1,21 +1,10 @@
+-"use client";
++import { redirect } from "next/navigation";
+ 
+-import { Suspense } from "react";
+-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import ConnectionsTab from "@/features/marketing-workspace/tabs/ConnectionsTab";
++type Props = {
++  params: Promise<{ peerId: string }>;
++};
+ 
+-function ConnectionsPageInner() {
+-  return (
+-    <MarketingPeerPageFrame activeTab="connections">
+-      {({ domainInput }) => <ConnectionsTab domainInput={domainInput} />}
+-    </MarketingPeerPageFrame>
+-  );
+-}
+-
+-export default function TeamPeerConnectionsPage() {
+-  return (
+-    <Suspense fallback={null}>
+-      <ConnectionsPageInner />
+-    </Suspense>
+-  );
++export default async function ConnectionsRedirectPage({ params }: Props) {
++  const { peerId } = await params;
++  redirect(`/team/${peerId}/settings?section=connections`);
+ }
+diff --git a/app/team/[peerId]/knowledge/page.tsx b/app/team/[peerId]/knowledge/page.tsx
+index 4b8fbd4..e10ca94 100644
+--- a/app/team/[peerId]/knowledge/page.tsx
++++ b/app/team/[peerId]/knowledge/page.tsx
+@@ -1,12 +1,16 @@
+-"use client";
++import { redirect } from "next/navigation";
+ 
+-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import KnowledgeTab from "@/features/marketing-workspace/tabs/KnowledgeTab";
++type Props = {
++  params: Promise<{ peerId: string }>;
++  searchParams: Promise<Record<string, string | string[] | undefined>>;
++};
+ 
+-export default function TeamPeerKnowledgePage() {
+-  return (
+-    <MarketingPeerPageFrame activeTab="knowledge">
+-      {({ domainInput }) => <KnowledgeTab domainInput={domainInput} />}
+-    </MarketingPeerPageFrame>
+-  );
++export default async function KnowledgeRedirectPage({ params, searchParams }: Props) {
++  const { peerId } = await params;
++  const sp = await searchParams;
++  const section = sp.section;
++  if (typeof section === "string") {
++    redirect(`/team/${peerId}/settings?section=${encodeURIComponent(section)}`);
++  }
++  redirect(`/team/${peerId}/settings?section=knowledge`);
+ }
+diff --git a/app/team/[peerId]/page.tsx b/app/team/[peerId]/page.tsx
+index 0fcf03a..b95ebe5 100644
+--- a/app/team/[peerId]/page.tsx
++++ b/app/team/[peerId]/page.tsx
+@@ -1,9 +1,22 @@
+-import MarketingStudioPage from "@/features/studio/MarketingStudioPage";
++"use client";
+ 
+-type TeamPeerPageProps = {
+-  params: Promise<{ peerId: string }>;
+-};
++import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
++import V17TodayView from "@/features/customer-v17/peer/V17TodayView";
++import { buildV17TodayViewModel } from "@/lib/customer-v17/build-v17-today-view-model";
++import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
+ 
+-export default function TeamPeerPage(_props: TeamPeerPageProps) {
+-  return <MarketingStudioPage />;
++export default function TeamPeerPage() {
++  return (
++    <MarketingPeerPageFrame activeTab="today">
++      {({ domainInput, workspace }) => {
++        if (!workspace.peer) return null;
++        const model = buildV17TodayViewModel({
++          peer: workspace.peer,
++          domainInput,
++          localePreference: customerLocalePreferenceFromEnv(),
++        });
++        return <V17TodayView model={model} />;
++      }}
++    </MarketingPeerPageFrame>
++  );
+ }
+diff --git a/app/team/[peerId]/performance/page.tsx b/app/team/[peerId]/performance/page.tsx
+index 92327c6..a6b2fcf 100644
+--- a/app/team/[peerId]/performance/page.tsx
++++ b/app/team/[peerId]/performance/page.tsx
+@@ -1,21 +1,25 @@
+-"use client";
++import { redirect } from "next/navigation";
+ 
+-import { Suspense } from "react";
+-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import PerformanceTab from "@/features/marketing-workspace/tabs/PerformanceTab";
++type Props = {
++  params: Promise<{ peerId: string }>;
++  searchParams: Promise<Record<string, string | string[] | undefined>>;
++};
+ 
+-function PerformancePageInner() {
+-  return (
+-    <MarketingPeerPageFrame activeTab="performance">
+-      {({ domainInput }) => <PerformanceTab domainInput={domainInput} />}
+-    </MarketingPeerPageFrame>
+-  );
+-}
+-
+-export default function EmmaPerformancePage() {
+-  return (
+-    <Suspense fallback={null}>
+-      <PerformancePageInner />
+-    </Suspense>
+-  );
++export default async function TeamPeerPerformanceRedirectPage({
++  params,
++  searchParams,
++}: Props) {
++  const { peerId } = await params;
++  const sp = await searchParams;
++  const qs = new URLSearchParams();
++  for (const [key, value] of Object.entries(sp)) {
++    if (value == null) continue;
++    if (Array.isArray(value)) {
++      for (const v of value) qs.append(key, v);
++    } else {
++      qs.set(key, value);
++    }
++  }
++  const query = qs.toString();
++  redirect(query ? `/team/${peerId}/results?${query}` : `/team/${peerId}/results`);
+ }
+diff --git a/app/team/[peerId]/responsibilities/[responsibilityId]/page.tsx b/app/team/[peerId]/responsibilities/[responsibilityId]/page.tsx
+index 8e4c693..94e1f78 100644
+--- a/app/team/[peerId]/responsibilities/[responsibilityId]/page.tsx
++++ b/app/team/[peerId]/responsibilities/[responsibilityId]/page.tsx
+@@ -12,7 +12,7 @@ function ResponsibilityDetailPageInner() {
+   const [approving, setApproving] = useState(false);
+ 
+   return (
+-    <MarketingPeerPageFrame activeTab="responsibilities">
++    <MarketingPeerPageFrame activeTab="settings">
+       {({ domainInput, workspace }) => (
+         <ResponsibilityDetailTab
+           peerId={peerId}
+diff --git a/app/team/[peerId]/responsibilities/page.tsx b/app/team/[peerId]/responsibilities/page.tsx
+index f02cb66..8869d5b 100644
+--- a/app/team/[peerId]/responsibilities/page.tsx
++++ b/app/team/[peerId]/responsibilities/page.tsx
+@@ -1,35 +1,10 @@
+-"use client";
++import { redirect } from "next/navigation";
+ 
+-import { useState } from "react";
+-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import ResponsibilitiesTab, {
+-  toggleResponsibilityEnabled,
+-} from "@/features/marketing-workspace/tabs/ResponsibilitiesTab";
++type Props = {
++  params: Promise<{ peerId: string }>;
++};
+ 
+-export default function TeamPeerResponsibilitiesPage() {
+-  const [approvingId, setApprovingId] = useState<string | null>(null);
+-
+-  return (
+-    <MarketingPeerPageFrame activeTab="responsibilities">
+-      {({ domainInput, workspace }) => (
+-        <ResponsibilitiesTab
+-          domainInput={domainInput}
+-          approvingId={approvingId}
+-          onToggleOwnership={(responsibilityId, enabled) => {
+-            workspace.updateResponsibilities(
+-              toggleResponsibilityEnabled(workspace.responsibilities, responsibilityId, enabled)
+-            );
+-          }}
+-          onApprovePlan={async (responsibilityId) => {
+-            setApprovingId(responsibilityId);
+-            try {
+-              await workspace.handleApproveResponsibilityPlan(responsibilityId);
+-            } finally {
+-              setApprovingId(null);
+-            }
+-          }}
+-        />
+-      )}
+-    </MarketingPeerPageFrame>
+-  );
++export default async function ResponsibilitiesRedirectPage({ params }: Props) {
++  const { peerId } = await params;
++  redirect(`/team/${peerId}/settings?section=responsibilities`);
+ }
+diff --git a/app/team/[peerId]/review/page.tsx b/app/team/[peerId]/review/page.tsx
+index 4a568ef..a6764a8 100644
+--- a/app/team/[peerId]/review/page.tsx
++++ b/app/team/[peerId]/review/page.tsx
+@@ -1,34 +1,22 @@
+-"use client";
++import { redirect } from "next/navigation";
+ 
+-import { Suspense } from "react";
+-import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import ReviewTab from "@/features/marketing-workspace/tabs/ReviewTab";
++type Props = {
++  params: Promise<{ peerId: string }>;
++  searchParams: Promise<Record<string, string | string[] | undefined>>;
++};
+ 
+-function ReviewPageInner() {
+-  return (
+-    <MarketingPeerPageFrame activeTab="review">
+-      {({ peerId, domainInput, workspace }) => (
+-        <ReviewTab
+-          peerId={peerId}
+-          domainInput={domainInput}
+-          onApprove={(draftId) => workspace.handleDraftStatus(draftId, "approved")}
+-          onReject={(draftId) => workspace.handleDraftStatus(draftId, "rejected")}
+-          onSaveContent={workspace.handleSaveApprovalContent}
+-          onSaveMedia={workspace.handleSaveApprovalMedia}
+-          onFeedback={workspace.handleApprovalFeedback}
+-          onApproveAndSchedule={workspace.handleApproveAndSchedule}
+-          onPublishNow={workspace.handlePublishNowApproval}
+-          publishMessage={workspace.approvalPublishMessage}
+-        />
+-      )}
+-    </MarketingPeerPageFrame>
+-  );
+-}
+-
+-export default function TeamPeerReviewPage() {
+-  return (
+-    <Suspense fallback={null}>
+-      <ReviewPageInner />
+-    </Suspense>
+-  );
++export default async function TeamPeerReviewRedirectPage({ params, searchParams }: Props) {
++  const { peerId } = await params;
++  const sp = await searchParams;
++  const qs = new URLSearchParams();
++  for (const [key, value] of Object.entries(sp)) {
++    if (value == null) continue;
++    if (Array.isArray(value)) {
++      for (const v of value) qs.append(key, v);
++    } else {
++      qs.set(key, value);
++    }
++  }
++  const query = qs.toString();
++  redirect(query ? `/team/${peerId}/waiting?${query}` : `/team/${peerId}/waiting`);
+ }
+diff --git a/app/team/[peerId]/settings/page.tsx b/app/team/[peerId]/settings/page.tsx
+index 2a4c126..950af3b 100644
+--- a/app/team/[peerId]/settings/page.tsx
++++ b/app/team/[peerId]/settings/page.tsx
+@@ -1,18 +1,47 @@
+ "use client";
+ 
++import { Suspense } from "react";
++import { useSearchParams } from "next/navigation";
+ import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import SettingsTab from "@/features/marketing-workspace/tabs/SettingsTab";
++import V17SettingsView from "@/features/customer-v17/peer/V17SettingsView";
++import PeerSettingsHub from "@/features/marketing-workspace/colleague/PeerSettingsHub";
++import { buildV17SettingsViewModel } from "@/lib/customer-v17/build-v17-settings-view-model";
++import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
++import { getPeerWorkspaceCopy } from "@/lib/i18n/peer-workspace-copy";
++
++function SettingsPageInner() {
++  const searchParams = useSearchParams();
++  const section = searchParams.get("section");
+ 
+-export default function EmmaManagePage() {
+   return (
+     <MarketingPeerPageFrame activeTab="settings">
+-      {({ peerId, workspace }) => (
+-        <SettingsTab
+-          peerId={peerId}
+-          workspace={workspace}
+-          onAudit={(title, description) => workspace.recordWorkspaceActivity(title, description)}
+-        />
+-      )}
++      {({ peerId, domainInput, workspace }) => {
++        if (!workspace.peer) return null;
++        const localePreference = customerLocalePreferenceFromEnv();
++        if (section) {
++          return (
++            <PeerSettingsHub
++              peerId={peerId}
++              domainInput={domainInput}
++              workspace={workspace}
++              copy={getPeerWorkspaceCopy(localePreference)}
++              onAudit={(title, description) =>
++                workspace.recordWorkspaceActivity(title, description)
++              }
++            />
++          );
++        }
++        const model = buildV17SettingsViewModel({ peerId, localePreference });
++        return <V17SettingsView model={model} />;
++      }}
+     </MarketingPeerPageFrame>
+   );
+ }
++
++export default function EmmaManagePage() {
++  return (
++    <Suspense fallback={null}>
++      <SettingsPageInner />
++    </Suspense>
++  );
++}
+diff --git a/app/team/[peerId]/work/page.tsx b/app/team/[peerId]/work/page.tsx
+index 0a757e5..de26ad1 100644
+--- a/app/team/[peerId]/work/page.tsx
++++ b/app/team/[peerId]/work/page.tsx
+@@ -3,7 +3,10 @@
+ import { Suspense, useCallback, useState } from "react";
+ import { useRouter } from "next/navigation";
+ import MarketingPeerPageFrame from "@/features/studio/marketing-peer/MarketingPeerPageFrame";
+-import ProjectsTab from "@/features/marketing-workspace/tabs/ProjectsTab";
++import V17WorkView from "@/features/customer-v17/peer/V17WorkView";
++import CreateCampaignModal from "@/features/marketing-workspace/components/CreateCampaignModal";
++import { buildV17WorkViewModel } from "@/lib/customer-v17/build-v17-work-view-model";
++import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
+ import { getProjectHref } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+ import { isMarketingCampaignWorkspaceEnabled } from "@/lib/peer-experience/marketing/marketing-workspace-feature-flags";
+ 
+@@ -12,34 +15,44 @@ function WorkPageInner() {
+   const [wizardOpen, setWizardOpen] = useState(false);
+   const campaignsEnabled = isMarketingCampaignWorkspaceEnabled();
+ 
+-  const openWizard = useCallback(() => {
+-    if (campaignsEnabled) {
+-      setWizardOpen(true);
+-    }
+-  }, [campaignsEnabled]);
+-
+   return (
+     <MarketingPeerPageFrame activeTab="work">
+-      {({ peerId, domainInput, workspace }) => (
+-        <ProjectsTab
+-          peerId={peerId}
+-          domainInput={domainInput}
+-          ownerLabel={domainInput.userName}
+-          peerName={domainInput.peerName}
+-          campaignsEnabled={campaignsEnabled}
+-          createCampaignWizardOpen={wizardOpen}
+-          onOpenCreateCampaignWizard={openWizard}
+-          onCloseCreateCampaignWizard={() => setWizardOpen(false)}
+-          onCreateCampaign={
+-            campaignsEnabled
+-              ? async (input) => workspace.handleCreateCampaign(input)
+-              : undefined
+-          }
+-          onCampaignCreated={(projectId) => {
+-            router.push(getProjectHref(peerId, projectId));
+-          }}
+-        />
+-      )}
++      {({ peerId, domainInput, workspace }) => {
++        if (!workspace.peer) return null;
++        const model = buildV17WorkViewModel({
++          domainInput,
++          localePreference: customerLocalePreferenceFromEnv(),
++        });
++        return (
++          <>
++            <V17WorkView model={model} />
++            {campaignsEnabled && (
++              <>
++                <button
++                  type="button"
++                  className="v17-btn v17-btn--ghost pg-focus-premium"
++                  style={{ marginTop: 12 }}
++                  onClick={() => setWizardOpen(true)}
++                >
++                  + Campaign
++                </button>
++                <CreateCampaignModal
++                  open={wizardOpen}
++                  onClose={() => setWizardOpen(false)}
++                  peerId={peerId}
++                  ownerLabel={domainInput.userName}
++                  peerName={domainInput.peerName}
++                  onCreate={async (input) => {
++                    const result = await workspace.handleCreateCampaign(input);
++                    router.push(getProjectHref(peerId, result.projectId));
++                    return result;
++                  }}
++                />
++              </>
++            )}
++          </>
++        );
++      }}
+     </MarketingPeerPageFrame>
+   );
+ }
+diff --git a/docs/IMPLEMENTATION.md b/docs/IMPLEMENTATION.md
+index 1ea75f8..38b08d7 100644
+--- a/docs/IMPLEMENTATION.md
++++ b/docs/IMPLEMENTATION.md
+@@ -11,6 +11,10 @@ When uncertain: **do not redesign**. Re-read the blueprints. Implement with engi
+ 
+ **Colleague IA & long-term product phases:** see [product/README.md](./product/README.md) (Sprint 29A — subordinate to Constitution and Product Bible).
+ 
++**Sprint 29B (Marketing Peer workspace):** six-section colleague shell at `/team/[peerId]` — see [architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md](./architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md). Phase A (colleague IA for Marketing) partially complete.
++
++**Sprint 29C (v17 customer experience):** v17 Command Center at `/home`, customer shell + four-section Peer workspace — see [architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md](./architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md). HQ preserved at `/hq`.
++
+ If implementation is hard, solve the engineering problem — never change UX to make code easier.
+ 
+ ---
+diff --git a/docs/product/README.md b/docs/product/README.md
+index aab5034..d7c1799 100644
+--- a/docs/product/README.md
++++ b/docs/product/README.md
+@@ -26,6 +26,14 @@ Documentation for **customer journey**, **colleague workspace IA**, **presence &
+ | **[PEERGENT_COLLEAGUE_LANGUAGE.md](./PEERGENT_COLLEAGUE_LANGUAGE.md)** | Voice, tone, patterns, forbidden software language, domain examples (EN/NL) |
+ | **[PEERGENT_INTERACTION_PRINCIPLES.md](./PEERGENT_INTERACTION_PRINCIPLES.md)** | Interaction rules, interruption levels, empty states, never-do list |
+ 
++## Sprint 29B — Marketing Peer workspace (implemented)
++
++Engineering note: [../architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md](../architecture/SPRINT_29B_MARKETING_PEER_WORKSPACE.md) — colleague shell at `/team/[peerId]` (superseded for customer nav by Sprint 29C).
++
++## Sprint 29C — v17 customer experience (implemented)
++
++Engineering note: [../architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md](../architecture/SPRINT_29C_PEERGENT_V17_CUSTOMER_EXPERIENCE.md) — HQ preserved; Command Center at `/home`; four-section Peer workspace (Today, Work, Results, Settings); v17 shell and tokens.
++
+ ## Related audits (engineering)
+ 
+ - [../architecture/ADMIN_CUSTOMER_AUDIT.md](../architecture/ADMIN_CUSTOMER_AUDIT.md) — customer vs admin presenters
+diff --git a/features/home/handoff/HandoffHome.tsx b/features/home/handoff/HandoffHome.tsx
+index 5eb6d01..bd38400 100644
+--- a/features/home/handoff/HandoffHome.tsx
++++ b/features/home/handoff/HandoffHome.tsx
+@@ -4,12 +4,12 @@ import Link from "next/link";
+ import { useSearchParams } from "next/navigation";
+ import { RefreshCw } from "lucide-react";
+ import { useHandoffHome, type HandoffHomeState } from "@/hooks/useHandoffHome";
+-import CommandCenter from "@/features/home/command-center/CommandCenter";
+ import FigmaHomePort from "@/features/home/figma-port/FigmaHomePort";
+-import FigmaHomeWorkspaceShell from "@/features/home/figma-port/FigmaHomeWorkspaceShell";
+ import HandoffSkeleton from "./HandoffSkeleton";
++import V17CustomerShell from "@/features/customer-v17/shell/V17CustomerShell";
++import V17CommandCenter from "@/features/customer-v17/command-center/V17CommandCenter";
+ import "@/features/home/figma-port/figma-home.css";
+-import "@/features/home/command-center/command-center.css";
++import "@/features/customer-v17/styles/v17-customer.css";
+ 
+ export type HandoffHomeProps = {
+   homeState?: HandoffHomeState;
+@@ -18,38 +18,34 @@ export type HandoffHomeProps = {
+ function HandoffHomeView({ homeState }: { homeState: HandoffHomeState }) {
+   const searchParams = useSearchParams();
+   const visualParam = searchParams.get("visual");
+-  const { pageState, errorMessage, handoff, copy, retry, previewBanner, inboxCount } = homeState;
++  const { pageState, errorMessage, handoff, copy, retry, previewBanner } = homeState;
+ 
+   if (pageState === "loading") {
+     return (
+-      <FigmaHomeWorkspaceShell inboxCount={inboxCount}>
+-        <div className="command-center command-center--loading">
+-          <div className="command-center__page">
+-            {previewBanner && <p className="command-center__preview-banner">{previewBanner}</p>}
+-            <HandoffSkeleton />
+-          </div>
++      <V17CustomerShell>
++        <div className="v17-page">
++          {previewBanner ? <p className="v17-page-support">{previewBanner}</p> : null}
++          <HandoffSkeleton />
+         </div>
+-      </FigmaHomeWorkspaceShell>
++      </V17CustomerShell>
+     );
+   }
+ 
+   if (pageState === "error") {
+     return (
+-      <FigmaHomeWorkspaceShell inboxCount={inboxCount}>
+-        <div className="command-center command-center--error">
+-          <div className="command-center__page command-center__page--centered">
+-            <p className="command-center__error-title">{copy.errorTitle}</p>
+-            <p className="command-center__error-body">{errorMessage}</p>
+-            <button type="button" onClick={retry} className="command-center__error-retry pg-focus-premium">
+-              <RefreshCw size={16} aria-hidden />
+-              {copy.errorRetry}
+-            </button>
+-            <Link href="/team" className="command-center__error-link pg-focus-premium">
+-              {copy.teamPulseViewTeam}
+-            </Link>
+-          </div>
++      <V17CustomerShell>
++        <div className="v17-page">
++          <p className="v17-page-title">{copy.errorTitle}</p>
++          <p className="v17-page-support">{errorMessage}</p>
++          <button type="button" onClick={retry} className="v17-btn v17-btn--primary pg-focus-premium">
++            <RefreshCw size={16} aria-hidden />
++            {copy.errorRetry}
++          </button>
++          <Link href="/team" className="v17-btn v17-btn--ghost pg-focus-premium">
++            {copy.teamPulseViewTeam}
++          </Link>
+         </div>
+-      </FigmaHomeWorkspaceShell>
++      </V17CustomerShell>
+     );
+   }
+ 
+@@ -57,15 +53,17 @@ function HandoffHomeView({ homeState }: { homeState: HandoffHomeState }) {
+ 
+   return (
+     <>
+-      {previewBanner && (
+-        <p className="command-center__preview-banner command-center__preview-banner--fixed">{previewBanner}</p>
+-      )}
++      {previewBanner ? (
++        <p className="v17-page-support" style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", zIndex: 20 }}>
++          {previewBanner}
++        </p>
++      ) : null}
+       {visualParam === "reference" ? (
+         <FigmaHomePort homeState={homeState} onPrimaryActivate={() => undefined} />
+       ) : (
+-        <FigmaHomeWorkspaceShell inboxCount={inboxCount}>
+-          <CommandCenter homeState={homeState} />
+-        </FigmaHomeWorkspaceShell>
++        <V17CustomerShell>
++          <V17CommandCenter homeState={homeState} />
++        </V17CustomerShell>
+       )}
+     </>
+   );
+diff --git a/features/marketing-workspace/MarketingWorkspaceLayout.tsx b/features/marketing-workspace/MarketingWorkspaceLayout.tsx
+index 79f5754..bd3005e 100644
+--- a/features/marketing-workspace/MarketingWorkspaceLayout.tsx
++++ b/features/marketing-workspace/MarketingWorkspaceLayout.tsx
+@@ -1,21 +1,17 @@
+ "use client";
+ 
+-import Link from "next/link";
+ import type { ReactNode } from "react";
++import { usePathname } from "next/navigation";
+ import type { PeerRow } from "@/lib/peer-display";
+-import type { MarketingPeerTabId } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+ import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
+-import { buildMarketingWorkspaceShellViewModel } from "./view-model/buildMarketingWorkspaceShellViewModel";
+-import MarketingAgentHero from "./components/MarketingAgentHero";
+-import MarketingObjectiveCard from "./components/MarketingObjectiveCard";
+-import MarketingWorkspaceTabs from "./components/MarketingWorkspaceTabs";
+-import "./styles/marketing-workspace.css";
++import { customerLocalePreferenceFromEnv } from "@/lib/i18n/resolve-customer-locale-preference";
++import { buildV17MarketingPeerShellModel } from "@/lib/customer-v17/build-v17-marketing-peer-shell";
++import V17PeerWorkspace from "@/features/customer-v17/peer/V17PeerWorkspace";
++import "@/features/customer-v17/styles/v17-customer.css";
+ 
+ export type MarketingWorkspaceLayoutProps = {
+   peer: PeerRow;
+   domainInput: MarketingPeerDomainInput;
+-  activeTab: MarketingPeerTabId;
+-  userInitial: string;
+   onMessage?: () => void;
+   onPause?: () => void;
+   pauseDisabled?: boolean;
+@@ -25,51 +21,25 @@ export type MarketingWorkspaceLayoutProps = {
+ export default function MarketingWorkspaceLayout({
+   peer,
+   domainInput,
+-  activeTab,
+-  userInitial,
+   onMessage,
+   onPause,
+   pauseDisabled,
+   children,
+ }: MarketingWorkspaceLayoutProps) {
+-  const shell = buildMarketingWorkspaceShellViewModel({
++  const pathname = usePathname();
++  const shell = buildV17MarketingPeerShellModel({
+     peer,
+     domainInput,
+-    activeTab,
++    pathname,
++    localePreference: customerLocalePreferenceFromEnv(),
++    pauseDisabled,
+   });
+ 
+   return (
+-    <div className="mw-root">
+-      <div className="mw-page">
+-        <div className="mw-topbar">
+-          <div className="mw-topbar-right">
+-            <div className="mw-status-pill">
+-              <span className="mw-live-dot" aria-hidden />
+-              Workforce active
+-            </div>
+-            <div className="mw-avatar" aria-hidden>
+-              {userInitial}
+-            </div>
+-          </div>
+-        </div>
+-
+-        <nav className="mw-breadcrumb" aria-label="Breadcrumb">
+-          <Link href={shell.breadcrumbTeamHref}>Team</Link>
+-          <span className="mw-breadcrumb__sep">/</span>
+-          <span className="mw-breadcrumb__current">{shell.peerName}</span>
+-        </nav>
+-
+-        <MarketingAgentHero
+-          agent={shell.agent}
+-          onMessage={onMessage}
+-          onPause={onPause}
+-          pauseDisabled={pauseDisabled}
+-        />
+-        <MarketingObjectiveCard objective={shell.objective} />
+-        <MarketingWorkspaceTabs peerId={shell.peerId} activeTab={activeTab} />
+-
+-        <div className="mw-tab-panel">{children}</div>
+-      </div>
++    <div className="v17-page-shell" data-testid="mw-marketing-workspace">
++      <V17PeerWorkspace shell={shell} onAssign={onMessage} onPause={onPause}>
++        {children}
++      </V17PeerWorkspace>
+     </div>
+   );
+ }
+diff --git a/features/marketing-workspace/__tests__/marketing-campaigns-section.test.ts b/features/marketing-workspace/__tests__/marketing-campaigns-section.test.ts
+index f4c3794..083cd6f 100644
+--- a/features/marketing-workspace/__tests__/marketing-campaigns-section.test.ts
++++ b/features/marketing-workspace/__tests__/marketing-campaigns-section.test.ts
+@@ -194,9 +194,8 @@ describe("marketing workspace campaigns section (presenter)", () => {
+     expect(isMarketingCampaignWorkspaceEnabled()).toBe(true);
+   });
+ 
+-  it("preserves existing marketing workspace tabs", () => {
++  it("preserves work section in colleague navigation", () => {
+     expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("work");
+-    expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("content");
+-    expect(MARKETING_PEER_TABS).toHaveLength(9);
++    expect(MARKETING_PEER_TABS).toHaveLength(4);
+   });
+ });
+diff --git a/features/marketing-workspace/components/MarketingPeerPresenceHeader.tsx b/features/marketing-workspace/components/MarketingPeerPresenceHeader.tsx
+index 248ec2b..6378f76 100644
+--- a/features/marketing-workspace/components/MarketingPeerPresenceHeader.tsx
++++ b/features/marketing-workspace/components/MarketingPeerPresenceHeader.tsx
+@@ -63,7 +63,7 @@ export default function MarketingPeerPresenceHeader({
+           {presenceLabel}
+         </span>
+       </div>
+-      <p className="mw-peer-presence-campaign">{campaignTitle}</p>
++      <p className="mw-peer-presence-campaign">{campaignTitle ? campaignTitle : null}</p>
+       <p className="mw-peer-presence-narrative">{narrative}</p>
+       {primaryAction ? (
+         <div className="mw-peer-presence-action">{primaryAction}</div>
+diff --git a/features/marketing-workspace/styles/marketing-workspace.css b/features/marketing-workspace/styles/marketing-workspace.css
+index 7c0e46c..69e136c 100644
+--- a/features/marketing-workspace/styles/marketing-workspace.css
++++ b/features/marketing-workspace/styles/marketing-workspace.css
+@@ -2852,3 +2852,519 @@
+     padding-bottom: env(safe-area-inset-bottom, 0);
+   }
+ }
++
++/* Sprint 29B — colleague workspace sections */
++.mw-colleague-workspace .mw-peer-section-nav .mw-tab {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++}
++
++.mw-peer-presence-updated {
++  font-size: 0.8125rem;
++  color: var(--pg-color-text-tertiary, #5c677d);
++  margin: var(--pg-space-2, 8px) 0 0;
++}
++
++.mw-attention-list,
++.mw-done-list,
++.mw-settings-index {
++  list-style: none;
++  margin: 0;
++  padding: 0;
++  display: flex;
++  flex-direction: column;
++  gap: var(--pg-space-3, 12px);
++}
++
++.mw-attention-row {
++  display: flex;
++  align-items: flex-start;
++  justify-content: space-between;
++  gap: var(--pg-space-4, 16px);
++  padding: var(--pg-space-4, 16px);
++}
++
++.mw-attention-title,
++.mw-done-title {
++  font-size: 0.9375rem;
++  font-weight: 500;
++  margin: 0;
++}
++
++.mw-empty-state-title {
++  font-size: 1.0625rem;
++  color: var(--pg-color-text-primary, #f1f3f9);
++  margin: 0 0 var(--pg-space-2, 8px);
++}
++
++.mw-settings-index-link {
++  display: block;
++  padding: var(--pg-space-4, 16px);
++  border-radius: var(--pg-radius-md, 10px);
++  border: 1px solid var(--pg-color-border-subtle, rgba(255, 255, 255, 0.06));
++  background: var(--pg-color-surface, #121826);
++  color: var(--pg-color-text-primary, #f1f3f9);
++  text-decoration: none;
++}
++
++.mw-link-action {
++  display: inline-block;
++  margin-top: var(--pg-space-4, 16px);
++  color: var(--pg-color-accent, #a78bfa);
++  text-decoration: none;
++  font-weight: 500;
++}
++
++.mw-btn-primary {
++  flex-shrink: 0;
++  padding: 10px 16px;
++  border-radius: var(--pg-radius-md, 10px);
++  background: var(--pg-color-accent, #7c3aed);
++  color: #fff;
++  text-decoration: none;
++  font-size: 0.875rem;
++  font-weight: 500;
++}
++
++@media (max-width: 640px) {
++  .mw-attention-row {
++    flex-direction: column;
++  }
++  .mw-btn-primary {
++    width: 100%;
++    text-align: center;
++  }
++  .mw-peer-section-nav {
++    overflow-x: auto;
++    flex-wrap: nowrap;
++    -webkit-overflow-scrolling: touch;
++    scrollbar-width: none;
++  }
++  .mw-peer-section-nav::-webkit-scrollbar {
++    display: none;
++  }
++}
++
++/* Sprint 29B.1 — colleague workspace polish (Command Center aligned) */
++.mw-colleague-workspace .mw-cc-panel {
++  max-width: 720px;
++}
++
++.mw-cc-section-purpose {
++  font-size: 0.875rem;
++  line-height: 1.5;
++  color: var(--mw-text-2);
++  margin: 0 0 var(--pg-space-5, 20px);
++}
++
++.mw-cc-section-body {
++  display: flex;
++  flex-direction: column;
++  gap: var(--pg-space-5, 20px);
++}
++
++.mw-cc-presence {
++  padding: var(--pg-space-5, 20px);
++  border-radius: 16px;
++  border: 1px solid var(--mw-border);
++  background: rgba(255, 255, 255, 0.02);
++  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
++  margin-bottom: var(--pg-space-5, 20px);
++}
++
++.mw-cc-presence-row {
++  display: flex;
++  gap: var(--pg-space-4, 16px);
++  align-items: flex-start;
++}
++
++.mw-cc-presence-main {
++  flex: 1;
++  min-width: 0;
++}
++
++.mw-cc-presence-title-row {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  gap: 12px;
++  flex-wrap: wrap;
++}
++
++.mw-cc-presence-name {
++  font-size: 1.125rem;
++  font-weight: 600;
++  margin: 0;
++  color: var(--mw-text-1);
++}
++
++.mw-cc-presence-role {
++  font-size: 0.8125rem;
++  color: var(--mw-text-2);
++  margin: 2px 0 0;
++}
++
++.mw-cc-presence-pill {
++  font-size: 0.6875rem;
++  font-weight: 600;
++  letter-spacing: 0.04em;
++  text-transform: uppercase;
++  padding: 4px 10px;
++  border-radius: 999px;
++  border: 1px solid var(--mw-border);
++  white-space: nowrap;
++}
++
++.mw-cc-presence-pill--waiting {
++  color: #fbbf24;
++  border-color: rgba(251, 191, 36, 0.35);
++  background: rgba(251, 191, 36, 0.08);
++}
++
++.mw-cc-presence-pill--working {
++  color: #67e8f9;
++  border-color: rgba(34, 211, 238, 0.35);
++  background: rgba(34, 211, 238, 0.08);
++}
++
++.mw-cc-presence-pill--preparing,
++.mw-cc-presence-pill--calm {
++  color: var(--mw-text-2);
++  background: rgba(255, 255, 255, 0.03);
++}
++
++.mw-cc-presence-pill--blocked,
++.mw-cc-presence-pill--help {
++  color: #fca5a5;
++  border-color: rgba(248, 113, 113, 0.35);
++}
++
++.mw-cc-presence-narrative {
++  font-size: 0.9375rem;
++  line-height: 1.55;
++  color: var(--mw-text-2);
++  margin: var(--pg-space-3, 12px) 0 0;
++}
++
++.mw-cc-presence-meta {
++  font-size: 0.75rem;
++  color: var(--mw-text-3);
++  margin: var(--pg-space-2, 8px) 0 0;
++}
++
++.mw-cc-presence-actions {
++  margin-top: var(--pg-space-4, 16px);
++}
++
++.mw-cc-action {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  padding: 10px 18px;
++  border-radius: 10px;
++  font-size: 0.875rem;
++  font-weight: 600;
++  text-decoration: none;
++  transition: background 0.15s ease, border-color 0.15s ease;
++}
++
++.mw-cc-action--primary {
++  background: linear-gradient(180deg, rgba(124, 58, 237, 0.95), rgba(109, 40, 217, 0.95));
++  color: #fff;
++  border: 1px solid rgba(167, 139, 250, 0.4);
++}
++
++.mw-cc-action--primary:hover {
++  filter: brightness(1.06);
++}
++
++.mw-cc-action--secondary {
++  background: rgba(255, 255, 255, 0.04);
++  color: var(--mw-text-1);
++  border: 1px solid var(--mw-border);
++}
++
++.mw-colleague-workspace .mw-peer-section-nav {
++  gap: 6px;
++  padding-bottom: 4px;
++  margin-bottom: var(--pg-space-6, 24px);
++  border-bottom: 1px solid var(--mw-border);
++}
++
++.mw-colleague-workspace .mw-peer-section-nav .mw-tab {
++  color: var(--mw-text-2);
++  border: 1px solid transparent;
++  background: transparent;
++  padding: 8px 14px;
++  border-radius: 999px;
++  font-size: 0.8125rem;
++  font-weight: 500;
++}
++
++.mw-colleague-workspace .mw-peer-section-nav .mw-tab:hover {
++  color: var(--mw-text-1);
++  background: rgba(255, 255, 255, 0.04);
++}
++
++.mw-colleague-workspace .mw-peer-section-nav .mw-tab--active {
++  color: var(--mw-text-1);
++  background: rgba(139, 92, 246, 0.12);
++  border-color: rgba(139, 92, 246, 0.25);
++}
++
++.mw-colleague-workspace .mw-count-badge {
++  font-size: 0.6875rem;
++  min-width: 1.25rem;
++  padding: 0 6px;
++  line-height: 1.35;
++  background: rgba(251, 191, 36, 0.15);
++  color: #fcd34d;
++  border: 1px solid rgba(251, 191, 36, 0.25);
++}
++
++.mw-cc-focus-card {
++  padding: var(--pg-space-5, 20px);
++  border-radius: 14px;
++  border: 1px solid var(--mw-border);
++  background: rgba(255, 255, 255, 0.02);
++}
++
++.mw-cc-eyebrow {
++  font-size: 0.6875rem;
++  font-weight: 600;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  color: var(--mw-text-3);
++  margin: 0 0 8px;
++}
++
++.mw-cc-focus-title {
++  font-size: 1.25rem;
++  font-weight: 600;
++  margin: 0 0 10px;
++  color: var(--mw-text-1);
++}
++
++.mw-cc-stage-pill {
++  display: inline-block;
++  font-size: 0.75rem;
++  padding: 3px 10px;
++  border-radius: 999px;
++  background: rgba(255, 255, 255, 0.05);
++  color: var(--mw-text-2);
++  margin-bottom: 12px;
++}
++
++.mw-cc-focus-desc,
++.mw-cc-progress-line {
++  font-size: 0.9375rem;
++  line-height: 1.55;
++  color: var(--mw-text-2);
++  margin: 0;
++}
++
++.mw-cc-progress-line {
++  margin-top: 10px;
++  color: var(--mw-cyan);
++  font-size: 0.8125rem;
++}
++
++.mw-cc-focus-next {
++  margin-top: var(--pg-space-4, 16px);
++  padding-top: var(--pg-space-4, 16px);
++  border-top: 1px solid var(--mw-border);
++}
++
++.mw-cc-meta-label {
++  font-size: 0.6875rem;
++  font-weight: 600;
++  letter-spacing: 0.06em;
++  text-transform: uppercase;
++  color: var(--mw-text-3);
++  margin: 0 0 4px;
++}
++
++.mw-cc-meta-value {
++  font-size: 0.875rem;
++  color: var(--mw-text-2);
++  margin: 0;
++}
++
++.mw-cc-focus-actions {
++  margin-top: var(--pg-space-5, 20px);
++}
++
++.mw-clamp-2 {
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  overflow: hidden;
++}
++
++.mw-cc-decision-list,
++.mw-cc-outcome-list,
++.mw-cc-next-list {
++  list-style: none;
++  margin: 0;
++  padding: 0;
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++}
++
++.mw-cc-decision-card,
++.mw-cc-outcome-card {
++  display: flex;
++  gap: 14px;
++  align-items: flex-start;
++  padding: 16px;
++  border-radius: 12px;
++  border: 1px solid var(--mw-border);
++  background: rgba(255, 255, 255, 0.02);
++}
++
++.mw-cc-decision-icon,
++.mw-cc-outcome-icon {
++  flex-shrink: 0;
++  width: 36px;
++  height: 36px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  border-radius: 10px;
++  background: rgba(139, 92, 246, 0.1);
++  color: #c4b5fd;
++}
++
++.mw-cc-decision-body,
++.mw-cc-outcome-body {
++  flex: 1;
++  min-width: 0;
++}
++
++.mw-cc-decision-title,
++.mw-cc-outcome-title {
++  font-size: 0.9375rem;
++  font-weight: 600;
++  margin: 0;
++  color: var(--mw-text-1);
++}
++
++.mw-cc-decision-context,
++.mw-cc-outcome-context {
++  font-size: 0.8125rem;
++  color: var(--mw-text-3);
++  margin: 4px 0 0;
++}
++
++.mw-cc-decision-reason,
++.mw-cc-outcome-summary {
++  font-size: 0.8125rem;
++  line-height: 1.45;
++  color: var(--mw-text-2);
++  margin: 8px 0 0;
++}
++
++.mw-cc-decision-age,
++.mw-cc-outcome-time {
++  font-size: 0.75rem;
++  color: var(--mw-text-3);
++  margin: 6px 0 0;
++}
++
++.mw-cc-decision-actions {
++  flex-shrink: 0;
++  align-self: center;
++}
++
++.mw-cc-subheading {
++  font-size: 0.75rem;
++  font-weight: 600;
++  letter-spacing: 0.06em;
++  text-transform: uppercase;
++  color: var(--mw-text-3);
++  margin: 0 0 12px;
++}
++
++.mw-cc-outcome-group + .mw-cc-outcome-group {
++  margin-top: var(--pg-space-6, 24px);
++}
++
++.mw-cc-next-block {
++  margin-top: var(--pg-space-2, 8px);
++}
++
++.mw-cc-next-item {
++  display: flex;
++  justify-content: space-between;
++  gap: 12px;
++  padding: 12px 14px;
++  border-radius: 10px;
++  border: 1px solid var(--mw-border);
++  background: rgba(0, 0, 0, 0.15);
++}
++
++.mw-cc-next-title {
++  font-size: 0.875rem;
++  font-weight: 500;
++  margin: 0;
++}
++
++.mw-cc-next-desc {
++  font-size: 0.8125rem;
++  color: var(--mw-text-2);
++  margin: 4px 0 0;
++}
++
++.mw-cc-empty {
++  text-align: center;
++  padding: var(--pg-space-8, 32px) var(--pg-space-5, 20px);
++  border-radius: 14px;
++  border: 1px dashed var(--mw-border);
++  background: rgba(255, 255, 255, 0.015);
++}
++
++.mw-cc-empty-icon {
++  display: inline-flex;
++  color: var(--mw-text-3);
++  margin-bottom: 12px;
++}
++
++.mw-cc-empty-title {
++  font-size: 1.0625rem;
++  font-weight: 600;
++  margin: 0 0 8px;
++}
++
++.mw-cc-empty-body {
++  font-size: 0.875rem;
++  line-height: 1.55;
++  color: var(--mw-text-2);
++  margin: 0 auto;
++  max-width: 28rem;
++}
++
++.mw-cc-empty-foot {
++  margin-top: var(--pg-space-5, 20px);
++  padding-top: var(--pg-space-4, 16px);
++  border-top: 1px solid var(--mw-border);
++}
++
++@media (max-width: 640px) {
++  .mw-cc-presence-title-row {
++    flex-direction: column;
++    align-items: flex-start;
++  }
++  .mw-cc-decision-card,
++  .mw-cc-outcome-card {
++    flex-direction: column;
++  }
++  .mw-cc-decision-actions {
++    width: 100%;
++    align-self: stretch;
++  }
++  .mw-cc-decision-actions .mw-cc-action {
++    width: 100%;
++  }
++}
+diff --git a/features/studio/marketing-peer/MarketingPeerPageFrame.tsx b/features/studio/marketing-peer/MarketingPeerPageFrame.tsx
+index 89c8079..3cea2f8 100644
+--- a/features/studio/marketing-peer/MarketingPeerPageFrame.tsx
++++ b/features/studio/marketing-peer/MarketingPeerPageFrame.tsx
+@@ -7,17 +7,19 @@ import { useParams } from "next/navigation";
+ import { RefreshCw } from "lucide-react";
+ import { ArrowLeft } from "lucide-react";
+ import { useAccount } from "@/components/account/AccountProvider";
+-import { PgAlcove, PgAppShell } from "@/components/design-system";
++import V17CustomerShell from "@/features/customer-v17/shell/V17CustomerShell";
++import { PgAlcove } from "@/components/design-system";
+ import StudioLoadingShell from "@/features/studio/StudioLoadingShell";
+ import EmmaDelegation from "@/features/studio/emma-workspace/sections/EmmaDelegation";
+ import MarketingWorkspaceLayout from "@/features/marketing-workspace/MarketingWorkspaceLayout";
+ import { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
+ import { loadIntegrationConnections } from "@/lib/integrations/connection-store";
++import type { MarketingPeerSectionId } from "@/lib/peer-experience/marketing/navigation/marketing-peer-sections";
+ import type { MarketingPeerTabId } from "@/lib/peer-experience/marketing/navigation/marketing-peer-links";
+ import { buildMarketingPeerDomainInput } from "./buildMarketingPeerDomainInput";
+ 
+ export type MarketingPeerPageFrameProps = {
+-  activeTab: MarketingPeerTabId;
++  activeTab: MarketingPeerTabId | MarketingPeerSectionId;
+   children: (ctx: {
+     peerId: string;
+     domainInput: ReturnType<typeof buildMarketingPeerDomainInput>;
+@@ -71,9 +73,8 @@ export default function MarketingPeerPageFrame({
+     )?.id;
+ 
+   return (
+-    <main className="min-h-screen bg-[var(--pg-color-canvas)] text-[var(--pg-color-text-primary)]">
+-      <PgAppShell contentClassName="relative flex min-h-screen flex-col">
+-        {workspace.pageState === "loading" && <StudioLoadingShell />}
++    <V17CustomerShell>
++      {workspace.pageState === "loading" && <StudioLoadingShell />}
+ 
+         {workspace.pageState === "error" && (
+           <div className="p-5 md:p-8">
+@@ -127,8 +128,6 @@ export default function MarketingPeerPageFrame({
+           <MarketingWorkspaceLayout
+             peer={workspace.peer}
+             domainInput={domainInput}
+-            activeTab={activeTab}
+-            userInitial={userInitial}
+             onMessage={() => setAssignOpen(true)}
+             onPause={() => {
+               if (activeWorkUnitId) {
+@@ -162,7 +161,6 @@ export default function MarketingPeerPageFrame({
+             />
+           )}
+         </PgAlcove>
+-      </PgAppShell>
+-    </main>
++    </V17CustomerShell>
+   );
+ }
+diff --git a/lib/peer-experience/marketing/__tests__/marketing-workspace-routing.test.ts b/lib/peer-experience/marketing/__tests__/marketing-workspace-routing.test.ts
+index 85f0c27..0dcfa4d 100644
+--- a/lib/peer-experience/marketing/__tests__/marketing-workspace-routing.test.ts
++++ b/lib/peer-experience/marketing/__tests__/marketing-workspace-routing.test.ts
+@@ -1,23 +1,42 @@
+ import { describe, expect, it } from "vitest";
+ import { MARKETING_PEER_TABS } from "../navigation/marketing-peer-links";
++import {
++  resolveActiveMarketingPeerCustomerSection,
++  resolveActiveMarketingPeerSection,
++} from "../navigation/marketing-peer-sections";
+ 
+ describe("Marketing workspace routing", () => {
+-  it("lists nine tabs in approved order", () => {
++  it("lists four customer sections in approved order", () => {
+     expect(MARKETING_PEER_TABS.map((t) => t.id)).toEqual([
+-      "overview",
+-      "review",
++      "today",
+       "work",
+-      "content",
+-      "performance",
+-      "connections",
+-      "responsibilities",
+-      "knowledge",
++      "results",
+       "settings",
+     ]);
+   });
+ 
+-  it("includes connections route", () => {
+-    const connections = MARKETING_PEER_TABS.find((t) => t.id === "connections");
+-    expect(connections?.href("emma")).toBe("/team/emma/connections");
++  it("defaults peer root to today", () => {
++    expect(resolveActiveMarketingPeerCustomerSection("/team/emma", "emma")).toBe("today");
++    expect(resolveActiveMarketingPeerSection("/team/emma", "emma")).toBe("working_on");
++  });
++
++  it("maps legacy waiting path to today nav with waiting section id", () => {
++    expect(resolveActiveMarketingPeerCustomerSection("/team/emma/waiting", "emma")).toBe(
++      "today"
++    );
++    expect(resolveActiveMarketingPeerSection("/team/emma/waiting", "emma")).toBe(
++      "waiting_for_me"
++    );
++  });
++
++  it("maps legacy review path to waiting for me section id", () => {
++    expect(resolveActiveMarketingPeerSection("/team/emma/review", "emma")).toBe(
++      "waiting_for_me"
++    );
++  });
++
++  it("done path stays compatible", () => {
++    expect(resolveActiveMarketingPeerCustomerSection("/team/emma/done", "emma")).toBe("today");
++    expect(resolveActiveMarketingPeerSection("/team/emma/done", "emma")).toBe("done");
+   });
+ });
+diff --git a/lib/peer-experience/marketing/navigation/marketing-peer-links.ts b/lib/peer-experience/marketing/navigation/marketing-peer-links.ts
+index 6c0cafe..9f4e503 100644
+--- a/lib/peer-experience/marketing/navigation/marketing-peer-links.ts
++++ b/lib/peer-experience/marketing/navigation/marketing-peer-links.ts
+@@ -1,55 +1,70 @@
+ import type { MarketingPerformanceFilters } from "../domain/marketing-peer-types";
+-
+-export type MarketingPeerTabId =
+-  | "overview"
+-  | "review"
+-  | "work"
+-  | "content"
+-  | "performance"
+-  | "connections"
+-  | "responsibilities"
+-  | "knowledge"
+-  | "settings"
+-  | "projects";
++import {
++  MARKETING_PEER_SECTIONS,
++  marketingPeerSectionHref,
++  resolveActiveMarketingPeerSection,
++  type MarketingPeerSectionId,
++  type MarketingPeerTabId,
++} from "./marketing-peer-sections";
++
++export type { MarketingPeerSectionId, MarketingPeerTabId } from "./marketing-peer-sections";
++export {
++  MARKETING_PEER_SECTIONS,
++  marketingPeerSectionHref,
++  resolveActiveMarketingPeerSection,
++  legacyTabToSection,
++} from "./marketing-peer-sections";
+ 
+ export type MarketingPeerTab = {
+-  id: MarketingPeerTabId;
++  id: MarketingPeerSectionId;
+   label: string;
+   href: (peerId: string) => string;
+ };
+ 
++/** Primary customer navigation (English labels for tests and fallbacks). */
+ export const MARKETING_PEER_TABS: MarketingPeerTab[] = [
+-  { id: "overview", label: "Overview", href: (peerId) => `/team/${peerId}` },
+-  { id: "review", label: "Review", href: (peerId) => `/team/${peerId}/review` },
+-  { id: "work", label: "Projects", href: (peerId) => `/team/${peerId}/work` },
+-  { id: "content", label: "Content", href: (peerId) => `/team/${peerId}/content` },
+-  { id: "performance", label: "Performance", href: (peerId) => `/team/${peerId}/performance` },
+-  { id: "connections", label: "Connections", href: (peerId) => `/team/${peerId}/connections` },
+-  { id: "responsibilities", label: "Responsibilities", href: (peerId) => `/team/${peerId}/responsibilities` },
+-  { id: "knowledge", label: "Knowledge", href: (peerId) => `/team/${peerId}/knowledge` },
++  { id: "today", label: "Today", href: (peerId) => `/team/${peerId}` },
++  { id: "work", label: "Work", href: (peerId) => `/team/${peerId}/work` },
++  { id: "results", label: "Results", href: (peerId) => `/team/${peerId}/results` },
+   { id: "settings", label: "Settings", href: (peerId) => `/team/${peerId}/settings` },
+ ];
+ 
+-export function marketingPeerTabHref(peerId: string, tab: MarketingPeerTabId): string {
+-  const match = MARKETING_PEER_TABS.find((t) => t.id === tab);
+-  return match ? match.href(peerId) : `/team/${peerId}`;
+-}
++export const MARKETING_PEER_SECTIONS_NAV = MARKETING_PEER_SECTIONS;
+ 
+-export function resolveActiveMarketingPeerTab(pathname: string, peerId: string): MarketingPeerTabId {
+-  const base = `/team/${peerId}`;
+-  if (pathname === base || pathname === `${base}/`) return "overview";
+-  if (pathname.startsWith(`${base}/projects/`)) return "work";
+-  for (const tab of MARKETING_PEER_TABS) {
+-    if (tab.id === "overview") continue;
+-    const href = tab.href(peerId);
+-    if (pathname === href || pathname.startsWith(`${href}/`)) return tab.id;
++export function marketingPeerTabHref(
++  peerId: string,
++  tab: MarketingPeerTabId | MarketingPeerSectionId
++): string {
++  if (MARKETING_PEER_SECTIONS.some((s) => s.id === tab)) {
++    return marketingPeerSectionHref(peerId, tab as MarketingPeerSectionId);
+   }
+-  return "overview";
++  const legacyMap: Partial<Record<MarketingPeerTabId, MarketingPeerSectionId>> = {
++    overview: "today",
++    working_on: "today",
++    waiting_for_me: "today",
++    done: "today",
++    review: "waiting_for_me",
++    content: "work",
++    performance: "results",
++    connections: "settings",
++    responsibilities: "settings",
++    knowledge: "settings",
++    projects: "work",
++  };
++  const section = legacyMap[tab as MarketingPeerTabId] ?? "today";
++  return marketingPeerSectionHref(peerId, section);
++}
++
++export function resolveActiveMarketingPeerTab(
++  pathname: string,
++  peerId: string
++): MarketingPeerSectionId {
++  return resolveActiveMarketingPeerSection(pathname, peerId);
+ }
+ 
+ /** Review deliverable deep link — supports deliverableId (preferred) and legacy draft param. */
+ export function getReviewHref(peerId: string, deliverableId?: string, filter?: string): string {
+-  const base = `/team/${peerId}/review`;
++  const base = `/team/${peerId}/waiting`;
+   const params = new URLSearchParams();
+   if (deliverableId) params.set("deliverableId", deliverableId);
+   if (filter) params.set("filter", filter);
+@@ -153,7 +168,7 @@ export function getContentHref(peerId: string, contentId?: string): string {
+ }
+ 
+ export function getPerformanceHref(peerId: string, filters?: MarketingPerformanceFilters): string {
+-  const base = `/team/${peerId}/performance`;
++  const base = `/team/${peerId}/results`;
+   if (!filters) return base;
+   const params = new URLSearchParams();
+   if (filters.contentId) params.set("contentId", filters.contentId);
+diff --git a/lib/peer-experience/marketing/view-models/__tests__/build-marketing-workspace-shell.test.ts b/lib/peer-experience/marketing/view-models/__tests__/build-marketing-workspace-shell.test.ts
+index fc203f9..0d45985 100644
+--- a/lib/peer-experience/marketing/view-models/__tests__/build-marketing-workspace-shell.test.ts
++++ b/lib/peer-experience/marketing/view-models/__tests__/build-marketing-workspace-shell.test.ts
+@@ -75,16 +75,11 @@ describe("buildMarketingWorkspaceShellViewModel", () => {
+ });
+ 
+ describe("MARKETING_PEER_TABS order", () => {
+-  it("includes Connections in approved order", () => {
++  it("includes four customer sections", () => {
+     expect(MARKETING_PEER_TABS.map((t) => t.id)).toEqual([
+-      "overview",
+-      "review",
++      "today",
+       "work",
+-      "content",
+-      "performance",
+-      "connections",
+-      "responsibilities",
+-      "knowledge",
++      "results",
+       "settings",
+     ]);
+   });
+diff --git a/lib/peer-experience/marketing/view-models/__tests__/marketing-campaign-ui.test.ts b/lib/peer-experience/marketing/view-models/__tests__/marketing-campaign-ui.test.ts
+index 2cf99ef..2a5329b 100644
+--- a/lib/peer-experience/marketing/view-models/__tests__/marketing-campaign-ui.test.ts
++++ b/lib/peer-experience/marketing/view-models/__tests__/marketing-campaign-ui.test.ts
+@@ -326,7 +326,7 @@ describe("marketing campaign UI presenters", () => {
+ 
+   it("preserves existing marketing workspace tabs when flag off", () => {
+     expect(MARKETING_PEER_TABS.map((t) => t.id)).toContain("work");
+-    expect(MARKETING_PEER_TABS).toHaveLength(9);
++    expect(MARKETING_PEER_TABS).toHaveLength(4);
+   });
+ 
+   it("does not nest next-action links inside linked campaign cards", () => {
+diff --git a/lib/peer-experience/marketing/view-models/__tests__/marketing-peer-os.test.ts b/lib/peer-experience/marketing/view-models/__tests__/marketing-peer-os.test.ts
+index 754bbec..2897229 100644
+--- a/lib/peer-experience/marketing/view-models/__tests__/marketing-peer-os.test.ts
++++ b/lib/peer-experience/marketing/view-models/__tests__/marketing-peer-os.test.ts
+@@ -90,21 +90,23 @@ const strategy: MarketingStrategy = {
+ 
+ describe("marketing peer navigation", () => {
+   it("resolves active tab per route", () => {
+-    expect(resolveActiveMarketingPeerTab(`/team/${peerId}`, peerId)).toBe("overview");
++    expect(resolveActiveMarketingPeerTab(`/team/${peerId}`, peerId)).toBe("working_on");
+     expect(resolveActiveMarketingPeerTab(`/team/${peerId}/connections`, peerId)).toBe(
+-      "connections"
++      "settings"
++    );
++    expect(resolveActiveMarketingPeerTab(`/team/${peerId}/review`, peerId)).toBe(
++      "waiting_for_me"
+     );
+-    expect(resolveActiveMarketingPeerTab(`/team/${peerId}/review`, peerId)).toBe("review");
+     expect(resolveActiveMarketingPeerTab(`/team/${peerId}/responsibilities`, peerId)).toBe(
+-      "responsibilities"
++      "settings"
+     );
+     expect(
+       resolveActiveMarketingPeerTab(`/team/${peerId}/responsibilities/resp-1`, peerId)
+-    ).toBe("responsibilities");
++    ).toBe("settings");
+   });
+ 
+   it("builds deliverableId review deep links", () => {
+-    expect(getReviewHref(peerId, "d1")).toBe(`/team/${peerId}/review?deliverableId=d1`);
++    expect(getReviewHref(peerId, "d1")).toBe(`/team/${peerId}/waiting?deliverableId=d1`);
+     expect(parseReviewSearchParams(new URLSearchParams("deliverableId=d1")).deliverableId).toBe("d1");
+     expect(parseReviewSearchParams(new URLSearchParams("draft=d1")).deliverableId).toBe("d1");
+   });
+@@ -206,7 +208,7 @@ describe("buildMarketingBrainInsights", () => {
+     });
+     const metricInsight = insights.find((i) => i.id.startsWith("brain-metric"));
+     expect(metricInsight?.evidence?.currentValue).toBe("5000");
+-    expect(metricInsight?.actions[0]?.href).toContain("/performance");
++    expect(metricInsight?.actions[0]?.href).toContain("/results");
+   });
+ 
+   it("routes review action for needs approval insight", () => {

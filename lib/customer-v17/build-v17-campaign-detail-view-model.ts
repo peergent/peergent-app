@@ -1,7 +1,11 @@
-import type { CampaignReviewItem, CampaignReviewViewModel } from "@/lib/peer-experience/marketing/campaign-review";
+import type { ExecutiveCampaignBriefing } from "@/lib/brain/presentation/executive-briefing";
 import type { MarketingCampaignLocale } from "@/lib/i18n/marketing-campaign-copy";
 import { getV17CampaignCopy } from "@/lib/i18n/v17-campaign-copy";
 import { resolveCustomerLocalePreference } from "@/lib/i18n/resolve-customer-locale-preference";
+import type {
+  CampaignReviewItem,
+  CampaignReviewViewModel,
+} from "@/lib/peer-experience/marketing/campaign-review/campaign-review-types";
 import type { MarketingProjectDetailViewModel } from "@/lib/peer-experience/marketing/view-models/build-marketing-project-detail-view-model";
 import type { MarketingCampaignDetailViewModel } from "@/lib/peer-experience/marketing/view-models/marketing-campaign-types";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
@@ -63,6 +67,11 @@ export type V17CampaignDetailViewModel = {
   inspectorHref: string | null;
   inspectorLabel: string | null;
   primaryCta: { label: string; href: string } | null;
+  executiveBriefing: ExecutiveCampaignBriefing | null;
+  executiveBriefingPendingApproval: boolean;
+  campaignPublicationUnlocked: boolean;
+  allReviewItems: readonly import("@/lib/peer-experience/marketing/campaign-review").CampaignReviewItem[];
+  locale: MarketingCampaignLocale;
   copy: ReturnType<typeof getV17CampaignCopy>;
 };
 
@@ -155,13 +164,28 @@ export function buildV17CampaignDetailViewModel(input: {
   const statusTag = localizedCustomerStatus(statusRaw, locale, copy);
 
   const queue = reviewVm?.reviewQueue.filter((i) => i.inReviewQueue && i.preview) ?? [];
-  const reviewRows: V17CampaignReviewRow[] = queue.slice(0, 6).map((item) => ({
+  const executiveBriefingPending = reviewVm?.executiveBriefingPendingApproval ?? false;
+  const reviewRows: V17CampaignReviewRow[] = executiveBriefingPending
+    ? []
+    : queue.slice(0, 6).map((item) => ({
     id: item.id,
     title: item.title,
     statusLabel: copy.stateReadyForReview,
     dateLabel: relativeDate(item.updatedAt ?? item.createdAt, locale),
     reviewHref: getCampaignReviewItemHref(input.peerId, input.projectId, item.id),
   }));
+
+  const briefingHeading =
+    executiveBriefingPending && reviewVm?.executiveBriefing
+      ? locale === "nl"
+        ? "Management briefing"
+        : "Management briefing"
+      : null;
+  const briefingSubline = executiveBriefingPending
+    ? locale === "nl"
+      ? "Emma heeft al het interne werk afgerond. Eén review, dan gaat ze verder."
+      : "Emma completed all internal work. One review, then she continues."
+    : null;
 
   const allItems = reviewVm?.allReviewItems ?? [];
   const deliverables: V17CampaignDeliverableRow[] = allItems.slice(0, 8).map((item) => {
@@ -239,8 +263,10 @@ export function buildV17CampaignDetailViewModel(input: {
     goalLine: goal ? sanitizeV17CustomerLine(goal, locale) : null,
     ownerLine: input.domainInput.peerName,
     summaryLine: customerSummary({ reviewVm, campaignDetail, vm, locale }),
-    reviewHeading: reviewRows.length > 0 ? copy.waitingForYou(reviewRows.length) : null,
-    reviewSubline: reviewRows.length > 0 ? copy.waitingSummary(reviewRows.length) : null,
+    reviewHeading:
+      briefingHeading ?? (reviewRows.length > 0 ? copy.waitingForYou(reviewRows.length) : null),
+    reviewSubline:
+      briefingSubline ?? (reviewRows.length > 0 ? copy.waitingSummary(reviewRows.length) : null),
     reviewRows,
     progressTitle: copy.progressTitle,
     progressLine,
@@ -262,10 +288,19 @@ export function buildV17CampaignDetailViewModel(input: {
       ? getCampaignInspectorHref(input.peerId, input.projectId)
       : null,
     inspectorLabel: input.showInspectorLink ? copy.openInspector : null,
-    primaryCta:
-      reviewVm?.primaryActionHref && reviewVm.primaryActionLabel
+    primaryCta: executiveBriefingPending
+      ? {
+          label: reviewVm?.primaryActionLabel ?? copy.reviewCta,
+          href: `#executive-briefing`,
+        }
+      : reviewVm?.primaryActionHref && reviewVm.primaryActionLabel
         ? { label: reviewVm.primaryActionLabel, href: reviewVm.primaryActionHref }
         : vm?.experience.hero.primaryCta ?? null,
+    executiveBriefing: reviewVm?.executiveBriefing ?? null,
+    executiveBriefingPendingApproval: executiveBriefingPending,
+    campaignPublicationUnlocked: reviewVm?.campaignPublicationUnlocked ?? false,
+    allReviewItems: reviewVm?.allReviewItems ?? [],
+    locale,
     copy,
   };
 }

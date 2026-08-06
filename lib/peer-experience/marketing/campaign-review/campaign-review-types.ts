@@ -1,11 +1,14 @@
 import type { CampaignApprovalMode, CampaignStatus } from "@/lib/campaign/types/campaign";
+import type { CampaignExperienceMode } from "@/lib/office/campaign/campaign-experience-mode";
+import type { ExecutiveCampaignBriefing } from "@/lib/brain/presentation/executive-briefing";
+import type { CampaignApprovalMap, CampaignApprovalRecord } from "../campaign-approval";
 import type { MarketingCampaignDetailViewModel } from "../view-models/marketing-campaign-types";
 import type { MarketingProject } from "../projects/types";
 import type { MarketingStrategy } from "@/lib/marketing-intelligence";
 import type { CreativeBrief } from "@/lib/creative-brief";
 import type { MarketingLinkedInPost } from "@/lib/marketing-intelligence/linkedin-post-generation";
 import type { MarketingEmailCampaign } from "@/lib/marketing-intelligence/email-generation";
-import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
+import type { MarketingPeerDomainInput } from "../view-models/marketing-peer-domain-input";
 import type {
   CampaignArtifactVersionMap,
   CampaignReviewDecision,
@@ -13,6 +16,7 @@ import type {
   CampaignReviewDecisionMap,
 } from "../campaign-review-decisions";
 import type { CampaignReviewItemDecisionStatus } from "../campaign-review-decisions/campaign-review-decision-status";
+import type { WorkUnit } from "@/lib/peer-workflow/work-unit";
 
 export type CampaignReviewArtifactType =
   | "campaign_strategy"
@@ -138,6 +142,11 @@ export type CampaignReviewViewModel = {
   readonly hasTechnicalDetails: boolean;
   readonly lastUpdated: string | null;
   readonly allReviewItems: readonly CampaignReviewItem[];
+  readonly experienceMode: CampaignExperienceMode;
+  readonly executiveBriefing: ExecutiveCampaignBriefing | null;
+  readonly executiveBriefingPendingApproval: boolean;
+  readonly campaignApproval: CampaignApprovalRecord | null;
+  readonly campaignPublicationUnlocked: boolean;
 };
 
 export type CampaignReviewBuildInput = {
@@ -160,4 +169,7 @@ export type CampaignReviewBuildInput = {
   readonly campaignReviewDecisionByWorkUnitId?: CampaignReviewDecisionMap;
   readonly campaignReviewDecisionHistoryByWorkUnitId?: CampaignReviewDecisionHistoryMap;
   readonly campaignArtifactVersionByWorkUnitId?: CampaignArtifactVersionMap;
+  readonly campaignApprovalByProjectId?: CampaignApprovalMap;
+  readonly domainInput?: MarketingPeerDomainInput;
+  readonly localePreference?: string | null;
 };

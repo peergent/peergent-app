@@ -54,6 +54,12 @@ const REQUIREMENTS: Readonly<Record<BrainCapabilityId, CapabilityExecutionRequir
     criticalFields: [],
     partialExecutionAllowed: true,
   },
+  campaign_planning: {
+    minimumReadinessScore: 50,
+    requiredDimensions: ["company_profile"],
+    criticalFields: [],
+    partialExecutionAllowed: true,
+  },
   creative_generation: {
     minimumReadinessScore: 50,
     requiredDimensions: ["brand"],

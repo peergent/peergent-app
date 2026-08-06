@@ -17,6 +17,7 @@ export type BrainCapabilityId =
   | "competitor_understanding"
   | "strategy"
   | "channel_planning"
+  | "campaign_planning"
   | "creative_generation"
   | "performance_interpretation"
   | "optimization"
@@ -141,6 +142,19 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     freshnessPolicy: "ttl",
     cacheable: true,
     providerSupport: ["deterministic", "llm"],
+  }),
+  withDeps({
+    id: "campaign_planning",
+    version: "1.0.0",
+    requiredContext: ["campaign"],
+    optionalContext: ["brand", "workingAgreement"],
+    outputSchema: "BrainStructuredOutput",
+    allowedEnvironments: ["live", "demo", "test"],
+    approvalRequirement: "none",
+    costClass: "free",
+    freshnessPolicy: "ttl",
+    cacheable: true,
+    providerSupport: ["deterministic"],
   }),
   withDeps({
     id: "creative_generation",

@@ -1,11 +1,16 @@
 import type { MarketingUnderstanding, MarketingUnderstandingDimension } from "@/lib/marketing-intelligence";
-import type { ActivityFeedItem, ActivityType } from "./types";
+import type { ActivityFeedItem, ActivityType, ActivityFeedCorrelation } from "./types";
 
 export function createActivity(
   activityType: ActivityType,
   title: string,
   description: string,
-  options?: { relatedObject?: string; confidence?: string; timestamp?: string }
+  options?: {
+    relatedObject?: string;
+    confidence?: string;
+    timestamp?: string;
+    correlation?: ActivityFeedCorrelation;
+  }
 ): ActivityFeedItem {
   return {
     id: `${activityType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -15,6 +20,7 @@ export function createActivity(
     description,
     relatedObject: options?.relatedObject,
     confidence: options?.confidence,
+    correlation: options?.correlation,
   };
 }
 

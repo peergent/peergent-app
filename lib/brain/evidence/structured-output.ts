@@ -61,6 +61,12 @@ export type BrainStructuredOutput = {
   capabilityVersion: string;
   findings: readonly BrainFinding[];
   decisions: readonly BrainDecision[];
+  /** Sprint 10.2 — full Decision records for executive review (optional, backwards compatible). */
+  decisionRecords?: readonly import("../decision/decision-types").Decision[];
+  /** Sprint 11.0 — full PlanningGraph for executive review (optional, backwards compatible). */
+  planningGraph?: import("../layers/planning/types").PlanningGraph;
+  /** Sprint 11.1 — cache identity and diagnostics for campaign_planning output. */
+  planningMetadata?: import("../planning/campaign-planning-types").PlanningOutputMetadata;
   recommendations: readonly BrainRecommendation[];
   actionProposals: readonly BrainActionProposal[];
   executionResults: readonly BrainExecutionResult[];

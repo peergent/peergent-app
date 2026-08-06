@@ -1,5 +1,7 @@
 import type { BrainStructuredOutput } from "../evidence/structured-output";
-import { BrainLlmValidationError } from "./errors";
+import { BrainLlmBusinessValidationError, BrainLlmValidationError } from "./errors";
+import { strategyGraphFromBrainOutput } from "../strategy/build-strategy-graph";
+import { validateStrategyQuality, type StrategyQualityIssue } from "../strategy/strategy-quality-validator";
 
 const PERCENTAGE_PATTERN = /\b\d{1,3}(\.\d+)?%/g;
 const PERFORMANCE_CLAIM_PATTERN = /\b(roas|cpa|ctr|cvr|conversion rate|revenue grew|increased by \d)/i;
@@ -21,12 +23,24 @@ function collectText(payload: StrategyLlmPayload): string {
   return parts.join(" ");
 }
 
+function toBusinessValidationIssues(issues: readonly StrategyQualityIssue[]) {
+  return issues.map((issue) => ({
+    code: issue.code,
+    path: issue.dimension,
+    summary: issue.message,
+  }));
+}
+
 export function validateStrategyLlmPayload(
   parsed: unknown,
   input: {
     capabilityVersion: string;
     knownCompetitors: readonly string[];
     allowPercentages?: boolean;
+    companyName?: string;
+    organizationId?: string;
+    campaignId?: string;
+    requireQualityCheck?: boolean;
   }
 ): StrategyLlmPayload {
   if (!parsed || typeof parsed !== "object") {
@@ -70,6 +84,32 @@ export function validateStrategyLlmPayload(
 
   if (issues.length > 0) {
     throw new BrainLlmValidationError("Strategy LLM output failed validation.", issues);
+  }
+
+  if (input.requireQualityCheck && input.companyName) {
+    const mapped = mapStrategyPayloadToBrainOutput(payload, {
+      capabilityVersion: input.capabilityVersion,
+      generatedAt: new Date().toISOString(),
+      provenanceRef: `llm:strategy:${input.organizationId ?? "unknown"}`,
+    });
+    const graph = strategyGraphFromBrainOutput(mapped, {
+      organizationId: input.organizationId ?? "unknown",
+      campaignId: input.campaignId,
+    });
+    if (graph) {
+      const quality = validateStrategyQuality(graph, {
+        companyName: input.companyName,
+        minOverall: 35,
+      });
+      if (!quality.valid) {
+        const structuredIssues = toBusinessValidationIssues(quality.issues);
+        throw new BrainLlmBusinessValidationError(
+          "Strategy LLM output failed quality validation.",
+          structuredIssues,
+          quality.issues.map((i) => i.message)
+        );
+      }
+    }
   }
 
   return payload;

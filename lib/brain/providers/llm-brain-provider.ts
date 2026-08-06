@@ -87,7 +87,20 @@ export class LlmBrainCapabilityProvider implements BrainCapabilityProvider {
         llmProvider: this.options.llmProvider,
       });
       if (result.usage) {
-        this.lastUsage = result.usage;
+        const diag = result.diagnostics;
+        this.lastUsage = {
+          ...result.usage,
+          requestStarted: diag?.requestStarted ?? result.usage.requestStarted,
+          validationAttempts: diag?.validationAttempts ?? result.usage.validationAttempts,
+          validationRepairCount: diag?.validationRepairCount ?? result.usage.validationRepairCount,
+          initialRequestDurationMs:
+            diag?.initialRequestDurationMs ?? result.usage.initialRequestDurationMs,
+          fallbackDurationMs: diag?.fallbackDurationMs ?? result.usage.fallbackDurationMs,
+          businessValidationCategory:
+            diag?.businessValidationCategory ?? result.usage.businessValidationCategory,
+          businessValidationSubreason:
+            diag?.businessValidationSubreason ?? result.usage.businessValidationSubreason,
+        };
       } else if (!result.usedLlm) {
         this.lastUsage = {
           providerId: "deterministic",

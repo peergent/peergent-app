@@ -7,7 +7,7 @@ import type {
   MarketingProjectCampaignSetup,
 } from "@/lib/peer-experience/marketing/projects/types";
 
-const PERSISTED_CAPABILITIES = ["strategy", "channel_planning", "creative_generation"] as const;
+const PERSISTED_CAPABILITIES = ["strategy", "channel_planning", "campaign_planning", "creative_generation"] as const;
 export type PersistedCampaignBrainCapabilityId = (typeof PERSISTED_CAPABILITIES)[number];
 
 export function readCampaignBrainOutputs(

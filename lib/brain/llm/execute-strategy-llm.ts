@@ -30,6 +30,12 @@ import {
 } from "../llm/failure-categories";
 import { readBrainLlmEnvFlags } from "../llm/failure-categories";
 import { getOpenAIModel } from "@/lib/ai-runtime/env";
+import {
+  BrainLlmBusinessValidationError,
+  BrainLlmValidationRetryExhaustedError,
+  BrainLlmTimeoutError,
+} from "../llm/errors";
+import type { BrainLlmUsage } from "../llm/types";
 
 export type StrategyLlmExecutionInput = {
   context: BrainRunContext;
@@ -69,6 +75,78 @@ function fallbackUsage(
     outputTokens: 0,
     ...overrides,
   };
+}
+
+function extractValidationFailure(error: unknown): {
+  category: BrainLlmFailureCategory;
+  businessValidationSubreason?: string;
+  validationAttempts?: number;
+  validationRepairCount?: number;
+  failedUsage?: BrainLlmUsage;
+} {
+  if (error instanceof BrainLlmValidationRetryExhaustedError) {
+    const subreason =
+      error.structuredIssues?.[0]?.code ??
+      (error.failureCategory === "business_validation_failed" ? "business_validation_failed" : undefined);
+    return {
+      category: error.failureCategory,
+      businessValidationSubreason: subreason,
+      validationAttempts: error.attemptCount,
+      validationRepairCount: error.validationRepairCount,
+      failedUsage: error.lastUsage,
+    };
+  }
+  if (error instanceof BrainLlmBusinessValidationError) {
+    return {
+      category: "business_validation_failed",
+      businessValidationSubreason: error.structuredIssues[0]?.code,
+    };
+  }
+  if (error instanceof BrainLlmTimeoutError) {
+    return {
+      category: "request_timeout",
+      validationRepairCount: 0,
+      validationAttempts: 1,
+    };
+  }
+  if (error instanceof Error && error.message === "prompt_build_failed") {
+    return { category: "prompt_build_failed" };
+  }
+  return { category: classifyBrainLlmError(error) };
+}
+
+function llmAttemptStarted(category: BrainLlmFailureCategory): boolean {
+  return (
+    category !== "missing_api_key" &&
+    category !== "feature_flag_disabled" &&
+    category !== "missing_execution_context" &&
+    category !== "request_not_started" &&
+    category !== "prompt_build_failed"
+  );
+}
+
+function usageFromFailedLlmAttempt(input: {
+  category: BrainLlmFailureCategory;
+  llmUsage?: BrainLlmUsage;
+  validationAttempts?: number;
+  validationRepairCount?: number;
+  businessValidationSubreason?: string;
+  initialRequestDurationMs?: number;
+  fallbackDurationMs?: number;
+}): BrainUsageMetadata {
+  return fallbackUsage(input.category, {
+    modelId: input.llmUsage?.model ?? getOpenAIModel(),
+    inputTokens: input.llmUsage?.inputTokens ?? 0,
+    outputTokens: input.llmUsage?.outputTokens ?? 0,
+    estimatedCostCents: input.llmUsage?.estimatedCostCents,
+    requestStarted: true,
+    businessValidationCategory: input.category,
+    businessValidationSubreason: input.businessValidationSubreason,
+    validationAttempts: input.validationAttempts,
+    validationRepairCount: input.validationRepairCount,
+    initialRequestDurationMs: input.initialRequestDurationMs,
+    fallbackDurationMs: input.fallbackDurationMs,
+  });
 }
 
 export async function executeStrategyViaLlm(
@@ -127,6 +205,10 @@ export async function executeStrategyViaLlm(
     return validateStrategyLlmPayload(parsed, {
       capabilityVersion: def.version,
       knownCompetitors,
+      companyName: input.companySnapshot.profile.companyName.value ?? input.executionContext.campaignContext?.companyName,
+      organizationId: input.context.organizationId,
+      campaignId: input.executionContext.campaignContext?.projectId,
+      requireQualityCheck: Boolean(input.executionContext.reasoningGraph),
     });
   });
   markOfficeLlmTrace("OPENAI_FETCH_COMPLETED", {
@@ -230,8 +312,12 @@ export async function executeStrategyWithLlmFallback(
     });
     return llmResult;
   } catch (error) {
-    const category = classifyBrainLlmError(error);
+    const failure = extractValidationFailure(error);
+    const category = failure.category;
     const httpStatus = error instanceof Error && "statusCode" in error ? (error as { statusCode?: number }).statusCode : undefined;
+    const fallbackStartedMs = Date.now();
+    const totalDurationMs = Date.now() - startedMs;
+    const requestStarted = llmAttemptStarted(category);
     markOfficeLlmTrace("FALLBACK_STARTED", { category, httpStatus: httpStatus ?? null });
     markOfficeLlmTrace("FALLBACK_COMPLETED", { category, httpStatus: httpStatus ?? null });
     logBrainExecutionDev({
@@ -241,23 +327,42 @@ export async function executeStrategyWithLlmFallback(
       providerSelected: "llm",
       requestStartedAt: startedAt,
       requestCompletedAt: new Date().toISOString(),
-      latencyMs: Date.now() - startedMs,
+      latencyMs: totalDurationMs,
       validationResult: "invalid",
       fallbackUsed: true,
       fallbackReason: category,
     });
+    const fallbackDurationMs = Date.now() - fallbackStartedMs;
     return {
       output: executeDeterministicCapability(providerInput),
       usedLlm: false,
       fallbackReason: category,
-      usage: fallbackUsage(category, {
-        modelId: getOpenAIModel(),
-      }),
+      usage: requestStarted
+        ? usageFromFailedLlmAttempt({
+            category,
+            llmUsage: failure.failedUsage,
+            validationAttempts: failure.validationAttempts,
+            validationRepairCount: failure.validationRepairCount,
+            businessValidationSubreason: failure.businessValidationSubreason,
+            initialRequestDurationMs: totalDurationMs,
+            fallbackDurationMs,
+          })
+        : fallbackUsage(category, {
+            modelId: getOpenAIModel(),
+            businessValidationCategory: category,
+            businessValidationSubreason: failure.businessValidationSubreason,
+          }),
       diagnostics: {
         ...baseDiagnostics,
         fallbackReason: category,
-        requestStarted: category !== "missing_api_key" && category !== "feature_flag_disabled",
+        requestStarted,
         httpStatus,
+        validationAttempts: failure.validationAttempts,
+        validationRepairCount: failure.validationRepairCount,
+        initialRequestDurationMs: totalDurationMs,
+        fallbackDurationMs,
+        businessValidationCategory: category,
+        businessValidationSubreason: failure.businessValidationSubreason,
       },
     };
   }

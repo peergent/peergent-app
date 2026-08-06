@@ -39,6 +39,17 @@ export type BrainDevDiagnostics = {
   timeoutAttemptNumber?: number | null;
   responseHeadersReceived?: boolean;
   responseBodyStarted?: boolean;
+  /** Sprint 11.1 — campaign_planning integration */
+  planningSource?: "stored" | "built";
+  planningCacheReused?: boolean;
+  planningVersion?: string;
+  planningDecisionCount?: number;
+  planningDependencyCount?: number;
+  planningCriticalPathLength?: number;
+  planningValidationStatus?: string;
+  strategyGraphVersion?: string;
+  decisionEngineVersion?: string;
+  brandLayerVersion?: string;
 };
 
 export type BrainDevDiagnosticsExtras = {

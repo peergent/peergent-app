@@ -1553,3 +1553,316 @@
   }
 }
 
+/* ============================================================
+   Marketing Results (Feature 30.1)
+   Reuses v17 tokens only — no new tokens, no hardcoded colors.
+   ============================================================ */
+
+.pg-v17 .v17-results-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.pg-v17 .v17-results-head-text {
+  min-width: 0;
+}
+
+.pg-v17 .v17-range {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--v17-line-soft);
+  border-radius: var(--v17-r-pill);
+  background: var(--v17-panel);
+  flex-wrap: wrap;
+}
+
+.pg-v17 .v17-range-opt {
+  padding: 6px 12px;
+  border-radius: var(--v17-r-pill);
+  font-size: 12px;
+  font-family: var(--v17-mono);
+  color: var(--v17-ink-faint);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s var(--v17-ease), background 0.2s var(--v17-ease);
+}
+
+.pg-v17 .v17-range-opt:hover {
+  color: var(--v17-ink);
+}
+
+.pg-v17 .v17-range-opt--active {
+  background: var(--v17-glass-strong);
+  color: var(--v17-ink);
+}
+
+/* --- KPI cards --- */
+
+.pg-v17 .v17-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 132px;
+}
+
+.pg-v17 .v17-kpi-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pg-v17 .v17-kpi-top .v17-stat-lbl {
+  margin: 0;
+}
+
+.pg-v17 .v17-kpi-icon {
+  display: inline-flex;
+  color: var(--v17-ink-faint);
+  flex-shrink: 0;
+}
+
+.pg-v17 .v17-kpi-trend {
+  margin: 0;
+  font-size: 11px;
+  font-family: var(--v17-mono);
+  color: var(--v17-ink-faint);
+}
+
+.pg-v17 .v17-kpi-trend--up {
+  color: var(--v17-success-text);
+}
+
+.pg-v17 .v17-kpi-trend--down {
+  color: var(--v17-attention);
+}
+
+.pg-v17 .v17-kpi-na {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--v17-ink-soft);
+  line-height: 1.2;
+}
+
+.pg-v17 .v17-kpi-why {
+  margin: auto 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--v17-ink-faint);
+}
+
+.pg-v17 .v17-kpi-cta {
+  margin-top: 8px;
+  font-size: 12px;
+  font-family: var(--v17-mono);
+  color: var(--v17-blue);
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.pg-v17 .v17-kpi-cta:hover {
+  text-decoration: underline;
+}
+
+/* --- Deliverable + attention lists --- */
+
+.pg-v17 .v17-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pg-v17 .v17-results-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pg-v17 .v17-results-row-title {
+  font-size: 14px;
+  color: var(--v17-ink);
+  overflow-wrap: anywhere;
+}
+
+.pg-v17 .v17-results-row-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  font-family: var(--v17-mono);
+  color: var(--v17-ink-faint);
+  flex-wrap: wrap;
+}
+
+.pg-v17 .v17-tone-published {
+  color: var(--v17-success-text);
+}
+
+.pg-v17 .v17-tone-needs_approval {
+  color: var(--v17-attention);
+}
+
+.pg-v17 .v17-tone-approved,
+.pg-v17 .v17-tone-scheduled {
+  color: var(--v17-blue);
+}
+
+/* --- Activity timeline --- */
+
+.pg-v17 .v17-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 3px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-v17 .v17-timeline-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0 9px 16px;
+  border-left: 1px solid var(--v17-line-soft);
+  position: relative;
+}
+
+.pg-v17 .v17-timeline-item:last-child {
+  border-left-color: transparent;
+}
+
+.pg-v17 .v17-timeline-dot {
+  position: absolute;
+  left: -3px;
+  top: 14px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--v17-r-pill);
+  background: var(--v17-dot);
+}
+
+.pg-v17 .v17-timeline-label {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--v17-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.pg-v17 .v17-timeline-time {
+  font-size: 11px;
+  font-family: var(--v17-mono);
+  color: var(--v17-ink-faint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --- Onboarding empty state --- */
+
+.pg-v17 .v17-results-onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 480px;
+}
+
+@media (max-width: 640px) {
+  .pg-v17 .v17-results-head {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pg-v17 .v17-range {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-v17 .v17-range-opt {
+    transition: none;
+  }
+}
+
+/* --- Insights: the primary content area of Results ---------------------
+   Scoped modifiers only. The base .v17-insight-* rules stay untouched
+   because the Knowledge settings view shares them. */
+
+.pg-v17 .v17-results-insights {
+  margin: 40px 0 30px;
+}
+
+.pg-v17 .v17-results-insights .v17-cc-block {
+  margin-bottom: 0;
+}
+
+/* Promote the eyebrow into a real section heading. */
+.pg-v17 .v17-results-insights .v17-cc-block-head {
+  font-family: var(--v17-font);
+  font-size: 19px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--v17-ink);
+  margin: 0 0 16px;
+}
+
+.pg-v17 .v17-results-insights .v17-insight-grid {
+  gap: 14px;
+}
+
+.pg-v17 .v17-insight-card--primary {
+  padding: 20px 22px;
+  border-radius: var(--v17-r-lg);
+  background: var(--v17-panel);
+  box-shadow: var(--v17-shadow-ambient);
+}
+
+/* The observation is the Peer speaking — give it real presence. */
+.pg-v17 .v17-insight-card--primary .v17-insight-body {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--v17-ink);
+}
+
+/* Advice, not a metric readout: a quiet rule instead of a data label. */
+.pg-v17 .v17-insight-card--primary .v17-insight-rec {
+  margin-top: 14px;
+  padding-left: 14px;
+  border-left: 2px solid var(--v17-line);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--v17-ink-soft);
+}
+
+.pg-v17 .v17-insight-card--primary .v17-insight-rec-label {
+  font-family: var(--v17-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--v17-ink-faint);
+  margin-bottom: 3px;
+}
+
+@media (max-width: 640px) {
+  .pg-v17 .v17-results-insights {
+    margin: 30px 0 24px;
+  }
+
+  .pg-v17 .v17-insight-card--primary {
+    padding: 16px 17px;
+  }
+
+  .pg-v17 .v17-results-insights .v17-cc-block-head {
+    font-size: 17px;
+  }
+}
+

@@ -22,6 +22,7 @@ export function buildCampaignCollaborationBuildInput(input: {
     campaignReviewDecisionHistoryByWorkUnitId:
       reviewBuildInput.campaignReviewDecisionHistoryByWorkUnitId,
     campaignArtifactVersionByWorkUnitId: reviewBuildInput.campaignArtifactVersionByWorkUnitId,
+    campaignApprovalByProjectId: reviewBuildInput.campaignApprovalByProjectId,
     approvalMode: reviewBuildInput.approvalMode,
     continuationRunning: reviewBuildInput.continuationRunning,
   };

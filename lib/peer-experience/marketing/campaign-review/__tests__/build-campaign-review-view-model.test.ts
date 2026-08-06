@@ -116,9 +116,55 @@ describe("buildCampaignReviewViewModel", () => {
       (i) => i.artifactType === "campaign_strategy"
     );
     expect(strategyItem?.preview?.kind).toBe("campaign_strategy");
-    expect(strategyItem?.status).toBe("awaiting_review");
-    expect(vm.reviewQueue).toHaveLength(1);
+    expect(strategyItem?.status).toBe("prepared");
+    expect(vm.reviewQueue).toHaveLength(0);
+    expect(vm.executiveBriefingPendingApproval).toBe(true);
+    expect(vm.executiveBriefing).not.toBeNull();
     expect(vm.needsAttention).toBe(true);
+  });
+
+  it("uses step-by-step review queue in guided mode", () => {
+    let strategyUnit = createWorkUnit({
+      peerId,
+      projectId,
+      role: "Marketing",
+      title: CAMPAIGN_STRATEGY_WORK_UNIT_TITLE,
+      deliverableKind: "generic",
+      channel: "Campaign",
+      objective: "Strategy",
+      audience: null,
+      needsVisual: false,
+      recurrence: "once",
+      rawRequest: "Strategy",
+    });
+    strategyUnit = transitionWorkUnit(
+      strategyUnit,
+      "review_ready",
+      "review_ready",
+      CAMPAIGN_STRATEGY_EXECUTION_COMPLETE_NOTE
+    );
+
+    const vm = buildCampaignReviewViewModel(
+      baseInput({
+        approvalMode: "approval_before_generation",
+        project: {
+          ...sampleProject(),
+          campaignSetup: { approvalMode: "approval_before_generation" as const },
+        },
+        workUnits: [strategyUnit],
+        strategy: {
+          summary: "Lead with founder POV.",
+          generatedAt: "2026-07-24T12:00:00.000Z",
+          positioningRecommendations: [{ recommendation: "Premium peer OS" }],
+          contentPillars: [{ name: "Trust" }],
+          campaignIdeas: [],
+          socialMediaStrategy: [{ platform: "LinkedIn" }],
+        } as never,
+      })
+    );
+
+    expect(vm.reviewQueue).toHaveLength(1);
+    expect(vm.executiveBriefingPendingApproval).toBe(false);
   });
 
   it("does not mark review-ready creative without artifact as reviewable", () => {
@@ -154,7 +200,7 @@ describe("buildCampaignReviewViewModel", () => {
     expect(vm.reviewQueue.some((i) => i.artifactType === "creative_direction")).toBe(false);
   });
 
-  it("orders review queue strategy before creative before content", () => {
+  it("orders review queue strategy before creative before content in guided mode", () => {
     let strategyUnit = createWorkUnit({
       peerId,
       projectId,
@@ -217,6 +263,11 @@ describe("buildCampaignReviewViewModel", () => {
 
     const vm = buildCampaignReviewViewModel(
       baseInput({
+        approvalMode: "approval_before_generation",
+        project: {
+          ...sampleProject(),
+          campaignSetup: { approvalMode: "approval_before_generation" as const },
+        },
         workUnits: [creativeUnit, linkedInReady, strategyUnit],
         strategy: {
           summary: "S",

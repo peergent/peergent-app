@@ -3,6 +3,7 @@ import type { HomePeerWorkspaceSnapshot } from "@/lib/home/types";
 import type { WorkforceSummary } from "@/lib/home/workforce-summary-types";
 import type { MarketingCampaignLocale } from "@/lib/i18n/marketing-campaign-copy";
 import { deriveProjectStatus } from "@/lib/peer-experience/marketing/projects/project-engine";
+import { officeHref } from "@/lib/office/links";
 
 export type GroundedMetric = {
   id: string;
@@ -78,7 +79,7 @@ export function buildGroundedWeeklyMetrics(input: {
         source: "internal",
         confidence: "measured",
         href: input.primaryMarketingPeerId
-          ? `/team/${input.primaryMarketingPeerId}/done`
+          ? officeHref(input.primaryMarketingPeerId, "desk")
           : "/home",
       });
     }
@@ -103,7 +104,7 @@ export function buildGroundedWeeklyMetrics(input: {
       source: "internal",
       confidence: "measured",
       href: input.primaryMarketingPeerId
-        ? `/team/${input.primaryMarketingPeerId}/work`
+        ? officeHref(input.primaryMarketingPeerId, "work")
         : undefined,
     });
   }
@@ -116,7 +117,7 @@ export function buildGroundedWeeklyMetrics(input: {
       source: "internal",
       confidence: "measured",
       href: input.primaryMarketingPeerId
-        ? `/team/${input.primaryMarketingPeerId}/done`
+        ? officeHref(input.primaryMarketingPeerId, "desk")
         : undefined,
     });
   }
@@ -129,7 +130,7 @@ export function buildGroundedWeeklyMetrics(input: {
       source: "internal",
       confidence: "measured",
       href: input.primaryMarketingPeerId
-        ? `/team/${input.primaryMarketingPeerId}/work`
+        ? officeHref(input.primaryMarketingPeerId, "work")
         : undefined,
     });
   }

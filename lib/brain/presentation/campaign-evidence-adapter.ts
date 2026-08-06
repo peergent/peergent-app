@@ -187,6 +187,117 @@ function presentCreativeGenerationEvidence(input: {
   };
 }
 
+function presentStrategyEvidence(input: {
+  output: BrainStructuredOutput;
+  title: string;
+  intro?: string;
+  locale?: "nl" | "en";
+  campaignContext?: CampaignEvidencePresentationContext;
+}): CampaignEvidencePresentation {
+  const nl = input.locale === "nl";
+  const leakFilter = {
+    usesExternalBrand: Boolean(input.campaignContext?.usesExternalBrand),
+    accountOrganizationName: input.campaignContext?.accountOrganizationName ?? null,
+  };
+  const filterItems = (items: string[]) =>
+    filterLeakedOrganizationFacts(items, leakFilter).map(sanitizeCustomerText).filter(Boolean);
+
+  const finding = (pattern: RegExp) =>
+    input.output.findings.find((f) => pattern.test(f.label))?.value ?? "";
+
+  const sections: CampaignEvidenceSection[] = [];
+
+  const positioning = finding(/position/i);
+  if (positioning) {
+    sections.push({
+      id: "strategic-position",
+      title: nl ? "Strategische positionering" : "Strategic positioning",
+      items: filterItems([positioning]),
+    });
+  }
+
+  const evidenceItems = input.output.findings
+    .filter((f) => /business objective|bedrijfsdoel|value proposition|waardepropositie|target audience|doelgroep/i.test(f.label))
+    .map((f) => `${f.label}: ${f.value}`);
+  if (evidenceItems.length > 0) {
+    sections.push({
+      id: "evidence",
+      title: nl ? "Evidence" : "Evidence",
+      items: filterItems(evidenceItems),
+    });
+  }
+
+  if (input.output.decisions.length > 0) {
+    const decisionItems = input.output.decisions.map((d) => {
+      const altMatch = d.rationale.match(/Rejected alternatives:|Afgewezen alternatieven:/i);
+      return altMatch
+        ? `${d.label} — ${d.rationale}`
+        : `${d.label} — ${d.rationale}`;
+    });
+    sections.push({
+      id: "direction",
+      title: nl ? "Gekozen richting" : "Chosen direction",
+      items: filterItems(decisionItems),
+    });
+  }
+
+  const riskFinding = finding(/risk|risico/i);
+  if (riskFinding) {
+    sections.push({
+      id: "risks",
+      title: nl ? "Risico's" : "Risks",
+      items: filterItems([riskFinding]),
+    });
+  }
+
+  const unknownFinding = finding(/unknown|onbekend/i);
+  if (unknownFinding && !/geen|none/i.test(unknownFinding)) {
+    sections.push({
+      id: "unknowns",
+      title: nl ? "Nog onzeker" : "Still uncertain",
+      items: filterItems([unknownFinding]),
+    });
+  }
+
+  if (input.output.recommendations.length > 0) {
+    sections.push({
+      id: "recommendations",
+      title: nl ? "Volgende stap" : "Next step",
+      items: filterItems(input.output.recommendations.map((r) => sanitizeCustomerText(r.label))),
+    });
+  }
+
+  const structuredIds = new Set(sections.flatMap((s) => s.items));
+  const unmatchedFindings = input.output.findings
+    .filter((f) => {
+      const line = `${f.label}: ${f.value}`;
+      return !Array.from(structuredIds).some((item) => item.includes(f.value) || item.includes(f.label));
+    })
+    .map((f) => `${f.label}: ${f.value}`);
+
+  if (unmatchedFindings.length > 0 && !sections.some((s) => s.id === "findings")) {
+    sections.unshift({
+      id: "findings",
+      title: nl ? "Bevindingen" : "Findings",
+      items: filterItems(unmatchedFindings),
+    });
+  }
+
+  if (input.output.warnings.length > 0) {
+    sections.push({
+      id: "warnings",
+      title: nl ? "Let op" : "Notes",
+      items: input.output.warnings.map((w) => sanitizeCustomerText(w.message)),
+    });
+  }
+
+  return {
+    title: input.title,
+    intro: input.intro,
+    sections,
+  };
+}
+
 /**
  * Maps structured Brain output → CampaignEvidenceSection for Vision v13 UI.
  * Narrative text is derived here — never stored in the core Brain model.
@@ -204,6 +315,10 @@ export function presentBrainOutputForCampaign(input: {
 
   if (input.output.capabilityId === "creative_generation") {
     return presentCreativeGenerationEvidence(input);
+  }
+
+  if (input.output.capabilityId === "strategy") {
+    return presentStrategyEvidence(input);
   }
 
   const leakFilter = {

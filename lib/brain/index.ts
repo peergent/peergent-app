@@ -496,3 +496,274 @@ export {
   BrainLlmParseError,
   BrainLlmMissingKeyError,
 } from "./llm/errors";
+
+/* Sprint 8 — Research Layer */
+
+export {
+  RESEARCH_LAYER_VERSION,
+  RESEARCH_CONFIDENCE,
+  emptyResearchGraph,
+  createResearchEvidence,
+  createResearchUnknown,
+  buildResearchGraph,
+  researchGraphHasProvenance,
+  RESEARCH_MODULE_SPECS,
+  getResearchModuleSpec,
+  ResearchLayer,
+  createResearchLayer,
+  collectResearchGraph,
+  InMemoryResearchRepository,
+  getDefaultResearchRepository,
+  resetDefaultResearchRepository,
+  resetResearchEvidenceCounter,
+  resetResearchUnknownCounter,
+} from "./layers/research";
+
+export type {
+  ResearchGraph,
+  ResearchEvidence,
+  ResearchUnknown,
+  ResearchSource,
+  ResearchSourceKind,
+  ResearchModuleSpec,
+  ResearchRepository,
+  ResearchLayerInput,
+  ResearchLayerResult,
+  BuildResearchGraphInput,
+} from "./layers/research";
+
+/* Sprint 9 — Reasoning Layer */
+
+export {
+  REASONING_LAYER_VERSION,
+  emptyReasoningGraph,
+  createReasoningNode,
+  buildReasoningGraph,
+  reasoningGraphHasEvidenceChain,
+  REASONING_MODULE_SPECS,
+  getReasoningModuleSpec,
+  ReasoningLayer,
+  createReasoningLayer,
+  collectReasoningGraph,
+  InMemoryReasoningRepository,
+  getDefaultReasoningRepository,
+  resetDefaultReasoningRepository,
+  resetReasoningNodeCounter,
+  deriveReasoningConfidence,
+} from "./layers/reasoning";
+
+export type {
+  ReasoningGraph,
+  ReasoningNode,
+  ReasoningPattern,
+  ReasoningContradiction,
+  ReasoningUnknown,
+  ReasoningOpportunity,
+  ReasoningRisk,
+  ReasoningModuleSpec,
+  ReasoningRepository,
+  ReasoningLayerInput,
+  ReasoningLayerResult,
+  BuildReasoningGraphInput,
+} from "./layers/reasoning";
+
+/* Sprint 9.3 — Marketing Intelligence Layer */
+
+export {
+  MARKETING_INTELLIGENCE_LAYER_VERSION,
+  buildMarketingIntelligenceGraph,
+  buildMarketingIntelligenceThinking,
+  MARKETING_INTELLIGENCE_MODULE_SPECS,
+  MARKETING_INTELLIGENCE_THINKING_QUESTIONS,
+  MarketingIntelligenceLayer,
+  createMarketingIntelligenceLayer,
+  collectMarketingIntelligenceGraph,
+  getDefaultMarketingIntelligenceRepository,
+  resetDefaultMarketingIntelligenceRepository,
+} from "./layers/marketing-intelligence";
+
+export type {
+  MarketingIntelligenceGraph,
+  MarketingIntelligenceInsight,
+  BuildMarketingIntelligenceInput,
+  MarketingIntelligenceLayerInput,
+  MarketingIntelligenceLayerResult,
+  MarketingIntelligenceModuleSpec,
+  MarketingIntelligenceThinkingRecord,
+  MarketingIntelligenceThinkingId,
+} from "./layers/marketing-intelligence";
+
+export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
+export type { ExecutiveCampaignBriefing, ExecutiveBriefingSection } from "./presentation/executive-briefing";
+
+export {
+  buildExecutiveReviewNavigation,
+  createBriefingFrame,
+  createDecisionFrame,
+  type ExecutiveReviewFrame,
+  type ExecutiveReviewLayer,
+  type ExecutiveReviewNavigation,
+} from "./presentation/executive-review-disclosure";
+
+/* Sprint 10.2 — Decision Engine */
+
+export {
+  DECISION_ENGINE_VERSION,
+  buildDecisionsFromStrategyGraph,
+  calculateDecisionConfidence,
+  decisionConfidenceLabel,
+  validateDecision,
+  validateDecisionCollection,
+  presentDecisionSummary,
+  presentDecisionExplainability,
+  presentTopDecisions,
+  mapDecisionToBrainDecision,
+  mapDecisionsToBrainDecisions,
+} from "./decision";
+
+export type {
+  Decision,
+  DecisionCategory,
+  DecisionCollection,
+  DecisionConfidenceLevel,
+  DecisionDependency,
+  DecisionCustomerChallenge,
+  DecisionPresentationSummary,
+  DecisionExplainabilityView,
+  DecisionValidationResult,
+} from "./decision";
+
+export { finalizeStrategyWithSelfCritique } from "./strategy/strategy-self-critique";
+export type { StrategyCritiqueResult } from "./strategy/strategy-self-critique";
+
+/* Sprint 9 — Strategy Layer */
+
+export {
+  STRATEGY_GRAPH_VERSION,
+  buildStrategyGraph,
+  mapStrategyGraphToBrainOutput,
+  validateStrategyQuality,
+  scoreStrategyQuality,
+  executeStrategyWithGraph,
+} from "./strategy";
+
+export type {
+  StrategyGraph,
+  StrategySection,
+  StrategyQualityResult,
+  BuildStrategyGraphInput,
+} from "./strategy";
+
+/* Sprint 10.0 — Brand Brain Layer */
+
+export {
+  BRAND_LAYER_VERSION,
+  BRAND_CONFIDENCE,
+  ALL_BRAND_CONCEPT_IDS,
+  BRAND_CONCEPT_DEFINITIONS,
+  BRAND_RESEARCH_MODULE_SPECS,
+  buildBrandResearchGraph,
+  buildBrandGraph,
+  buildBrandModel,
+  brandResearchGraphHasProvenance,
+  brandModelHasConfidence,
+  queryBrandFactsByConcept,
+  queryBrandFactsByStatus,
+  BrandLayer,
+  createBrandLayer,
+  collectBrandGraph,
+  BrandBoundary,
+  createBrandBoundary,
+  exposeBrandBrainToConsumer,
+  InMemoryBrandRepository,
+  getDefaultBrandRepository,
+  resetDefaultBrandRepository,
+  createBrandResearchObservation,
+  createBrandResearchUnknown,
+  resetBrandObservationCounter,
+  resetBrandUnknownCounter,
+  resetBrandFactCounter,
+  buildBrandUnderstanding,
+  persistValidatedBrandKnowledge,
+  loadBrandMemory,
+} from "./layers/brand";
+
+export type {
+  BrandGraph,
+  BrandModel,
+  BrandResearchGraph,
+  BrandResearchObservation,
+  BrandFact,
+  BrandConceptId,
+  BrandKnowledgeStatus,
+  BrandBoundaryFact,
+  BrandBrainSnapshot,
+  BrandBrainConsumer,
+  BrandLayerInput,
+  BrandLayerResult,
+  BuildBrandResearchGraphInput,
+  BuildBrandGraphInput,
+  BrandRepository,
+} from "./layers/brand";
+
+/* Sprint 11.0 — Planning Brain Layer */
+
+export {
+  PLANNING_LAYER_VERSION,
+  PLANNING_MODULE_SPECS,
+  buildPlanningGraph,
+  analyzePlanningDependencies,
+  assessPlanningReadiness,
+  buildPlanningTimeline,
+  buildPlanningRisks,
+  validatePlanningGraph,
+  scorePlanningQuality,
+  presentExecutionPlanSummary,
+  presentExecutionPlanDetail,
+  presentExecutionPlanBriefingSections,
+  PlanningLayer,
+  createPlanningLayer,
+  collectPlanningGraph,
+  planFromBrainInputs,
+  getDefaultPlanningRepository,
+  resetDefaultPlanningRepository,
+} from "./layers/planning";
+
+export {
+  CAMPAIGN_PLANNING_CAPABILITY_ID,
+} from "./planning/campaign-planning-types";
+
+export type {
+  PlanningOutputMetadata,
+  PlanningBuildResult,
+} from "./planning/campaign-planning-types";
+
+export {
+  ensureCampaignPlanning,
+  readPlanningGraphFromProject,
+  readPlanningGraphFromOutputs,
+} from "./integration/ensure-campaign-planning";
+
+export { mergeCampaignOutputsWithPlanning } from "./integration/merge-campaign-planning-outputs";
+
+export {
+  computePlanningCacheIdentity,
+  isStoredCampaignPlanningCompatible,
+  readStoredCampaignPlanning,
+} from "./planning/planning-cache-identity";
+
+export { mapPlanningGraphToBrainOutput } from "./planning/map-planning-graph-to-output";
+
+export type {
+  PlanningGraph,
+  PlanningNode,
+  PlanningDecision,
+  PlanningObjective,
+  PlanningReadinessAssessment,
+  PlanningReadinessLevel,
+  PlanningRisk,
+  PlanningTimelineIntent,
+  PlanningValidationResult,
+  BuildPlanningGraphInput,
+  PlanningLayerInput,
+} from "./layers/planning";

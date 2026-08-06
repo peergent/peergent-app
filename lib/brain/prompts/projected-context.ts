@@ -44,6 +44,12 @@ export type StrategyProjectedContext = {
   corrections: string;
   workingAgreement: string;
   executionMode: string;
+  reasoningSummary: string;
+  researchSummary: string;
+  strategicThemes: string;
+  priorityOpportunities: string;
+  strategicRisks: string;
+  rejectedAlternatives: string;
 };
 
 function fieldValue(value: string | null | undefined, fallback = "Unknown"): string {
@@ -89,6 +95,38 @@ export function buildStrategyProjectedContext(input: {
   const knownFacts = compressFacts(input.snapshot.knownFacts.map((f) => f.value)).join("\n") || "None listed.";
   const unknowns = compressFacts(input.snapshot.unknowns).join("\n") || "None listed.";
 
+  const reasoning = input.executionContext.reasoningGraph;
+  const research = input.executionContext.researchGraph;
+
+  const reasoningSummary = reasoning
+    ? [
+        "Business model:",
+        ...reasoning.businessModel.map((n) => `- ${n.title}: ${n.description}`),
+        "Market position:",
+        ...reasoning.marketPosition.map((n) => `- ${n.title}: ${n.description}`),
+        "Customer model:",
+        ...reasoning.customerModel.map((n) => `- ${n.title}: ${n.description}`),
+        "Priority insights:",
+        ...reasoning.priorityInsights.map((n) => `- ${n.title}: ${n.description}`),
+      ].join("\n")
+    : "ReasoningGraph not available — use legacy context.";
+
+  const researchSummary = research
+    ? [
+        `Company evidence: ${research.company.length}`,
+        `Audience evidence: ${research.audience.length}`,
+        `Competitors: ${research.competitors.length}`,
+        `Unknowns: ${research.unknowns.map((u) => u.title).join(", ") || "none"}`,
+      ].join("\n")
+    : "ResearchGraph not available.";
+
+  const strategicThemes = reasoning?.strategicThemes.map((t) => t.title).join(", ") ?? "None";
+  const priorityOpportunities =
+    reasoning?.opportunities.map((o) => o.title).join(", ") ?? "None identified";
+  const strategicRisks = reasoning?.risks.map((r) => r.title).join(", ") ?? "None identified";
+  const rejectedAlternatives =
+    reasoning?.contradictions.map((c) => c.title).join(", ") ?? "Document in decisions";
+
   const sections = fitContextToWindow({
     sections: {
       companyProfile: companyLines.join("\n"),
@@ -106,6 +144,12 @@ export function buildStrategyProjectedContext(input: {
         ? trimSection(input.snapshot.workingAgreement.summary ?? "Working agreement on file.", 400)
         : "Not specified.",
       executionMode: "semi_automatic",
+      reasoningSummary: trimSection(reasoningSummary, 1200),
+      researchSummary: trimSection(researchSummary, 600),
+      strategicThemes,
+      priorityOpportunities,
+      strategicRisks,
+      rejectedAlternatives,
     },
   });
 
@@ -121,6 +165,12 @@ export function buildStrategyProjectedContext(input: {
     corrections: sections.corrections ?? "",
     workingAgreement: sections.workingAgreement ?? "",
     executionMode: sections.executionMode ?? "semi_automatic",
+    reasoningSummary: sections.reasoningSummary ?? "",
+    researchSummary: sections.researchSummary ?? "",
+    strategicThemes: sections.strategicThemes ?? "",
+    priorityOpportunities: sections.priorityOpportunities ?? "",
+    strategicRisks: sections.strategicRisks ?? "",
+    rejectedAlternatives: sections.rejectedAlternatives ?? "",
   };
 }
 

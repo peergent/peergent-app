@@ -4,8 +4,19 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { V17CampaignDetailViewModel } from "@/lib/customer-v17/build-v17-campaign-detail-view-model";
+import ExecutiveCampaignBriefingPanel from "@/features/marketing-workspace/components/ExecutiveCampaignBriefingPanel";
+import V17CampaignApprovalActions from "./V17CampaignApprovalActions";
+import { buildExecutiveBriefingStepHref } from "@/features/marketing-workspace/lib/build-executive-briefing-step-href";
+import type { CampaignApprovalResult } from "@/lib/peer-experience/marketing/campaign-approval";
+import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
 
-export default function V17CampaignDetailView({ model }: { model: V17CampaignDetailViewModel }) {
+export default function V17CampaignDetailView({
+  model,
+  onApproveCampaign,
+}: {
+  model: V17CampaignDetailViewModel;
+  onApproveCampaign?: (input: { projectId: string }) => Promise<CampaignApprovalResult>;
+}) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const copy = model.copy;
 
@@ -61,6 +72,30 @@ export default function V17CampaignDetailView({ model }: { model: V17CampaignDet
             </div>
           ))}
         </section>
+      ) : null}
+
+      {model.executiveBriefing ? (
+        <div id="executive-briefing">
+          <ExecutiveCampaignBriefingPanel
+            briefing={model.executiveBriefing}
+            locale={model.locale === "nl" ? "nl" : "en"}
+            buildStepHref={(stepId) =>
+              buildExecutiveBriefingStepHref({
+                peerId: model.peerId,
+                projectId: model.projectId,
+                stepId: stepId as CampaignWorkflowStepId,
+                allReviewItems: model.allReviewItems,
+              })
+            }
+          />
+          <V17CampaignApprovalActions
+            projectId={model.projectId}
+            pendingApproval={model.executiveBriefingPendingApproval}
+            publicationUnlocked={model.campaignPublicationUnlocked}
+            locale={model.locale === "nl" ? "nl" : "en"}
+            onApproveCampaign={onApproveCampaign}
+          />
+        </div>
       ) : null}
 
       {(model.progressLine || model.currentPhaseLabel || model.nextStepLine) && (

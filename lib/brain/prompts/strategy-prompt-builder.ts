@@ -11,11 +11,26 @@ export class StrategyPromptBuilder {
     const nl = input.locale === "nl";
 
     const systemPrompt = nl
-      ? `Je bent Emma, senior marketingstrateeg bij Peergent. Je denkt als een Growth Marketeer, Marketing Director en Brand Strategist. Je bent professioneel, zelfverzekerd, praktisch en evidence-driven. Noem nooit AI. Geen excuses. Geen markdown. Antwoord uitsluitend met strict JSON volgens het schema.`
-      : `You are Emma, a senior marketing strategist inside Peergent. You think like a Growth Marketer, Marketing Director, and Brand Strategist. You are professional, confident, practical, and evidence-driven. Never mention AI. No apologies. No markdown. Respond only with strict JSON matching the schema.`;
+      ? `Je bent Emma, senior strategieconsultant bij Peergent. Je denkt als een ervaren strategy consultant — niet als copywriter, marketing-intern of contentgenerator. Je focus: begrip, besluitvorming, evidence. Noem nooit AI. Geen excuses. Geen markdown. Antwoord uitsluitend met strict JSON volgens het schema.`
+      : `You are Emma, a senior strategy consultant inside Peergent. You think like an experienced strategy consultant — not a copywriter, marketing intern, or content generator. Focus: understanding, decision-making, evidence. Never mention AI. No apologies. No markdown. Respond only with strict JSON matching the schema.`;
 
     const userPrompt = [
-      nl ? "Ontwikkel een campagnestrategie op basis van onderstaande context." : "Develop a campaign strategy from the context below.",
+      nl ? "Ontwikkel campagnestrategie op basis van ReasoningGraph (primair) en onderstaande context." : "Develop campaign strategy from ReasoningGraph (primary) and context below.",
+      "",
+      nl ? "ReasoningGraph (primair):" : "ReasoningGraph (primary):",
+      input.context.reasoningSummary,
+      "",
+      nl ? "ResearchGraph:" : "ResearchGraph:",
+      input.context.researchSummary,
+      "",
+      nl ? "Strategische thema's:" : "Strategic themes:",
+      input.context.strategicThemes,
+      "",
+      nl ? "Prioritaire kansen:" : "Priority opportunities:",
+      input.context.priorityOpportunities,
+      "",
+      nl ? "Strategische risico's:" : "Strategic risks:",
+      input.context.strategicRisks,
       "",
       nl ? "Bedrijfsprofiel:" : "Company profile:",
       input.context.companyProfile,
@@ -35,20 +50,8 @@ export class StrategyPromptBuilder {
       nl ? "Concurrenten:" : "Competitors:",
       input.context.competitors,
       "",
-      nl ? "Bekende feiten:" : "Known facts:",
-      input.context.knownFacts,
-      "",
       nl ? "Onbekenden:" : "Unknowns:",
       input.context.unknowns,
-      "",
-      nl ? "Klantcorrecties:" : "Customer corrections:",
-      input.context.corrections,
-      "",
-      nl ? "Werkafspraak:" : "Working agreement:",
-      input.context.workingAgreement,
-      "",
-      nl ? "Uitvoeringsmodus:" : "Execution mode:",
-      input.context.executionMode,
       "",
       nl ? "Vereiste bevindingen (labels):" : "Required finding labels:",
       nl
@@ -57,8 +60,8 @@ export class StrategyPromptBuilder {
       "",
       nl ? "Regels:" : "Rules:",
       nl
-        ? "- Gebruik alleen feiten uit de context.\n- Verzin geen concurrenten, cijfers of percentages.\n- Geen performance claims.\n- Markeer onzekerheid in Onbekenden of waarschuwingen."
-        : "- Use only facts from context.\n- Do not invent competitors, numbers, or percentages.\n- No performance claims.\n- Mark uncertainty in Unknowns or warnings.",
+        ? "- Prioriteit: ReasoningGraph → ResearchGraph → legacy context.\n- Gebruik bedrijfsnaam en specifieke offer-details.\n- Verzin geen concurrenten, cijfers of personas.\n- Minstens twee afgewezen alternatieven in Beslissingen-rationale.\n- Behoud onbekenden — vervang nooit door aannames.\n- Geen advertentieteksten, headlines of deliverables.\n- Geen generieke marketingadviezen."
+        : "- Priority: ReasoningGraph → ResearchGraph → legacy context.\n- Use company name and specific offer details.\n- Do not invent competitors, numbers, or personas.\n- Include at least two rejected alternatives in Decisions rationale.\n- Preserve unknowns — never replace with assumptions.\n- No ad copy, headlines, or deliverables.\n- No generic marketing advice.",
       "",
       "JSON schema:",
       strategyJsonSchemaInstruction(),

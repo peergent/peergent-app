@@ -67,3 +67,102 @@ export {
   CampaignExecutionApplicationUnsupportedOperationError,
   CampaignExecutionApplicationUnresolvedWorkUnitError,
 } from "./errors";
+
+/* Sprint 9.5 — production campaign run pipeline */
+
+export type {
+  CampaignExecutionStage,
+  CampaignPublicationState,
+  CampaignPublicationStatus,
+  CampaignRunState,
+  CampaignRunStatus,
+} from "./campaign-run-types";
+export {
+  ACTIVE_CAMPAIGN_RUN_STATUSES,
+  ACTIVE_PUBLICATION_STATUSES,
+  CAMPAIGN_RUN_STALE_MS,
+  isActiveCampaignRunStatus,
+  isActivePublicationStatus,
+  isCampaignRunStale,
+} from "./campaign-run-types";
+
+export {
+  buildCampaignContinuationIdempotencyKey,
+  createCampaignRunId,
+} from "./campaign-run-id";
+
+export type { CampaignExecutionCorrelation } from "./campaign-execution-correlation";
+export {
+  buildCampaignExecutionCorrelation,
+  formatCampaignExecutionCorrelation,
+} from "./campaign-execution-correlation";
+
+export type {
+  CampaignExecutionTimelineEvent,
+  CampaignExecutionTimelineEventKind,
+} from "./campaign-execution-timeline";
+export {
+  appendTimelineEvent,
+  campaignExecutionTimelineEventLabel,
+  compareTimelineEvents,
+  createCampaignExecutionTimelineEvent,
+  EXECUTION_TIMELINE_ORDER,
+  timelineEventToActivityFeedItem,
+} from "./campaign-execution-timeline";
+
+export type { DurableCampaignExecutionState } from "./durable-campaign-state-store";
+export {
+  loadDurableCampaignExecutionState,
+  mergeDurableIntoWorkspaceState,
+  patchDurableCampaignExecutionState,
+  resetDurableCampaignExecutionStateForTests,
+  saveDurableCampaignExecutionState,
+} from "./durable-campaign-state-store";
+
+export {
+  attachCampaignPublicationToProject,
+  attachCampaignRunToProject,
+  inferBrainPipelineStagesComplete,
+  markCampaignRunStageComplete,
+  persistCampaignPublication,
+  persistCampaignRun,
+  resolveCampaignRunForProject,
+} from "./campaign-run-store";
+
+export {
+  assertPublicationTransition,
+  canTransitionPublicationStatus,
+  initialCampaignPublicationStatus,
+  isPublicationRetryable,
+  isPublicationTerminal,
+} from "./publication-state-machine";
+
+export {
+  cachePublicationCompletion,
+  executeCampaignPublication,
+  retryCampaignPublication,
+  type CampaignPublicationExecutorInput,
+  type CampaignPublicationExecutorResult,
+} from "./publication-executor";
+
+export {
+  acquireContinuationLock,
+  cacheContinuationResult,
+  clearContinuationLocksForTests,
+  getCachedContinuationResult,
+  isContinuationInFlight,
+} from "./idempotent-continuation";
+
+export {
+  continueCampaignWithExecution,
+  seedCampaignPublicationState,
+  type ContinueCampaignWithExecutionDeps,
+} from "./continue-campaign-with-execution";
+
+export {
+  detectRecoverableCampaignExecutions,
+  recoverCampaignExecutions,
+  type RecoverableCampaignExecution,
+} from "./campaign-execution-recovery";
+
+export { persistCampaignApprovalDurably } from "./persist-campaign-approval-durably";

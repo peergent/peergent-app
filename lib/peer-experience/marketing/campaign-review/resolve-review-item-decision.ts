@@ -92,7 +92,7 @@ export function overlayReviewDecisionOnItem(input: {
 
   let status = input.base.status;
   let statusLabel = input.base.statusLabel;
-  if (decisionStatus === "awaiting_review") {
+  if (decisionStatus === "awaiting_review" && reviewRelevant) {
     status = "awaiting_review";
     statusLabel = customerLabelForReviewDecisionStatus("awaiting_review");
   } else if (decisionStatus === "approved") {

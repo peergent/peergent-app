@@ -150,6 +150,7 @@ export type CampaignCollaborationBuildInput = {
   readonly campaignReviewDecisionByWorkUnitId?: import("../campaign-review-decisions").CampaignReviewDecisionMap;
   readonly campaignReviewDecisionHistoryByWorkUnitId?: import("../campaign-review-decisions").CampaignReviewDecisionHistoryMap;
   readonly campaignArtifactVersionByWorkUnitId?: import("../campaign-review-decisions").CampaignArtifactVersionMap;
+  readonly campaignApprovalByProjectId?: import("../campaign-approval").CampaignApprovalMap;
   readonly approvalMode?: import("@/lib/campaign/types/campaign").CampaignApprovalMode;
   readonly continuationRunning?: boolean;
 };
