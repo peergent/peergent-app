@@ -1,0 +1,271 @@
+/**
+ * PX-12 — Executive composition & premium polish.
+ * Balance, alignment, hierarchy. No new effects.
+ */
+
+.pg-cc12 {
+  --pg-cc12-gutter: 24px;
+  --pg-cc12-card-pad: var(--pg-space-5);
+  --pg-cc12-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 24px rgba(15, 23, 42, 0.04);
+}
+
+.pg-cc12.pg-cc6 {
+  --pg-cc6-band: 32px;
+}
+
+/* ── Story pair: chart + briefing as one composition ── */
+.pg-cc12 .pg-cc6-overview-grid {
+  gap: var(--pg-cc12-gutter);
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+
+.pg-cc12 .pg-cc6-chart-panel,
+.pg-cc12 .pg-cc6-briefing {
+  padding: var(--pg-cc12-card-pad);
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--pg-cc12-shadow);
+}
+
+.pg-cc12 .pg-cc6-briefing__head,
+.pg-cc12 .pg-cc6-chart-head {
+  margin-bottom: var(--pg-space-4);
+  min-height: 52px;
+}
+
+.pg-cc12 .pg-cc6-chart-wrap {
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+}
+
+.pg-cc12 .pg-cc6-briefing__link {
+  margin-top: auto;
+}
+
+.pg-cc12 .pg-cc6-panel-title,
+.pg-cc12 .pg-cc6-briefing__title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--pg-text);
+}
+
+/* ── Chart: Linear endpoint ── */
+.pg-cc12 .pg-ds-chart-hero .pg-ds-chart-endpoint-glow {
+  display: none;
+}
+
+.pg-cc12 .pg-cc6-chart {
+  --pg-trend-height: 128px;
+}
+
+.pg-cc12 .pg-ds-chart-hero .pg-ds-chart-area {
+  opacity: 0.1;
+}
+
+/* ── KPI trend semantics ── */
+.pg-cc12 .pg-cc6-kpi__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.pg-cc12 .pg-cc6-kpi__trend--positive {
+  color: var(--pg-state-positive);
+  background: color-mix(in srgb, var(--pg-state-positive) 12%, transparent);
+}
+
+.pg-cc12 .pg-cc6-kpi__trend--negative {
+  color: var(--pg-state-attention);
+  background: color-mix(in srgb, var(--pg-state-attention) 12%, transparent);
+}
+
+.pg-cc12 .pg-cc6-kpi__trend--neutral {
+  color: var(--pg-text-faint);
+  background: color-mix(in srgb, var(--pg-text-faint) 10%, transparent);
+}
+
+.pg-cc12 .pg-cc6-kpi__trend-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* ── Attention: restore original ── */
+.pg-cc12 .pg-cc6-attention-grid {
+  gap: var(--pg-cc12-gutter);
+}
+
+.pg-cc12 .pg-cc7 .pg-cc6-attention-card {
+  border-top: none;
+  border-left: 3px solid var(--pg-state-attention);
+  background: color-mix(in srgb, var(--pg-state-attention) 6%, var(--pg-office-panel));
+}
+
+.pg-cc12 .pg-cc7 .pg-cc6-attention-card__cta {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--pg-action-primary);
+  font-weight: 650;
+}
+
+.pg-cc12 .pg-cc6-section-title {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--pg-text);
+}
+
+/* ── Recommendation: premium gradient depth ── */
+.pg-cc12 .pg-cc7-rec-hero {
+  border-radius: var(--pg-cc6-radius);
+  overflow: hidden;
+  box-shadow: var(--pg-cc12-shadow);
+}
+
+.pg-cc12 .pg-cc6-chart-insight {
+  margin-top: auto;
+}
+
+.pg-cc12 .pg-cc7-rec-hero__glow {
+  position: absolute;
+  inset: 0;
+  animation: none;
+  background:
+    radial-gradient(
+      ellipse 90% 80% at 10% 20%,
+      rgba(59, 91, 238, 0.45) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 90% 80%,
+      rgba(124, 58, 237, 0.35) 0%,
+      transparent 50%
+    ),
+    linear-gradient(
+      135deg,
+      #0f1f5c 0%,
+      #1e2a7a 22%,
+      #3730a3 48%,
+      #4c1d95 72%,
+      #312e81 100%
+    );
+}
+
+.pg-cc12 .pg-cc7-rec-hero__glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 75% 25%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 45%
+    );
+  pointer-events: none;
+}
+
+.pg-cc12 .pg-cc7-rec-hero__arrow {
+  display: none;
+}
+
+.pg-cc12 .pg-cc7-rec-hero__content {
+  padding: var(--pg-space-6) var(--pg-space-8);
+  max-width: 680px;
+  gap: var(--pg-space-4);
+}
+
+.pg-cc12 .pg-cc7-rec-hero__headline {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.18;
+}
+
+.pg-cc12 .pg-cc7-rec-hero__btn {
+  margin-top: var(--pg-space-2);
+  min-height: 42px;
+  padding: 0 20px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.pg-cc12 .pg-cc7-rec-hero__metric {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+/* ── Live activity ── */
+.pg-cc12 .pg-cc6-timeline-item {
+  position: relative;
+  border-left: 2px solid var(--pg-cc12-peer-accent, var(--pg-border-soft));
+  margin-left: 18px;
+  padding-left: calc(var(--pg-space-4) + 4px);
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pg-cc12 .pg-cc6-timeline-item:hover {
+  background: color-mix(in srgb, var(--pg-office-inset) 60%, transparent);
+  border-radius: var(--pg-radius-md, 12px);
+  margin-inline: calc(-1 * var(--pg-space-2));
+  padding-inline: calc(var(--pg-space-4) + var(--pg-space-2) + 4px);
+}
+
+.pg-cc12 .pg-cc6-timeline-item--latest {
+  background: color-mix(in srgb, var(--pg-cc12-peer-accent, var(--pg-v13-blue)) 4%, transparent);
+}
+
+.pg-cc12 .pg-cc6-timeline-time {
+  color: var(--pg-text-faint);
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.pg-cc12 .pg-cc7 .pg-cc6-timeline-peer {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--pg-text);
+}
+
+/* ── Consistent card system ── */
+.pg-cc12.pg-cc7 .pg-cc6-card {
+  box-shadow: var(--pg-cc12-shadow);
+}
+
+.pg-cc12 .pg-cc6-kpi-grid {
+  gap: var(--pg-cc12-gutter);
+}
+
+.pg-cc12 .pg-cc6-nav-grid {
+  gap: var(--pg-cc12-gutter);
+}
+
+.pg-cc12 .pg-cc6-attention-grid {
+  gap: var(--pg-cc12-gutter);
+}
+
+/* Briefing not visually subordinate */
+.pg-cc12 .pg-cc6-briefing.pg-cc8-support {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+.pg-cc12 .pg-cc8-hero--chart {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}

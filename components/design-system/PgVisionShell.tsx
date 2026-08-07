@@ -330,7 +330,8 @@ export default function PgVisionShell({
           <div
             className={cn(
               "pg-v13-canvas pg-voice-enter flex-1",
-              mode === "peer" && canvasLayoutClass(active)
+              mode === "peer" && canvasLayoutClass(active),
+              isIedereen && "pg-v13-canvas--dashboard"
             )}
           >
             {mode === "peer" ? (

@@ -1,6 +1,22 @@
 "use client";
 
 import { useTheme } from "@/components/theme/ThemeProvider";
+import PgActivityCard, { PgActivityList } from "@/components/design-system/PgActivityCard";
+import PgAlertCard from "@/components/design-system/PgAlertCard";
+import PgApprovalCard from "@/components/design-system/PgApprovalCard";
+import PgAutomationChip from "@/components/design-system/PgAutomationChip";
+import PgBriefingCard from "@/components/design-system/PgBriefingCard";
+import PgChartCard from "@/components/design-system/PgChartCard";
+import PgEmptyStateCard from "@/components/design-system/PgEmptyStateCard";
+import PgHeroCard, { PgHeroBand } from "@/components/design-system/PgHeroCard";
+import PgInsightCard from "@/components/design-system/PgInsightCard";
+import PgMetricCard from "@/components/design-system/PgMetricCard";
+import PgOpportunityCard from "@/components/design-system/PgOpportunityCard";
+import PgPeerStatusChip from "@/components/design-system/PgPeerStatusChip";
+import PgPerformanceCard from "@/components/design-system/PgPerformanceCard";
+import PgRecommendationCard from "@/components/design-system/PgRecommendationCard";
+import PgStatusChip from "@/components/design-system/PgStatusChip";
+import PgTimelineCard from "@/components/design-system/PgTimelineCard";
 
 /**
  * Vision v13 Stage 1 — shared visual foundation review harness.
@@ -247,6 +263,156 @@ export default function VisionV13FoundationPage() {
                 <code className="pg-v13-mono text-[11px]">18_Donker_Iedereen.png</code>{" "}
                 (dark). Canvas max-width is {920}px; section gap is {42}px.
               </p>
+            </section>
+
+            <section className="pg-v13-sec" data-testid="pg-ds-gallery">
+              <p className="pg-v13-label">Design System v2 · Card gallery (PX-4)</p>
+              <p className="mb-4 text-[13px] text-[var(--pg-v13-ink-soft)]">
+                Reusable components only — not wired to product pages yet.
+              </p>
+
+              <PgHeroBand className="mb-6">
+                <PgHeroCard
+                  label="Waarde gecreëerd"
+                  value="€41.200"
+                  delta={{ direction: "up", label: "+12%", upIsGood: true }}
+                  methodology="deze maand"
+                  animateCounter
+                />
+                <PgMetricCard
+                  label="Kanalen live"
+                  value="3"
+                  delta={{ direction: "up", label: "+1", upIsGood: true }}
+                  methodology="deze week"
+                  animateCounter
+                />
+                <PgMetricCard label="Campagnes actief" value="6" />
+                <PgMetricCard label="Open beslissingen" value="1" emphasis="activity" />
+              </PgHeroBand>
+
+              <div className="mb-6 grid gap-4 lg:grid-cols-2">
+                <PgBriefingCard
+                  peerLabel="Emma · Marketing"
+                  title="Q2 campagne voorbereid"
+                  summary="Focus ligt op LinkedIn en e-mail — klaar voor goedkeuring zodra jij akkoord geeft."
+                  statusLabel="Wacht op jou"
+                  statusTone="waiting"
+                  footer={
+                    <button type="button" className="pg-v13-btn pg-v13-btn--sm">
+                      Campagne bekijken
+                    </button>
+                  }
+                />
+                <PgApprovalCard
+                  title="Keur Q2 campagne goed"
+                  unblocks="Emma kan dan publiceren en meten."
+                  primaryLabel="Goedkeuren"
+                  ageLabel="2 uur geleden"
+                />
+              </div>
+
+              <div className="mb-6 grid gap-4 lg:grid-cols-2">
+                <PgChartCard
+                  title="Organische zichtbaarheid"
+                  promise="Impressies over 30 dagen"
+                  insight="Groei hervat na indexatie."
+                  series={{
+                    points: [
+                      { at: "1", value: 12 },
+                      { at: "2", value: 14 },
+                      { at: "3", value: 13 },
+                      { at: "4", value: 18 },
+                      { at: "5", value: 22 },
+                      { at: "6", value: 24 },
+                      { at: "7", value: 28 },
+                    ],
+                    label: "Impressies (×100)",
+                  }}
+                />
+                <PgPerformanceCard
+                  title="Zomeractie · Live"
+                  metrics={[
+                    { label: "Leads", value: "142", emphasis: "outcome" },
+                    { label: "Spend", value: "€3.840", emphasis: "activity" },
+                    { label: "ROAS", value: "4.2×", emphasis: "outcome" },
+                  ]}
+                  sparkline={[
+                    { value: 10 },
+                    { value: 12 },
+                    { value: 11 },
+                    { value: 15 },
+                    { value: 18 },
+                    { value: 20 },
+                    { value: 22 },
+                  ]}
+                  recommendation="Budget verschuiven naar LinkedIn kan ROAS verbeteren."
+                />
+              </div>
+
+              <div className="mb-6 grid gap-4 md:grid-cols-2">
+                <PgInsightCard
+                  observation="LinkedIn presteert boven verwachting — overweeg budget te verschuiven."
+                  recommendation="Verhoog het LinkedIn-deel met 15% en monitor ROAS 7 dagen."
+                />
+                <PgRecommendationCard
+                  peerLabel="Emma · Marketing"
+                  recommendation="Rond de Q2-campagne af voor publicatie."
+                  primaryLabel="Open campagne"
+                />
+              </div>
+
+              <div className="mb-6 grid gap-4 md:grid-cols-2">
+                <PgOpportunityCard
+                  statement="Concurrent X investeert in LinkedIn — ruimte in jouw segment."
+                />
+                <PgAlertCard
+                  title="Advertentie-account losgekoppeld"
+                  context="Emma kan niet publiceren tot het account opnieuw verbonden is."
+                  actionLabel="Verbind opnieuw"
+                />
+              </div>
+
+              <PgActivityList className="mb-6">
+                <PgActivityCard
+                  title="Emma publiceerde 3 LinkedIn-posts"
+                  description="Zomeractie"
+                  timeLabel="2 uur geleden"
+                  accentVar="var(--pg-peer-marketing)"
+                  animateEnter
+                />
+                <PgActivityCard
+                  title="Support loste 14 tickets op"
+                  timeLabel="Vandaag"
+                  accentVar="var(--pg-peer-support)"
+                />
+              </PgActivityList>
+
+              <div className="mb-6 flex flex-wrap items-center gap-3">
+                <PgStatusChip label="Live" tone="live" />
+                <PgStatusChip label="Aan het werk" tone="working" pulse />
+                <PgAutomationChip />
+                <PgPeerStatusChip
+                  name="Emma"
+                  role="Marketing"
+                  statusLine="Campagne voorbereiden"
+                  tone="working"
+                />
+              </div>
+
+              <PgTimelineCard
+                className="mb-6"
+                triggerLabel="Hoe Emma tot dit advies kwam"
+                items={[
+                  { id: "1", label: "Marktsegment geanalyseerd", icon: "check" },
+                  { id: "2", label: "Budgetscenario's vergeleken", icon: "check" },
+                  { id: "3", label: "Aanbeveling geformuleerd", icon: "dot" },
+                ]}
+              />
+
+              <PgEmptyStateCard
+                voice="Emma is klaar om je eerste campagne te bedenken."
+                action={{ label: "Nieuwe campagne", href: "#" }}
+              />
             </section>
           </div>
         </div>

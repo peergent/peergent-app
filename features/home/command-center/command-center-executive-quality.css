@@ -1,0 +1,331 @@
+/**
+ * PX-17 — Final executive quality pass.
+ * Lighter surfaces. One rhythm. Typography discipline.
+ */
+
+.pg-cc17 {
+  --pg-cc17-row-gap: 40px;
+  --pg-cc17-gutter: 24px;
+  --pg-cc17-pad: 24px;
+  --pg-cc17-radius: 16px;
+  --pg-cc17-border: color-mix(in srgb, var(--pg-border-soft) 52%, transparent);
+  --pg-cc17-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.pg-cc17.pg-cc15.pg-cc6 {
+  gap: var(--pg-cc17-row-gap);
+}
+
+/* ── Lighter surfaces ── */
+.pg-cc17 .pg-cc6-card {
+  border: 1px solid var(--pg-cc17-border);
+  box-shadow: var(--pg-cc17-shadow);
+  border-radius: var(--pg-cc17-radius);
+}
+
+.pg-cc17 .pg-cc6-card.pg-ds-card--interactive:hover {
+  transform: none;
+  box-shadow: var(--pg-cc17-shadow);
+  border-color: color-mix(in srgb, var(--pg-border-soft) 68%, transparent);
+}
+
+/* ── Typography system ── */
+.pg-cc17 .pg-cc6-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--pg-text-soft);
+  line-height: 1.3;
+}
+
+.pg-cc17 .pg-ds-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc17 .pg-cc6-greeting__sub {
+  line-height: 1.55;
+}
+
+.pg-cc17 .pg-cc14-briefing__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc17 .pg-cc14-briefing__intro,
+.pg-cc17 .pg-cc14-briefing__item {
+  line-height: 1.55;
+}
+
+.pg-cc17 .pg-cc14-briefing__footer {
+  border-top-color: color-mix(in srgb, var(--pg-border-soft) 42%, transparent);
+}
+
+.pg-cc17 .pg-cc6-panel-title {
+  line-height: 1.4;
+}
+
+/* ── Unified internal padding ── */
+.pg-cc17 .pg-cc15-row--exec .pg-cc6-chart-panel,
+.pg-cc17 .pg-cc15-row--exec .pg-cc6-briefing {
+  padding: var(--pg-cc17-pad);
+}
+
+.pg-cc17 .pg-cc15-row--kpi,
+.pg-cc17 .pg-cc15-row--exec,
+.pg-cc17 .pg-cc15-row--mid {
+  gap: var(--pg-cc17-gutter);
+}
+
+.pg-cc17 .pg-cc15-row--mid .pg-cc6-attention-grid {
+  gap: var(--pg-cc17-gutter);
+}
+
+/* ── KPI balance ── */
+.pg-cc17 .pg-cc6-kpi {
+  padding: var(--pg-cc17-pad);
+  min-height: 120px;
+}
+
+.pg-cc17 .pg-cc6-kpi__icon {
+  top: var(--pg-cc17-pad);
+  right: var(--pg-cc17-pad);
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--pg-border-soft) 55%, transparent);
+}
+
+.pg-cc17 .pg-cc6-kpi__label {
+  line-height: 1.35;
+}
+
+.pg-cc17 .pg-cc6-kpi__trend {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.pg-cc17 .pg-cc6-kpi__value {
+  margin-top: 12px;
+  line-height: 1.05;
+}
+
+.pg-cc17 .pg-cc6-kpi__sparkline {
+  bottom: var(--pg-cc17-pad);
+  right: var(--pg-cc17-pad);
+  opacity: 0.38;
+}
+
+.pg-cc17 .pg-cc6-kpi:nth-child(1) .pg-cc6-kpi__value {
+  filter: none;
+}
+
+/* ── Business Impact ── */
+.pg-cc17 .pg-cc6-chart-head {
+  margin-bottom: var(--pg-space-4);
+}
+
+.pg-cc17 .pg-cc6-chart-wrap {
+  flex: 1;
+  padding: var(--pg-space-3) 0 var(--pg-space-2);
+  min-height: 132px;
+}
+
+.pg-cc17 .pg-cc6-chart {
+  --pg-trend-height: 148px;
+}
+
+.pg-cc17 .pg-cc6-chart-insight {
+  margin-top: auto;
+  padding-top: var(--pg-space-3);
+  border-top: 1px solid color-mix(in srgb, var(--pg-border-soft) 40%, transparent);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc17 .pg-cc6-chart-insight__icon {
+  opacity: 0.35;
+}
+
+/* ── Wacht op jou — Reminders calm ── */
+.pg-cc17 .pg-cc6-attention-card {
+  padding: 14px 14px 12px 18px;
+  box-shadow: var(--pg-cc17-shadow);
+}
+
+.pg-cc17 .pg-cc6-attention-card__icon {
+  border: none;
+  background: color-mix(in srgb, var(--pg-text-faint) 7%, transparent);
+  color: var(--pg-text-soft);
+  margin-bottom: 8px;
+}
+
+.pg-cc17 .pg-cc6-attention-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--pg-text);
+}
+
+.pg-cc17 .pg-cc6-attention-card__copy {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc17 .pg-cc6-attention-card__age {
+  margin-top: 8px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.pg-cc17 .pg-cc6-attention-card__cta {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pg-action-primary);
+}
+
+.pg-cc17 .pg-cc6-attention-card::before {
+  width: 2px;
+  opacity: 0.85;
+}
+
+.pg-cc17-attention-bell {
+  border-color: var(--pg-cc17-border);
+  box-shadow: none;
+}
+
+/* ── Live activity — terminal feed ── */
+.pg-cc17 .pg-cc6-timeline {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 2px;
+}
+
+.pg-cc17 .pg-cc6-timeline-item {
+  padding: 9px 0 9px 12px;
+  border-left: 1px solid var(--pg-cc14-peer-accent, var(--pg-border-soft));
+  background: transparent;
+}
+
+.pg-cc17 .pg-cc6-timeline-item:not(:last-child) {
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-border-soft) 38%, transparent);
+}
+
+.pg-cc17 .pg-cc6-timeline-item:hover {
+  background: color-mix(in srgb, var(--pg-office-inset) 28%, transparent);
+  border-radius: 6px;
+}
+
+.pg-cc17 .pg-cc6-timeline-item--latest {
+  background: color-mix(in srgb, var(--pg-state-positive) 3%, transparent);
+}
+
+.pg-cc17 .pg-cc6-timeline-item--latest .pg-cc6-timeline-peer {
+  color: var(--pg-text);
+}
+
+.pg-cc17 .pg-cc6-timeline-item:nth-child(2) {
+  opacity: 0.9;
+}
+
+.pg-cc17 .pg-cc6-timeline-item:nth-child(3) {
+  opacity: 0.78;
+}
+
+.pg-cc17 .pg-cc6-timeline-item:nth-child(4) {
+  opacity: 0.68;
+}
+
+.pg-cc17 .pg-cc6-timeline-item:nth-child(n + 5) {
+  opacity: 0.55;
+}
+
+.pg-cc17 .pg-cc6-timeline-item:nth-child(n + 7) {
+  opacity: 0.42;
+}
+
+.pg-cc17 .pg-cc6-timeline-action {
+  line-height: 1.45;
+}
+
+.pg-cc17 .pg-cc6-timeline-time {
+  opacity: 0.72;
+}
+
+.pg-cc17 .pg-cc6-timeline-item--latest .pg-cc6-timeline-time {
+  opacity: 1;
+}
+
+/* ── Recommendation — horizontal balance ── */
+.pg-cc17 .pg-cc14-rec__inner {
+  align-items: center;
+  padding: var(--pg-cc17-pad) var(--pg-cc17-pad);
+  gap: var(--pg-cc17-gutter);
+  min-height: 150px;
+  max-height: 170px;
+}
+
+.pg-cc17 .pg-cc14-rec__copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pg-cc17 .pg-cc14-rec__headline {
+  line-height: 1.25;
+}
+
+.pg-cc17 .pg-cc14-rec__impact {
+  line-height: 1.5;
+}
+
+.pg-cc17 .pg-cc14-rec__aside {
+  align-items: center;
+  gap: 14px;
+}
+
+.pg-cc17 .pg-cc14-rec__metrics {
+  gap: 6px;
+}
+
+.pg-cc17 .pg-cc14-rec__metric {
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.pg-cc17 .pg-cc14-rec__cta:hover {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  transform: none;
+}
+
+/* ── Navigation ── */
+.pg-cc17 .pg-cc6-nav-grid {
+  gap: var(--pg-cc17-gutter);
+}
+
+.pg-cc17 .pg-cc6-nav-card {
+  box-shadow: var(--pg-cc17-shadow);
+}
+
+.pg-cc17 .pg-cc6-nav-label {
+  line-height: 1.4;
+}
+
+.pg-cc17 .pg-cc15-col {
+  gap: 10px;
+}
+
+.pg-cc17 .pg-cc6-greeting__status {
+  border-color: var(--pg-cc17-border);
+  box-shadow: none;
+}

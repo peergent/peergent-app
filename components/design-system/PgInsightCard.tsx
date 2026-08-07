@@ -1,49 +1,70 @@
+import Link from "next/link";
 import { cn } from "@/lib/ui/cn";
-import PgCard from "./PgCard";
-
-/**
- * §5 Insight card — carries an observation plus advice.
- *
- * The observation is the Peer speaking, so it sits at voice size. The
- * recommendation is set behind a quiet rule and labelled in her words, so it
- * reads as counsel rather than a metric readout.
- *
- * §11.2 Numbers never travel alone.
- */
 
 export type PgInsightCardProps = {
   observation: string;
   recommendation?: string | null;
-  /** Her words, not a category name. Defaults to the spec's phrasing. */
   recommendationLabel?: string;
+  eyebrow?: string;
+  href?: string | null;
+  linkLabel?: string | null;
+  accentVar?: string;
+  animateEnter?: boolean;
   className?: string;
   testId?: string;
 };
 
+/** P2 — single peer insight with soft gradient surface. */
 export default function PgInsightCard({
   observation,
   recommendation,
   recommendationLabel = "What I'd suggest",
+  eyebrow = "Peer-inzicht",
+  href,
+  linkLabel,
+  accentVar = "var(--pg-peer-marketing)",
+  animateEnter = true,
   className,
-  testId,
+  testId = "pg-insight-card",
 }: PgInsightCardProps) {
+  const titleId = `${testId}-title`;
+
   return (
-    <PgCard className={cn("p-[var(--pg-space-5)]", className)} data-testid={testId}>
-      <p className="pg-voice pg-measure">{observation}</p>
+    <article
+      className={cn(
+        "pg-ds-card pg-ds-card--insight max-w-[480px] p-[var(--pg-card-padding-lg)]",
+        href && "pg-ds-card--interactive pg-focus-premium",
+        animateEnter && "pg-ds-enter",
+        className
+      )}
+      style={{ ["--pg-card-accent" as string]: accentVar }}
+      data-testid={testId}
+      aria-labelledby={titleId}
+    >
+      <p className="pg-ds-label">{eyebrow}</p>
+      <p id={titleId} className="pg-ds-voice mt-2 max-w-[52ch]">
+        {observation}
+      </p>
 
       {recommendation ? (
-        <div
-          className={cn(
-            "mt-[var(--pg-space-3)] border-l-2 pl-[var(--pg-space-3)]",
-            "border-[var(--pg-color-border)]"
-          )}
-        >
-          <p className="text-[var(--pg-type-body-sm)] font-semibold text-[var(--pg-color-text-tertiary)]">
+        <div className="mt-3 border-l-2 border-[var(--pg-border-soft)] pl-3">
+          <p className="text-[13px] font-semibold text-[var(--pg-text-faint)]">
             {recommendationLabel}
           </p>
-          <p className="pg-body pg-body--sm pg-measure mt-0.5">{recommendation}</p>
+          <p className="mt-0.5 text-[14px] leading-relaxed text-[var(--pg-text-soft)]">
+            {recommendation}
+          </p>
         </div>
       ) : null}
-    </PgCard>
+
+      {href && linkLabel ? (
+        <Link
+          href={href}
+          className="pg-focus-premium mt-3 inline-block text-[13px] font-semibold text-[var(--pg-action-primary)] no-underline"
+        >
+          {linkLabel}
+        </Link>
+      ) : null}
+    </article>
   );
 }

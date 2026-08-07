@@ -1,0 +1,420 @@
+/**
+ * PX-10 — Composition & art direction rebalance.
+ * Simplify. Neutral surfaces. Calm hierarchy. No new effects.
+ */
+
+.pg-cc10 {
+  --pg-cc10-shadow-float:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 4px 20px rgba(15, 23, 42, 0.04);
+  --pg-cc10-shadow-hover:
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 8px 28px rgba(15, 23, 42, 0.06);
+}
+
+/* ── Disable layered mesh that caused hard cutoffs ── */
+.pg-cc10.pg-cc7::before,
+.pg-cc10.pg-cc7::after {
+  display: none;
+}
+
+/* ── Atmospheric light — edgeless, overlaps, fades naturally ── */
+.pg-cc10 .pg-cc8-atmosphere {
+  position: fixed;
+  inset: -20vh -30vw auto -30vw;
+  height: 140vh;
+  width: 160vw;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: visible;
+  z-index: -3;
+  pointer-events: none;
+}
+
+.pg-cc10 .pg-cc8-atmosphere__blob {
+  filter: blur(100px);
+  opacity: 0.22;
+  animation: pg-cc10-mesh-breathe 40s ease-in-out infinite alternate;
+}
+
+.pg-cc10 .pg-cc8-atmosphere__blob--a {
+  width: min(900px, 95vw);
+  height: min(900px, 95vw);
+  top: -25vh;
+  left: -10%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pg-v13-blue) 28%, transparent) 0%,
+    transparent 72%
+  );
+}
+
+.pg-cc10 .pg-cc8-atmosphere__blob--b {
+  width: min(800px, 85vw);
+  height: min(800px, 85vw);
+  top: -5vh;
+  right: -20%;
+  left: auto;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pg-v13-purple-accent) 22%, transparent) 0%,
+    transparent 74%
+  );
+  animation-delay: -12s;
+}
+
+.pg-cc10 .pg-cc8-atmosphere__blob--c {
+  width: min(700px, 75vw);
+  height: min(700px, 75vw);
+  top: 15vh;
+  left: 30%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pg-v13-indigo) 18%, transparent) 0%,
+    transparent 76%
+  );
+  animation-delay: -24s;
+}
+
+@keyframes pg-cc10-mesh-breathe {
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.18;
+  }
+  to {
+    transform: translate(12px, -8px) scale(1.03);
+    opacity: 0.24;
+  }
+}
+
+/* ── Rhythm: less top-heavy ── */
+.pg-cc10.pg-cc6 {
+  --pg-cc6-band: 28px;
+  --pg-cc6-gap: 12px;
+  --pg-cc6-shadow: var(--pg-cc10-shadow-float);
+}
+
+/* ── Neutral cards — float, not glow ── */
+.pg-cc10.pg-cc7 .pg-cc6-card {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  border-color: var(--pg-border-soft);
+  box-shadow: var(--pg-cc10-shadow-float);
+}
+
+.pg-cc10.pg-cc7 .pg-cc6-card.pg-ds-card--interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--pg-cc10-shadow-hover);
+  border-color: var(--pg-border-soft);
+}
+
+/* ── Greeting: lighter, mesh shows through ── */
+.pg-cc10 .pg-cc8-hero--greeting {
+  padding: var(--pg-space-3) var(--pg-space-5);
+  background: color-mix(in srgb, var(--pg-office-panel) 78%, transparent);
+  backdrop-filter: blur(16px);
+  border-color: color-mix(in srgb, var(--pg-border-soft) 90%, transparent);
+  box-shadow: var(--pg-cc10-shadow-float);
+}
+
+.pg-cc10 .pg-cc8-hero--greeting::before {
+  display: none;
+}
+
+.pg-cc10 .pg-cc6-greeting__title {
+  font-size: clamp(28px, 3.2vw, 36px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.pg-cc10 .pg-cc6-greeting__sub {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc10 .pg-cc6-greeting__status {
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--pg-office-panel) 85%, transparent);
+  border-color: var(--pg-border-soft);
+  box-shadow: none;
+}
+
+.pg-cc10 .pg-cc6-live-dot {
+  box-shadow: none;
+  animation: pg-cc6-pulse var(--pg-motion-pulse, 2s) ease-in-out infinite;
+}
+
+/* ── KPI: dense information tiles ── */
+.pg-cc10 .pg-cc6-kpi {
+  min-height: 0;
+  padding: var(--pg-space-3) var(--pg-space-4);
+  gap: 2px;
+}
+
+.pg-cc10 .pg-cc6-kpi::after {
+  display: none;
+}
+
+.pg-cc10 .pg-cc6-kpi__meta {
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.pg-cc10 .pg-cc6-kpi__top {
+  display: none;
+}
+
+.pg-cc10 .pg-cc6-kpi__label {
+  margin-bottom: 2px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc10 .pg-cc6-kpi__value {
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  filter: none;
+}
+
+.pg-cc10 .pg-cc6-kpi--hero .pg-cc6-kpi__value {
+  font-size: clamp(26px, 2.6vw, 32px);
+}
+
+.pg-cc10 .pg-cc6-kpi__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.pg-cc10 .pg-cc6-kpi__trend {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0;
+  box-shadow: none;
+  max-width: none;
+  flex: 1;
+  color: var(--pg-text-faint);
+  background: transparent;
+}
+
+.pg-cc10 .pg-cc6-kpi__sparkline {
+  width: 48px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.pg-cc10 .pg-cc8 .pg-cc6-kpi {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  box-shadow: var(--pg-cc10-shadow-float);
+}
+
+.pg-cc10 .pg-cc8 .pg-cc6-kpi:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--pg-cc10-shadow-hover);
+}
+
+/* ── Chart: Linear confidence ── */
+.pg-cc10 .pg-cc8-hero--chart {
+  min-height: 0;
+  padding: var(--pg-space-5);
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  box-shadow: var(--pg-cc10-shadow-float);
+  border-color: var(--pg-border-soft);
+}
+
+.pg-cc10 .pg-cc6-chart-panel {
+  min-height: 0;
+}
+
+.pg-cc10 .pg-cc6-chart-head {
+  margin-bottom: var(--pg-space-3);
+}
+
+.pg-cc10 .pg-cc6-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc10 .pg-cc6-chart-head__value {
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-weight: 800;
+  filter: none;
+}
+
+.pg-cc10 .pg-cc6-chart-head__delta {
+  font-size: 11px;
+  font-weight: 650;
+  padding: 3px 8px;
+  box-shadow: none;
+}
+
+.pg-cc10 .pg-cc6-chart {
+  --pg-trend-height: 132px;
+}
+
+.pg-cc10 .pg-cc6-chart-wrap {
+  padding: var(--pg-space-1) 0 var(--pg-space-2);
+}
+
+.pg-cc10 .pg-ds-chart-hero .pg-ds-chart-area {
+  opacity: 0.12;
+}
+
+.pg-cc10 .pg-ds-chart-hero .pg-ds-chart-line {
+  filter: none;
+}
+
+.pg-cc10 .pg-ds-chart-hero .pg-ds-chart-endpoint {
+  filter: none;
+}
+
+.pg-cc10 .pg-ds-chart-hero .pg-ds-chart-endpoint-glow {
+  filter: none;
+}
+
+.pg-cc10 .pg-ds-chart-grid line {
+  stroke: var(--pg-border-soft);
+  opacity: 0.5;
+}
+
+.pg-cc10 .pg-cc6-chart-insight {
+  font-size: 12px;
+  color: var(--pg-text-faint);
+  background: transparent;
+  border: none;
+  padding-top: var(--pg-space-3);
+  margin-top: var(--pg-space-2);
+}
+
+/* ── Section hierarchy ── */
+.pg-cc10 .pg-cc6-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pg-text-soft);
+  letter-spacing: -0.01em;
+}
+
+.pg-cc10 .pg-ds-label {
+  color: var(--pg-text-faint);
+}
+
+/* ── Recommendation: composition only ── */
+.pg-cc10 .pg-cc8-hero--rec {
+  min-height: 0;
+  box-shadow: var(--pg-cc10-shadow-float);
+}
+
+.pg-cc10 .pg-cc7-rec-hero__mesh,
+.pg-cc10 .pg-cc7-rec-hero__glass,
+.pg-cc10 .pg-cc7-rec-hero__bloom {
+  display: none;
+}
+
+.pg-cc10 .pg-cc7-rec-hero__glow {
+  background: linear-gradient(
+    128deg,
+    #2a3a8f 0%,
+    #4338a8 42%,
+    #3730a3 100%
+  );
+  animation: none;
+}
+
+.pg-cc10 .pg-cc7-rec-hero__arrow {
+  opacity: 0.08;
+  animation: none;
+  right: 6%;
+}
+
+.pg-cc10 .pg-cc7-rec-hero__content {
+  padding: var(--pg-space-5) var(--pg-space-8);
+  max-width: 720px;
+  gap: var(--pg-space-3);
+}
+
+.pg-cc10 .pg-cc7-rec-hero__headline {
+  font-size: clamp(20px, 2.1vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.22;
+  text-shadow: none;
+}
+
+.pg-cc10 .pg-cc7-rec-hero .pg-cc6-recommendation__impact {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pg-cc10 .pg-cc7-rec-hero__metric {
+  font-size: 11px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.14);
+  backdrop-filter: none;
+  box-shadow: none;
+  animation: none;
+}
+
+.pg-cc10 .pg-cc7-rec-hero__btn {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.pg-cc10 .pg-cc7-rec-hero__btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
+
+/* ── Supporting cards quieter ── */
+.pg-cc10 .pg-cc8-support .pg-cc6-card {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  box-shadow: var(--pg-cc10-shadow-float);
+}
+
+.pg-cc10 .pg-cc7 .pg-cc6-briefing {
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+.pg-cc10 .pg-cc7 .pg-cc6-briefing__title {
+  background: none;
+  color: var(--pg-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.pg-cc10 .pg-cc7-grad-text {
+  background: var(--pg-cc7-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Only hero KPI + greeting title get gradient — color discipline */
+.pg-cc10 .pg-cc6-chart-head__value {
+  color: var(--pg-text);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.pg-cc10 .pg-cc6-kpi:not(.pg-cc6-kpi--hero) .pg-cc6-kpi__value {
+  color: var(--pg-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-cc10 .pg-cc8-atmosphere__blob {
+    animation: none !important;
+  }
+}

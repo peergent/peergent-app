@@ -1,0 +1,184 @@
+/**
+ * PX-16 — Final UX polish. Spacing & hierarchy only.
+ */
+
+.pg-cc16 .pg-cc6-kpi {
+  position: relative;
+  min-height: 118px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.pg-cc16 .pg-cc6-kpi__icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--pg-cc7-icon-accent, var(--pg-v13-blue)) 14%, transparent);
+  background: var(
+    --pg-cc7-icon-bg,
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--pg-v13-blue) 14%, transparent),
+      color-mix(in srgb, var(--pg-v13-purple-accent) 8%, transparent)
+    )
+  );
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 12px color-mix(in srgb, var(--pg-cc7-icon-accent, var(--pg-v13-blue)) 8%, transparent);
+}
+
+.pg-cc16 .pg-cc6-kpi__label {
+  margin: 0;
+  padding-right: 48px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pg-text-faint);
+  line-height: 1.3;
+}
+
+.pg-cc16 .pg-cc6-kpi__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 8px 0 0;
+  font-size: 10px;
+  font-weight: 650;
+  padding: 3px 8px;
+  border-radius: 999px;
+  max-width: calc(100% - 48px);
+}
+
+.pg-cc16 .pg-cc6-kpi__trend--positive {
+  color: var(--pg-state-positive);
+  background: color-mix(in srgb, var(--pg-state-positive) 12%, transparent);
+}
+
+.pg-cc16 .pg-cc6-kpi__trend--negative {
+  color: var(--pg-state-attention);
+  background: color-mix(in srgb, var(--pg-state-attention) 12%, transparent);
+}
+
+.pg-cc16 .pg-cc6-kpi__trend--neutral {
+  color: var(--pg-text-faint);
+  background: color-mix(in srgb, var(--pg-text-faint) 10%, transparent);
+}
+
+.pg-cc16 .pg-cc6-kpi__value {
+  margin: 10px 0 0;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--pg-text);
+}
+
+.pg-cc16 .pg-cc6-kpi:nth-child(1) .pg-cc6-kpi__value {
+  background: var(--pg-cc7-grad, var(--pg-gradient-stat));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pg-cc16 .pg-cc6-kpi__sparkline {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 20px;
+  opacity: 0.55;
+}
+
+/* Attention bell */
+.pg-cc16-attention-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--pg-border-soft);
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  color: var(--pg-text-soft);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.pg-cc16-attention-bell:hover {
+  background: var(--pg-office-inset, var(--pg-v13-panel));
+  border-color: color-mix(in srgb, var(--pg-border-soft) 80%, var(--pg-text-faint));
+  color: var(--pg-text);
+}
+
+.pg-cc16-attention-bell__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  background: var(--pg-state-attention);
+  border: 2px solid var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+/* Wacht op jou — editorial compact */
+.pg-cc16 .pg-cc6-attention-card {
+  min-height: 155px;
+  max-height: 165px;
+  padding: 12px 12px 10px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-cc16 .pg-cc6-attention-card::before {
+  top: 10px;
+  bottom: 10px;
+}
+
+.pg-cc16 .pg-cc6-attention-card__icon {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 6px;
+  border-radius: 7px;
+}
+
+.pg-cc16 .pg-cc6-attention-card__title {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.pg-cc16 .pg-cc6-attention-card__copy {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+}
+
+.pg-cc16 .pg-cc6-attention-card__age {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.pg-cc16 .pg-cc6-attention-card__cta {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 11px;
+}

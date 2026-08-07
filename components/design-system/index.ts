@@ -1,3 +1,37 @@
+/* ---- Peergent Design System v2 (PX-4) ---- */
+export { default as PgHeroCard, PgHeroBand } from "./PgHeroCard";
+export type { PgHeroCardProps, PgHeroBandProps } from "./PgHeroCard";
+export { default as PgMetricCard } from "./PgMetricCard";
+export type { PgMetricCardProps } from "./PgMetricCard";
+export { default as PgStatusChip } from "./PgStatusChip";
+export type { PgStatusChipProps, PgStatusChipTone } from "./PgStatusChip";
+export { default as PgBriefingCard } from "./PgBriefingCard";
+export type { PgBriefingCardProps, PgBriefingCardSection } from "./PgBriefingCard";
+export { default as PgApprovalCard } from "./PgApprovalCard";
+export type { PgApprovalCardProps } from "./PgApprovalCard";
+export { default as PgChartCard } from "./PgChartCard";
+export type { PgChartCardProps } from "./PgChartCard";
+export { default as PgRecommendationCard } from "./PgRecommendationCard";
+export type { PgRecommendationCardProps } from "./PgRecommendationCard";
+export { default as PgOpportunityCard } from "./PgOpportunityCard";
+export type { PgOpportunityCardProps } from "./PgOpportunityCard";
+export { default as PgActivityCard, PgActivityList } from "./PgActivityCard";
+export type { PgActivityCardProps, PgActivityListProps } from "./PgActivityCard";
+export { default as PgPerformanceCard } from "./PgPerformanceCard";
+export type { PgPerformanceCardProps } from "./PgPerformanceCard";
+export { default as PgEmptyStateCard } from "./PgEmptyStateCard";
+export type { PgEmptyStateCardProps } from "./PgEmptyStateCard";
+export { default as PgTimelineCard } from "./PgTimelineCard";
+export type { PgTimelineCardProps } from "./PgTimelineCard";
+export { default as PgAlertCard } from "./PgAlertCard";
+export type { PgAlertCardProps } from "./PgAlertCard";
+export { default as PgAutomationChip } from "./PgAutomationChip";
+export type { PgAutomationChipProps } from "./PgAutomationChip";
+export { default as PgPeerStatusChip } from "./PgPeerStatusChip";
+export type { PgPeerStatusChipProps, PgPeerStatusChipTone } from "./PgPeerStatusChip";
+export { default as PgSparkline } from "./PgSparkline";
+export type { PgSparklineProps } from "./PgSparkline";
+
 export { default as PgReviewBar } from "./PgReviewBar";
 export type { PgReviewBarProps } from "./PgReviewBar";
 export { default as PgInspector } from "./PgInspector";

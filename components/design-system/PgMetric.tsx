@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowRight, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/ui/cn";
+import { useCounterAnimation } from "@/lib/design-system/useCounterAnimation";
 
 /**
  * A measured number, at the weight its meaning deserves.
@@ -63,6 +64,8 @@ export type PgMetricProps = {
   /** How this number was produced. Shown quietly, never omitted. */
   methodology?: string | null;
   emphasis?: PgMetricEmphasis;
+  /** Roll numeric values on mount (hero/outcome band). */
+  animateCounter?: boolean;
   className?: string;
   testId?: string;
 };
@@ -98,9 +101,13 @@ export default function PgMetric({
   delta = null,
   methodology = null,
   emphasis = "activity",
+  animateCounter = false,
   className,
   testId,
 }: PgMetricProps) {
+  const shouldAnimate =
+    animateCounter && (emphasis === "hero" || emphasis === "outcome");
+  const displayValue = useCounterAnimation(value, shouldAnimate);
   const Icon = delta ? DIRECTION_ICON[delta.direction] : null;
 
   // Green is a claim about the business, not about the arrow's direction.
@@ -118,6 +125,7 @@ export default function PgMetric({
       className={cn("flex min-w-0 flex-col gap-1", className)}
       data-testid={testId}
       data-emphasis={emphasis}
+      aria-label={`${label}: ${displayValue}`}
     >
       <span className={cn(LABEL_CLASS[emphasis], "truncate")}>{label}</span>
 
@@ -125,7 +133,7 @@ export default function PgMetric({
         <span
           className={cn(VALUE_CLASS[emphasis], "text-[var(--pg-color-text-primary)]")}
         >
-          {value}
+          {displayValue}
         </span>
 
         {delta && Icon ? (

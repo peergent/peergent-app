@@ -1,0 +1,229 @@
+/**
+ * PX-15 — Editorial grid composition.
+ * One invisible grid. Rows align. No floating bands.
+ */
+
+.pg-cc15 {
+  --pg-cc15-row-gap: 40px;
+  --pg-cc15-col-gap: 24px;
+  --pg-cc15-pad: 32px;
+  --pg-cc15-radius: 16px;
+  --pg-cc15-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+/* Root: single vertical rhythm */
+.pg-cc15.pg-cc6 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pg-cc15-row-gap);
+  width: 100%;
+  max-width: min(100%, var(--pg-canvas-dashboard, 1160px));
+}
+
+/* Kill band wrappers & decorative gaps from legacy layers */
+.pg-cc15.pg-cc7 .pg-cc6-band + .pg-cc6-band::before,
+.pg-cc15.pg-cc7 .pg-cc6-band:first-child::before,
+.pg-cc15.pg-cc7 .pg-cc6-band:nth-child(2)::before {
+  display: none;
+}
+
+.pg-cc15 .pg-cc8-atmosphere,
+.pg-cc15.pg-cc7::before,
+.pg-cc15.pg-cc7::after {
+  display: none;
+}
+
+/* ── Row primitives ── */
+.pg-cc15-row {
+  width: 100%;
+  min-width: 0;
+}
+
+.pg-cc15-row--greeting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pg-cc15-col-gap);
+}
+
+.pg-cc15-row--kpi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--pg-cc15-col-gap);
+  align-items: stretch;
+}
+
+/* Row 3 — Executive: 48% briefing | 52% chart, never wrap on desktop */
+.pg-cc15-row--exec {
+  display: grid;
+  grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
+  gap: var(--pg-cc15-col-gap);
+  align-items: stretch;
+}
+
+.pg-cc15-row--exec > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.pg-cc15-row--exec .pg-cc6-chart-panel,
+.pg-cc15-row--exec .pg-cc6-briefing {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-cc15-row--exec .pg-cc6-chart-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.pg-cc15-row--exec .pg-cc6-chart-insight {
+  margin-top: auto;
+}
+
+/* Row 4 — Mid: 50% approvals | 50% activity */
+.pg-cc15-row--mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--pg-cc15-col-gap);
+  align-items: stretch;
+}
+
+.pg-cc15-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.pg-cc15-col__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Row 5 — Recommendation full width */
+.pg-cc15-row--rec {
+  width: 100%;
+}
+
+.pg-cc15-row--rec .pg-cc14-rec__inner {
+  min-height: 150px;
+  max-height: 170px;
+}
+
+/* Row 6 — Navigation full width */
+.pg-cc15-row--nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 0;
+}
+
+.pg-cc15-row--last {
+  padding-bottom: var(--pg-space-6);
+}
+
+/* ── Unified card shell in grid ── */
+.pg-cc15 .pg-cc6-card {
+  border-radius: var(--pg-cc15-radius);
+  border: 1px solid color-mix(in srgb, var(--pg-border-soft) 78%, transparent);
+  box-shadow: var(--pg-cc15-shadow);
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+.pg-cc15-row--exec .pg-cc6-chart-panel,
+.pg-cc15-row--exec .pg-cc6-briefing {
+  padding: var(--pg-cc15-pad);
+}
+
+/* Greeting: open row, not a floating card */
+.pg-cc15-row--greeting .pg-cc6-greeting {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pg-cc15-row--greeting .pg-cc6-greeting__status {
+  flex-shrink: 0;
+}
+
+/* Attention cards inside mid column — 3 across */
+.pg-cc15-row--mid .pg-cc6-attention-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pg-cc15-col-gap);
+  align-items: stretch;
+  flex: 1;
+}
+
+/* Timeline fills column height */
+.pg-cc15-row--mid .pg-cc6-timeline {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Section heads in columns */
+.pg-cc15 .pg-cc6-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pg-space-3);
+  margin: 0;
+}
+
+/* Override legacy breakpoints that stack executive row too early */
+@media (min-width: 769px) {
+  .pg-cc15-row--exec {
+    grid-template-columns: minmax(0, 48fr) minmax(0, 52fr) !important;
+  }
+
+  .pg-cc15-row--mid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  .pg-cc15-row--mid .pg-cc6-attention-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1100px) and (min-width: 769px) {
+  .pg-cc15-row--kpi {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .pg-cc15-row--kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .pg-cc15-row--exec,
+  .pg-cc15-row--mid {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-cc15-row--mid .pg-cc6-attention-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-cc15-row--kpi {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-cc15-row--greeting {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

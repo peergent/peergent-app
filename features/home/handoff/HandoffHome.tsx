@@ -8,7 +8,7 @@ import { useHandoffHome, type HandoffHomeState } from "@/hooks/useHandoffHome";
 import FigmaHomePort from "@/features/home/figma-port/FigmaHomePort";
 import HandoffSkeleton from "./HandoffSkeleton";
 import PgVisionShell from "@/components/design-system/PgVisionShell";
-import IedereenView from "@/features/office/iedereen/IedereenView";
+import CommandCenterHome from "@/features/home/command-center/CommandCenterHome";
 import { buildLiveVisionRoster, DEMO_VISION_ROSTER } from "@/lib/office/vision-roster";
 import "@/features/home/figma-port/figma-home.css";
 
@@ -71,7 +71,7 @@ function HandoffHomeView({
         <FigmaHomePort homeState={homeState} onPrimaryActivate={() => undefined} />
       ) : (
         <PgVisionShell mode="iedereen" isDemo={isDemo} roster={roster}>
-          <IedereenView homeState={homeState} isDemo={isDemo} />
+          <CommandCenterHome homeState={homeState} isDemo={isDemo} />
         </PgVisionShell>
       )}
     </>

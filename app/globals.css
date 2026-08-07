@@ -2,6 +2,7 @@
 @import "./themes/peergent-tokens.css";
 @import "./themes/peergent-vision-v13.css";
 @import "./themes/peergent-foundation.css";
+@import "./themes/peergent-ds-components.css";
 @import "./themes/peergent-transitions.css";
 
 :root {

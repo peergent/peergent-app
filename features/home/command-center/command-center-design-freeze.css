@@ -1,0 +1,242 @@
+/**
+ * PX-21 — Home design freeze. Micro polish only.
+ * One OS surface: headers, cards, icons, spacing, calm motion.
+ */
+
+.pg-cc21 {
+  --pg-cc21-space-1: 8px;
+  --pg-cc21-space-2: 12px;
+  --pg-cc21-space-3: 16px;
+  --pg-cc21-space-4: 24px;
+  --pg-cc21-space-5: 32px;
+  --pg-cc21-space-6: 40px;
+  --pg-cc21-radius: var(--pg-cc17-radius, 16px);
+  --pg-cc21-border: color-mix(in srgb, var(--pg-border-soft) 52%, transparent);
+  --pg-cc21-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+  --pg-cc21-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.05);
+  --pg-cc21-icon-size: 32px;
+  --pg-cc21-icon-radius: 10px;
+}
+
+/* ── 3. Consistent section headers ── */
+.pg-cc21 .pg-cc14-briefing__title,
+.pg-cc21 .pg-cc6-panel-title,
+.pg-cc21 .pg-cc18-module__title,
+.pg-cc21 .pg-cc6-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--pg-text-soft);
+  line-height: 1.35;
+}
+
+.pg-cc21 .pg-cc14-briefing__title {
+  margin: 0 0 var(--pg-cc21-space-2);
+}
+
+.pg-cc21 .pg-cc6-chart-head {
+  margin-bottom: var(--pg-cc21-space-3);
+}
+
+.pg-cc21 .pg-cc6-panel-title {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.pg-cc21 .pg-cc6-section-head {
+  margin-bottom: var(--pg-cc21-space-3);
+}
+
+.pg-cc21 .pg-cc18-module__head {
+  align-items: baseline;
+  padding-bottom: var(--pg-cc21-space-2);
+  border-bottom-color: color-mix(in srgb, var(--pg-border-soft) 40%, transparent);
+}
+
+.pg-cc21 .pg-cc18-module__body {
+  padding-top: var(--pg-cc21-space-3);
+}
+
+/* ── 4. Unified card shell ── */
+.pg-cc21 .pg-cc6-card {
+  border-radius: var(--pg-cc21-radius);
+  border-color: var(--pg-cc21-border);
+  box-shadow: var(--pg-cc21-shadow);
+}
+
+.pg-cc21 .pg-cc15-row--exec .pg-cc6-chart-panel,
+.pg-cc21 .pg-cc15-row--exec .pg-cc6-briefing,
+.pg-cc21 .pg-cc18-module,
+.pg-cc21 .pg-cc6-kpi {
+  padding: var(--pg-cc21-space-4);
+}
+
+.pg-cc21 .pg-cc18-module {
+  gap: 0;
+}
+
+/* ── 1. Wacht op jou — approval card polish ── */
+.pg-cc21 .pg-cc18-module--approvals {
+  padding: var(--pg-cc21-space-4);
+}
+
+.pg-cc21 .pg-cc18-approvals-grid {
+  gap: var(--pg-cc21-space-2);
+}
+
+.pg-cc21 .pg-cc18-approval-item {
+  min-height: 136px;
+  padding: var(--pg-cc21-space-2) 14px var(--pg-cc21-space-2) var(--pg-cc21-space-3);
+  border-radius: var(--pg-cc21-space-2);
+  border-color: color-mix(in srgb, var(--pg-border-soft) 46%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.pg-cc21 .pg-cc18-approval-item::before {
+  top: 50%;
+  bottom: auto;
+  height: 52px;
+  max-height: calc(100% - var(--pg-cc21-space-4));
+  transform: translateY(-50%);
+}
+
+.pg-cc21 .pg-cc18-approval-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pg-cc21-shadow-hover);
+  border-color: color-mix(in srgb, var(--pg-border-soft) 58%, transparent);
+}
+
+.pg-cc21 .pg-cc18-approval-item .pg-cc6-kpi__icon {
+  width: var(--pg-cc21-icon-size);
+  height: var(--pg-cc21-icon-size);
+  border-radius: var(--pg-cc21-icon-radius);
+  margin-bottom: var(--pg-cc21-space-1);
+}
+
+.pg-cc21 .pg-cc18-approval-item__title {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.pg-cc21 .pg-cc18-approval-item__copy {
+  margin-top: var(--pg-cc21-space-1);
+}
+
+.pg-cc21 .pg-cc18-approval-item__age {
+  margin-top: 6px;
+}
+
+.pg-cc21 .pg-cc18-approval-item__cta {
+  margin-top: auto;
+  padding-top: var(--pg-cc21-space-1);
+  min-height: var(--pg-cc21-space-3);
+  align-items: center;
+}
+
+.pg-cc21 .pg-cc18-module--approvals .pg-cc18-module__bell {
+  margin-right: var(--pg-cc21-space-1);
+  transform: translateY(1px);
+}
+
+/* ── 2. Live activity — event stream ── */
+.pg-cc21 .pg-cc18-module--activity {
+  padding: var(--pg-cc21-space-4);
+}
+
+.pg-cc21 .pg-cc18-activity-row {
+  padding: var(--pg-cc21-space-1) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-border-soft) 24%, transparent);
+  transition: background 140ms ease;
+}
+
+.pg-cc21 .pg-cc18-activity-row:last-child {
+  border-bottom: none;
+}
+
+.pg-cc21 .pg-cc18-activity-row:hover {
+  background: color-mix(in srgb, var(--pg-office-inset) 14%, transparent);
+  margin-inline: calc(var(--pg-cc21-space-1) * -1);
+  padding-inline: var(--pg-cc21-space-1);
+  border-radius: var(--pg-cc21-space-1);
+}
+
+.pg-cc21 .pg-cc18-activity-row--latest {
+  opacity: 1;
+}
+
+.pg-cc21 .pg-cc18-activity-row--latest .pg-cc18-activity-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-state-positive) 24%, transparent);
+}
+
+.pg-cc21 .pg-cc18-activity-row--latest .pg-cc18-activity-peer {
+  color: var(--pg-text);
+  font-weight: 650;
+}
+
+.pg-cc21 .pg-cc18-activity-row--latest .pg-cc18-activity-time {
+  color: var(--pg-state-positive);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.pg-cc21 .pg-cc18-activity-row:nth-child(2) {
+  opacity: 0.86;
+}
+
+.pg-cc21 .pg-cc18-activity-row:nth-child(3) {
+  opacity: 0.72;
+}
+
+.pg-cc21 .pg-cc18-activity-row:nth-child(4) {
+  opacity: 0.58;
+}
+
+.pg-cc21 .pg-cc18-activity-row:nth-child(n + 5) {
+  opacity: 0.44;
+}
+
+.pg-cc21 .pg-cc18-activity-row:nth-child(n + 7) {
+  opacity: 0.32;
+}
+
+.pg-cc21 .pg-cc18-activity-row:not(.pg-cc18-activity-row--latest) .pg-cc18-activity-action {
+  color: var(--pg-text-faint);
+}
+
+.pg-cc21 .pg-cc18-activity-row:not(.pg-cc18-activity-row--latest) .pg-cc18-activity-time {
+  opacity: 0.8;
+}
+
+/* ── 5. Icon system (Home surfaces) ── */
+.pg-cc21 .pg-cc6-kpi__icon {
+  width: var(--pg-cc21-icon-size);
+  height: var(--pg-cc21-icon-size);
+  border-radius: var(--pg-cc21-icon-radius);
+}
+
+/* ── 8. Calm surfaces — no extra noise ── */
+.pg-cc21 .pg-cc6-card.pg-ds-card--interactive:hover {
+  transform: none;
+}
+
+.pg-cc21 .pg-cc6-kpi__sparkline {
+  opacity: 0.36;
+}
+
+.pg-cc21 .pg-cc6-chart-insight__icon {
+  opacity: 0.32;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-cc21 .pg-cc18-approval-item:hover {
+    transform: none;
+  }
+}

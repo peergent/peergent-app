@@ -1,0 +1,266 @@
+/**
+ * Peergent Design System v2 — component surfaces + motion primitives.
+ * Canonical tokens alias to Vision v13. @see docs/DESIGN_SYSTEM.md
+ */
+
+:root {
+  /* Canonical semantic aliases (back-compat with --pg-v13-* / --pg-color-*) */
+  --pg-text: var(--pg-v13-ink, var(--pg-color-text-primary));
+  --pg-text-soft: var(--pg-v13-ink-soft, var(--pg-color-text-secondary));
+  --pg-text-faint: var(--pg-v13-ink-faint, var(--pg-color-text-tertiary));
+  --pg-border-soft: var(--pg-v13-line-soft, var(--pg-color-border-subtle));
+  --pg-border: var(--pg-v13-line, var(--pg-color-border));
+  --pg-action-primary: var(--pg-v13-blue, var(--pg-color-accent));
+  --pg-state-positive: var(--pg-v13-success, var(--pg-color-success));
+  --pg-state-attention: var(--pg-v13-attention, var(--pg-color-warning));
+  --pg-state-negative: var(--pg-color-error);
+  --pg-gradient-stat: var(--pg-v13-grad);
+  --pg-gradient-soft: var(--pg-v13-grad-soft);
+  --pg-shadow-md: var(--pg-v13-shadow, var(--pg-office-lift));
+  --pg-card-padding: var(--pg-space-5);
+  --pg-card-padding-lg: var(--pg-space-6);
+  --pg-band-gap: var(--pg-space-14, 56px);
+  --pg-band-gap-lg: var(--pg-space-16, 64px);
+  --pg-canvas-prose: 720px;
+
+  --pg-peer-marketing: var(--pg-v13-marketing, #3e5fee);
+  --pg-peer-sales: var(--pg-v13-sales, #c9822e);
+  --pg-peer-support: var(--pg-v13-support, #0e9a73);
+  --pg-peer-finance: var(--pg-v13-success, #0e8f6c);
+  --pg-peer-operations: var(--pg-v13-indigo, #6470e8);
+
+  --pg-motion-chart: 600ms;
+  --pg-motion-counter: 800ms;
+  --pg-motion-pulse: 2000ms;
+}
+
+.pg-ds-card {
+  border-radius: var(--pg-radius-lg);
+  border: 1px solid var(--pg-border-soft);
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+.pg-ds-card--raised {
+  box-shadow: var(--pg-shadow-md);
+}
+
+.pg-ds-card--interactive {
+  transition:
+    transform var(--pg-duration-enter) var(--pg-ease-peergent),
+    border-color var(--pg-duration-enter) var(--pg-ease-peergent),
+    background-color var(--pg-duration-enter) var(--pg-ease-peergent);
+}
+
+.pg-ds-card--interactive:hover {
+  transform: translateY(-1px);
+  border-color: var(--pg-office-line-strong, var(--pg-border));
+  background: var(--pg-office-panel-hover, var(--pg-v13-panel-hover));
+}
+
+.pg-ds-card--accent-top {
+  border-top: 2px solid var(--pg-card-accent, var(--pg-action-primary));
+}
+
+.pg-ds-card--insight {
+  background: var(--pg-gradient-soft);
+  border-color: var(--pg-border-soft);
+}
+
+.pg-ds-card--attention {
+  border-left: 2.5px solid var(--pg-state-attention);
+  background: var(--pg-v13-attention-soft, rgba(201, 130, 46, 0.1));
+}
+
+.pg-ds-stat-value {
+  font-size: var(--pg-type-metric, 24px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-ds-stat-value--hero {
+  font-size: clamp(26px, 3vw, 28px);
+  background: var(--pg-gradient-stat);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pg-ds-label {
+  font-family: var(--font-v17-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--pg-type-label, 10px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pg-text-faint);
+}
+
+.pg-ds-voice {
+  font-size: var(--pg-type-voice, 17px);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--pg-text);
+}
+
+.pg-ds-hero-band {
+  display: grid;
+  gap: var(--pg-space-8);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+  .pg-ds-hero-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .pg-ds-hero-band {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pg-ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-v17-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pg-text-soft);
+}
+
+.pg-ds-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pg-chip-dot, var(--pg-action-primary));
+}
+
+.pg-ds-chip-dot--pulse {
+  animation: pg-ds-pulse var(--pg-motion-pulse) ease-in-out infinite;
+}
+
+@keyframes pg-ds-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.pg-ds-enter {
+  animation: pg-ds-fade-up var(--pg-duration-enter) var(--pg-ease-peergent) both;
+}
+
+@keyframes pg-ds-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pg-ds-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--pg-office-inset, var(--pg-v13-panel)) 0%,
+    color-mix(in srgb, var(--pg-text-faint) 12%, transparent) 50%,
+    var(--pg-office-inset, var(--pg-v13-panel)) 100%
+  );
+  background-size: 200% 100%;
+  animation: pg-ds-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes pg-ds-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.pg-ds-chart-area {
+  opacity: 0.09;
+}
+
+.pg-ds-chart-line--animate {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: pg-ds-chart-draw var(--pg-motion-chart) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pg-ds-chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-ds-chip-dot--pulse,
+  .pg-ds-enter,
+  .pg-ds-shimmer,
+  .pg-ds-chart-line--animate {
+    animation: none !important;
+  }
+
+  .pg-ds-card--interactive:hover {
+    transform: none;
+  }
+}
+
+.pg-ds-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pg-space-3);
+  padding: var(--pg-space-3) 0;
+  border-bottom: 1px solid var(--pg-border-soft);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--pg-duration-state);
+}
+
+.pg-ds-activity-row:last-child {
+  border-bottom: none;
+}
+
+.pg-ds-activity-row--interactive:hover {
+  background: var(--pg-office-panel-hover, var(--pg-v13-panel-hover));
+}
+
+.pg-ds-activity-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pg-card-accent, var(--pg-action-primary));
+}
+
+.pg-ds-timeline-disclosure summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-v17-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--pg-type-label, 10px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pg-text-faint);
+}
+
+.pg-ds-timeline-disclosure summary::-webkit-details-marker {
+  display: none;
+}

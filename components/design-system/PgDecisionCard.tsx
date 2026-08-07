@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/ui/cn";
-import PgCard from "./PgCard";
 
 /**
  * §5 Decision card — requests a human judgement.
@@ -11,6 +10,8 @@ import PgCard from "./PgCard";
  * *unblocks* so the decision is informed rather than obedient (§4.1).
  *
  * §11.5 Decisions are never rows in a table.
+ *
+ * Canonical export name: PgApprovalCard (see PgApprovalCard.tsx).
  */
 
 export type PgDecisionCardProps = {
@@ -34,31 +35,33 @@ export default function PgDecisionCard({
   onAction,
   ageLabel,
   className,
-  testId,
+  testId = "pg-approval-card",
 }: PgDecisionCardProps) {
+  const titleId = `${testId}-title`;
   const actionClasses = cn(
     "pg-focus-premium inline-flex min-h-9 shrink-0 items-center justify-center",
-    "rounded-[var(--pg-radius-sm)] bg-[var(--pg-color-accent)] px-4",
+    "rounded-[var(--pg-radius-sm)] bg-[var(--pg-action-primary)] px-4",
     "text-sm font-medium text-[var(--pg-color-text-inverse)]",
     "transition hover:bg-[var(--pg-color-accent-hover)]"
   );
 
   return (
-    <PgCard
-      decision
+    <article
       className={cn(
-        "flex flex-wrap items-start gap-[var(--pg-space-4)] sm:flex-nowrap",
+        "pg-ds-card pg-ds-card--attention flex flex-wrap items-start gap-[var(--pg-space-4)] p-[var(--pg-card-padding)] sm:flex-nowrap",
         className
       )}
+      role="group"
+      aria-labelledby={titleId}
       data-testid={testId}
     >
       <div className="min-w-0 flex-1">
-        <p className="pg-voice">{title}</p>
-        <p className="pg-body pg-body--sm mt-[var(--pg-space-1)]">{unblocks}</p>
+        <p id={titleId} className="pg-ds-voice not-italic font-medium">
+          {title}
+        </p>
+        <p className="mt-1 text-[14px] leading-relaxed text-[var(--pg-text-soft)]">{unblocks}</p>
         {ageLabel ? (
-          <p className="mt-[var(--pg-space-2)] text-[11.5px] text-[var(--pg-color-text-tertiary)]">
-            {ageLabel}
-          </p>
+          <p className="pg-ds-label mt-2 normal-case tracking-normal">{ageLabel}</p>
         ) : null}
       </div>
 
@@ -71,6 +74,6 @@ export default function PgDecisionCard({
           {primaryLabel}
         </button>
       )}
-    </PgCard>
+    </article>
   );
 }

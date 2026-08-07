@@ -1,0 +1,521 @@
+/**
+ * PX-13 — Art direction pass.
+ * One composition. Keynote moments. Peergent identity.
+ * No new sections. No layout IA changes.
+ */
+
+.pg-cc13 {
+  --pg-cc13-band: 40px;
+  --pg-cc13-gutter: 24px;
+  --pg-cc13-radius: 20px;
+  --pg-cc13-pad: 32px;
+  --pg-cc13-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.02),
+    0 8px 32px rgba(15, 23, 42, 0.04);
+  --pg-cc13-grad: linear-gradient(
+    135deg,
+    var(--pg-v13-blue, #3e5fee) 0%,
+    var(--pg-v13-indigo, #6470e8) 48%,
+    var(--pg-v13-purple-accent, #7c3aed) 100%
+  );
+}
+
+.pg-cc13.pg-cc6 {
+  gap: var(--pg-cc13-band);
+}
+
+.pg-cc13.pg-cc6 .pg-cc6-band {
+  gap: var(--pg-space-3);
+}
+
+/* ── Unified canvas: cards belong together ── */
+.pg-cc13 .pg-cc6-card {
+  border-color: color-mix(in srgb, var(--pg-border-soft) 72%, transparent);
+  box-shadow: var(--pg-cc13-shadow);
+}
+
+.pg-cc13 .pg-cc6-card.pg-ds-card--interactive:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.03),
+    0 12px 36px rgba(15, 23, 42, 0.06);
+}
+
+.pg-cc13 .pg-cc6-greeting {
+  padding: var(--pg-space-4) var(--pg-space-5);
+  background: color-mix(in srgb, var(--pg-office-panel) 92%, var(--pg-v13-blue) 8%);
+  border-color: color-mix(in srgb, var(--pg-v13-blue) 10%, var(--pg-border-soft));
+}
+
+.pg-cc13 .pg-cc6-greeting__title {
+  font-size: clamp(24px, 2.5vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.pg-cc13 .pg-cc6-live-dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-state-positive) 18%, transparent);
+}
+
+.pg-cc13 .pg-cc6-kpi-grid {
+  gap: var(--pg-cc13-gutter);
+}
+
+.pg-cc13 .pg-cc6-kpi {
+  padding: var(--pg-space-4) var(--pg-space-5);
+  background: color-mix(in srgb, var(--pg-office-panel) 97%, var(--pg-v13-blue) 3%);
+}
+
+.pg-cc13 .pg-cc6-section-title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  color: var(--pg-text);
+}
+
+/* ── Story pair: single executive surface ── */
+.pg-cc13 .pg-cc6-overview-grid {
+  gap: 0;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  border: 1px solid color-mix(in srgb, var(--pg-border-soft) 80%, transparent);
+  border-radius: var(--pg-cc13-radius);
+  box-shadow: var(--pg-cc13-shadow);
+  overflow: hidden;
+}
+
+.pg-cc13 .pg-cc6-chart-panel,
+.pg-cc13 .pg-cc6-briefing {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 100%;
+  padding: var(--pg-cc13-pad);
+}
+
+.pg-cc13 .pg-cc6-briefing {
+  border-left: 1px solid color-mix(in srgb, var(--pg-border-soft) 85%, transparent);
+}
+
+/* Business Impact — chart as centerpiece */
+.pg-cc13 .pg-cc6-chart-head {
+  margin-bottom: var(--pg-space-6);
+  min-height: 0;
+}
+
+.pg-cc13 .pg-cc6-chart-head .pg-ds-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc13 .pg-cc6-panel-title {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc13 .pg-cc6-chart-head__value {
+  font-size: clamp(32px, 3.2vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.pg-cc13 .pg-cc6-chart-wrap {
+  flex: 1;
+  min-height: 140px;
+  padding: var(--pg-space-2) 0 var(--pg-space-4);
+}
+
+.pg-cc13 .pg-cc6-chart {
+  --pg-trend-height: 152px;
+}
+
+.pg-cc13 .pg-cc6-chart-insight {
+  margin-top: var(--pg-space-4);
+  padding-top: var(--pg-space-4);
+  border-top: 1px solid color-mix(in srgb, var(--pg-border-soft) 70%, transparent);
+  font-size: 13px;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc13 .pg-cc6-chart-insight__icon {
+  opacity: 0.45;
+}
+
+/* ── Executive briefing ── */
+.pg-cc13-briefing {
+  gap: 0;
+}
+
+.pg-cc13-briefing__salutation {
+  margin: 0 0 var(--pg-space-4);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  line-height: 1.25;
+  color: var(--pg-text);
+}
+
+.pg-cc13-briefing__intro {
+  margin: 0 0 var(--pg-space-4);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc13-briefing__list {
+  list-style: none;
+  margin: 0 0 var(--pg-space-5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pg-cc13-briefing__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--pg-text);
+}
+
+.pg-cc13-briefing__check {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pg-state-positive);
+}
+
+.pg-cc13-briefing__revenue {
+  margin: 0 0 var(--pg-space-5);
+  padding: var(--pg-space-4) 0;
+  border-top: 1px solid color-mix(in srgb, var(--pg-border-soft) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-border-soft) 70%, transparent);
+}
+
+.pg-cc13-briefing__revenue-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc13-briefing__revenue-value {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: var(--pg-cc13-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pg-cc13-briefing__pending {
+  margin: 0 0 var(--pg-space-5);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc13-briefing__pending strong {
+  font-weight: 650;
+  color: var(--pg-text);
+}
+
+.pg-cc13-briefing__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--pg-action-primary);
+}
+
+/* ── Wacht op jou — Apple Reminders calm ── */
+.pg-cc13 .pg-cc6-attention-grid {
+  gap: var(--pg-cc13-gutter);
+}
+
+.pg-cc13 .pg-cc6-attention-card {
+  position: relative;
+  min-height: 168px;
+  padding: 28px 28px 24px 32px;
+  border: 1px solid color-mix(in srgb, var(--pg-border-soft) 75%, transparent);
+  border-left: none;
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+  box-shadow: var(--pg-cc13-shadow);
+}
+
+.pg-cc13 .pg-cc6-attention-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 26px;
+  bottom: 26px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--pg-state-attention);
+}
+
+.pg-cc13 .pg-cc7 .pg-cc6-attention-card {
+  border-top: none;
+  background: var(--pg-office-panel, var(--pg-v13-surface));
+}
+
+.pg-cc13 .pg-cc6-attention-card__title {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  line-height: 1.25;
+}
+
+.pg-cc13 .pg-cc6-attention-card__copy {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pg-text-faint);
+  max-width: 34ch;
+}
+
+.pg-cc13 .pg-cc6-attention-card__age {
+  margin-top: auto;
+  padding-top: var(--pg-space-4);
+  font-size: 11px;
+  color: var(--pg-text-faint);
+}
+
+.pg-cc13 .pg-cc6-attention-card__cta {
+  margin-top: var(--pg-space-5);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* ── Recommendation — keynote slide ── */
+.pg-cc13 .pg-cc6-recommendation {
+  border-radius: var(--pg-cc13-radius);
+  min-height: 0;
+}
+
+.pg-cc13 .pg-cc7-rec-hero__glow {
+  animation: none;
+  background:
+    radial-gradient(
+      ellipse 120% 100% at 0% 0%,
+      rgba(96, 165, 250, 0.22) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 100% 100%,
+      rgba(124, 58, 237, 0.18) 0%,
+      transparent 48%
+    ),
+    linear-gradient(
+      158deg,
+      #070f1f 0%,
+      #0f1a33 18%,
+      #162454 38%,
+      #1e2a6e 58%,
+      #2e1f6b 78%,
+      #1a1642 100%
+    );
+}
+
+.pg-cc13 .pg-cc7-rec-hero__glow::after {
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(255, 255, 255, 0.07) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 82% 88%,
+      rgba(99, 102, 241, 0.12) 0%,
+      transparent 40%
+    );
+}
+
+.pg-cc13-rec__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pg-space-5);
+  padding: clamp(36px, 5vw, 56px) clamp(32px, 5vw, 64px);
+  max-width: 780px;
+}
+
+.pg-cc13-rec__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pg-cc13-rec__headline {
+  margin: 0;
+  font-size: clamp(28px, 3.6vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.038em;
+  line-height: 1.08;
+  color: #fff;
+  max-width: 18ch;
+}
+
+.pg-cc13-rec__impact {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 46ch;
+}
+
+.pg-cc13-rec__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pg-cc13-rec__metric {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pg-cc13-rec__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--pg-space-2);
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.pg-cc13-rec__cta:hover {
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+/* ── Live activity — alive, not tabular ── */
+.pg-cc13 .pg-cc6-timeline {
+  padding: var(--pg-space-3) var(--pg-space-5);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.pg-cc13 .pg-cc6-timeline-item {
+  position: relative;
+  margin-left: 0;
+  padding: 18px 0 18px 16px;
+  border-left: 2px solid var(--pg-cc13-peer-accent, var(--pg-border-soft));
+  border-bottom: none;
+  border-radius: 0;
+  transition: background 160ms ease;
+}
+
+.pg-cc13 .pg-cc6-timeline-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--pg-border-soft) 65%, transparent);
+}
+
+.pg-cc13 .pg-cc6-timeline-item:hover {
+  margin-inline: calc(-1 * var(--pg-space-3));
+  padding-inline: calc(var(--pg-space-3) + 16px);
+  background: color-mix(in srgb, var(--pg-office-inset) 50%, transparent);
+  border-radius: 12px;
+}
+
+.pg-cc13 .pg-cc6-timeline-item--latest {
+  background: color-mix(in srgb, var(--pg-cc13-peer-accent, var(--pg-v13-blue)) 5%, transparent);
+}
+
+.pg-cc13 .pg-cc6-timeline-item--latest::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--pg-cc13-peer-accent, var(--pg-v13-blue));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--pg-cc13-peer-accent, var(--pg-v13-blue)) 50%, transparent);
+}
+
+.pg-cc13 .pg-cc6-timeline-time {
+  font-size: 10px;
+  color: var(--pg-text-faint);
+  opacity: 0.75;
+}
+
+.pg-cc13 .pg-cc6-timeline-action {
+  font-size: 14px;
+  color: var(--pg-text-soft);
+}
+
+.pg-cc13 .pg-cc6-nav-grid {
+  gap: var(--pg-cc13-gutter);
+}
+
+@media (max-width: 960px) {
+  .pg-cc13 .pg-cc6-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-cc13 .pg-cc6-briefing {
+    border-left: none;
+    border-top: 1px solid color-mix(in srgb, var(--pg-border-soft) 85%, transparent);
+  }
+
+  .pg-cc13-rec__headline {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-cc13 .pg-cc6-card.pg-ds-card--interactive:hover,
+  .pg-cc13-rec__cta:hover {
+    transform: none;
+  }
+}
