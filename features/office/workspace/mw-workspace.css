@@ -1,0 +1,403 @@
+/**
+ * Marketing Operating System — workspace band spacing (40px rhythm).
+ */
+.pg-mw-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pg-space-10, 40px);
+  max-width: 100%;
+}
+
+.pg-mw-band {
+  min-width: 0;
+}
+
+/* Band A — Marketing Overview */
+.pg-mw-overview__summary {
+  margin: 0;
+  font-size: clamp(17px, 2vw, 20px);
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  color: var(--pg-text-primary);
+  max-width: 52rem;
+}
+
+/* Band C — metric tabs */
+.pg-mw-metric-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 var(--pg-space-4, 16px);
+}
+
+.pg-mw-metric-tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--pg-border-subtle, rgba(0, 0, 0, 0.08));
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pg-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.pg-mw-metric-tab--active {
+  color: var(--pg-text-primary);
+  border-color: color-mix(in srgb, var(--pg-peer-marketing) 35%, transparent);
+  background: color-mix(in srgb, var(--pg-peer-marketing) 8%, transparent);
+}
+
+/* Band D — Insights */
+.pg-mw-insights__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pg-space-3, 12px);
+  margin: var(--pg-space-4, 16px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-mw-insights__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pg-text-secondary);
+}
+
+.pg-mw-insights__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  margin-top: 7px;
+  flex-shrink: 0;
+  background: var(--pg-text-faint);
+}
+
+.pg-mw-insights__item--positive .pg-mw-insights__dot {
+  background: var(--pg-state-positive);
+}
+
+.pg-mw-insights__item--negative .pg-mw-insights__dot {
+  background: var(--pg-state-attention);
+}
+
+.pg-mw-insights__item--opportunity .pg-mw-insights__dot {
+  background: var(--pg-peer-marketing);
+}
+
+/* Section headers */
+.pg-mw-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pg-space-4, 16px);
+  margin-bottom: var(--pg-space-4, 16px);
+}
+
+.pg-mw-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pg-action-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Band E — Campaign cards */
+.pg-mw-campaign-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--pg-space-4, 16px);
+}
+
+.pg-mw-campaign-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--pg-space-5, 20px);
+  text-decoration: none;
+  color: inherit;
+  min-height: 168px;
+}
+
+.pg-mw-campaign-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pg-mw-campaign-card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--pg-text-primary);
+}
+
+.pg-mw-campaign-card__live {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--pg-peer-marketing);
+  background: color-mix(in srgb, var(--pg-peer-marketing) 12%, transparent);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.pg-mw-campaign-card__pending {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--pg-state-attention);
+  background: color-mix(in srgb, var(--pg-state-attention) 10%, transparent);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.pg-mw-campaign-card__status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pg-text-muted);
+}
+
+.pg-mw-campaign-card__progress {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--pg-text-muted);
+}
+
+.pg-mw-campaign-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.pg-mw-campaign-card__channel,
+.pg-mw-campaign-card__budget {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pg-text-muted);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pg-surface-subtle, rgba(0, 0, 0, 0.04));
+}
+
+.pg-mw-campaign-card__impact {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pg-peer-marketing);
+}
+
+/* Band F — Content previews */
+.pg-mw-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--pg-space-4, 16px);
+}
+
+.pg-mw-content-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--pg-space-5, 20px);
+  min-height: 200px;
+}
+
+.pg-mw-content-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pg-mw-content-card__kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pg-peer-marketing);
+}
+
+.pg-mw-content-card__status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pg-text-muted);
+}
+
+.pg-mw-content-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--pg-text-primary);
+}
+
+.pg-mw-content-card__preview {
+  margin: 0;
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pg-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pg-mw-content-card--linkedin {
+  border-top: 3px solid var(--pg-peer-marketing);
+}
+
+.pg-mw-content-card--ads {
+  border-top: 3px solid var(--pg-v13-purple-accent, #7c3aed);
+}
+
+.pg-mw-content-card--email {
+  border-top: 3px solid var(--pg-action-primary);
+}
+
+.pg-mw-content-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pg-action-primary);
+  text-decoration: none;
+  margin-top: auto;
+}
+
+/* Band I — Terminal activity */
+.pg-mw-terminal {
+  padding-bottom: var(--pg-space-4, 16px);
+}
+
+.pg-mw-terminal__log {
+  margin: var(--pg-space-3, 12px) 0 0;
+  padding: var(--pg-space-3, 12px);
+  list-style: none;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pg-text-primary) 3%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pg-mw-terminal__line {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  padding: 4px 0;
+  color: var(--pg-text-muted);
+}
+
+.pg-mw-terminal__line--latest {
+  color: var(--pg-text-primary);
+}
+
+.pg-mw-terminal__time {
+  color: var(--pg-text-faint);
+  white-space: nowrap;
+}
+
+.pg-mw-terminal__msg {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pg-mw-terminal__line--latest .pg-mw-terminal__msg {
+  color: var(--pg-text-primary);
+}
+
+/* Band J — Results */
+.pg-mw-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: var(--pg-space-4, 16px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-mw-results__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--pg-space-4, 16px);
+  padding: var(--pg-space-3, 12px) 0;
+  border-bottom: 1px solid var(--pg-border-subtle, rgba(0, 0, 0, 0.06));
+  text-decoration: none;
+  color: inherit;
+}
+
+.pg-mw-results__row:last-child {
+  border-bottom: none;
+}
+
+.pg-mw-results__label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--pg-text-primary);
+}
+
+.pg-mw-results__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--pg-state-positive);
+  flex-shrink: 0;
+}
+
+.pg-mw-results__impact {
+  font-size: 13px;
+  color: var(--pg-text-muted);
+  white-space: nowrap;
+}
+
+.pg-mw-results__arrow {
+  color: var(--pg-text-faint);
+}
+
+.pg-mw-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--pg-space-4, 16px);
+}
+
+.pg-mw-card-foot__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pg-action-primary);
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .pg-mw-results__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pg-mw-results__impact {
+    grid-column: 1 / -1;
+    padding-left: 17px;
+    white-space: normal;
+  }
+}

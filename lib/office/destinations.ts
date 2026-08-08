@@ -37,7 +37,7 @@ export type OfficeDestination = {
 export const OFFICE_DESTINATION_LIST: readonly OfficeDestination[] = [
   {
     id: "desk",
-    label: "Desk",
+    label: "Workspace",
     layer: "office",
     href: (peerId) => `/office/${peerId}`,
     badged: true,
@@ -109,7 +109,7 @@ export function resolveOfficeDestination(
  */
 const DESTINATION_LABELS: Record<string, Record<OfficeDestinationId, string>> = {
   en: {
-    desk: "Desk",
+    desk: "Workspace",
     work: "Work",
     performance: "Performance",
     content: "Content",
@@ -117,7 +117,7 @@ const DESTINATION_LABELS: Record<string, Record<OfficeDestinationId, string>> = 
     agreement: "Working agreement",
   },
   nl: {
-    desk: "Bureau",
+    desk: "Werkplek",
     work: "Werk",
     performance: "Prestaties",
     content: "Content",
