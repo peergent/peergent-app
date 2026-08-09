@@ -114,6 +114,53 @@ export { DemoBrainCapabilityProvider, createDemoBrainProvider } from "./demo/dem
 export type { CampaignEvidencePresentation } from "./presentation/campaign-evidence-adapter";
 export { presentBrainOutputForCampaign } from "./presentation/campaign-evidence-adapter";
 
+/* Brain Output Layer — customer intelligence derived from structured brain outputs */
+export type {
+  CampaignBrainOutput,
+  WorkspaceBrainOutput,
+  ExecutiveSummary,
+  BusinessIntelligence,
+  BrainOutputRecommendation,
+  LiveActivityEvent,
+  ProgressNarrative,
+} from "./output";
+export {
+  resolveCampaignBrainOutput,
+  resolveWorkspaceBrainOutput,
+  buildCampaignBrainOutput,
+  publishBusinessIntelligence,
+  publishExecutiveSummary,
+} from "./output";
+
+/* PX-34 — Project Engine (Brain Orchestrator) */
+
+export type {
+  ProjectLifecycleState,
+  ProjectBrainId,
+  ProjectEngineSnapshot,
+  ProjectEngineEvaluation,
+  ProjectEngineAction,
+  ProjectEngineEvent,
+  ProjectBrainContract,
+  ProjectBrainRegistry,
+  BrainContextPackage,
+  BrainResultSummary,
+} from "./project-engine";
+
+export {
+  PROJECT_ENGINE_VERSION,
+  DEFAULT_BRAIN_PIPELINE,
+  createProjectEngineSnapshot,
+  evaluateProjectEpisode,
+  advanceProjectEpisode,
+  projectEngineEvaluate,
+  assembleBrainContext,
+  projectSnapshotFromCampaignRun,
+  isEngineBlocked,
+  canTransitionProjectState,
+  capabilitiesForBrain,
+} from "./project-engine";
+
 /* Sprint 2 — Company & Website Intelligence */
 
 export type { FreshnessState, FreshnessMetadata } from "./domain/freshness";

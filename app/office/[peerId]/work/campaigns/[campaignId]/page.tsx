@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PgOfficeShell, PgSkeletonRows } from "@/components/design-system";
 import CampaignEvidenceModal from "@/features/office/campaign/CampaignEvidenceModal";
@@ -9,14 +9,13 @@ import CampaignCompetitorModal from "@/features/office/campaign/CampaignCompetit
 import CampaignScheduleModal from "@/features/office/campaign/CampaignScheduleModal";
 import CampaignOptimizationPanel from "@/features/office/campaign/CampaignOptimizationPanel";
 import CampaignWebsiteModal from "@/features/office/campaign/CampaignWebsiteModal";
-import VisionCampaignDetailView from "@/features/office/campaign/VisionCampaignDetailView";
+import CampaignExperienceView from "@/features/office/campaign/CampaignExperienceView";
 import { useCampaignWorkspaceActions } from "@/features/office/campaign/useCampaignWorkspaceActions";
 import OfficeDeliverableReviewModal from "@/features/office/deliverable/OfficeDeliverableReviewModal";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
-import { buildCampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
-import { buildOfficeCampaignReviewViewModel } from "@/lib/office/campaign/build-office-campaign-review-view-model";
+import { buildCampaignDetailViewModel, findCampaignProject } from "@/lib/office/campaign/build-campaign-detail";
+import { formatOfficeDate } from "@/lib/office/campaign/campaign-optimization";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
-import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
 import Link from "next/link";
 import { officeHref } from "@/lib/office/links";
 
@@ -51,17 +50,6 @@ function CampaignDetailInner() {
     [peerId, campaignId, domainInput, isDemo, localePreference]
   );
 
-  const reviewVm = useMemo(
-    () =>
-      buildOfficeCampaignReviewViewModel({
-        peerId,
-        projectId: campaignId,
-        domainInput,
-        localePreference,
-      }),
-    [peerId, campaignId, domainInput, localePreference]
-  );
-
   const campaignActions = useCampaignWorkspaceActions({
     peerId,
     projectId: campaignId,
@@ -84,14 +72,6 @@ function CampaignDetailInner() {
 
   const nl = localePreference === "nl";
 
-  const handleWorkflowStepOpen = useCallback(
-    (stepId: CampaignWorkflowStepId) => {
-      const step = model?.workflow.steps.find((s) => s.id === stepId);
-      if (step) campaignActions.setEvidenceStep(step);
-    },
-    [campaignActions, model]
-  );
-
   return (
     <>
       <PgOfficeShell
@@ -112,29 +92,18 @@ function CampaignDetailInner() {
         {loading ? (
           <PgSkeletonRows rows={4} rowHeight={104} />
         ) : model ? (
-          <VisionCampaignDetailView
+          <CampaignExperienceView
             model={model}
             locale={localePreference}
-            executiveBriefing={reviewVm?.executiveBriefing ?? null}
-            executiveBriefingPendingApproval={reviewVm?.executiveBriefingPendingApproval ?? false}
-            campaignPublicationUnlocked={reviewVm?.campaignPublicationUnlocked ?? false}
-            onApproveCampaign={workspace.handleApproveCampaign}
-            onWorkflowStepOpen={handleWorkflowStepOpen}
-            onStepClick={(step) => campaignActions.setEvidenceStep(step)}
-            onReviewDeliverable={campaignActions.openReview}
-            onNextStepCta={campaignActions.handleNextStepCta}
-            onApproveAll={campaignActions.handleApproveAll}
-            onSchedule={() => campaignActions.handleOpenScheduleModal()}
-            onPublishDemo={campaignActions.handlePublishCampaign}
-            onSkipWebsite={campaignActions.handleSkipWebsite}
-            onOpenWebsiteModal={() => campaignActions.setWebsiteModalOpen(true)}
-            onEditWebsite={() => campaignActions.setWebsiteModalOpen(true)}
-            onSkipCompetitors={campaignActions.handleSkipCompetitors}
-            onOpenCompetitorModal={() => campaignActions.setCompetitorModalOpen(true)}
+            domainInput={domainInput}
+            isDemo={isDemo}
+            updatedAtLabel={
+              formatOfficeDate(
+                findCampaignProject(domainInput, campaignId)?.updatedAt ?? null,
+                localePreference
+              ) ?? undefined
+            }
             onOpenOptimization={() => campaignActions.setOptimizationOpen(true)}
-            onRetryStrategy={campaignActions.handleRetryStrategy}
-            onViewCampaignContext={campaignActions.handleViewCampaignContext}
-            progressMessage={campaignActions.progressMessage}
           />
         ) : (
           <div className="pg-v13-panel p-6" data-testid="office-campaign-not-found">

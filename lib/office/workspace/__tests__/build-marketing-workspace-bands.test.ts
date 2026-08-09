@@ -3,15 +3,13 @@ import { buildDemoDomainInput } from "@/lib/office/demo/demo-company";
 import {
   MW_APPROVALS_MAX,
   MW_CAMPAIGNS_MAX,
-  MW_INSIGHTS_MAX,
   MW_KPIS_MAX,
-  MW_RESULTS_MAX,
   buildMarketingWorkspaceBands,
   marketingWorkspaceBandsContainForbiddenTerms,
 } from "@/lib/office/workspace/build-marketing-workspace-bands";
 
 describe("buildMarketingWorkspaceBands", () => {
-  it("builds a business-first marketing operating system for demo", () => {
+  it("builds PX-28 marketing operating system rows for demo", () => {
     const domainInput = buildDemoDomainInput({ locale: "nl" });
     const bands = buildMarketingWorkspaceBands({
       domainInput,
@@ -21,14 +19,17 @@ describe("buildMarketingWorkspaceBands", () => {
       isDemo: true,
     });
 
-    expect(bands.overview.summary.length).toBeGreaterThan(0);
-    expect(bands.overview.summary.toLowerCase()).not.toContain("emma");
-    expect(bands.kpis.items.length).toBeGreaterThan(0);
-    expect(bands.kpis.items.length).toBeLessThanOrEqual(MW_KPIS_MAX);
+    expect(bands.overview.parts.length).toBeGreaterThan(0);
+    expect(bands.overview.parts.map((p) => p.text).join(" ").toLowerCase()).not.toContain("emma");
+    expect(bands.kpis.items).toHaveLength(MW_KPIS_MAX);
+    expect(bands.kpis.items[0]?.hero).toBe(true);
     expect(bands.performance?.metrics.length).toBeGreaterThan(1);
-    expect(bands.insights?.items.length).toBeLessThanOrEqual(MW_INSIGHTS_MAX);
+    expect(bands.performance?.metrics[0]?.bullets.length).toBeGreaterThan(0);
+    expect(bands.businessIntelligence?.title.length).toBeGreaterThan(0);
     expect(bands.campaigns?.items.length).toBeGreaterThan(0);
+    expect(bands.campaigns!.items[0]?.previewHeadline).toBeTruthy();
     expect(bands.campaigns!.items.length).toBeLessThanOrEqual(MW_CAMPAIGNS_MAX);
+    expect(bands.campaigns!.items[0]?.progressPercent).not.toBeNull();
     expect(bands.content?.items.length).toBeGreaterThan(0);
   });
 
@@ -48,7 +49,7 @@ describe("buildMarketingWorkspaceBands", () => {
     }
   });
 
-  it("includes performance chart metrics with switchable ids", () => {
+  it("includes performance chart metrics with switchable ids including spend", () => {
     const domainInput = buildDemoDomainInput({ locale: "en" });
     const bands = buildMarketingWorkspaceBands({
       domainInput,
@@ -61,22 +62,37 @@ describe("buildMarketingWorkspaceBands", () => {
     const ids = bands.performance?.metrics.map((m) => m.id) ?? [];
     expect(ids).toContain("revenue");
     expect(ids).toContain("roas");
+    expect(ids).toContain("spend");
+    expect(ids).toContain("cpc");
     expect(bands.performance?.defaultMetricId).toBe("revenue");
   });
 
-  it("limits recent results", () => {
-    const domainInput = buildDemoDomainInput({ locale: "nl" });
+  it("builds rich activity events for demo", () => {
+    const domainInput = buildDemoDomainInput({ locale: "en" });
     const bands = buildMarketingWorkspaceBands({
       domainInput,
       peerName: "Emma",
       peerRole: "Marketing",
-      localePreference: "nl",
+      localePreference: "en",
       isDemo: true,
     });
 
-    if (bands.results) {
-      expect(bands.results.items.length).toBeLessThanOrEqual(MW_RESULTS_MAX);
-    }
+    expect(bands.activity?.items[0]?.title.length).toBeGreaterThan(0);
+    expect(bands.activity?.items[0]?.subtitle.length).toBeGreaterThan(0);
+    expect(bands.activity?.items[0]?.tone).toBeTruthy();
+  });
+
+  it("uses customer-friendly content section title", () => {
+    const domainInput = buildDemoDomainInput({ locale: "en" });
+    const bands = buildMarketingWorkspaceBands({
+      domainInput,
+      peerName: "Emma",
+      peerRole: "Marketing",
+      localePreference: "en",
+      isDemo: true,
+    });
+
+    expect(bands.content?.title.toLowerCase()).toContain("publish");
   });
 
   it("never surfaces workflow vocabulary", () => {

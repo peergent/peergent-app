@@ -108,12 +108,12 @@ describe("office executive briefing UI integration", () => {
     expect(planningTests).toContain("campaign_planning");
   });
 
-  it("wires executive briefing into the office campaign page", () => {
+  it("wires campaign experience into the office campaign page", () => {
     const page = read("app/office/[peerId]/work/campaigns/[campaignId]/page.tsx");
-    expect(page).toContain("buildOfficeCampaignReviewViewModel");
-    expect(page).toContain("executiveBriefing={reviewVm?.executiveBriefing");
-    expect(page).toContain("onApproveCampaign={workspace.handleApproveCampaign}");
-    expect(page).toContain("onWorkflowStepOpen={handleWorkflowStepOpen}");
+    expect(page).toContain("CampaignExperienceView");
+    expect(page).toContain("buildCampaignDetailViewModel");
+    expect(page).toContain("CampaignOptimizationPanel");
+    expect(page).toContain("OfficeDeliverableReviewModal");
   });
 
   it("renders OfficeExecutiveCampaignReview with polished summary UX", () => {

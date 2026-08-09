@@ -1,5 +1,10 @@
+export type MarketingWorkspaceOverviewPart = {
+  text: string;
+  attention?: boolean;
+};
+
 export type MarketingWorkspaceOverviewBand = {
-  summary: string;
+  parts: readonly MarketingWorkspaceOverviewPart[];
 };
 
 export type MarketingWorkspaceKpiItem = {
@@ -22,7 +27,21 @@ export type MarketingChartMetricId =
   | "traffic"
   | "roas"
   | "ctr"
-  | "cpc";
+  | "cpc"
+  | "spend";
+
+export type MarketingWorkspaceBiBulletTone =
+  | "positive"
+  | "attention"
+  | "insight"
+  | "neutral"
+  | "recommendation";
+
+export type MarketingWorkspaceBiBullet = {
+  id: string;
+  text: string;
+  tone: MarketingWorkspaceBiBulletTone;
+};
 
 export type MarketingChartMetricOption = {
   id: MarketingChartMetricId;
@@ -33,36 +52,50 @@ export type MarketingChartMetricOption = {
   chartLabel: string;
   points: readonly { at: string; value: number }[];
   insight: string | null;
+  bullets: readonly MarketingWorkspaceBiBullet[];
   valueFormat: "currency" | "number" | "percent" | "multiplier";
 };
 
 export type MarketingWorkspacePerformanceBand = {
   periodLabel: string;
+  title: string;
   metrics: MarketingChartMetricOption[];
   defaultMetricId: MarketingChartMetricId;
 };
 
-export type MarketingWorkspaceInsightItem = {
-  id: string;
-  text: string;
-  tone: "positive" | "negative" | "neutral" | "opportunity";
+export type MarketingWorkspaceBusinessIntelligenceBand = {
+  eyebrow: string;
+  title: string;
+  href: string | null;
 };
 
-export type MarketingWorkspaceInsightsBand = {
-  title: string;
-  items: MarketingWorkspaceInsightItem[];
-};
+export type MarketingCampaignStatus = "live" | "optimizing" | "waiting" | "scheduled";
+
+export type MarketingCampaignThumbnailKind =
+  | "linkedin"
+  | "google_ads"
+  | "multi"
+  | "email"
+  | "display";
 
 export type MarketingWorkspaceCampaignCard = {
   id: string;
   name: string;
-  statusLabel: string;
-  progressLabel: string | null;
-  channelLabel: string | null;
+  status: MarketingCampaignStatus;
+  channelLabel: string;
+  channelsSubtitle: string | null;
+  thumbnailKind: MarketingCampaignThumbnailKind;
+  previewHeadline: string | null;
+  previewBody: string | null;
+  previewMeta: string | null;
   budgetLabel: string | null;
-  impactLabel: string | null;
-  needsApproval: boolean;
-  isLive: boolean;
+  revenueLabel: string | null;
+  roasLabel: string | null;
+  leadsLabel: string | null;
+  progressPercent: number | null;
+  progressCaption: string | null;
+  milestoneLabel: string;
+  milestoneAttention: boolean;
   href: string;
 };
 
@@ -70,6 +103,9 @@ export type MarketingWorkspaceCampaignsBand = {
   title: string;
   items: MarketingWorkspaceCampaignCard[];
   viewAllHref: string;
+  emptyMessage: string | null;
+  emptyLinkLabel: string | null;
+  emptyLinkHref: string | null;
 };
 
 export type MarketingWorkspaceContentPreviewKind =
@@ -87,6 +123,8 @@ export type MarketingWorkspaceContentPreview = {
   title: string;
   preview: string;
   statusLabel: string;
+  statusTone: "live" | "draft" | "scheduled" | "review";
+  performanceWhisper: string | null;
   href: string | null;
 };
 
@@ -120,40 +158,36 @@ export type MarketingWorkspaceRecommendationBand = {
   impactMetrics?: readonly { id: string; label: string }[];
 };
 
+export type MarketingWorkspaceActivityTone =
+  | "success"
+  | "insight"
+  | "attention"
+  | "neutral";
+
 export type MarketingWorkspaceActivityItem = {
   id: string;
   timestamp: string;
   timeLabel: string;
-  message: string;
+  title: string;
+  subtitle: string;
+  tone: MarketingWorkspaceActivityTone;
   href: string | null;
 };
 
 export type MarketingWorkspaceActivityBand = {
   title: string;
   items: MarketingWorkspaceActivityItem[];
-};
-
-export type MarketingWorkspaceResultItem = {
-  id: string;
-  label: string;
-  impactLabel: string | null;
-  href: string | null;
-};
-
-export type MarketingWorkspaceResultsBand = {
-  title: string;
-  items: MarketingWorkspaceResultItem[];
+  emptyMessage: string | null;
 };
 
 export type MarketingWorkspaceBands = {
   overview: MarketingWorkspaceOverviewBand;
   kpis: MarketingWorkspaceKpisBand;
   performance: MarketingWorkspacePerformanceBand | null;
-  insights: MarketingWorkspaceInsightsBand | null;
+  businessIntelligence: MarketingWorkspaceBusinessIntelligenceBand | null;
   campaigns: MarketingWorkspaceCampaignsBand | null;
   content: MarketingWorkspaceContentBand | null;
   approvals: MarketingWorkspaceApprovalsBand | null;
   recommendation: MarketingWorkspaceRecommendationBand | null;
   activity: MarketingWorkspaceActivityBand | null;
-  results: MarketingWorkspaceResultsBand | null;
 };

@@ -1,4 +1,9 @@
 import { resolveMarketingCampaignLocale } from "@/lib/i18n/marketing-campaign-copy";
+import { resolveWorkspaceBrainOutput } from "@/lib/brain/output";
+import {
+  applyBrainBulletsToMetrics,
+  mapWorkspaceSlicesFromBrain,
+} from "@/lib/office/brain-output";
 import { buildMarketingDeskBriefing } from "@/lib/office/desk/build-marketing-briefing";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import { buildDeskCampaignOverview } from "@/lib/office/desk/build-desk-campaign-overview";
@@ -8,31 +13,31 @@ import { buildMarketingMarketViewModel } from "@/lib/office/market/build-marketi
 import { buildMarketingPerformanceViewModelForOffice } from "@/lib/office/performance/build-marketing-performance";
 import { buildMarketingWorkViewModel } from "@/lib/office/work/build-marketing-work";
 import type { WorkItem } from "@/lib/office/work/types";
-import { buildDeduplicatedCompletedOutcomes } from "@/lib/peer-experience/marketing/colleague/build-deduplicated-outcomes";
 import { buildMarketingActivities } from "@/lib/peer-experience/marketing/view-models/build-marketing-activity-mappers";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type {
   MarketingChartMetricId,
   MarketingChartMetricOption,
+  MarketingCampaignStatus,
+  MarketingCampaignThumbnailKind,
   MarketingWorkspaceActivityBand,
   MarketingWorkspaceApprovalItem,
   MarketingWorkspaceBands,
+  MarketingWorkspaceBiBullet,
+  MarketingWorkspaceBusinessIntelligenceBand,
   MarketingWorkspaceCampaignCard,
   MarketingWorkspaceContentPreview,
   MarketingWorkspaceContentPreviewKind,
-  MarketingWorkspaceInsightItem,
   MarketingWorkspaceKpiItem,
+  MarketingWorkspaceOverviewPart,
   MarketingWorkspacePerformanceBand,
-  MarketingWorkspaceResultsBand,
 } from "./types";
 
 export const MW_KPIS_MAX = 4;
-export const MW_INSIGHTS_MAX = 5;
-export const MW_CAMPAIGNS_MAX = 4;
+export const MW_CAMPAIGNS_MAX = 3;
 export const MW_CONTENT_MAX = 4;
 export const MW_APPROVALS_MAX = 3;
 export const MW_ACTIVITY_MAX = 8;
-export const MW_RESULTS_MAX = 4;
 
 const WORKFLOW_TERMS =
   /\b(workflow|brain|capability|retry|step id|orchestrat|pipeline|agent runtime)\b/i;
@@ -68,6 +73,7 @@ function buildDemoPerformanceMetrics(nl: boolean): MarketingChartMetricOption[] 
     chartLabel: string,
     scale: number,
     insight: string,
+    bullets: readonly MarketingWorkspaceBiBullet[],
     valueFormat: MarketingChartMetricOption["valueFormat"],
     delta = "+14%"
   ): MarketingChartMetricOption => ({
@@ -79,42 +85,62 @@ function buildDemoPerformanceMetrics(nl: boolean): MarketingChartMetricOption[] 
     chartLabel,
     points: demoChartPoints(nl, scale),
     insight,
+    bullets,
     valueFormat,
   });
 
   return [
     mk(
       "revenue",
-      nl ? "Beïnvloede omzet" : "Revenue influenced",
+      nl ? "Omzet" : "Revenue",
       "€ 18.420",
       nl ? "Omzet" : "Revenue",
       18420,
       nl
         ? "LinkedIn dreef 62% van leads deze maand — sterker dan Meta in jouw segment."
         : "LinkedIn drove 62% of leads this month — stronger than Meta in your segment.",
+      [
+        { id: "rev-1", text: nl ? "Omzet steeg 14% t.o.v. vorige maand." : "Revenue rose 14% vs last month.", tone: "positive" },
+        { id: "rev-2", text: nl ? "Google Ads levert de meeste gekwalificeerde leads." : "Google Ads drives the strongest qualified lead flow.", tone: "positive" },
+        { id: "rev-3", text: nl ? "LinkedIn engagement daalde 9%." : "LinkedIn engagement dropped 9%.", tone: "attention" },
+        { id: "rev-4", text: nl ? "Organische SEO groeit na de juli-update." : "Organic SEO continues growing after the July update.", tone: "positive" },
+        { id: "rev-5", text: nl ? "Aanbeveling: verhoog Google Ads-budget met €250/dag." : "Recommendation: increase Google Ads budget by €250/day.", tone: "recommendation" },
+      ],
       "currency"
     ),
     mk(
       "leads",
-      nl ? "Gekwalificeerde leads" : "Qualified leads",
+      nl ? "Leads" : "Leads",
       "63",
       nl ? "Leads" : "Leads",
       63,
       nl
         ? "Leadvolume steeg 18% t.o.v. vorige maand — vooral via Google Ads."
         : "Lead volume rose 18% vs last month — mostly via Google Ads.",
+      [
+        { id: "lead-1", text: nl ? "Google Ads genereerde 18% meer gekwalificeerde leads dan vorige week." : "Google Ads generated 18% more qualified leads than last week.", tone: "positive" },
+        { id: "lead-2", text: nl ? "LinkedIn-leads converteren 12% beter dan Meta." : "LinkedIn leads convert 12% better than Meta.", tone: "positive" },
+        { id: "lead-3", text: nl ? "Formulier-conversie op landingspagina stabiel." : "Landing page form conversion held steady.", tone: "neutral" },
+        { id: "lead-4", text: nl ? "Aanbeveling: schaal top-of-funnel op Google Ads." : "Recommendation: scale top-of-funnel on Google Ads.", tone: "recommendation" },
+      ],
       "number",
       "+18%"
     ),
     mk(
       "traffic",
-      nl ? "Websiteverkeer" : "Website traffic",
+      nl ? "Verkeer" : "Traffic",
       "18.420",
       nl ? "Bezoekers" : "Visitors",
       18420,
       nl
         ? "Organisch verkeer groeit gestaag na de SEO-updates van vorige week."
         : "Organic traffic is growing steadily after last week's SEO updates.",
+      [
+        { id: "tr-1", text: nl ? "Organisch verkeer +9% week-op-week." : "Organic traffic up 9% week-over-week.", tone: "positive" },
+        { id: "tr-2", text: nl ? "Vier doelpagina's won posities na SEO-update." : "Four target pages gained rank after the SEO update.", tone: "positive" },
+        { id: "tr-3", text: nl ? "Betaald verkeer stabiel ondanks budgetshift." : "Paid traffic stable despite budget shift.", tone: "neutral" },
+        { id: "tr-4", text: nl ? "Aanbeveling: versterk SEO op hoog-intent pagina's." : "Recommendation: strengthen SEO on high-intent pages.", tone: "recommendation" },
+      ],
       "number",
       "+9%"
     ),
@@ -127,6 +153,12 @@ function buildDemoPerformanceMetrics(nl: boolean): MarketingChartMetricOption[] 
       nl
         ? "Google Ads ROAS ligt 23% boven LinkedIn over de laatste 14 dagen."
         : "Google Ads ROAS is 23% above LinkedIn over the last 14 days.",
+      [
+        { id: "roas-1", text: nl ? "Google Ads ROAS 23% boven LinkedIn." : "Google Ads ROAS 23% above LinkedIn.", tone: "positive" },
+        { id: "roas-2", text: nl ? "Search-campagnes presteren boven accountgemiddelde." : "Search campaigns outperform account average.", tone: "positive" },
+        { id: "roas-3", text: nl ? "Meta ROAS daalde licht — monitor 48 uur." : "Meta ROAS dipped slightly — monitor for 48 hours.", tone: "attention" },
+        { id: "roas-4", text: nl ? "Aanbeveling: verschuif 15% budget naar Google Ads." : "Recommendation: shift 15% budget to Google Ads.", tone: "recommendation" },
+      ],
       "multiplier",
       "+23%"
     ),
@@ -139,6 +171,12 @@ function buildDemoPerformanceMetrics(nl: boolean): MarketingChartMetricOption[] 
       nl
         ? "CTR op search-campagnes blijft boven branchegemiddelde."
         : "Search campaign CTR remains above industry average.",
+      [
+        { id: "ctr-1", text: nl ? "Search CTR +6% boven branchegemiddelde." : "Search CTR 6% above industry average.", tone: "positive" },
+        { id: "ctr-2", text: nl ? "LinkedIn CTR stabiel ondanks lagere frequentie." : "LinkedIn CTR stable despite lower cadence.", tone: "neutral" },
+        { id: "ctr-3", text: nl ? "Display CTR onder verwachting op retargeting." : "Display CTR below expectation on retargeting.", tone: "attention" },
+        { id: "ctr-4", text: nl ? "Aanbeveling: test nieuwe LinkedIn-hooks." : "Recommendation: test new LinkedIn hooks.", tone: "recommendation" },
+      ],
       "percent",
       "+6%"
     ),
@@ -151,6 +189,30 @@ function buildDemoPerformanceMetrics(nl: boolean): MarketingChartMetricOption[] 
       nl
         ? "CPC daalde licht terwijl conversies stabiel bleven."
         : "CPC dipped slightly while conversions held steady.",
+      [
+        { id: "cpc-1", text: nl ? "CPC daalde 4% terwijl conversies stabiel bleven." : "CPC fell 4% while conversions held steady.", tone: "positive" },
+        { id: "cpc-2", text: nl ? "Concurrent X biedt agressiever op onboarding-termen." : "Competitor X bids more aggressively on onboarding terms.", tone: "attention" },
+        { id: "cpc-3", text: nl ? "Branded CPC onveranderd." : "Branded CPC unchanged.", tone: "neutral" },
+        { id: "cpc-4", text: nl ? "Aanbeveling: verlaag biedingen op lage-intent zoektermen." : "Recommendation: reduce bids on low-intent search terms.", tone: "recommendation" },
+      ],
+      "currency",
+      "-4%"
+    ),
+    mk(
+      "spend",
+      nl ? "Spend" : "Spend",
+      "€ 4.280",
+      nl ? "Spend" : "Spend",
+      4280,
+      nl
+        ? "Spend daalde licht terwijl conversies stabiel bleven."
+        : "Spend dipped slightly while conversions held steady.",
+      [
+        { id: "spend-1", text: nl ? "Spend daalde 4% terwijl output stabiel bleef." : "Spend dipped 4% while output held steady.", tone: "positive" },
+        { id: "spend-2", text: nl ? "Google Ads kreeg 62% van totale spend." : "Google Ads received 62% of total spend.", tone: "neutral" },
+        { id: "spend-3", text: nl ? "Budget voor Q2-campagne 78% benut." : "Q2 campaign budget 78% utilized.", tone: "neutral" },
+        { id: "spend-4", text: nl ? "Aanbeveling: heralloceer €250/dag naar best presterende campagne." : "Recommendation: reallocate €250/day to top-performing campaign.", tone: "recommendation" },
+      ],
       "currency",
       "-4%"
     ),
@@ -166,6 +228,7 @@ function buildDemoKpis(nl: boolean): MarketingWorkspaceKpiItem[] {
       methodology: nl ? "+14% vs vorige maand" : "+14% vs last month",
       hero: true,
       accent: "var(--pg-peer-marketing)",
+      href: officeHref("demo", "performance"),
     },
     {
       id: "leads-added",
@@ -173,62 +236,78 @@ function buildDemoKpis(nl: boolean): MarketingWorkspaceKpiItem[] {
       value: "63",
       methodology: nl ? "+18% vs vorige maand" : "+18% vs last month",
       accent: "var(--pg-action-primary)",
+      href: officeHref("demo", "performance"),
     },
     {
       id: "active-campaigns",
-      label: nl ? "Campagnes live" : "Campaigns live",
+      label: nl ? "Live campagnes" : "Live campaigns",
       value: "3",
       methodology: nl ? "2 wachten op goedkeuring" : "2 awaiting approval",
       accent: "var(--pg-v13-purple-accent, #7c3aed)",
+      href: officeHref("demo", "work"),
     },
     {
       id: "demo-roas",
       label: "ROAS",
       value: "3,2×",
-      methodology: nl ? "Google Ads account" : "Google Ads account",
+      methodology: nl ? "€ 1.840 spend deze maand" : "€1,840 spend this month",
       accent: "var(--pg-peer-marketing)",
+      href: officeHref("demo", "performance"),
     },
   ];
 }
 
-function buildDemoInsights(nl: boolean): MarketingWorkspaceInsightItem[] {
-  return [
-    {
-      id: "ins-ads",
-      text: nl
-        ? "Google Ads-efficiëntie steeg 18% — CPC daalde terwijl conversies stabiel bleven."
-        : "Google Ads efficiency rose 18% — CPC fell while conversions held steady.",
-      tone: "positive",
-    },
-    {
-      id: "ins-seo",
-      text: nl
-        ? "SEO-pagina's won gemiddeld 12 posities op doelzoektermen."
-        : "SEO pages gained an average of 12 positions on target keywords.",
-      tone: "positive",
-    },
-    {
-      id: "ins-linkedin",
-      text: nl
-        ? "LinkedIn-engagement vertraagt — overweeg andere formats of frequentie."
-        : "LinkedIn engagement is slowing — consider different formats or cadence.",
-      tone: "negative",
-    },
-    {
-      id: "ins-meta",
-      text: nl
-        ? "Meta-budget kan 15% omlaag zonder leadverlies op basis van ROAS-spreiding."
-        : "Meta budget could drop 15% without lead loss based on ROAS spread.",
-      tone: "opportunity",
-    },
-    {
-      id: "ins-competitor",
-      text: nl
-        ? "Concurrent X lanceerde een nieuwe campagne rond snelle onboarding."
-        : "Competitor X launched a new campaign around fast onboarding.",
-      tone: "neutral",
-    },
-  ];
+function buildDemoBusinessIntelligence(nl: boolean): MarketingWorkspaceBusinessIntelligenceBand {
+  return {
+    eyebrow: nl ? "Business intelligence" : "Business intelligence",
+    title: nl ? "Wat je moet weten" : "What you should know",
+    href: officeHref("demo", "performance"),
+  };
+}
+
+function buildDemoActivity(nl: boolean): MarketingWorkspaceActivityBand {
+  return {
+    title: nl ? "Recente activiteit" : "Recent activity",
+    items: [
+      {
+        id: "act-ads-publish",
+        timestamp: new Date(Date.now() - 3 * 60_000).toISOString(),
+        timeLabel: nl ? "3 minuten geleden" : "3 minutes ago",
+        title: nl ? "Google Ads-campagne gepubliceerd" : "Google Ads campaign published",
+        subtitle: nl ? "Budget verhoogd met €120." : "Budget increased by €120.",
+        tone: "success",
+        href: null,
+      },
+      {
+        id: "act-linkedin",
+        timestamp: new Date(Date.now() - 11 * 60_000).toISOString(),
+        timeLabel: nl ? "11 minuten geleden" : "11 minutes ago",
+        title: nl ? "LinkedIn-post bereikte 12.000 impressies" : "LinkedIn post reached 12,000 impressions",
+        subtitle: nl ? "Best presterende content vandaag." : "Top performing content today.",
+        tone: "insight",
+        href: null,
+      },
+      {
+        id: "act-competitor",
+        timestamp: new Date(Date.now() - 31 * 60_000).toISOString(),
+        timeLabel: nl ? "31 minuten geleden" : "31 minutes ago",
+        title: nl ? "Concurrent lanceerde nieuwe campagne" : "Competitor launched new campaign",
+        subtitle: nl ? "Mogelijke CPC-stijging verwacht." : "Potential CPC increase expected.",
+        tone: "attention",
+        href: null,
+      },
+      {
+        id: "act-seo",
+        timestamp: new Date(Date.now() - 2 * 3600_000).toISOString(),
+        timeLabel: nl ? "2 uur geleden" : "2 hours ago",
+        title: nl ? "SEO-pagina's stegen gemiddeld 12 posities" : "SEO pages gained an average of 12 positions",
+        subtitle: nl ? "Organisch verkeer groeit gestaag." : "Organic traffic growing steadily.",
+        tone: "success",
+        href: null,
+      },
+    ],
+    emptyMessage: null,
+  };
 }
 
 function buildDemoCampaigns(nl: boolean, peerId: string): MarketingWorkspaceCampaignCard[] {
@@ -236,79 +315,127 @@ function buildDemoCampaigns(nl: boolean, peerId: string): MarketingWorkspaceCamp
     {
       id: "demo-camp-linkedin",
       name: nl ? "LinkedIn Q2 Groei" : "LinkedIn Q2 Growth",
-      statusLabel: "LIVE",
-      progressLabel: nl ? "3 posts deze week" : "3 posts this week",
+      status: "live",
       channelLabel: "LinkedIn",
-      budgetLabel: nl ? "€ 840 / maand" : "€840 / month",
-      impactLabel: nl ? "+847 impressies vandaag" : "+847 impressions today",
-      needsApproval: false,
-      isLive: true,
+      channelsSubtitle: null,
+      thumbnailKind: "linkedin",
+      previewHeadline: nl ? "Q2-groei: AI-werkplek voor founders" : "Q2 growth: AI workspace for founders",
+      previewBody: nl
+        ? "We helpen teams sneller groeien met een AI-collega die marketing écht draait — niet alleen suggesties geeft."
+        : "We help teams grow faster with an AI colleague that actually runs marketing — not just suggestions.",
+      previewMeta: nl ? "Jouw bedrijf · 2 uur geleden" : "Your company · 2h ago",
+      budgetLabel: nl ? "€ 840 / maand" : "€840/mo",
+      revenueLabel: nl ? "€ 2,1k" : "€2.1k",
+      roasLabel: null,
+      leadsLabel: "12",
+      progressPercent: 75,
+      progressCaption: nl ? "3 posts deze week" : "3 posts this week",
+      milestoneLabel: nl ? "Volgende: performance read maandag" : "Next: performance read Monday",
+      milestoneAttention: false,
       href: officeHref(peerId, "work"),
     },
     {
       id: "demo-camp-ads",
       name: nl ? "Google Ads — Search" : "Google Ads — Search",
-      statusLabel: nl ? "In progress" : "In progress",
-      progressLabel: nl ? "Keyword expansion" : "Keyword expansion",
+      status: "optimizing",
       channelLabel: "Google Ads",
+      channelsSubtitle: null,
+      thumbnailKind: "google_ads",
+      previewHeadline: nl ? "AI Marketing Platform — Gratis demo" : "AI Marketing Platform — Free demo",
+      previewBody: nl
+        ? "Automatiseer campagnes, content en rapportage. Start vandaag met 14 dagen proefperiode."
+        : "Automate campaigns, content, and reporting. Start your 14-day trial today.",
+      previewMeta: "example.com",
       budgetLabel: nl ? "€ 1.840 spend" : "€1,840 spend",
-      impactLabel: nl ? "ROAS 3,2×" : "ROAS 3.2×",
-      needsApproval: false,
-      isLive: false,
+      revenueLabel: null,
+      roasLabel: "3,2×",
+      leadsLabel: "21",
+      progressPercent: 60,
+      progressCaption: nl ? "Keyword expansion actief" : "Keyword expansion running",
+      milestoneLabel: nl ? "Volgende: bid adjustment auto" : "Next: bid adjustment auto",
+      milestoneAttention: false,
       href: officeHref(peerId, "work"),
     },
     {
       id: "camp-heatpump",
       name: nl ? "AI-werkplek lanceren" : "Launch AI workspace awareness",
-      statusLabel: nl ? "Wacht op goedkeuring" : "Awaiting approval",
-      progressLabel: nl ? "3 deliverables klaar" : "3 deliverables ready",
-      channelLabel: "LinkedIn · Email · Blog",
+      status: "waiting",
+      channelLabel: nl ? "Multi-channel" : "Multi-channel",
+      channelsSubtitle: "LinkedIn · Email · Blog",
+      thumbnailKind: "multi",
+      previewHeadline: nl ? "Lanceer je AI-werkplek" : "Launch your AI workspace",
+      previewBody: nl
+        ? "LinkedIn · Email · Blog — drie deliverables klaar voor publicatie zodra jij goedkeurt."
+        : "LinkedIn · Email · Blog — three deliverables ready to publish once you approve.",
+      previewMeta: nl ? "3 kanalen" : "3 channels",
       budgetLabel: null,
-      impactLabel: nl ? "Verwachte reach: 12k" : "Expected reach: 12k",
-      needsApproval: true,
-      isLive: false,
+      revenueLabel: null,
+      roasLabel: null,
+      leadsLabel: null,
+      progressPercent: 30,
+      progressCaption: nl ? "3 assets klaar" : "3 assets ready",
+      milestoneLabel: nl ? "Wacht op jouw goedkeuring" : "Awaiting your approval",
+      milestoneAttention: true,
       href: officeCampaignHref(peerId, "camp-heatpump"),
     },
   ];
 }
 
-function buildOverviewSummary(input: {
+function buildOverviewParts(input: {
   nl: boolean;
   revenueValue: string | null;
   leadInsight: string | null;
   approvalCount: number;
-}): string {
-  const parts: string[] = [];
+  hasPerformance: boolean;
+  peerId: string;
+}): MarketingWorkspaceOverviewPart[] {
+  const parts: MarketingWorkspaceOverviewPart[] = [];
 
   if (input.revenueValue) {
-    parts.push(
-      input.nl
-        ? `Marketing genereerde ${input.revenueValue} deze maand.`
-        : `Marketing generated ${input.revenueValue} this month.`
-    );
+    parts.push({
+      text: input.nl
+        ? `Marketing genereerde ${input.revenueValue} deze maand`
+        : `Marketing generated ${input.revenueValue} this month`,
+    });
+  } else if (!input.hasPerformance) {
+    return [
+      {
+        text: input.nl
+          ? "Marketing draait. Koppel analytics om omzetbijdrage te zien"
+          : "Marketing is running. Connect analytics to see revenue contribution",
+      },
+    ];
   }
 
   if (input.leadInsight) {
-    parts.push(input.leadInsight);
+    parts.push({ text: input.leadInsight });
   }
 
   if (input.approvalCount === 1) {
-    parts.push(input.nl ? "Eén goedkeuring wacht." : "One approval is waiting.");
+    parts.push({
+      text: input.nl ? "Eén goedkeuring wacht" : "One approval waiting",
+      attention: true,
+    });
   } else if (input.approvalCount > 1) {
-    parts.push(
-      input.nl
-        ? `${input.approvalCount} goedkeuringen wachten.`
-        : `${input.approvalCount} approvals are waiting.`
-    );
+    parts.push({
+      text: input.nl
+        ? `${input.approvalCount} goedkeuringen wachten`
+        : `${input.approvalCount} approvals waiting`,
+      attention: true,
+    });
   }
 
   if (parts.length === 0) {
-    return input.nl
-      ? "Marketing draait — er zijn vandaag nog geen urgente acties."
-      : "Marketing is running — no urgent actions today.";
+    return [
+      {
+        text: input.nl
+          ? "Marketing draait — er zijn vandaag nog geen urgente acties"
+          : "Marketing is running — no urgent actions today",
+      },
+    ];
   }
 
-  return parts.slice(0, 3).join(" ");
+  return parts.slice(0, 3);
 }
 
 function buildKpisFromBriefing(input: {
@@ -343,8 +470,8 @@ function buildKpisFromBriefing(input: {
   if (input.work.groups.flatMap((g) => g.items).length > 0) {
     items.push({
       id: "active-campaigns",
-      label: input.nl ? "Campagnes actief" : "Active campaigns",
-      value: String(input.work.groups.flatMap((g) => g.items).length),
+      label: input.nl ? "Live campagnes" : "Live campaigns",
+      value: String(liveCount || input.work.groups.flatMap((g) => g.items).length),
       methodology:
         liveCount > 0
           ? input.nl
@@ -357,6 +484,7 @@ function buildKpisFromBriefing(input: {
   }
 
   for (const metric of input.performance.metrics.slice(0, MW_KPIS_MAX - items.length)) {
+    if (/spend|cpc/i.test(metric.label)) continue;
     items.push({
       id: metric.id,
       label: metric.label,
@@ -387,92 +515,88 @@ function buildLivePerformanceMetrics(input: {
   return [
     {
       id: "revenue",
-      label: hero.label,
+      label: input.nl ? "Omzet" : "Revenue",
       heroValue: hero.value,
       delta: hero.delta?.label?.match(/[+-]?\d[\d.,]*%/)?.[0] ?? delta,
       deltaPositive: hero.delta ? hero.delta.upIsGood : positive,
       chartLabel: trend?.label ?? hero.label,
       points,
       insight: topSignal?.interpretation ?? null,
-      valueFormat:
-        /revenue|omzet/i.test(hero.label) ? "currency" : "number",
+      bullets: topSignal
+        ? [
+            {
+              id: "live-1",
+              text: topSignal.interpretation || topSignal.fact,
+              tone: "neutral" as const,
+            },
+          ]
+        : [],
+      valueFormat: /revenue|omzet/i.test(hero.label) ? "currency" : "number",
     },
   ];
 }
 
-function insightToneFromText(text: string): MarketingWorkspaceInsightItem["tone"] {
-  const lower = text.toLowerCase();
-  if (/\b(increase|rose|gained|stronger|better|effici|steeg|won|hoger)\b/.test(lower)) {
-    return "positive";
-  }
-  if (/\b(slow|decline|drop|reduce|daalde|vertraag|lower|worse)\b/.test(lower)) {
-    return "negative";
-  }
-  if (/\b(consider|could|should|overweeg|kan|opportunity|budget)\b/.test(lower)) {
-    return "opportunity";
-  }
-  return "neutral";
-}
-
-function buildInsights(input: {
+function buildBusinessIntelligence(input: {
   performance: ReturnType<typeof buildMarketingPerformanceViewModelForOffice>;
   market: ReturnType<typeof buildMarketingMarketViewModel>;
   nl: boolean;
   isDemo: boolean;
-}): MarketingWorkspaceInsightItem[] | null {
-  if (input.isDemo) {
-    return buildDemoInsights(input.nl).slice(0, MW_INSIGHTS_MAX);
+  peerId: string;
+}): MarketingWorkspaceBusinessIntelligenceBand | null {
+  if (input.isDemo) return buildDemoBusinessIntelligence(input.nl);
+
+  return {
+    eyebrow: input.nl ? "Business intelligence" : "Business intelligence",
+    title: input.nl ? "Wat je moet weten" : "What you should know",
+    href: officeHref(input.peerId, "performance"),
+  };
+}
+
+function campaignStatusFromWork(item: WorkItem): MarketingCampaignStatus {
+  if (item.bucket === "attention") return "waiting";
+  if (item.bucket === "scheduled") return "scheduled";
+  if (item.bucket === "running" || item.stageLabel.toLowerCase().includes("live")) return "live";
+  return "optimizing";
+}
+
+function thumbnailFromChannel(channelId: string | null | undefined): MarketingCampaignThumbnailKind {
+  switch (channelId) {
+    case "linkedin":
+      return "linkedin";
+    case "google_ads":
+      return "google_ads";
+    case "email":
+    case "newsletter":
+      return "email";
+    default:
+      return "display";
   }
-
-  const items: MarketingWorkspaceInsightItem[] = [];
-
-  for (const signal of [...input.performance.signals]
-    .sort((a, b) => b.magnitude - a.magnitude)
-    .slice(0, 3)) {
-    const text = signal.interpretation || signal.fact;
-    items.push({
-      id: signal.id,
-      text,
-      tone: insightToneFromText(text),
-    });
-  }
-
-  if (input.market.interpretation?.text) {
-    items.push({
-      id: "market-interpretation",
-      text: input.market.interpretation.text,
-      tone: "neutral",
-    });
-  }
-
-  for (const observation of [...input.market.inferences, ...input.market.observedFacts].slice(
-    0,
-    2
-  )) {
-    items.push({
-      id: observation.id,
-      text: observation.statement,
-      tone: observation.evidence === "likely" ? "opportunity" : "neutral",
-    });
-  }
-
-  return items.length > 0 ? items.slice(0, MW_INSIGHTS_MAX) : null;
 }
 
 function workItemToCampaignCard(item: WorkItem, nl: boolean): MarketingWorkspaceCampaignCard {
   const channel = item.channels.find((c) => c.connected) ?? item.channels[0];
-  const isLive = item.bucket === "running" || item.stageLabel.toLowerCase().includes("live");
+  const status = campaignStatusFromWork(item);
 
   return {
     id: item.id,
     name: item.name,
-    statusLabel: isLive ? "LIVE" : item.stageLabel,
-    progressLabel: [item.primaryText, item.secondaryText].filter(Boolean).join(" · ") || null,
-    channelLabel: channel?.label ?? null,
+    status,
+    channelLabel: channel?.label ?? (nl ? "Campagne" : "Campaign"),
+    channelsSubtitle: item.channels.length > 1
+      ? item.channels.map((c) => c.label).join(" · ")
+      : null,
+    thumbnailKind: thumbnailFromChannel(channel?.id),
+    previewHeadline: item.name,
+    previewBody: item.primaryText ?? item.secondaryText ?? null,
+    previewMeta: channel?.label ?? null,
     budgetLabel: null,
-    impactLabel: item.expectedLabel,
-    needsApproval: item.bucket === "attention",
-    isLive,
+    revenueLabel: null,
+    roasLabel: null,
+    leadsLabel: item.expectedLabel?.match(/\d+/)?.[0] ?? null,
+    progressPercent: status === "waiting" ? 30 : status === "live" ? 75 : 50,
+    progressCaption: [item.primaryText, item.secondaryText].filter(Boolean).join(" · ") || null,
+    milestoneLabel: item.expectedLabel ?? item.stageLabel,
+    milestoneAttention: status === "waiting",
     href: item.href,
   };
 }
@@ -481,23 +605,51 @@ function deskRowToCampaignCard(
   row: import("@/lib/office/desk/build-desk-campaign-overview").DeskCampaignRow,
   nl: boolean
 ): MarketingWorkspaceCampaignCard {
+  const status: MarketingCampaignStatus = row.isLive
+    ? "live"
+    : row.quickActionLabel?.toLowerCase().includes("review") ||
+        row.quickActionLabel?.toLowerCase().includes("beoordeel")
+      ? "waiting"
+      : row.statusLabel.toLowerCase().includes("schedul")
+        ? "scheduled"
+        : "optimizing";
+
   return {
     id: row.id,
     name: row.name,
-    statusLabel: row.isLive ? "LIVE" : row.statusLabel,
-    progressLabel: [row.runningLabel, row.runningStatusLabel, row.dateRangeLabel]
-      .filter(Boolean)
-      .join(" · ") || null,
-    channelLabel: null,
+    status,
+    channelLabel: row.name.includes("LinkedIn")
+      ? "LinkedIn"
+      : row.name.includes("Google")
+        ? "Google Ads"
+        : nl
+          ? "Campagne"
+          : "Campaign",
+    channelsSubtitle: null,
+    thumbnailKind: row.name.includes("Google") ? "google_ads" : "linkedin",
+    previewHeadline: row.name,
+    previewBody: row.runningLabel ?? row.statusLabel,
+    previewMeta: row.dateRangeLabel,
     budgetLabel: null,
-    impactLabel: row.daysRemaining != null
-      ? nl
-        ? `${row.daysRemaining} dagen resterend`
-        : `${row.daysRemaining} days remaining`
-      : null,
-    needsApproval: Boolean(row.quickActionLabel?.toLowerCase().includes("review") ||
-      row.quickActionLabel?.toLowerCase().includes("beoordeel")),
-    isLive: row.isLive,
+    revenueLabel: null,
+    roasLabel: null,
+    leadsLabel: null,
+    progressPercent:
+      status === "waiting" ? 30 : row.isLive ? 75 : row.daysRemaining != null ? 60 : null,
+    progressCaption:
+      [row.runningLabel, row.runningStatusLabel, row.dateRangeLabel].filter(Boolean).join(" · ") ||
+      null,
+    milestoneLabel:
+      status === "waiting"
+        ? nl
+          ? "Wacht op jouw goedkeuring"
+          : "Awaiting your approval"
+        : row.daysRemaining != null
+          ? nl
+            ? `${row.daysRemaining} dagen resterend`
+            : `${row.daysRemaining} days remaining`
+          : row.statusLabel,
+    milestoneAttention: status === "waiting",
     href: row.href,
   };
 }
@@ -559,6 +711,16 @@ function contentKindForChannel(channelId: string | null): MarketingWorkspaceCont
   }
 }
 
+function statusToneFromLabel(label: string): MarketingWorkspaceContentPreview["statusTone"] {
+  const lower = label.toLowerCase();
+  if (lower.includes("live") || lower.includes("published")) return "live";
+  if (lower.includes("schedul")) return "scheduled";
+  if (lower.includes("review") || lower.includes("goedkeur") || lower.includes("await")) {
+    return "review";
+  }
+  return "draft";
+}
+
 function buildContentPreviews(input: {
   domainInput: MarketingPeerDomainInput;
   locale: "en" | "nl";
@@ -585,13 +747,15 @@ function buildContentPreviews(input: {
       title: item.title,
       preview: item.preview ?? "",
       statusLabel: item.statusLabel,
+      statusTone: statusToneFromLabel(item.statusLabel),
+      performanceWhisper: null,
       href: item.href,
     }));
 
   if (items.length > 0 || !input.isDemo) return items;
 
   const nl = input.locale === "nl";
-  return input.domainInput.drafts.slice(0, MW_CONTENT_MAX).map((draft) => ({
+  return input.domainInput.drafts.slice(0, MW_CONTENT_MAX).map((draft, index) => ({
     id: draft.id,
     kind: contentKindForChannel(draft.channel ?? null),
     channelLabel: draft.channel === "linkedin" ? "LinkedIn" : draft.channel ?? "Content",
@@ -601,8 +765,10 @@ function buildContentPreviews(input: {
       draft.status === "ready_for_review"
         ? nl
           ? "Wacht op goedkeuring"
-          : "Awaiting approval"
+          : "Awaiting review"
         : draft.status,
+    statusTone: draft.status === "ready_for_review" ? ("review" as const) : ("draft" as const),
+    performanceWhisper: index === 0 ? (nl ? "847 impressies" : "847 impressions") : null,
     href: officeHref(input.peerId, "content"),
   }));
 }
@@ -611,7 +777,11 @@ function buildActivityFeed(input: {
   domainInput: MarketingPeerDomainInput;
   locale: "en" | "nl";
   peerId: string;
-}): MarketingWorkspaceActivityBand["items"] {
+  isDemo: boolean;
+}): MarketingWorkspaceActivityBand {
+  const nl = input.locale === "nl";
+  if (input.isDemo) return buildDemoActivity(nl);
+
   const activities = buildMarketingActivities(input.domainInput);
   const feed = input.domainInput.activityFeed ?? [];
 
@@ -619,83 +789,61 @@ function buildActivityFeed(input: {
     id: activity.id,
     timestamp: activity.occurredAt,
     timeLabel: activity.timeLabel,
-    message: activity.title,
+    title: activity.title,
+    subtitle: activity.title,
+    tone: "neutral" as const,
     href: activity.target.href ? toOfficeHref(input.peerId, activity.target.href) : null,
   }));
 
-  if (fromActivities.length >= 3) return fromActivities.slice(0, MW_ACTIVITY_MAX);
+  const merged =
+    fromActivities.length >= 3
+      ? fromActivities.slice(0, MW_ACTIVITY_MAX)
+      : [
+          ...fromActivities,
+          ...feed.slice(0, MW_ACTIVITY_MAX).map((item) => ({
+            id: item.id,
+            timestamp: item.timestamp,
+            timeLabel: new Date(item.timestamp).toLocaleTimeString(
+              nl ? "nl-NL" : "en-GB",
+              { hour: "2-digit", minute: "2-digit" }
+            ),
+            title: item.title,
+            subtitle: item.title,
+            tone: "neutral" as const,
+            href: null,
+          })),
+        ].slice(0, MW_ACTIVITY_MAX);
 
-  const fromFeed = feed.slice(0, MW_ACTIVITY_MAX).map((item) => ({
-    id: item.id,
-    timestamp: item.timestamp,
-    timeLabel: new Date(item.timestamp).toLocaleTimeString(input.locale === "nl" ? "nl-NL" : "en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    message: item.title,
-    href: null,
-  }));
-
-  return [...fromActivities, ...fromFeed].slice(0, MW_ACTIVITY_MAX);
-}
-
-function buildResults(input: {
-  domainInput: MarketingPeerDomainInput;
-  locale: "en" | "nl";
-  peerId: string;
-  now?: Date;
-  isDemo: boolean;
-}): MarketingWorkspaceResultsBand["items"] {
-  const outcomes = buildDeduplicatedCompletedOutcomes({
-    domainInput: input.domainInput,
-    locale: input.locale,
-    now: input.now,
-  }).filter((o) => o.group === "today");
-
-  if (outcomes.length > 0) {
-    return outcomes.slice(0, MW_RESULTS_MAX).map((o) => ({
-      id: o.id,
-      label: o.title,
-      impactLabel: o.summary ?? null,
-      href: o.href ? toOfficeHref(input.peerId, o.href) : null,
-    }));
-  }
-
-  if (!input.isDemo) return [];
-
-  const nl = input.locale === "nl";
-  return [
-    {
-      id: "demo-result-1",
-      label: nl ? "Campagnestrategie goedgekeurd" : "Campaign strategy approved",
-      impactLabel: nl ? "Beïnvloedde € 1,2k pipeline" : "Influenced €1.2k pipeline",
-      href: officeHref(input.peerId, "work"),
-    },
-    {
-      id: "demo-result-2",
-      label: nl ? "3 LinkedIn posts gepubliceerd" : "3 LinkedIn posts published",
-      impactLabel: nl ? "847 impressies" : "847 impressions",
-      href: officeHref(input.peerId, "content"),
-    },
-  ];
+  return {
+    title: nl ? "Recente activiteit" : "Recent activity",
+    items: merged,
+    emptyMessage:
+      merged.length === 0
+        ? nl
+          ? "Rustige week — activiteit verschijnt hier zodra campagnes bewegen."
+          : "Quiet week — activity will appear here as campaigns move."
+        : null,
+  };
 }
 
 export function marketingWorkspaceBandsContainForbiddenTerms(
   bands: MarketingWorkspaceBands
 ): boolean {
   const corpus = [
-    bands.overview.summary,
+    ...bands.overview.parts.map((p) => p.text),
     ...bands.kpis.items.map((k) => `${k.label} ${k.value}`),
-    ...(bands.performance?.metrics.flatMap((m) => [m.insight ?? "", m.label]) ?? []),
-    ...(bands.insights?.items.map((i) => i.text) ?? []),
+    ...(bands.performance?.metrics.flatMap((m) => [
+      m.insight ?? "",
+      m.label,
+      ...m.bullets.map((b) => b.text),
+    ]) ?? []),
     ...(bands.campaigns?.items.map(
-      (c) => `${c.name} ${c.statusLabel} ${c.progressLabel ?? ""}`
+      (c) => `${c.name} ${c.milestoneLabel} ${c.progressCaption ?? ""}`
     ) ?? []),
     ...(bands.content?.items.map((c) => `${c.title} ${c.preview}`) ?? []),
     ...(bands.approvals?.items.map((a) => `${a.title} ${a.unblocks}`) ?? []),
     bands.recommendation?.headline ?? "",
-    ...(bands.activity?.items.map((a) => a.message) ?? []),
-    ...(bands.results?.items.map((r) => `${r.label} ${r.impactLabel ?? ""}`) ?? []),
+    ...(bands.activity?.items.map((a) => `${a.title} ${a.subtitle}`) ?? []),
   ].join(" ");
 
   return WORKFLOW_TERMS.test(corpus);
@@ -759,21 +907,24 @@ export function buildMarketingWorkspaceBands(input: {
   const topSignal = [...performance.signals].sort((a, b) => b.magnitude - a.magnitude)[0];
 
   const overview = {
-    summary: buildOverviewSummary({
+    parts: buildOverviewParts({
       nl,
       revenueValue: revenueKpi?.value ?? (isDemo ? "€ 18.420" : null),
       leadInsight: isDemo
         ? nl
-          ? "Google Ads presteert 23% beter dan LinkedIn."
-          : "Google Ads is outperforming LinkedIn by 23%."
+          ? "Google Ads presteert 23% beter dan LinkedIn"
+          : "Google Ads is outperforming LinkedIn by 23%"
         : topSignal?.interpretation ?? null,
       approvalCount: desk.decisions.length,
+      hasPerformance: Boolean(revenueKpi),
+      peerId,
     }),
   };
 
   const performanceBand: MarketingWorkspacePerformanceBand | null = isDemo
     ? {
         periodLabel: nl ? "Laatste 30 dagen" : "Last 30 days",
+        title: nl ? "Performance" : "Performance",
         metrics: buildDemoPerformanceMetrics(nl),
         defaultMetricId: "revenue",
       }
@@ -783,18 +934,46 @@ export function buildMarketingWorkspaceBands(input: {
         return {
           periodLabel:
             briefing.executive.periodLabel ?? (nl ? "Laatste 30 dagen" : "Last 30 days"),
+          title: nl ? "Performance" : "Performance",
           metrics,
           defaultMetricId: "revenue" as const,
         };
       })();
 
-  const insightsItems = buildInsights({ performance, market, nl, isDemo });
-  const insights = insightsItems
-    ? {
-        title: nl ? "Marketing inzichten" : "Marketing insights",
-        items: insightsItems,
-      }
+  const workspaceBrain = resolveWorkspaceBrainOutput({
+    domainInput: input.domainInput,
+    locale: input.localePreference,
+    isDemo,
+    now: input.now,
+  });
+
+  const brainSlices = workspaceBrain
+    ? mapWorkspaceSlicesFromBrain({
+        brain: workspaceBrain,
+        nl,
+        performanceHref: officeHref(peerId, "performance"),
+      })
     : null;
+
+  const performanceWithBrain =
+    performanceBand && brainSlices
+      ? {
+          ...performanceBand,
+          metrics: applyBrainBulletsToMetrics(
+            performanceBand.metrics,
+            brainSlices.biBulletsByMetric,
+            brainSlices.defaultBiBullets
+          ),
+        }
+      : performanceBand;
+
+  const businessIntelligence = buildBusinessIntelligence({
+    performance,
+    market,
+    nl,
+    isDemo,
+    peerId,
+  });
 
   const campaignCards = buildCampaignCards({
     domainInput: input.domainInput,
@@ -807,11 +986,23 @@ export function buildMarketingWorkspaceBands(input: {
   const campaigns =
     campaignCards.length > 0
       ? {
-          title: nl ? "Actieve campagnes" : "Active campaigns",
+          title: nl ? "Live campagnes" : "Live campaigns",
           items: campaignCards,
           viewAllHref: officeHref(peerId, "work"),
+          emptyMessage: null,
+          emptyLinkLabel: null,
+          emptyLinkHref: null,
         }
-      : null;
+      : {
+          title: nl ? "Live campagnes" : "Live campaigns",
+          items: [],
+          viewAllHref: officeHref(peerId, "work"),
+          emptyMessage: nl
+            ? "Nog geen campagnes live. Start er een vanuit Work."
+            : "No campaigns live yet. Start one from Work.",
+          emptyLinkLabel: nl ? "Naar Work" : "Go to Work",
+          emptyLinkHref: officeHref(peerId, "work"),
+        };
 
   const contentItems = buildContentPreviews({
     domainInput: input.domainInput,
@@ -823,7 +1014,7 @@ export function buildMarketingWorkspaceBands(input: {
   const content =
     contentItems.length > 0
       ? {
-          title: nl ? "Content preview" : "Content preview",
+          title: nl ? "Content klaar om te publiceren" : "Content ready to publish",
           items: contentItems,
           viewAllHref: officeHref(peerId, "content"),
         }
@@ -848,7 +1039,8 @@ export function buildMarketingWorkspaceBands(input: {
   const recommendation =
     desk.decisions.length > 0
       ? null
-      : briefing.executive.recommendation && topSignal?.recommendation
+      : brainSlices?.recommendation ??
+        (briefing.executive.recommendation && topSignal?.recommendation
         ? {
             headline: topSignal.recommendation,
             impact: topSignal.fact ?? briefing.executive.interpretationFact,
@@ -880,48 +1072,26 @@ export function buildMarketingWorkspaceBands(input: {
                 },
               ],
             }
-          : null;
+          : null);
 
-  const activityItems = buildActivityFeed({
+  const activityFromBrain = brainSlices?.activity ?? null;
+  const activityLegacy = buildActivityFeed({
     domainInput: input.domainInput,
     locale,
     peerId,
-  });
-
-  const activity =
-    activityItems.length > 0
-      ? {
-          title: nl ? "Live activiteit" : "Live activity",
-          items: activityItems,
-        }
-      : null;
-
-  const resultItems = buildResults({
-    domainInput: input.domainInput,
-    locale,
-    peerId,
-    now: input.now,
     isDemo,
   });
-
-  const results =
-    resultItems.length > 0
-      ? {
-          title: nl ? "Resultaten vandaag" : "Today's results",
-          items: resultItems,
-        }
-      : null;
+  const activity = activityFromBrain ?? activityLegacy;
 
   return {
     overview,
     kpis: { items: kpis },
-    performance: performanceBand,
-    insights,
+    performance: performanceWithBrain,
+    businessIntelligence,
     campaigns,
     content,
     approvals,
     recommendation,
-    activity,
-    results,
+    activity: activity.items.length > 0 || activity.emptyMessage ? activity : null,
   };
 }
