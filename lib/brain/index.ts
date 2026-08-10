@@ -814,3 +814,125 @@ export type {
   BuildPlanningGraphInput,
   PlanningLayerInput,
 } from "./layers/planning";
+
+/* PX-35 — Creative Brain Layer */
+
+export type {
+  CreativeGraph,
+  CreativeBrainInput,
+  CreativeBrainOutput,
+  CreativeCampaign,
+  CreativeMessaging,
+  CreativeChannelPlan,
+  CreativeDeliverable,
+  CreativeDecision,
+  CreativeDirection,
+  CreativeThinkingPhase,
+} from "./layers/creative";
+
+export {
+  CREATIVE_LAYER_VERSION,
+  CREATIVE_MODULE_SPECS,
+  buildCreativeGraph,
+  validateCreativeGraph,
+  scoreCreativeQuality,
+  mapCreativeGraphToBrainOutput,
+  CreativeLayer,
+  createCreativeLayer,
+  collectCreativeGraph,
+  createFromBrainInputs as createCreativeFromBrainInputs,
+  CreativeBrainExecutor,
+  createCreativeBrainExecutor,
+  getDefaultCreativeRepository,
+  resetDefaultCreativeRepository,
+} from "./layers/creative";
+
+export { createDefaultProjectBrainRegistry, creativeBrainContract, validationBrainContract, memoryBrainContract } from "./integration/creative-brain-registry";
+
+/* PX-37 — Memory Brain Layer */
+
+export type {
+  MemoryGraph,
+  MemoryBrainInput,
+  MemoryBrainOutput,
+  MemoryRecord,
+  MemoryNode,
+  MemoryRelation,
+  MemoryDecision,
+  MemorySummary,
+  MemorySnapshot,
+  MemoryQuery,
+  MemoryQueryResult,
+  MemoryDomainId,
+  MemoryEvidence,
+  MemoryEvolutionEntry,
+} from "./layers/memory";
+
+export {
+  MEMORY_LAYER_VERSION,
+  MEMORY_MODULE_SPECS,
+  buildMemoryGraph,
+  buildMemorySummary,
+  validateMemoryGraph,
+  scoreMemoryQuality,
+  mapMemoryGraphToBrainOutput,
+  MemoryLayer,
+  createMemoryLayer,
+  collectMemoryGraph,
+  MemoryBrainExecutor,
+  createMemoryBrainExecutor,
+  createFromBrainInputs as createMemoryFromBrainInputs,
+  MemoryPublisher,
+  createMemoryPublisher,
+  publishMemoryOutput,
+  MemoryRetriever,
+  createMemoryRetriever,
+  retrieveMemories,
+  retrieveRelevantMemories,
+  MemoryIndexer,
+  indexMemories,
+  getDefaultMemoryRepository,
+  resetDefaultMemoryRepository,
+  memoryMergeKey,
+  mergeMemories,
+  decideMemoryAction,
+} from "./layers/memory";
+
+/* PX-36 — Validation Brain Layer */
+
+export type {
+  ValidationGraph,
+  ValidationBrainInput,
+  ValidationBrainOutput,
+  ValidationReport,
+  ValidationIssue,
+  ValidationCategory,
+  ValidationWarning,
+  ValidationPass,
+  ValidationDecision,
+  ValidationScore,
+  ValidationSummary,
+  PublicationReadiness,
+  ValidationDomainId,
+} from "./layers/validation";
+
+export {
+  VALIDATION_LAYER_VERSION,
+  VALIDATION_MODULE_SPECS,
+  buildValidationGraph,
+  buildValidationSummary,
+  validateValidationGraph,
+  scoreValidationQuality,
+  mapValidationGraphToBrainOutput,
+  ValidationLayer,
+  createValidationLayer,
+  collectValidationGraph,
+  ValidationBrainExecutor,
+  createValidationBrainExecutor,
+  createFromBrainInputs as createValidationFromBrainInputs,
+  ValidationPublisher,
+  createValidationPublisher,
+  publishValidationOutput,
+  getDefaultValidationRepository,
+  resetDefaultValidationRepository,
+} from "./layers/validation";

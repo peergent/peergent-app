@@ -947,11 +947,20 @@ export function buildMarketingWorkspaceBands(input: {
     now: input.now,
   });
 
+  const campaignCardsRaw = buildCampaignCards({
+    domainInput: input.domainInput,
+    work,
+    locale,
+    isDemo,
+    peerId,
+  });
+
   const brainSlices = workspaceBrain
     ? mapWorkspaceSlicesFromBrain({
         brain: workspaceBrain,
         nl,
         performanceHref: officeHref(peerId, "performance"),
+        existingCampaignCards: campaignCardsRaw,
       })
     : null;
 
@@ -975,19 +984,15 @@ export function buildMarketingWorkspaceBands(input: {
     peerId,
   });
 
-  const campaignCards = buildCampaignCards({
-    domainInput: input.domainInput,
-    work,
-    locale,
-    isDemo,
-    peerId,
-  });
+  const campaignCards = brainSlices?.campaignCards.length
+    ? brainSlices.campaignCards
+    : campaignCardsRaw;
 
   const campaigns =
     campaignCards.length > 0
       ? {
           title: nl ? "Live campagnes" : "Live campaigns",
-          items: campaignCards,
+          items: [...campaignCards],
           viewAllHref: officeHref(peerId, "work"),
           emptyMessage: null,
           emptyLinkLabel: null,
@@ -1021,8 +1026,15 @@ export function buildMarketingWorkspaceBands(input: {
       : null;
 
   const visibleApprovals = desk.decisions.slice(0, MW_APPROVALS_MAX);
+  const brainApprovalsRaw = brainSlices?.approvals;
+  const brainApprovals =
+    brainApprovalsRaw && desk.decisions.length > 0
+      ? brainApprovalsRaw
+      : null;
+
   const approvals =
-    visibleApprovals.length > 0
+    brainApprovals ??
+    (visibleApprovals.length > 0
       ? {
           items: visibleApprovals as MarketingWorkspaceApprovalItem[],
           totalCount: desk.decisions.length,
@@ -1034,10 +1046,10 @@ export function buildMarketingWorkspaceBands(input: {
               : null,
           overflowHref: "/inbox",
         }
-      : null;
+      : null);
 
   const recommendation =
-    desk.decisions.length > 0
+    brainApprovals || desk.decisions.length > 0
       ? null
       : brainSlices?.recommendation ??
         (briefing.executive.recommendation && topSignal?.recommendation
@@ -1046,33 +1058,9 @@ export function buildMarketingWorkspaceBands(input: {
             impact: topSignal.fact ?? briefing.executive.interpretationFact,
             primaryLabel: nl ? "Bekijk aanbeveling" : "View recommendation",
             href: officeHref(peerId, "performance"),
-            impactMetrics: isDemo
-              ? [
-                  {
-                    id: "roas",
-                    label: nl ? "+21% ROAS verbetering" : "+21% ROAS improvement",
-                  },
-                ]
-              : undefined,
+            impactMetrics: undefined,
           }
-        : isDemo && !approvals
-          ? {
-              headline: nl
-                ? "Verhoog Google Ads-budget met 15%"
-                : "Increase Google Ads budget by 15%",
-              impact: nl
-                ? "ROAS is 23% hoger op Google Ads dan LinkedIn over 14 dagen."
-                : "ROAS is 23% higher on Google Ads than LinkedIn over 14 days.",
-              primaryLabel: nl ? "Bekijk aanbeveling" : "View recommendation",
-              href: officeHref(peerId, "performance"),
-              impactMetrics: [
-                {
-                  id: "leads",
-                  label: nl ? "+14 extra leads verwacht" : "+14 extra leads expected",
-                },
-              ],
-            }
-          : null);
+        : null);
 
   const activityFromBrain = brainSlices?.activity ?? null;
   const activityLegacy = buildActivityFeed({

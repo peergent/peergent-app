@@ -67,6 +67,12 @@ export type BrainStructuredOutput = {
   planningGraph?: import("../layers/planning/types").PlanningGraph;
   /** Sprint 11.1 — cache identity and diagnostics for campaign_planning output. */
   planningMetadata?: import("../planning/campaign-planning-types").PlanningOutputMetadata;
+  /** PX-35 — full CreativeGraph for executive review and Brain Output Layer (optional). */
+  creativeGraph?: import("../layers/creative/types").CreativeGraph;
+  /** PX-36 — full ValidationGraph for approval and Brain Output Layer (optional). */
+  validationGraph?: import("../layers/validation/types").ValidationGraph;
+  /** PX-37 — full MemoryGraph for organizational knowledge (optional). */
+  memoryGraph?: import("../layers/memory/types").MemoryGraph;
   recommendations: readonly BrainRecommendation[];
   actionProposals: readonly BrainActionProposal[];
   executionResults: readonly BrainExecutionResult[];

@@ -66,6 +66,12 @@ const REQUIREMENTS: Readonly<Record<BrainCapabilityId, CapabilityExecutionRequir
     criticalFields: ["tone"],
     partialExecutionAllowed: true,
   },
+  validation: {
+    minimumReadinessScore: 50,
+    requiredDimensions: ["brand"],
+    criticalFields: [],
+    partialExecutionAllowed: false,
+  },
   performance_interpretation: {
     minimumReadinessScore: 35,
     requiredDimensions: ["company_profile"],

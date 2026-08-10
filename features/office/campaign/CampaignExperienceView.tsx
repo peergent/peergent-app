@@ -36,17 +36,21 @@ function renderBriefSections(
   const labels = nl
     ? {
         executiveSummary: "Executive summary",
-        businessGoal: "Business goal",
-        currentStatus: "Current status",
-        expectedImpact: "Expected impact",
-        nextDecision: "Next decision",
+        researchFindings: "Research findings",
+        audienceInsight: "Audience insight",
+        strategicDecision: "Strategic decision",
+        creativeDirection: "Creative direction",
+        expectedBusinessImpact: "Expected business impact",
+        nextRecommendation: "Next recommendation",
       }
     : {
         executiveSummary: "Executive summary",
-        businessGoal: "Business goal",
-        currentStatus: "Current status",
-        expectedImpact: "Expected impact",
-        nextDecision: "Next decision",
+        researchFindings: "Research findings",
+        audienceInsight: "Audience insight",
+        strategicDecision: "Strategic decision",
+        creativeDirection: "Creative direction",
+        expectedBusinessImpact: "Expected business impact",
+        nextRecommendation: "Next recommendation",
       };
 
   return (
@@ -268,7 +272,7 @@ export default function CampaignExperienceView({
         <section className="pg-ce-row" aria-labelledby="pg-ce-assets-title">
           <header className="pg-mw-section-head">
             <h2 id="pg-ce-assets-title" className="pg-ce-section-title">
-              {nl ? "Creative assets" : "Creative assets"}
+              {nl ? "Creative Strategy" : "Creative Strategy"}
             </h2>
           </header>
           <CeCreativeAssetGrid assets={experience.assets} />

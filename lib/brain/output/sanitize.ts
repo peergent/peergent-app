@@ -1,5 +1,5 @@
 const FORBIDDEN_CUSTOMER_TERMS =
-  /\b(workflow|langgraph|prompt|token|brain runtime|capability id|step id|orchestrat|agent runtime|pipeline node)\b/i;
+  /\b(workflow|langgraph|prompt|token|brain runtime|capability id|step id|orchestrat|agent runtime|pipeline node|validationgraph|publicationreadiness|business_fit|legal_claims|validation brain|evaluator)\b/i;
 
 /** Strip internal vocabulary from customer-facing copy. */
 export function sanitizeCustomerText(text: string | null | undefined): string | null {

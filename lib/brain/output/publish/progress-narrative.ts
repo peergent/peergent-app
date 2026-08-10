@@ -1,8 +1,12 @@
 import type { BrainStructuredOutput } from "@/lib/brain/evidence/structured-output";
 import type { Decision } from "@/lib/brain/decision/decision-types";
 import type { CampaignWorkflowStep, CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
+import type { CreativeGraph } from "@/lib/brain/layers/creative/types";
+import type { ValidationGraph } from "@/lib/brain/layers/validation/types";
 import { customerTextOrFallback, sanitizeCustomerText } from "../sanitize";
 import type { ProgressNarrative, ProgressStepNarrative, ProgressStepState } from "../types";
+import { selectedCreativeCampaign } from "./creative-source";
+import { publicationReadinessLabel } from "./validation-source";
 
 const PROGRESS_STEP_DEFS: readonly {
   id: string;
@@ -73,14 +77,51 @@ const PROGRESS_STEP_DEFS: readonly {
     nl: "Content geproduceerd",
     workflowIds: ["deliverables_created"],
     source: "creative",
-    narrativeEn: (ctx) =>
-      ctx.deliverableCount
+    narrativeEn: (ctx) => {
+      if (ctx.creative) {
+        const phase = ctx.creative.phases.find((p) => p.phase === "generate_deliverables");
+        return phase?.summary ?? `${ctx.deliverableCount ?? ctx.creative.deliverables.length} deliverable specs ready for review.`;
+      }
+      return ctx.deliverableCount
         ? `${ctx.deliverableCount} deliverables are ready for publication.`
-        : "Campaign content is prepared and ready for your review.",
-    narrativeNl: (ctx) =>
-      ctx.deliverableCount
+        : "Campaign content is prepared and ready for your review.";
+    },
+    narrativeNl: (ctx) => {
+      if (ctx.creative) {
+        const phase = ctx.creative.phases.find((p) => p.phase === "generate_deliverables");
+        return phase?.summary ?? `${ctx.deliverableCount ?? ctx.creative.deliverables.length} deliverable-specificaties klaar voor review.`;
+      }
+      return ctx.deliverableCount
         ? `${ctx.deliverableCount} deliverables zijn klaar voor publicatie.`
-        : "Campagnecontent is voorbereid en klaar voor je review.",
+        : "Campagnecontent is voorbereid en klaar voor je review.";
+    },
+  },
+  {
+    id: "validation",
+    en: "Quality review completed",
+    nl: "Kwaliteitsreview voltooid",
+    workflowIds: ["deliverables_created", "waiting_for_approval"],
+    source: "validation",
+    narrativeEn: (ctx) => {
+      if (ctx.validation) {
+        const score = ctx.validation.report.overallScore.value;
+        const readiness = publicationReadinessLabel(ctx.validation.report.publicationReadiness, false);
+        const warnCount = ctx.validation.report.warnings.length;
+        const warnNote = warnCount > 0 ? ` · ${warnCount} recommendation${warnCount === 1 ? "" : "s"}` : "";
+        return `Quality review completed — ${score}/100. ${readiness}${warnNote}.`;
+      }
+      return "Campaign quality is being reviewed before publication.";
+    },
+    narrativeNl: (ctx) => {
+      if (ctx.validation) {
+        const score = ctx.validation.report.overallScore.value;
+        const readiness = publicationReadinessLabel(ctx.validation.report.publicationReadiness, true);
+        const warnCount = ctx.validation.report.warnings.length;
+        const warnNote = warnCount > 0 ? ` · ${warnCount} aanbeveling${warnCount === 1 ? "" : "en"}` : "";
+        return `Kwaliteitsreview voltooid — ${score}/100. ${readiness}${warnNote}.`;
+      }
+      return "Campagnekwaliteit wordt beoordeeld vóór publicatie.";
+    },
   },
   {
     id: "approval",
@@ -88,8 +129,26 @@ const PROGRESS_STEP_DEFS: readonly {
     nl: "Wacht op goedkeuring",
     workflowIds: ["waiting_for_approval"],
     source: "validation",
-    narrativeEn: () => "One approval remains before automatic deployment can start.",
-    narrativeNl: () => "Één goedkeuring resterend voordat automatische deployment kan starten.",
+    narrativeEn: (ctx) => {
+      if (ctx.validation?.report.publicationReadiness === "BLOCKED" ||
+          ctx.validation?.report.publicationReadiness === "CHANGES_REQUIRED") {
+        return "Revision required before approval can be requested.";
+      }
+      if (ctx.validation) {
+        return `Campaign scored ${ctx.validation.report.overallScore.value}/100 — awaiting your approval to publish.`;
+      }
+      return "One approval remains before automatic deployment can start.";
+    },
+    narrativeNl: (ctx) => {
+      if (ctx.validation?.report.publicationReadiness === "BLOCKED" ||
+          ctx.validation?.report.publicationReadiness === "CHANGES_REQUIRED") {
+        return "Revisie vereist voordat goedkeuring kan worden gevraagd.";
+      }
+      if (ctx.validation) {
+        return `Campagne scoorde ${ctx.validation.report.overallScore.value}/100 — wacht op jouw goedkeuring voor publicatie.`;
+      }
+      return "Één goedkeuring resterend voordat automatische deployment kan starten.";
+    },
   },
   {
     id: "published",
@@ -116,6 +175,8 @@ type ProgressNarrativeContext = {
   competitorFinding: string | null;
   positioningDecision: string | null;
   deliverableCount: number | null;
+  creative: CreativeGraph | null;
+  validation: ValidationGraph | null;
 };
 
 function resolveWorkflowState(
@@ -135,31 +196,45 @@ function resolveWorkflowState(
 
 function buildContext(
   strategy: BrainStructuredOutput | undefined,
-  decisions: readonly Decision[]
+  decisions: readonly Decision[],
+  creative: CreativeGraph | null,
+  validation: ValidationGraph | null
 ): ProgressNarrativeContext {
   const competitorFinding = strategy?.findings.find((f) =>
     /competitor|concurrent/i.test(f.label)
   )?.value;
   const competitorCount = competitorFinding?.match(/\d+/)?.[0] ?? null;
   const positioning = decisions.find((d) => d.category === "strategy_direction");
+  const selected = creative ? selectedCreativeCampaign(creative) : null;
 
   return {
     competitorCount,
     competitorFinding: sanitizeCustomerText(competitorFinding),
-    positioningDecision: sanitizeCustomerText(positioning?.recommendation ?? positioning?.summary),
-    deliverableCount: null,
+    positioningDecision: sanitizeCustomerText(
+      selected?.keyMessage ?? positioning?.recommendation ?? positioning?.summary
+    ),
+    deliverableCount: creative?.deliverables.length ?? null,
+    creative,
+    validation,
   };
 }
 
 export function publishProgressNarrative(input: {
   workflowSteps: readonly CampaignWorkflowStep[];
   strategy?: BrainStructuredOutput;
+  creative?: CreativeGraph | null;
+  validation?: ValidationGraph | null;
   decisions: readonly Decision[];
   deliverableCount?: number;
   nl: boolean;
 }): ProgressNarrative {
   const nl = input.nl;
-  const ctx = buildContext(input.strategy, input.decisions);
+  const ctx = buildContext(
+    input.strategy,
+    input.decisions,
+    input.creative ?? null,
+    input.validation ?? null
+  );
   if (input.deliverableCount != null) ctx.deliverableCount = input.deliverableCount;
 
   const steps: ProgressStepNarrative[] = PROGRESS_STEP_DEFS.map((def) => {
@@ -168,24 +243,53 @@ export function publishProgressNarrative(input: {
 
     return {
       id: def.id,
-      label: nl ? def.nl : def.en,
-      state,
+      label:
+        def.id === "validation" && ctx.validation
+          ? nl
+            ? `${def.nl} — ${ctx.validation.report.overallScore.value}/100`
+            : `${def.en} — ${ctx.validation.report.overallScore.value}/100`
+          : nl
+            ? def.nl
+            : def.en,
+      state:
+        def.id === "approval" &&
+        ctx.validation &&
+        (ctx.validation.report.publicationReadiness === "BLOCKED" ||
+          ctx.validation.report.publicationReadiness === "CHANGES_REQUIRED")
+          ? ("upcoming" as ProgressStepState)
+          : state,
       narrative,
       source: def.source,
       expansion: {
         whatHappened: narrative,
         whyItHappened: customerTextOrFallback(
-          input.decisions.find((d) => d.category === "strategy_direction")?.reasoning,
+          def.id === "validation" && ctx.validation
+            ? ctx.validation.report.reasoningSummary
+            : ctx.creative?.reasoning.find((r) =>
+            def.id === "content"
+              ? r.phase === "generate_deliverables"
+              : def.id === "strategy"
+                ? r.phase === "find_positioning"
+                : def.id === "business"
+                  ? r.phase === "understand_business"
+                  : false
+          )?.insight ?? input.decisions.find((d) => d.category === "strategy_direction")?.reasoning,
           nl ? "Onderdeel van het campagneplan." : "Part of the campaign plan."
         ),
         businessImpact: customerTextOrFallback(
-          input.decisions.find((d) => d.category === "strategy_direction")?.businessImpact,
+          ctx.creative
+            ? selectedCreativeCampaign(ctx.creative)?.estimatedImpact ??
+                ctx.creative.estimatedBusinessImpact
+            : input.decisions.find((d) => d.category === "strategy_direction")?.businessImpact,
           nl ? "Bijdraagt aan campagnedoel." : "Contributes to campaign goal."
         ),
         decisionTaken:
           state === "done"
             ? sanitizeCustomerText(
-                input.decisions.find((d) => d.category === "strategy_direction")?.recommendation
+                ctx.creative
+                  ? selectedCreativeCampaign(ctx.creative)?.name ??
+                      input.decisions.find((d) => d.category === "strategy_direction")?.recommendation
+                  : input.decisions.find((d) => d.category === "strategy_direction")?.recommendation
               )
             : null,
       },

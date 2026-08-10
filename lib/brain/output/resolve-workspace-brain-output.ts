@@ -27,7 +27,7 @@ export function resolveWorkspaceBrainOutput(input: {
 
   const activeProjects = input.domainInput.projects.filter((p) => {
     const outputs = readCampaignBrainOutputs(p);
-    return Boolean(outputs.strategy);
+    return Boolean(outputs.strategy || outputs.creative_generation);
   });
 
   if (activeProjects.length === 0) return null;
@@ -84,5 +84,9 @@ export function resolveWorkspaceBrainOutput(input: {
     recentDecisions: allDecisions.slice(0, 5),
     confidenceScore: aggregateConfidence(campaignOutputs.map((o) => o.confidenceScore)),
     sources: campaignOutputs.flatMap((o) => o.sources),
+    liveCampaignIntelligence: campaignOutputs
+      .map((o) => o.liveCampaignIntelligence)
+      .filter(Boolean) as import("./types").LiveCampaignIntelligence[],
+    executiveApprovals: campaignOutputs.flatMap((o) => o.executiveApprovals).slice(0, 3),
   };
 }

@@ -29,6 +29,8 @@ export type {
   ExpectedBusinessImpact,
   MissingContext,
   BrainOutputSource,
+  ValidationQualitySummary,
+  ValidationRequiredFixOutput,
   CampaignBrainOutput,
   WorkspaceBrainOutput,
 } from "./types";

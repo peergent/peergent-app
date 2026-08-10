@@ -86,7 +86,7 @@ import type { BrainCapabilityId } from "@/lib/brain/capabilities/registry";
 /** Session-persisted Brain capability outputs for live campaign workflow reuse. */
 export type CampaignBrainOutputs = {
   readonly contextVersion: number;
-} & Partial<Record<Extract<BrainCapabilityId, "strategy" | "channel_planning" | "campaign_planning" | "creative_generation">, BrainStructuredOutput>>;
+} & Partial<Record<Extract<BrainCapabilityId, "strategy" | "channel_planning" | "campaign_planning" | "creative_generation" | "validation">, BrainStructuredOutput>>;
 
 export type MarketingProjectCampaignSetup = {
   readonly description: string;

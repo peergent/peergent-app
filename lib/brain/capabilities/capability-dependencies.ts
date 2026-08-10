@@ -17,6 +17,8 @@ export const CAPABILITY_DEPENDENCIES: Readonly<
   channel_planning: ["strategy"],
   campaign_planning: ["strategy"],
   creative_generation: ["strategy", "channel_planning", "brand_understanding"],
+  validation: ["creative_generation", "brand_understanding"],
+  memory: ["validation", "creative_generation", "company_understanding"],
   performance_interpretation: [],
   optimization: [
     "strategy",
@@ -24,7 +26,6 @@ export const CAPABILITY_DEPENDENCIES: Readonly<
     "creative_generation",
     "performance_interpretation",
   ],
-  memory: ["company_understanding"],
 };
 
 /** Optional dependencies — capability may run without these when explicitly unavailable. */

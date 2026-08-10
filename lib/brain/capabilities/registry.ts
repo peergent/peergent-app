@@ -19,6 +19,7 @@ export type BrainCapabilityId =
   | "channel_planning"
   | "campaign_planning"
   | "creative_generation"
+  | "validation"
   | "performance_interpretation"
   | "optimization"
   | "memory";
@@ -168,6 +169,19 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     freshnessPolicy: "always_fresh",
     cacheable: false,
     providerSupport: ["deterministic", "llm"],
+  }),
+  withDeps({
+    id: "validation",
+    version: "1.0.0",
+    requiredContext: ["campaign", "brand"],
+    optionalContext: ["workingAgreement"],
+    outputSchema: "BrainStructuredOutput",
+    allowedEnvironments: ["live", "demo", "test"],
+    approvalRequirement: "before_publish",
+    costClass: "medium",
+    freshnessPolicy: "always_fresh",
+    cacheable: false,
+    providerSupport: ["deterministic"],
   }),
   withDeps({
     id: "performance_interpretation",

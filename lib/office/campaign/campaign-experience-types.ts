@@ -15,10 +15,12 @@ export type CampaignExperienceBrief = {
   narrative: string;
   sections: {
     executiveSummary: string;
-    businessGoal: string;
-    currentStatus: string;
-    expectedImpact: string;
-    nextDecision: string;
+    researchFindings: string;
+    audienceInsight: string;
+    strategicDecision: string;
+    creativeDirection: string;
+    expectedBusinessImpact: string;
+    nextRecommendation: string;
   };
 };
 

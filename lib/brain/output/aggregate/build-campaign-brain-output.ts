@@ -11,7 +11,6 @@ import type {
   CampaignBrainOutput,
   ContextGap,
   ExpectedBusinessImpact,
-  MissingContext,
 } from "../types";
 import { capabilityToBrainSource } from "../capability-source";
 import { aggregateConfidence, confidenceFromBrain } from "../publish/confidence";
@@ -28,6 +27,33 @@ import {
 } from "../publish/executive-summary";
 import { publishProgressNarrative } from "../publish/progress-narrative";
 import { publishRecommendations, publishSuggestedActions } from "../publish/recommendations";
+import { resolveCreativeGraph } from "../publish/creative-source";
+import { publishCampaignBriefSections } from "../publish/creative-brief";
+import {
+  publishCreativeStrategyAssets,
+  publishExecutiveApprovalActions,
+  publishLiveCampaignIntelligence,
+} from "../publish/creative-assets";
+import {
+  mergeActivityEvents,
+  publishCreativeActivityEvents,
+} from "../publish/creative-activity";
+import { resolveValidationGraph, isPublicationBlocked } from "../publish/validation-source";
+import { publishValidationQualitySummary } from "../publish/validation-quality-summary";
+import {
+  publishValidationApprovalReason,
+  publishValidationExecutiveApprovals,
+  publishValidationRequiredFixes,
+} from "../publish/validation-approvals";
+import {
+  mergeValidationActivityEvents,
+  publishValidationActivityEvents,
+} from "../publish/validation-activity";
+import { publishValidationBusinessRisks } from "../publish/validation-risks";
+import {
+  enrichAssetsWithValidation,
+  publishValidationRecommendations,
+} from "../publish/validation-assets";
 import type { ExecutiveCampaignBriefing } from "@/lib/brain/presentation/executive-briefing";
 
 function resolveDecisions(strategy?: BrainStructuredOutput): Decision[] {
@@ -106,10 +132,13 @@ function publishApprovalReason(input: {
   };
 }
 
-function publishExpectedImpact(decisions: readonly Decision[]): ExpectedBusinessImpact {
+function publishExpectedImpact(
+  decisions: readonly Decision[],
+  creativeImpact?: string | null
+): ExpectedBusinessImpact {
   const primary = decisions.find((d) => d.category === "strategy_direction");
   return {
-    summary: primary?.businessImpact ?? primary?.expectedOutcome ?? "",
+    summary: creativeImpact ?? primary?.businessImpact ?? primary?.expectedOutcome ?? "",
     metrics: decisions
       .filter((d) => d.expectedOutcome)
       .slice(0, 3)
@@ -141,12 +170,18 @@ export function buildCampaignBrainOutput(input: {
 }): CampaignBrainOutput {
   const nl = input.ctx.locale === "nl";
   const strategy = input.outputs.strategy;
+  const creative = resolveCreativeGraph(input.outputs.creative_generation);
+  const validation = resolveValidationGraph(input.outputs.validation);
   const decisions = resolveDecisions(strategy);
   const planningGraph = strategy?.planningGraph ?? input.outputs.campaign_planning?.planningGraph;
+  const deliverableCount =
+    input.deliverableCount ?? creative?.deliverables.length ?? undefined;
 
   const executiveSummary = publishExecutiveSummary({
     briefing: input.briefing,
     strategy,
+    creative,
+    validation,
     decisions,
     planningGraph,
     nl,
@@ -161,61 +196,162 @@ export function buildCampaignBrainOutput(input: {
     statusLabel: input.statusLabel,
     nl,
     fallbackGoal: input.ctx.project.goal ?? undefined,
+    creative,
   });
 
   const businessIntelligence = publishBusinessIntelligence({
     strategy,
+    creative,
+    validation,
     channels: input.outputs.channel_planning,
     planningGraph,
     decisions,
     nl,
   });
 
-  const recommendations = publishRecommendations({
-    strategy,
-    decisions,
-    nl,
-    href: input.recommendationHref ?? null,
-  });
-
   const progress = publishProgressNarrative({
     workflowSteps: input.workflowSteps,
     strategy,
+    creative,
+    validation,
     decisions,
-    deliverableCount: input.deliverableCount,
+    deliverableCount,
     nl,
   });
 
-  const activity = publishActivityEvents({
+  const upstreamActivity = publishActivityEvents({
     outputs: input.outputs,
     decisions,
     nl,
     now: input.ctx.now,
   });
 
-  const confidenceScores = decisions.map((d) => confidenceFromBrain(d.confidence, nl));
+  const creativeActivity = publishCreativeActivityEvents({
+    creative,
+    nl,
+    now: input.ctx.now,
+  });
+
+  const validationActivity = publishValidationActivityEvents({
+    validation,
+    nl,
+    now: input.ctx.now,
+  });
+
+  const activity = mergeValidationActivityEvents(
+    mergeActivityEvents(upstreamActivity, creativeActivity),
+    validationActivity
+  );
+
+  const validationApprovalReason = publishValidationApprovalReason({ validation, nl });
+  const legacyApprovalReason = publishApprovalReason({ briefing: input.briefing, decisions, nl });
+  const approvalReason = validationApprovalReason ?? legacyApprovalReason;
+
+  const validationRecs = publishValidationRecommendations({
+    validation,
+    nl,
+    href: input.recommendationHref ?? null,
+  });
+
+  const recommendations = [
+    ...validationRecs.required,
+    ...publishRecommendations({
+      strategy,
+      creative,
+      decisions,
+      nl,
+      href: input.recommendationHref ?? null,
+    }),
+    ...validationRecs.optional,
+  ].slice(0, 4);
+
+  const qualitySummary = publishValidationQualitySummary({ validation, nl });
+  const requiredFixes = publishValidationRequiredFixes({ validation, nl });
+  const publicationBlocked = validation
+    ? isPublicationBlocked(validation.report.publicationReadiness)
+    : false;
+
+  const strategyRisks = publishBusinessRisks(decisions, planningGraph);
+  const validationRisks = publishValidationBusinessRisks({ validation });
+
+  const validationApprovals = publishValidationExecutiveApprovals({
+    validation,
+    nl,
+    href: input.recommendationHref ?? null,
+  });
+  const creativeApprovals = publishExecutiveApprovalActions({
+    creative,
+    approvalReason: legacyApprovalReason,
+    nl,
+    href: input.recommendationHref ?? null,
+  });
+  const executiveApprovals = publicationBlocked
+    ? []
+    : validationApprovals.length > 0
+      ? validationApprovals
+      : creativeApprovals;
+
+  const creativeAssets = publishCreativeStrategyAssets({ creative, nl });
+  const creativeStrategyAssets = enrichAssetsWithValidation({
+    assets: creativeAssets,
+    validation,
+    nl,
+  });
+
+  const briefSections = publishCampaignBriefSections({
+    creative,
+    strategy,
+    decisions,
+    briefing: input.briefing,
+    executiveSummary,
+    nl,
+  });
+
+  const confidenceScores = [
+    ...decisions.map((d) => confidenceFromBrain(d.confidence, nl)),
+    ...(creative
+      ? [confidenceFromBrain(creative.confidence === "high" ? "high" : creative.confidence === "medium" ? "medium" : "low", nl)]
+      : []),
+    ...(validation
+      ? [confidenceFromBrain(validation.confidence === "high" ? "high" : validation.confidence === "medium" ? "medium" : "low", nl)]
+      : []),
+  ];
 
   return {
     campaignId: input.ctx.project.id,
     peerId: input.ctx.peerId,
-    generatedAt: strategy?.generatedAt ?? input.ctx.now.toISOString(),
+    generatedAt: validation?.createdAt ?? creative?.createdAt ?? strategy?.generatedAt ?? input.ctx.now.toISOString(),
     executiveSummary,
     campaignNarrative,
     businessIntelligence,
     recommendations,
     contextGaps: publishContextGaps(strategy, nl),
-    businessRisks: publishBusinessRisks(decisions, planningGraph),
+    businessRisks: [...strategyRisks, ...validationRisks].slice(0, 5),
     businessOpportunities: publishBusinessOpportunities(decisions),
     recentDiscoveries: publishRecentDiscoveries({ strategy }),
     recentDecisions: publishRecentDecisions({ decisions }),
     recentLearnings: publishRecentLearnings({ strategy }),
-    suggestedActions: publishSuggestedActions({ strategy, nl }),
+    suggestedActions: publishSuggestedActions({ strategy, creative, nl }),
     activity,
     progress,
-    approvalReason: publishApprovalReason({ briefing: input.briefing, decisions, nl }),
-    expectedBusinessImpact: publishExpectedImpact(decisions),
+    approvalReason,
+    expectedBusinessImpact: publishExpectedImpact(
+      decisions,
+      creative?.estimatedBusinessImpact ?? null
+    ),
     confidenceScore: aggregateConfidence(confidenceScores),
-    missingContext: { items: publishContextGaps(strategy, nl) } satisfies MissingContext,
+    missingContext: { items: publishContextGaps(strategy, nl) },
     sources: publishSources(input.outputs),
+    briefSections,
+    creativeStrategyAssets,
+    liveCampaignIntelligence: publishLiveCampaignIntelligence({
+      creative,
+      campaignId: input.ctx.project.id,
+      nl,
+    }),
+    executiveApprovals,
+    qualitySummary,
+    requiredFixes,
+    publicationBlocked,
   };
 }

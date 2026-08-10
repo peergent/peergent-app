@@ -512,10 +512,14 @@ function buildExecutiveBrief(model: CampaignDetailViewModel, nl: boolean): Campa
     narrative,
     sections: {
       executiveSummary,
-      businessGoal,
-      currentStatus,
-      expectedImpact,
-      nextDecision,
+      researchFindings: nl
+        ? "Research bracht markt en concurrentie in kaart."
+        : "Research mapped market and competition.",
+      audienceInsight: businessGoal,
+      strategicDecision: businessGoal,
+      creativeDirection: currentStatus,
+      expectedBusinessImpact: expectedImpact,
+      nextRecommendation: nextDecision,
     },
   };
 }
@@ -622,6 +626,7 @@ export function buildCampaignExperienceModel(
   const progress = brainSlices?.progress ?? buildCampaignProgress(brainTimeline, model, nl);
   const brief = brainSlices?.brief ?? buildExecutiveBrief(model, nl);
   const recommendation = brainSlices?.recommendation ?? buildRecommendation(model, nl);
+  const assets = brainSlices?.assets ?? buildCreativeAssets(model, nl);
   const activity = brainSlices?.activity ?? model.activityItems.map((item) => ({
     id: item.id,
     timestamp: item.timeLabel,
@@ -649,7 +654,7 @@ export function buildCampaignExperienceModel(
       performance && performance.metrics.length > 0
         ? performance
         : null,
-    assets: buildCreativeAssets(model, nl),
+    assets,
     progress,
     brainTimeline,
     recommendation,

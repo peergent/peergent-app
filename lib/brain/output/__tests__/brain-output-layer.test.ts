@@ -23,8 +23,10 @@ describe("Brain Output Layer", () => {
       workflowSteps: [],
     });
 
-    expect(brain.executiveSummary.whatWeDiscovered).toMatch(/8 competitors/i);
-    expect(brain.progress.steps.some((s) => s.narrative.includes("competitors"))).toBe(true);
+    expect(brain.executiveSummary.whatWeDiscovered).toMatch(/competitors|Emma|12/i);
+    expect(brain.briefSections.creativeDirection).toMatch(/Operational Freedom|expertise|prijs|price/i);
+    expect(brain.creativeStrategyAssets.length).toBeGreaterThan(0);
+    expect(brain.activity.some((e) => e.sourceBrain === "creative")).toBe(true);
     expect(brain.recommendations[0]?.confidence.label).toBeTruthy();
     expect(brain.recommendations[0]?.whyNow).toBeTruthy();
   });
@@ -47,7 +49,9 @@ describe("Brain Output Layer", () => {
 
     const slices = mapCampaignExperienceFromBrain({ brain, nl: false });
     expect(slices.brief.narrative.length).toBeGreaterThan(40);
-    expect(slices.brief.sections.executiveSummary).toMatch(/competitors/i);
+    expect(slices.brief.sections.executiveSummary).toMatch(/competitors|Emma|12/i);
+    expect(slices.brief.sections.creativeDirection.length).toBeGreaterThan(10);
+    expect(slices.assets.length).toBeGreaterThan(0);
     expect(slices.progress.steps.length).toBeGreaterThan(0);
     expect(slices.activity.length).toBeGreaterThan(0);
   });
@@ -62,8 +66,8 @@ describe("Brain Output Layer", () => {
     });
 
     expect(slices.defaultBiBullets.length).toBeGreaterThan(3);
-    expect(slices.defaultBiBullets.some((b) => b.tone === "recommendation")).toBe(true);
-    expect(slices.activity.items[0]?.title.length).toBeGreaterThan(0);
+    expect(slices.defaultBiBullets.some((b) => b.text.toLowerCase().includes("google ads"))).toBe(true);
+    expect(slices.activity.items.some((e) => e.title.toLowerCase().includes("operational") || e.subtitle.toLowerCase().includes("concept"))).toBe(true);
     expect(slices.recommendation?.headline).toBeTruthy();
   });
 

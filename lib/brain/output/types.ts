@@ -170,6 +170,84 @@ export type CampaignNarrative = {
   };
 };
 
+/** PX-35.1 — Campaign brief sections sourced from Creative Brain. */
+export type CampaignBriefSections = {
+  executiveSummary: string;
+  researchFindings: string;
+  audienceInsight: string;
+  strategicDecision: string;
+  creativeDirection: string;
+  expectedBusinessImpact: string;
+  nextRecommendation: string;
+};
+
+export type CreativeStrategyAssetKind =
+  | "linkedin"
+  | "ads"
+  | "email"
+  | "blog"
+  | "landing"
+  | "display";
+
+export type CreativeStrategyAssetOutput = {
+  id: string;
+  kind: CreativeStrategyAssetKind;
+  channelLabel: string;
+  title: string;
+  preview: string;
+  statusLabel: string;
+  statusTone: "live" | "draft" | "scheduled" | "review";
+};
+
+export type LiveCampaignIntelligence = {
+  campaignId: string;
+  angle: string;
+  primaryMessage: string;
+  reasonSelected: string;
+  expectedOutcome: string;
+};
+
+export type ExecutiveApprovalAction = {
+  id: string;
+  title: string;
+  reason: string;
+  businessImpact: string;
+  primaryLabel: string;
+  href: string | null;
+};
+
+/** PX-36.1 — Customer-facing quality review summary from Validation Brain. */
+export type ValidationQualityCheckStatus = "pass" | "warning" | "fail";
+
+export type ValidationQualityCheck = {
+  id: string;
+  label: string;
+  status: ValidationQualityCheckStatus;
+  detail: string | null;
+};
+
+export type ValidationQualitySummary = {
+  headline: string;
+  score: number;
+  scoreMax: number;
+  readinessLabel: string;
+  confidenceLabel: string;
+  checks: readonly ValidationQualityCheck[];
+  blockingCount: number;
+  warningCount: number;
+  narrative: string;
+};
+
+/** PX-36.1 — Required fix surfaced when publication is blocked or changes required. */
+export type ValidationRequiredFixOutput = {
+  id: string;
+  title: string;
+  whyItMatters: string;
+  businessImpact: string;
+  nextStep: string;
+  blocking: boolean;
+};
+
 export type ApprovalReason = {
   summary: string;
   unblocks: string;
@@ -218,6 +296,17 @@ export type CampaignBrainOutput = {
   confidenceScore: ConfidenceScore;
   missingContext: MissingContext;
   sources: readonly BrainOutputSource[];
+  /** PX-35.1 — Creative Brain brief sections */
+  briefSections: CampaignBriefSections;
+  creativeStrategyAssets: readonly CreativeStrategyAssetOutput[];
+  liveCampaignIntelligence: LiveCampaignIntelligence | null;
+  executiveApprovals: readonly ExecutiveApprovalAction[];
+  /** PX-36.1 — null when no ValidationGraph exists */
+  qualitySummary: ValidationQualitySummary | null;
+  /** PX-36.1 — blocking fixes only surfaced when changes required or blocked */
+  requiredFixes: readonly ValidationRequiredFixOutput[];
+  /** PX-36.1 — when true, do not prompt customer approval */
+  publicationBlocked: boolean;
 };
 
 /**
@@ -235,4 +324,6 @@ export type WorkspaceBrainOutput = {
   recentDecisions: readonly RecentDecision[];
   confidenceScore: ConfidenceScore;
   sources: readonly BrainOutputSource[];
+  liveCampaignIntelligence: readonly LiveCampaignIntelligence[];
+  executiveApprovals: readonly ExecutiveApprovalAction[];
 };

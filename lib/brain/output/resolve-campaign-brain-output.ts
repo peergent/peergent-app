@@ -54,7 +54,13 @@ export function resolveCampaignBrainOutput(input: {
   }
 
   const outputs = readCampaignBrainOutputs(input.project);
-  const hasBrainData = Boolean(outputs.strategy || outputs.channel_planning || outputs.campaign_planning);
+  const hasBrainData = Boolean(
+    outputs.strategy ||
+      outputs.channel_planning ||
+      outputs.campaign_planning ||
+      outputs.creative_generation ||
+      outputs.validation
+  );
 
   if (!hasBrainData) return null;
 
