@@ -12,6 +12,7 @@ import { companyBrainContract } from "../layers/company/company-brain-executor";
 import { researchBrainContract } from "../layers/research/research-brain-executor";
 import { reasoningBrainContract } from "../layers/reasoning/reasoning-brain-executor";
 import { marketingIntelligenceBrainContract } from "../layers/marketing-intelligence/marketing-intelligence-brain-executor";
+import { strategyBrainContract } from "../layers/strategy/strategy-brain-executor";
 
 /** Default registry with production Brain implementations. */
 export function createDefaultProjectBrainRegistry(): ProjectBrainRegistry {
@@ -20,6 +21,7 @@ export function createDefaultProjectBrainRegistry(): ProjectBrainRegistry {
     research: researchBrainContract,
     reasoning: reasoningBrainContract,
     marketing_intelligence: marketingIntelligenceBrainContract,
+    strategy: strategyBrainContract,
     creative: creativeBrainContract,
     validation: validationBrainContract,
     memory: memoryBrainContract,
@@ -32,6 +34,7 @@ export {
   researchBrainContract,
   reasoningBrainContract,
   marketingIntelligenceBrainContract,
+  strategyBrainContract,
   creativeBrainContract,
   validationBrainContract,
   memoryBrainContract,

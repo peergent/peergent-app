@@ -720,6 +720,40 @@ export {
   assertNoCreativeLanguage as assertNoMarketingCreativeLanguage,
 } from "./layers/marketing-intelligence";
 
+/* PX-44 — Strategy Brain */
+
+export {
+  STRATEGY_BRAIN_VERSION,
+  buildStrategyBrainGraph,
+  validateStrategyBrainGraph,
+  mapStrategyBrainToStructuredOutput,
+  StrategyBrainLayer,
+  createStrategyBrainLayer,
+  buildStrategyBrainGraphOutput,
+  strategyBrainContract,
+  createStrategyBrainExecutor,
+  getDefaultStrategyBrainRepository,
+  resetDefaultStrategyBrainRepository,
+  assertNoCreativeLanguage as assertNoStrategyCreativeLanguage,
+  assertNoPlanningLanguage,
+  assertNoResearchCalls,
+  assertNoCompanyMutation as assertNoStrategyCompanyMutation,
+  enforceStrategyConfidenceCeiling,
+} from "./layers/strategy";
+
+export type {
+  StrategyBrainGraph,
+  StrategyBrainInput,
+  StrategyBrainOutput,
+  StrategyBrainPayload,
+  StrategicDecision,
+  StrategicProblem,
+  PlanningStrategyInput,
+  ChannelStrategy,
+  BudgetStrategy,
+  StrategyBrainRepository,
+} from "./layers/strategy";
+
 export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
 export type { ExecutiveCampaignBriefing, ExecutiveBriefingSection } from "./presentation/executive-briefing";
 
