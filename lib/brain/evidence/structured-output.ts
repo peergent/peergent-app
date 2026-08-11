@@ -85,6 +85,8 @@ export type BrainStructuredOutput = {
   marketingIntelligenceBrainGraph?: import("../layers/marketing-intelligence/brain-types").MarketingIntelligenceBrainGraph;
   /** PX-44 — full StrategyBrainGraph (optional). */
   strategyBrainGraph?: import("../layers/strategy/brain-types").StrategyBrainGraph;
+  /** PX-45 — full PlanningBrainGraph (optional). */
+  planningBrainGraph?: import("../layers/planning/brain-types").PlanningBrainGraph;
   recommendations: readonly BrainRecommendation[];
   actionProposals: readonly BrainActionProposal[];
   executionResults: readonly BrainExecutionResult[];

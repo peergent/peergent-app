@@ -754,6 +754,40 @@ export type {
   StrategyBrainRepository,
 } from "./layers/strategy";
 
+/* PX-45 — Planning Brain */
+
+export {
+  PLANNING_BRAIN_VERSION,
+  buildPlanningBrainGraph,
+  validatePlanningBrainGraph,
+  mapPlanningBrainToStructuredOutput,
+  PlanningBrainLayer,
+  createPlanningBrainLayer,
+  buildPlanningBrainGraphOutput,
+  planningBrainContract,
+  createPlanningBrainExecutor,
+  getDefaultPlanningBrainRepository,
+  resetDefaultPlanningBrainRepository,
+  assertNoCreativeGeneration,
+  assertNoExecution,
+  assertNoFabricatedProgress,
+  assertNoPlanningCompanyMutation,
+  computeInvalidationScope,
+  assertNoStrategicDecision,
+} from "./layers/planning";
+
+export type {
+  PlanningBrainGraph,
+  PlanningBrainInput,
+  PlanningBrainOutput,
+  PlanningBrainPayload,
+  CampaignPlan,
+  WorkPackage,
+  PlannedDeliverable,
+  CreativeBriefInput,
+  PlanningBrainRepository,
+} from "./layers/planning";
+
 export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
 export type { ExecutiveCampaignBriefing, ExecutiveBriefingSection } from "./presentation/executive-briefing";
 
