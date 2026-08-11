@@ -693,6 +693,31 @@ export type {
   MarketingIntelligenceModuleSpec,
   MarketingIntelligenceThinkingRecord,
   MarketingIntelligenceThinkingId,
+  MarketingIntelligenceBrainGraph,
+  MarketingIntelligenceBrainInput,
+  MarketingIntelligenceBrainOutput,
+  MarketingIntelligenceBrainPayload,
+  ChannelIntelligence,
+  MarketingStrategyInput,
+  MarketingIntelligenceBrainRepository,
+} from "./layers/marketing-intelligence";
+
+/* PX-43 — Marketing Intelligence Brain */
+
+export {
+  MARKETING_INTELLIGENCE_BRAIN_VERSION,
+  buildMarketingIntelligenceBrainGraph,
+  validateMarketingIntelligenceBrainGraph,
+  mapMarketingIntelligenceToStructuredOutput,
+  MarketingIntelligenceBrainLayer,
+  createMarketingIntelligenceBrainLayer,
+  collectMarketingIntelligenceBrainGraph,
+  marketingIntelligenceBrainContract,
+  createMarketingIntelligenceBrainExecutor,
+  getDefaultMarketingIntelligenceBrainRepository,
+  resetDefaultMarketingIntelligenceBrainRepository,
+  assertNoStrategyLanguage as assertNoMarketingStrategyLanguage,
+  assertNoCreativeLanguage as assertNoMarketingCreativeLanguage,
 } from "./layers/marketing-intelligence";
 
 export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
