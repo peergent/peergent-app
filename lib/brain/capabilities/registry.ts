@@ -22,7 +22,8 @@ export type BrainCapabilityId =
   | "validation"
   | "performance_interpretation"
   | "optimization"
-  | "memory";
+  | "memory"
+  | "execution";
 
 export type BrainCostClass = "free" | "low" | "medium" | "high";
 
@@ -218,6 +219,19 @@ export const BRAIN_CAPABILITY_DEFINITIONS: readonly BrainCapabilityDefinition[] 
     costClass: "free",
     freshnessPolicy: "immutable",
     cacheable: true,
+  }),
+  withDeps({
+    id: "execution",
+    version: "1.0.0",
+    requiredContext: ["campaign"],
+    optionalContext: ["workingAgreement"],
+    outputSchema: "BrainStructuredOutput",
+    allowedEnvironments: ["live", "demo", "test"],
+    approvalRequirement: "before_publish",
+    costClass: "medium",
+    freshnessPolicy: "always_fresh",
+    cacheable: false,
+    providerSupport: ["deterministic"],
   }),
 ];
 

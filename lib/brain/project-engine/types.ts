@@ -33,7 +33,8 @@ export type ProjectBrainId =
   | "validation"
   | "memory"
   | "execution"
-  | "learning";
+  | "learning"
+  | "company";
 
 /** Why the engine is paused. */
 export type ProjectWaitingReason =

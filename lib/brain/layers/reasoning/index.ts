@@ -62,3 +62,114 @@ export {
 
 export { ReasoningLayer, createReasoningLayer, collectReasoningGraph } from "./reasoning-layer";
 export type { ReasoningLayerInput, ReasoningLayerResult } from "./reasoning-layer";
+
+/* PX-42 — Reasoning Brain */
+
+export {
+  REASONING_BRAIN_VERSION,
+  emptyReasoningBrainGraph,
+} from "./brain-types";
+
+export type {
+  ReasoningBrainGraph,
+  ReasoningBrainInput,
+  ReasoningBrainOutput,
+  ReasoningBrainPayload,
+  ReasoningInterpretation,
+  ReasoningBrainAssumption,
+  ReasoningBrainContradiction,
+  ReasoningBrainHypothesis,
+  ReasoningBrainOpportunity,
+  ReasoningBrainRisk,
+  ReasoningBrainUnknown,
+  ReasoningDecisionOption,
+  ReasoningEscalation,
+  ReasoningPrioritySignal,
+  ReasoningEvidenceRef,
+  ReasoningSnapshot,
+  ReasoningRun,
+  ReasoningHistory,
+  ReasoningHistoryEntry,
+  ReasoningConfidenceLabel,
+  ReasoningPriority,
+} from "./brain-types";
+
+export {
+  combineConfidence,
+  enforceReasoningConfidenceCeiling,
+  aggregateGraphConfidence,
+  deriveInterpretationConfidence,
+} from "./reasoning-confidence";
+
+export {
+  buildPrioritySignals,
+  prioritizeOpportunity,
+  resetReasoningPrioritizationCounter,
+} from "./reasoning-prioritization";
+
+export {
+  buildReasoningContradictions,
+  resetReasoningContradictionCounters,
+} from "./reasoning-contradictions";
+
+export {
+  buildReasoningAssumptions,
+  resetReasoningAssumptionCounter,
+} from "./reasoning-assumptions";
+
+export {
+  buildReasoningOpportunities,
+  containsStrategyLanguage,
+  resetReasoningOpportunityCounter,
+} from "./reasoning-opportunities";
+
+export { buildReasoningRisks, resetReasoningRiskCounter } from "./reasoning-risks";
+
+export {
+  buildDecisionOptions,
+  containsStrategyImperative,
+  resetReasoningOptionCounter,
+} from "./reasoning-options";
+
+export {
+  buildEscalations,
+  createEscalation,
+  resetReasoningEscalationCounter,
+} from "./reasoning-escalations";
+
+export {
+  buildReasoningBrainGraph,
+  reasoningBrainGraphHasEvidenceChain,
+  assertNoCompanyMutation,
+  assertNoStrategyLanguage,
+  assertNoCreativeLanguage,
+  resetReasoningGraphCounters,
+} from "./reasoning-graph";
+
+export type { BuildReasoningBrainGraphInput } from "./reasoning-graph";
+
+export { validateReasoningBrainGraph } from "./reasoning-validator";
+export type { ReasoningValidationResult } from "./reasoning-validator";
+
+export { mapReasoningGraphToStructuredOutput } from "./map-reasoning-graph-to-output";
+
+export {
+  ReasoningBrainLayer,
+  createReasoningBrainLayer,
+  collectReasoningBrainGraph,
+  resetReasoningBrainLayerCounters,
+} from "./reasoning-brain-layer";
+
+export type { ReasoningBrainRepository } from "./reasoning-brain-repository";
+
+export {
+  InMemoryReasoningBrainRepository,
+  getDefaultReasoningBrainRepository,
+  resetDefaultReasoningBrainRepository,
+} from "./reasoning-brain-repository";
+
+export {
+  ReasoningBrainExecutor,
+  createReasoningBrainExecutor,
+  reasoningBrainContract,
+} from "./reasoning-brain-executor";

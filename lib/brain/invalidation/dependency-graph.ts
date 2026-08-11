@@ -46,10 +46,11 @@ export const INVALIDATION_DEPENDENCIES: Readonly<
   channel_planning: ["creative_generation"],
   campaign_planning: [],
   creative_generation: ["validation", "campaign_suggestions"],
-  validation: ["campaign_suggestions"],
+  validation: ["execution", "campaign_suggestions"],
   optimization: ["campaign_suggestions"],
   campaign_suggestions: [],
   memory: ["company_understanding"],
+  execution: ["campaign_suggestions"],
   performance_interpretation: ["optimization"],
   market_understanding: ["strategy"],
 };

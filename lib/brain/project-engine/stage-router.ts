@@ -7,6 +7,7 @@ import type { CampaignExecutionStage } from "@/lib/peer-experience/marketing/cam
 import type { ProjectBrainId, ProjectLifecycleState } from "./types";
 
 export const STATE_TO_BRAIN: Readonly<Partial<Record<ProjectLifecycleState, ProjectBrainId>>> = {
+  collecting_context: "company",
   researching: "research",
   strategizing: "strategy",
   planning: "planning",
@@ -17,6 +18,7 @@ export const STATE_TO_BRAIN: Readonly<Partial<Record<ProjectLifecycleState, Proj
 };
 
 export const BRAIN_TO_CAPABILITIES: Readonly<Record<ProjectBrainId, readonly BrainCapabilityId[]>> = {
+  company: ["company_understanding", "brand_understanding"],
   research: ["company_understanding", "website_understanding", "competitor_understanding"],
   reasoning: ["market_understanding"],
   marketing_intelligence: ["market_understanding", "competitor_understanding"],

@@ -73,6 +73,14 @@ export type BrainStructuredOutput = {
   validationGraph?: import("../layers/validation/types").ValidationGraph;
   /** PX-37 — full MemoryGraph for organizational knowledge (optional). */
   memoryGraph?: import("../layers/memory/types").MemoryGraph;
+  /** PX-39 — full ExecutionHistory for publish records (optional). */
+  executionHistory?: import("../layers/execution/types").ExecutionHistory;
+  /** PX-40 — full CompanyGraph for organizational truth (optional). */
+  companyGraph?: import("../layers/company/types").CompanyGraph;
+  /** PX-41 — full ResearchBrainGraph for external discovery (optional). */
+  researchBrainGraph?: import("../layers/research/brain-types").ResearchBrainGraph;
+  /** PX-42 — full ReasoningBrainGraph for structured judgment (optional). */
+  reasoningBrainGraph?: import("../layers/reasoning/brain-types").ReasoningBrainGraph;
   recommendations: readonly BrainRecommendation[];
   actionProposals: readonly BrainActionProposal[];
   executionResults: readonly BrainExecutionResult[];

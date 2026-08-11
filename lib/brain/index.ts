@@ -577,6 +577,37 @@ export type {
   ResearchLayerInput,
   ResearchLayerResult,
   BuildResearchGraphInput,
+  ResearchBrainGraph,
+  ResearchBrainInput,
+  ResearchBrainOutput,
+  ResearchBrainPayload,
+  ResearchPlan,
+  ResearchFinding,
+  ResearchBrainRepository,
+  CompanyUpdateProposal,
+  CompetitorProfile,
+} from "./layers/research";
+
+/* PX-41 — Research Brain */
+
+export {
+  RESEARCH_BRAIN_VERSION,
+  buildResearchPlan,
+  buildResearchBrainGraph,
+  validateResearchBrainGraph,
+  mapResearchGraphToStructuredOutput,
+  ResearchBrainLayer,
+  createResearchBrainLayer,
+  collectResearchBrainGraph,
+  researchBrainContract,
+  createResearchBrainExecutor,
+  getDefaultResearchBrainRepository,
+  resetDefaultResearchBrainRepository,
+  getDefaultResearchProviderRegistry,
+  resetDefaultResearchProviderRegistry,
+  enforceConfidenceCeiling,
+  buildCompanyUpdateProposals,
+  assertNoCompanyMutation,
 } from "./layers/research";
 
 /* Sprint 9 — Reasoning Layer */
@@ -612,6 +643,30 @@ export type {
   ReasoningLayerInput,
   ReasoningLayerResult,
   BuildReasoningGraphInput,
+  ReasoningBrainGraph,
+  ReasoningBrainInput,
+  ReasoningBrainOutput,
+  ReasoningBrainPayload,
+  ReasoningInterpretation,
+  ReasoningBrainRepository,
+} from "./layers/reasoning";
+
+/* PX-42 — Reasoning Brain */
+
+export {
+  REASONING_BRAIN_VERSION,
+  buildReasoningBrainGraph,
+  validateReasoningBrainGraph,
+  mapReasoningGraphToStructuredOutput,
+  ReasoningBrainLayer,
+  createReasoningBrainLayer,
+  collectReasoningBrainGraph,
+  reasoningBrainContract,
+  createReasoningBrainExecutor,
+  getDefaultReasoningBrainRepository,
+  resetDefaultReasoningBrainRepository,
+  assertNoStrategyLanguage,
+  assertNoCreativeLanguage,
 } from "./layers/reasoning";
 
 /* Sprint 9.3 — Marketing Intelligence Layer */
@@ -847,7 +902,95 @@ export {
   resetDefaultCreativeRepository,
 } from "./layers/creative";
 
-export { createDefaultProjectBrainRegistry, creativeBrainContract, validationBrainContract, memoryBrainContract } from "./integration/creative-brain-registry";
+export {
+  createDefaultProjectBrainRegistry,
+  companyBrainContract,
+  creativeBrainContract,
+  validationBrainContract,
+  memoryBrainContract,
+  executionBrainContract,
+} from "./integration/creative-brain-registry";
+
+/* PX-40 — Company Brain Layer */
+
+export type {
+  CompanyGraph,
+  CompanyBrainInput,
+  CompanyBrainOutput,
+  CompanyOutput,
+  CompanyFact,
+  CompanyNode,
+  CompanyRelation,
+  CompanyVersion,
+  CompanyKnowledgeSource,
+  CompanyDomainId,
+  CompanyGraphSnapshot,
+  CompanyHistory,
+} from "./layers/company";
+
+export {
+  COMPANY_LAYER_VERSION,
+  COMPANY_DOMAIN_SPECS,
+  buildCompanyGraph,
+  buildCompanyRelations,
+  validateCompanyGraph,
+  scoreCompanyQuality,
+  mapCompanyGraphToBrainOutput,
+  buildCompanyOutput,
+  CompanyLayer,
+  createCompanyLayer,
+  collectCompanyGraph,
+  CompanyBrainExecutor,
+  createCompanyBrainExecutor,
+  createFromBrainInputs as createCompanyFromBrainInputs,
+  getDefaultCompanyRepository,
+  resetDefaultCompanyRepository,
+  createCompanyVersion,
+  nextCompanyVersion,
+} from "./layers/company";
+
+/* PX-39 — Execution Brain Layer */
+
+export type {
+  ExecutionHistory,
+  ExecutionBrainInput,
+  ExecutionBrainOutput,
+  ExecutionInstruction,
+  ExecutionReceipt,
+  ExecutionFailure,
+  ExecutionAttempt,
+  ExecutionAuditRecord,
+  ExecutionEvent,
+  ExecutionStatus,
+  ExecutionProviderId,
+  ExecutionResult,
+} from "./layers/execution";
+
+export {
+  EXECUTION_LAYER_VERSION,
+  buildExecutionHistory,
+  validateExecutionInput,
+  validateInstruction,
+  assertProviderEvidence,
+  mapExecutionToBrainOutput,
+  ExecutionLayer,
+  createExecutionLayer,
+  collectExecutionHistory,
+  ExecutionBrainExecutor,
+  createExecutionBrainExecutor,
+  createFromBrainInputs as createExecutionFromBrainInputs,
+  getDefaultExecutionRepository,
+  resetDefaultExecutionRepository,
+  getDefaultExecutionProviderRegistry,
+  resetDefaultExecutionProviderRegistry,
+  lookupIdempotentExecution,
+  classifyRollback,
+  classifyFailure,
+  aggregateOverallStatus,
+  createExecutionAuditRecord,
+  eventsForResult,
+  isExecutableValidationState,
+} from "./layers/execution";
 
 /* PX-37 — Memory Brain Layer */
 

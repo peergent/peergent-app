@@ -52,6 +52,7 @@ export function isContextReadyForResearch(slices: BrainContextSlices): boolean {
 export const BRAIN_CONTEXT_REQUIREMENTS: Readonly<
   Record<ProjectBrainId, readonly (keyof BrainContextSlices)[]>
 > = {
+  company: ["business", "brand", "website"],
   research: ["business", "campaign"],
   reasoning: ["business", "campaign"],
   marketing_intelligence: ["business", "competitors"],

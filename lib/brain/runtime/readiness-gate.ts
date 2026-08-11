@@ -90,6 +90,12 @@ const REQUIREMENTS: Readonly<Record<BrainCapabilityId, CapabilityExecutionRequir
     criticalFields: [],
     partialExecutionAllowed: true,
   },
+  execution: {
+    minimumReadinessScore: 50,
+    requiredDimensions: ["company_profile"],
+    criticalFields: [],
+    partialExecutionAllowed: false,
+  },
 };
 
 export function getCapabilityExecutionRequirements(

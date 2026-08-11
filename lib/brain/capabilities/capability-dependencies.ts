@@ -19,6 +19,7 @@ export const CAPABILITY_DEPENDENCIES: Readonly<
   creative_generation: ["strategy", "channel_planning", "brand_understanding"],
   validation: ["creative_generation", "brand_understanding"],
   memory: ["validation", "creative_generation", "company_understanding"],
+  execution: ["validation"],
   performance_interpretation: [],
   optimization: [
     "strategy",
