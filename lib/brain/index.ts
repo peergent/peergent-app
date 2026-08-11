@@ -788,6 +788,37 @@ export type {
   PlanningBrainRepository,
 } from "./layers/planning";
 
+/* PX-46 — Learning Brain */
+
+export {
+  LEARNING_BRAIN_VERSION,
+  buildLearningBrainGraph,
+  validateLearningBrainGraph,
+  mapLearningBrainToStructuredOutput,
+  LearningBrainLayer,
+  createLearningBrainLayer,
+  buildLearningBrainGraphOutput,
+  learningBrainContract,
+  createLearningBrainExecutor,
+  getDefaultLearningBrainRepository,
+  resetDefaultLearningBrainRepository,
+  assertNoCausalOverclaim,
+  assertNoCreativeGeneration as assertNoLearningCreativeGeneration,
+  hasInsufficientOutcomeData,
+  singleEventIsNotPattern,
+  hypothesisAllowsStrongCausality,
+} from "./layers/learning";
+
+export type {
+  LearningBrainGraph,
+  LearningBrainInput,
+  LearningBrainOutput,
+  LearningBrainPayload,
+  PerformanceObservation,
+  MemoryWriteProposal,
+  LearningBrainRepository,
+} from "./layers/learning";
+
 export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
 export type { ExecutiveCampaignBriefing, ExecutiveBriefingSection } from "./presentation/executive-briefing";
 
