@@ -27,6 +27,10 @@ import {
   brainReadyProgressLabel,
 } from "./brain-run-progress";
 import type { BrainEnvironment } from "../domain/environment";
+import type { ContextAssemblyResult } from "../context/assembly-types";
+import {
+  ContextAcquisitionConfigurationError,
+} from "../context-acquisition/server/context-acquisition-config";
 import { createResearchLayer } from "../layers/research";
 import type { ResearchGraph } from "../layers/research";
 import { createReasoningLayer } from "../layers/reasoning";
@@ -104,6 +108,10 @@ export type ExecuteBrainForWorkflowStepOptions = {
   repositories?: BrainRepositoryBundle;
   /** Per-dependency execution cap — prevents optional deps from hanging the run. */
   dependencyTimeoutMs?: number;
+  /** PX-49.1 — pre-acquired real context assembly for live production execution. */
+  contextAssembly?: ContextAssemblyResult;
+  /** When true, live execution must not fall back to sync demo intelligence resolution. */
+  requireRealContext?: boolean;
 };
 
 function resolveBrainEnvironment(peerId: string): BrainEnvironment {
@@ -115,20 +123,34 @@ function buildRuntimeForInput(
   options?: ExecuteBrainForWorkflowStepOptions
 ) {
   const environment = resolveBrainEnvironment(input.peerId);
-  return createBrainRuntimeWithAssembly(
-    (request) =>
+  const isLive = environment === "live";
+
+  let assembleContext: (
+    request: BrainRunRequestWithBudget
+  ) => Promise<ContextAssemblyResult> | ContextAssemblyResult;
+
+  if (options?.contextAssembly) {
+    const acquired = options.contextAssembly;
+    assembleContext = () => acquired;
+  } else if (isLive && options?.requireRealContext) {
+    throw new ContextAcquisitionConfigurationError(
+      "Live Brain execution requires pre-acquired real context assembly."
+    );
+  } else {
+    assembleContext = (request) =>
       resolveCompanyIntelligence({
         peerId: input.peerId,
         organizationId: request.organizationId,
         project: input.project,
         domainInput: input.domainInput,
-      }),
-    {
-      peerId: input.peerId,
-      environment,
-      repositories: options?.repositories,
-    }
-  );
+      });
+  }
+
+  return createBrainRuntimeWithAssembly(assembleContext, {
+    peerId: input.peerId,
+    environment,
+    repositories: options?.repositories,
+  });
 }
 
 function buildBaseRequest(
@@ -180,18 +202,21 @@ function hasFreshSeededOutput(
 function resolveResearchGraphForRun(
   input: ExecuteBrainForWorkflowStepInput,
   request: BrainRunRequestWithBudget,
-  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>
+  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
+  contextAssembly?: ContextAssemblyResult
 ): ResearchGraph | null {
   if (request.researchGraph) return request.researchGraph;
   if (Object.keys(upstreamOutputs).length === 0) return null;
 
-  const assembly = resolveCompanyIntelligence({
-    peerId: input.peerId,
-    organizationId: request.organizationId,
-    project: input.project,
-    domainInput: input.domainInput,
-    campaignContext: request.campaignContext,
-  });
+  const assembly =
+    contextAssembly ??
+    resolveCompanyIntelligence({
+      peerId: input.peerId,
+      organizationId: request.organizationId,
+      project: input.project,
+      domainInput: input.domainInput,
+      campaignContext: request.campaignContext,
+    });
 
   return createResearchLayer().collectAndStore({
     companySnapshot: assembly.companySnapshot,
@@ -234,7 +259,8 @@ function runWithDependenciesSync(
   input: ExecuteBrainForWorkflowStepInput,
   runtime: ReturnType<typeof buildRuntimeForInput>,
   request: BrainRunRequestWithBudget,
-  seededOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>
+  seededOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
+  options?: ExecuteBrainForWorkflowStepOptions
 ): ExecuteBrainForWorkflowStepResult {
   const order = resolveCapabilityExecutionOrder(request.capabilityId);
   const upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>> = {
@@ -252,7 +278,12 @@ function runWithDependenciesSync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
-  const researchGraph = resolveResearchGraphForRun(input, request, upstreamOutputs);
+  const researchGraph = resolveResearchGraphForRun(
+    input,
+    request,
+    upstreamOutputs,
+    options?.contextAssembly
+  );
   const reasoningGraph = resolveReasoningGraphForRun(researchGraph, request);
   const marketingIntelligenceGraph = resolveMarketingIntelligenceGraphForRun(
     reasoningGraph,
@@ -330,7 +361,12 @@ async function runWithDependenciesAsync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
-  const researchGraph = resolveResearchGraphForRun(input, request, upstreamOutputs);
+  const researchGraph = resolveResearchGraphForRun(
+    input,
+    request,
+    upstreamOutputs,
+    options?.contextAssembly
+  );
   const reasoningGraph = resolveReasoningGraphForRun(researchGraph, request);
   const marketingIntelligenceGraph = resolveMarketingIntelligenceGraphForRun(
     reasoningGraph,
@@ -397,7 +433,12 @@ export function executeBrainForWorkflowStepSync(
   if (!capabilityId) return null;
   const runtime = buildRuntimeForInput(input);
   const seededOutputs = seedUpstreamOutputs(input);
-  return runWithDependenciesSync(input, runtime, buildBaseRequest(input, capabilityId), seededOutputs);
+  return runWithDependenciesSync(
+    input,
+    runtime,
+    buildBaseRequest(input, capabilityId),
+    seededOutputs
+  );
 }
 
 export function primaryCapabilityForWorkflowStep(

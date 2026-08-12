@@ -7,6 +7,8 @@ import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { executeBrainForWorkflowStep } from "@/lib/brain/integration/execute-brain-for-workflow-step";
 import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
+import { prepareBrainServerContext } from "@/lib/brain/context-acquisition/server/prepare-brain-server-context";
+import { assertLiveBrainServerContext } from "@/lib/brain/context-acquisition/server/context-acquisition-config";
 import { getBrainCapability } from "@/lib/brain/capabilities/registry";
 import type { BrainRunResult } from "@/lib/brain/runtime/run-result";
 import { presentBrainOutputForCampaign } from "@/lib/brain/presentation/campaign-evidence-adapter";
@@ -53,6 +55,7 @@ export type LiveStrategyRunServerInput = {
   understanding: MarketingUnderstanding | null;
   organizationId: string;
   supabase?: AppSupabaseClient;
+  peerRole?: string;
   locale?: string | null;
   trace?: StrategyRunTrace;
 };
@@ -197,6 +200,8 @@ async function executeLiveStrategyRunServer(
   persistStage({ status: "gathering_context" });
   recordStrategyRunTrace(trace, "server_context_gathering_started");
 
+  assertLiveBrainServerContext({ peerId, supabase: input.supabase ?? null });
+
   if (input.supabase) {
     await prepareBrainServerPersistence({
       supabase: input.supabase,
@@ -204,6 +209,25 @@ async function executeLiveStrategyRunServer(
       projectId: input.projectId,
     });
   }
+
+  const campaignContext = buildCampaignContext({
+    project,
+    domainInput,
+    locale,
+  });
+
+  const contextPrep = input.supabase
+    ? await prepareBrainServerContext({
+        supabase: input.supabase,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        campaignContext,
+        locale: locale === "nl" ? "nl" : "en",
+        phase: "strategy",
+      })
+    : null;
 
   const serverRepositories = createBrainRepositoriesForServer({
     environment: "live",
@@ -237,6 +261,8 @@ async function executeLiveStrategyRunServer(
         {
           repositories: serverRepositories,
           dependencyTimeoutMs: 45_000,
+          contextAssembly: contextPrep?.assembly,
+          requireRealContext: Boolean(input.supabase),
           onProgress: (label) => {
             const status = mapProgressLabelToRunStatus(label);
             persistStage({ status, stageLabel: label });

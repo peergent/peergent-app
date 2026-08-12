@@ -61,6 +61,7 @@ export async function buildLiveCampaignEvidenceAction(
       ...input,
       organizationId: auth.organizationId,
       supabase: auth.supabase,
+      peerRole: peer.role,
     });
 
     markOfficeLlmTrace("ACTION_RETURNED", {

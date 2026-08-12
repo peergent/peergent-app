@@ -48,3 +48,5 @@ export {
   FIXTURE_PEER_INPUT,
   PROOF_LED_LEARNING_SNIPPET,
 } from "./fixtures/marketing-peer-fixture";
+
+export { acquireEpisodeContext, type EpisodeAcquiredContext, type AcquireEpisodeContextInput } from "./acquire-episode-context";

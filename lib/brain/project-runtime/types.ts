@@ -127,6 +127,11 @@ export type EpisodeRunInput = {
   contextReady?: boolean;
   sliceAvailability?: Partial<BrainContextSlices>;
   maxSteps?: number;
+  /** When true, acquire real context via PX-49 instead of marketing fixture. */
+  useRealContext?: boolean;
+  peerRole?: string;
+  campaignContext?: import("@/lib/office/campaign/campaign-context").CampaignContext;
+  supabase?: import("@/lib/intelligence/api/org-context").AppSupabaseClient;
 };
 
 export type EpisodeRunResult = {

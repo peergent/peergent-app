@@ -6,6 +6,9 @@ import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
+import { prepareBrainServerContext } from "@/lib/brain/context-acquisition/server/prepare-brain-server-context";
+import { assertLiveBrainServerContext } from "@/lib/brain/context-acquisition/server/context-acquisition-config";
+import { buildCampaignContext } from "./campaign-context";
 import { logBrainServerEnvResolved } from "@/lib/brain/config/brain-server-env";
 import { markOfficeLlmTrace } from "@/lib/brain/integration/office-llm-trace";
 import {
@@ -23,6 +26,7 @@ export type BuildLiveCampaignEvidenceServerInput = {
   domainInput: MarketingPeerDomainInput;
   organizationId: string;
   supabase?: AppSupabaseClient;
+  peerRole?: string;
   locale?: string | null;
 };
 
@@ -36,6 +40,8 @@ export async function buildLiveCampaignEvidenceServer(
     model: env.resolvedModel,
   });
 
+  assertLiveBrainServerContext({ peerId: input.peerId, supabase: input.supabase ?? null });
+
   if (input.supabase) {
     await prepareBrainServerPersistence({
       supabase: input.supabase,
@@ -43,6 +49,24 @@ export async function buildLiveCampaignEvidenceServer(
       projectId: input.projectId,
     });
   }
+
+  const campaignContext = buildCampaignContext({
+    project: input.project,
+    domainInput: input.domainInput,
+    locale: input.locale,
+  });
+
+  const contextPrep = input.supabase
+    ? await prepareBrainServerContext({
+        supabase: input.supabase,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        campaignContext,
+        locale: input.locale === "nl" ? "nl" : "en",
+      })
+    : null;
 
   const repositories = createBrainRepositoriesForServer({
     environment: "live",
@@ -64,7 +88,7 @@ export async function buildLiveCampaignEvidenceServer(
             domainInput: input.domainInput,
             locale: input.locale,
           },
-          { repositories }
+          { repositories, contextAssembly: contextPrep?.assembly, requireRealContext: Boolean(input.supabase) }
         ),
         CREATIVE_GENERATION_SERVER_ACTION_TIMEOUT_MS,
         "deliverables_server_action_timeout"
@@ -77,7 +101,7 @@ export async function buildLiveCampaignEvidenceServer(
           domainInput: input.domainInput,
           locale: input.locale,
         },
-        { repositories }
+        { repositories, contextAssembly: contextPrep?.assembly, requireRealContext: Boolean(input.supabase) }
       ));
 
   if (!bundle?.devDiagnostics) return bundle;

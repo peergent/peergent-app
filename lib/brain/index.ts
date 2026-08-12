@@ -1239,3 +1239,37 @@ export {
   getDefaultValidationRepository,
   resetDefaultValidationRepository,
 } from "./layers/validation";
+
+/* PX-49 — Real Context Acquisition */
+
+export type {
+  ContextCategory,
+  ContextConfidence,
+  ContextRequirement,
+  AcquiredContextItem,
+  ContextAcquisitionGap,
+  BrainContextAcquisitionPackage,
+  AcquireBrainContextInput,
+} from "./context-acquisition";
+
+export {
+  acquireBrainContext,
+  resolveContextRequirements,
+  createContextItem,
+  DEFAULT_CONTEXT_ACQUISITION_BUDGET,
+  detectContextAcquisitionGaps,
+  emitContextDiagnostic,
+} from "./context-acquisition";
+
+export {
+  prepareBrainServerContext,
+  type PrepareBrainServerContextInput,
+  type PrepareBrainServerContextResult,
+} from "./context-acquisition/server/prepare-brain-server-context";
+
+export {
+  assertLiveBrainServerContext,
+  assertProductionEpisodeRealContext,
+  ContextAcquisitionConfigurationError,
+  ContextAcquisitionInfrastructureError,
+} from "./context-acquisition/server/context-acquisition-config";

@@ -25,6 +25,9 @@ import { getDefaultProjectEpisodeRepository } from "./project-episode-repository
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
 import { learningProposalIds, proposalsFromLearningGraph } from "./learning-memory-handoff";
 import { buildMarketingPeerFixture } from "./fixtures/marketing-peer-fixture";
+import { acquireEpisodeContext, type EpisodeAcquiredContext } from "./acquire-episode-context";
+import { assertProductionEpisodeRealContext } from "../context-acquisition/server/context-acquisition-config";
+import { isDemoPeer } from "@/lib/office/demo/demo-company";
 import type {
   BrainHandoffContext,
   EpisodeObservability,
@@ -55,6 +58,15 @@ export class ProjectEpisodeRunner {
   }
 
   async startEpisode(input: EpisodeRunInput): Promise<ProjectEpisodeRecord> {
+    if (process.env.NODE_ENV === "production" && !isDemoPeer(input.peerId)) {
+      assertProductionEpisodeRealContext({
+        peerId: input.peerId,
+        useRealContext: input.useRealContext,
+        supabase: input.supabase,
+        campaignContext: input.campaignContext,
+      });
+    }
+
     const fixture = buildMarketingPeerFixture(input.projectId.slice(-1));
     const correlationId = input.correlationId ?? `corr-${input.projectId}-${Date.now()}`;
     const snapshot = createProjectEngineSnapshot({
@@ -65,6 +77,25 @@ export class ProjectEpisodeRunner {
       locale: input.locale,
     });
 
+    let sliceAvailability = input.sliceAvailability ?? fixture.sliceAvailability;
+    let contextReady = input.contextReady ?? true;
+    let contextGaps: import("./types").ContextGap[] = [];
+
+    if (input.useRealContext && input.supabase && input.campaignContext) {
+      const acquired = await acquireEpisodeContext({
+        supabase: input.supabase,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        locale: input.locale,
+        campaignContext: input.campaignContext,
+      });
+      sliceAvailability = acquired.sliceAvailability;
+      contextReady = acquired.contextReady;
+      contextGaps = [...acquired.contextGaps];
+    }
+
     const episode: ProjectEpisodeRecord = {
       snapshot,
       artifacts: createEmptyArtifacts({
@@ -74,15 +105,15 @@ export class ProjectEpisodeRunner {
         correlationId,
       }),
       episodeStatus: "running",
-      contextReady: input.contextReady ?? true,
-      sliceAvailability: input.sliceAvailability ?? fixture.sliceAvailability,
+      contextReady,
+      sliceAvailability,
       approvalSatisfied: false,
       validationApprovalPending: false,
       memoryCheckpoint1Complete: false,
       memoryCheckpoint2Complete: false,
       performanceObservationsAvailable: false,
       approvalGrantedForExecution: false,
-      contextGaps: [],
+      contextGaps,
       executedBrainKeys: [],
       lastError: null,
       correlationId,
@@ -98,6 +129,15 @@ export class ProjectEpisodeRunner {
   }
 
   async runUntilPause(input: EpisodeRunInput): Promise<EpisodeRunResult> {
+    if (process.env.NODE_ENV === "production" && !isDemoPeer(input.peerId)) {
+      assertProductionEpisodeRealContext({
+        peerId: input.peerId,
+        useRealContext: input.useRealContext,
+        supabase: input.supabase,
+        campaignContext: input.campaignContext,
+      });
+    }
+
     let episode =
       getDefaultProjectEpisodeRepository().get({
         organizationId: input.organizationId,
@@ -107,6 +147,32 @@ export class ProjectEpisodeRunner {
     const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS;
     const locale = input.locale ?? "en";
     const fixture = buildMarketingPeerFixture(input.projectId.slice(-1));
+
+    let acquiredContext: EpisodeAcquiredContext | null = null;
+    if (input.useRealContext && input.supabase && input.campaignContext) {
+      acquiredContext = await acquireEpisodeContext({
+        supabase: input.supabase,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        locale,
+        campaignContext: input.campaignContext,
+      });
+      episode = {
+        ...episode,
+        sliceAvailability: acquiredContext.sliceAvailability,
+        contextReady: acquiredContext.contextReady,
+        contextGaps: [...acquiredContext.contextGaps],
+      };
+    }
+
+    const contextHandoff = acquiredContext?.handoff ?? {
+      companySnapshot: fixture.companySnapshot,
+      brandGraph: fixture.brandGraph,
+      campaignContext: fixture.campaignContext,
+      priorMemories: [] as readonly import("../layers/memory/types").MemoryRecord[],
+    };
 
     for (let step = 0; step < maxSteps; step += 1) {
       if (episode.episodeStatus === "completed" || episode.episodeStatus === "failed") break;
@@ -178,7 +244,7 @@ export class ProjectEpisodeRunner {
         const brainResult = await this.executeBrain({
           brainId,
           episode,
-          fixture,
+          contextHandoff,
           locale,
           idempotencyKey,
         });
@@ -256,7 +322,12 @@ export class ProjectEpisodeRunner {
   private async executeBrain(input: {
     brainId: ProjectBrainId;
     episode: ProjectEpisodeRecord;
-    fixture: ReturnType<typeof buildMarketingPeerFixture>;
+    contextHandoff: {
+      companySnapshot: import("../company/snapshot").CompanySnapshot;
+      brandGraph: import("../layers/brand/types").BrandGraph | null;
+      campaignContext: import("@/lib/office/campaign/campaign-context").CampaignContext;
+      priorMemories: readonly import("../layers/memory/types").MemoryRecord[];
+    };
     locale: "nl" | "en";
     idempotencyKey: string;
   }): Promise<BrainResult<import("../project-engine/brain-contract").BrainOutput>> {
@@ -300,10 +371,13 @@ export class ProjectEpisodeRunner {
       correlationId: input.episode.correlationId,
       artifacts: input.episode.artifacts,
       priorOutputs,
-      priorMemories: resolved.priorMemories,
-      campaignContext: input.fixture.campaignContext,
-      companySnapshot: input.fixture.companySnapshot,
-      brandGraph: input.fixture.brandGraph,
+      priorMemories:
+        input.contextHandoff.priorMemories.length > 0
+          ? input.contextHandoff.priorMemories
+          : resolved.priorMemories,
+      campaignContext: input.contextHandoff.campaignContext,
+      companySnapshot: input.contextHandoff.companySnapshot,
+      brandGraph: input.contextHandoff.brandGraph,
       approvalGrantedForExecution: input.episode.approvalGrantedForExecution,
       performanceObservations: [...getDefaultProjectEpisodeRepository().getObservations(input.episode.snapshot.projectId)],
       memoryCheckpointPhase,
