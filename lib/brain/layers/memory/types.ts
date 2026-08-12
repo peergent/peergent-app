@@ -208,6 +208,8 @@ export type MemoryBrainInput = {
   readonly performanceMetrics?: readonly MemoryPerformanceMetric[];
   readonly customerFeedback?: readonly string[];
   readonly correlationId?: string;
+  /** PX-47 — Learning Brain proposals consumed by Memory quality gate */
+  readonly learningProposals?: readonly import("../learning/brain-types").MemoryWriteProposal[];
 };
 
 export type MemoryPerformanceMetric = {

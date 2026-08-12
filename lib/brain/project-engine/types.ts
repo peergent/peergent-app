@@ -184,6 +184,8 @@ export type ProjectEngineInput = {
   published?: boolean;
   /** Monitoring period ended → learning */
   monitoringComplete?: boolean;
+  /** PX-47 — validation completed and requires campaign approval after memory checkpoint */
+  validationApprovalPending?: boolean;
 };
 
 export type BrainResultSummary = {
@@ -194,6 +196,9 @@ export type BrainResultSummary = {
   durationMs: number | null;
   errorCode: string | null;
   decisionIds?: readonly string[];
+  /** PX-47 — completed brains may still require customer approval before continuing */
+  requiresApproval?: boolean;
+  approvalKind?: string | null;
 };
 
 export const PROJECT_ENGINE_VERSION = "1.0.0";

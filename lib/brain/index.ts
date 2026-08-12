@@ -819,6 +819,33 @@ export type {
   LearningBrainRepository,
 } from "./layers/learning";
 
+/* PX-47 — Project Runtime (Autonomous Marketing Peer integration) */
+
+export {
+  ProjectEpisodeRunner,
+  createProjectEpisodeRunner,
+  getDefaultProjectEpisodeRepository,
+  resetDefaultProjectEpisodeRepository,
+  submitProjectApproval,
+  ingestPerformanceObservations,
+  getPerformanceObservations,
+  resolveBrainOutputs,
+  buildBrainPayload,
+  buildMarketingPeerFixture,
+  buildFixturePerformanceObservations,
+  FIXTURE_ORG_ID,
+  PROOF_LED_LEARNING_SNIPPET,
+  listProjectEvents,
+} from "./project-runtime";
+
+export type {
+  EpisodeRunResult,
+  EpisodeStatus,
+  ProjectEpisodeRecord,
+  ContextGap,
+  ProjectRuntimeEvent,
+} from "./project-runtime";
+
 export { buildExecutiveCampaignBriefing } from "./presentation/executive-briefing";
 export type { ExecutiveCampaignBriefing, ExecutiveBriefingSection } from "./presentation/executive-briefing";
 

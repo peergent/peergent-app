@@ -112,6 +112,8 @@ export {
   nextStateAfterBrainComplete,
   markBrainActive,
   markBrainCompleted,
+  researchPhaseComplete,
+  RESEARCH_PHASE_BRAINS,
 } from "./evaluate-project";
 
 export type { EvaluateProjectOptions } from "./evaluate-project";

@@ -423,6 +423,42 @@ function extractLearningMemories(input: MemoryBrainInput, at: string, startIndex
   return records;
 }
 
+function extractProposalMemories(input: MemoryBrainInput, at: string, startIndex: number): MemoryRecord[] {
+  const proposals = input.learningProposals ?? [];
+  const records: MemoryRecord[] = [];
+  let i = startIndex;
+
+  for (const proposal of proposals) {
+    const importance: MemoryImportance =
+      proposal.importance === "high" ? "high" : proposal.importance === "medium" ? "medium" : "low";
+    const actionConfidence: MemoryConfidence = proposal.confidence;
+
+    if (proposal.durability === "temporary" && proposal.confidence === "low") {
+      continue;
+    }
+
+    records.push(
+      candidate(input, at, i++, {
+        category: "learning_memory",
+        title: proposal.title,
+        description: proposal.learning,
+        source: "performance",
+        confidence: actionConfidence,
+        importance,
+        evidence: proposal.evidenceRefs.map((ref: string, idx: number) =>
+          evidence("performance", ref, proposal.reasonToStore, at, idx + i)
+        ),
+        relatedCampaigns: proposal.relatedCampaigns,
+        relatedDecisions: [],
+        relatedAssets: proposal.relatedDeliverables,
+        tags: [proposal.category, proposal.durability, proposal.recommendedMemoryDomain],
+      })
+    );
+  }
+
+  return records;
+}
+
 function buildNodes(memories: readonly MemoryRecord[], at: string): MemoryNode[] {
   return MEMORY_MODULE_SPECS.map((spec) => ({
     id: `node-${spec.id}`,
@@ -510,6 +546,8 @@ export function buildMemoryGraph(input: MemoryBrainInput): MemoryGraph {
   candidates.push(...extractValidationMemories(input, at, index));
   index = candidates.length;
   candidates.push(...extractLearningMemories(input, at, index));
+  index = candidates.length;
+  candidates.push(...extractProposalMemories(input, at, index));
 
   const stored: MemoryRecord[] = [...prior.filter((m) => m.lifecycle === "active")];
   const decisions: import("./types").MemoryDecision[] = [];

@@ -67,7 +67,8 @@ export class MemoryBrainExecutor {
       payload.creativeGraph ||
       payload.validationGraph ||
       payload.strategyGraph ||
-      payload.approvalGranted;
+      payload.approvalGranted ||
+      (payload.learningProposals?.length ?? 0) > 0;
 
     if (!hasSource) {
       return {

@@ -39,7 +39,7 @@ describe("Project Engine", () => {
     expect(eval_.action.kind).toBe("collect_context");
   });
 
-  it("schedules research when context is ready", () => {
+  it("schedules company then idle when context is ready in collecting_context", () => {
     const snapshot = createProjectEngineSnapshot({
       projectId: "proj-1",
       peerId: "demo",
@@ -47,12 +47,15 @@ describe("Project Engine", () => {
     });
 
     const eval_ = evaluateProjectEpisode({
-      snapshot: { ...snapshot, state: "collecting_context" },
+      snapshot: {
+        ...snapshot,
+        state: "collecting_context",
+        completedBrains: ["company"],
+      },
       contextReady: true,
     });
 
-    expect(eval_.action.kind).toBe("run_brain");
-    expect(eval_.action.brainId).toBe("research");
+    expect(eval_.action.kind).toBe("idle");
     expect(eval_.blocked).toBe(false);
   });
 
@@ -116,5 +119,35 @@ describe("Project Engine", () => {
 
     expect(eval_.blocked).toBe(true);
     expect(eval_.action.kind).toBe("wait");
+  });
+
+  it("schedules missing entry-require brain before strategy", () => {
+    const snapshot = createProjectEngineSnapshot({
+      projectId: "proj-1",
+      peerId: "demo",
+      organizationId: "org-1",
+    });
+
+    const eval_ = evaluateProjectEpisode({
+      snapshot: {
+        ...snapshot,
+        state: "strategizing",
+        completedBrains: ["company", "research", "reasoning"],
+      },
+      contextReady: true,
+    }, {
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    expect(eval_.action.kind).toBe("run_brain");
+    expect(eval_.action.brainId).toBe("marketing_intelligence");
   });
 });

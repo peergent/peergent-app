@@ -75,7 +75,8 @@ export class MarketingIntelligenceBrainExecutor {
       constraints: payload.constraints,
       budgetContext: payload.budgetContext,
       audienceContext: payload.audienceContext,
-      channelData: payload.channelData,
+      channelData: payload.channelData ?? payload.selectedChannels,
+      selectedChannels: payload.selectedChannels,
       priorMarketingDecisions: payload.priorMarketingDecisions,
     };
 

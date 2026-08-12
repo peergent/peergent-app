@@ -33,6 +33,7 @@ export function createProjectEngineSnapshot(
     activeBrain: null,
     completedBrains: [],
     pendingBrains: [
+      "company",
       "research",
       "reasoning",
       "marketing_intelligence",

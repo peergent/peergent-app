@@ -13,6 +13,7 @@ import {
   evaluateProjectEpisode,
   markBrainCompleted,
   nextStateAfterBrainComplete,
+  researchPhaseComplete,
 } from "./evaluate-project";
 import type {
   BrainExecutionRecord,
@@ -52,7 +53,7 @@ export function advanceProjectEpisode(
   }
 
   if (input.lastBrainResult) {
-    snapshot = applyBrainResult(snapshot, input.lastBrainResult, nl, now);
+    snapshot = applyBrainResult(snapshot, input.lastBrainResult, nl, now, input);
   }
 
   if (input.published && snapshot.state === "publishing") {
@@ -100,7 +101,8 @@ function applyBrainResult(
   snapshot: ProjectEngineSnapshot,
   result: NonNullable<ProjectEngineInput["lastBrainResult"]>,
   nl: boolean,
-  now: Date
+  now: Date,
+  input: ProjectEngineInput
 ): ProjectEngineSnapshot {
   const record: BrainExecutionRecord = {
     id: `run-${result.brainId}-${now.getTime()}`,
@@ -146,19 +148,44 @@ function applyBrainResult(
     };
   }
 
-  if (result.status === "waiting_approval") {
-    const gate = resolveApprovalGate(result.brainId);
-    const checkpoint = gate
-      ? createApprovalCheckpoint(gate, nl, now)
-      : next.approvalCheckpoint;
+  const gate = resolveApprovalGate(result.brainId);
+  const deferApprovalPause = result.brainId === "validation" && result.requiresApproval;
 
+  if (
+    !deferApprovalPause &&
+    (result.status === "waiting_approval" ||
+      (result.status === "completed" && result.requiresApproval && gate))
+  ) {
+    if (!gate) {
+      next = markBrainCompleted(next, result.brainId, now);
+      const nextState = resolveNextStateAfterBrainComplete(snapshot.state, result, next, input);
+      next = withProjectState(next, nextState, now);
+      next = {
+        ...next,
+        eventLog: appendProjectEvent(
+          next,
+          createProjectEngineEvent({
+            type: "brain_completed",
+            brainId: result.brainId,
+            state: nextState,
+            nl,
+            at: now,
+          })
+        ),
+      };
+      return next;
+    }
+
+    const checkpoint = createApprovalCheckpoint(gate, nl, now);
+
+    const completed = markBrainCompleted(next, result.brainId, now);
     return {
-      ...markBrainCompleted(next, result.brainId, now),
+      ...completed,
       state: "waiting_for_approval",
       waitingReason: "approval_required",
       approvalCheckpoint: checkpoint,
       eventLog: appendProjectEvent(
-        next,
+        completed,
         createProjectEngineEvent({
           type: "approval_required",
           brainId: result.brainId,
@@ -172,7 +199,7 @@ function applyBrainResult(
 
   if (result.status === "completed") {
     next = markBrainCompleted(next, result.brainId, now);
-    const nextState = nextStateAfterBrainComplete(snapshot.state, false);
+    const nextState = resolveNextStateAfterBrainComplete(snapshot.state, result, next, input);
     next = withProjectState(next, nextState, now);
     next = {
       ...next,
@@ -190,4 +217,34 @@ function applyBrainResult(
   }
 
   return next;
+}
+
+function resolveNextStateAfterBrainComplete(
+  current: ProjectEngineSnapshot["state"],
+  result: NonNullable<ProjectEngineInput["lastBrainResult"]>,
+  snapshot: ProjectEngineSnapshot,
+  input: ProjectEngineInput
+): ProjectEngineSnapshot["state"] {
+  if (current === "researching") {
+    return researchPhaseComplete(snapshot) ? "strategizing" : "researching";
+  }
+  if (current === "validating" && result.brainId === "validation") {
+    return "validating";
+  }
+  if (current === "validating" && result.brainId === "memory") {
+    return input.validationApprovalPending ? "waiting_for_approval" : "ready_to_publish";
+  }
+  if (current === "learning" && result.brainId === "learning") {
+    return "learning";
+  }
+  if (current === "monitoring" && result.brainId === "learning") {
+    return "learning";
+  }
+  if (current === "learning" && result.brainId === "memory") {
+    return "complete";
+  }
+  if (current === "collecting_context" && result.brainId === "company") {
+    return "collecting_context";
+  }
+  return nextStateAfterBrainComplete(current, false);
 }

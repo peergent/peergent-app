@@ -380,6 +380,7 @@ export type MarketingIntelligenceBrainInput = {
   readonly budgetContext?: string | null;
   readonly audienceContext?: readonly string[];
   readonly channelData?: readonly string[];
+  readonly selectedChannels?: readonly string[];
   readonly priorMarketingDecisions?: readonly string[];
 };
 
@@ -402,6 +403,7 @@ export type MarketingIntelligenceBrainPayload = {
   readonly budgetContext?: string | null;
   readonly audienceContext?: readonly string[];
   readonly channelData?: readonly string[];
+  readonly selectedChannels?: readonly string[];
   readonly priorMarketingDecisions?: readonly string[];
 };
 
