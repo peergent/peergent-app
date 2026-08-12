@@ -7,6 +7,9 @@ import { getDefaultExecutionRepository } from "./execution-repository";
 import { validateExecutionInput } from "./execution-validator";
 import { mapExecutionToBrainOutput } from "./map-execution-to-output";
 import type { ExecutionBrainInput, ExecutionBrainOutput, ExecutionHistory } from "./types";
+import type { DurablePersistencePort } from "../../persistence/layer/durable-persistence-port";
+import { getActiveDurablePersistence } from "../../persistence/layer/active-durable-persistence";
+import { emitPersistenceDiagnostic } from "../../persistence/layer/persistence-diagnostics";
 
 export type ExecutionLayerResult = {
   history: ExecutionHistory;
@@ -21,14 +24,64 @@ export type ExecutionLayerResult = {
 export class ExecutionLayer {
   constructor(
     private readonly repository: ExecutionRepository = getDefaultExecutionRepository(),
-    private readonly providerRegistry: ExecutionProviderRegistry = getDefaultExecutionProviderRegistry()
+    private readonly providerRegistry: ExecutionProviderRegistry = getDefaultExecutionProviderRegistry(),
+    private readonly durablePort: DurablePersistencePort | null = getActiveDurablePersistence()
   ) {}
+
+  private async resolveDurableDuplicate(input: ExecutionBrainInput): Promise<ExecutionLayerResult | null> {
+    if (!this.durablePort) return null;
+
+    const durable = await this.durablePort.lookupExecutionIdempotency({
+      organizationId: input.organizationId,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    if (!durable) return null;
+
+    if (durable.status === "succeeded" && durable.executionOutputRef && durable.payload) {
+      const storeRecord = durable.payload as import("./execution-repository").ExecutionStoreRecord;
+      return {
+        history: storeRecord.history,
+        structuredOutput: mapExecutionToBrainOutput({
+          history: storeRecord.history,
+          campaignContext: null,
+          locale: input.locale,
+        }),
+        outputRef: storeRecord.outputRef,
+      };
+    }
+
+    if (durable.status === "executing" || durable.status === "reserved") {
+      emitPersistenceDiagnostic({
+        event: "execution_idempotency_conflict",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        idempotencyKey: input.idempotencyKey,
+        message: durable.status,
+      });
+    }
+
+    if (durable.status === "ambiguous") {
+      emitPersistenceDiagnostic({
+        event: "execution_outcome_ambiguous",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      throw new Error("execution_outcome_ambiguous");
+    }
+
+    return null;
+  }
 
   async buildHistory(input: ExecutionBrainInput): Promise<ExecutionHistory> {
     return buildExecutionHistory(input, this.providerRegistry);
   }
 
   async produceAndStore(input: ExecutionBrainInput): Promise<ExecutionLayerResult> {
+    const durableDuplicate = await this.resolveDurableDuplicate(input);
+    if (durableDuplicate) return durableDuplicate;
+
     const gate = validateExecutionInput(input);
     if (!gate.ok) {
       throw new Error(`${gate.errorCode}:${gate.reason}`);
@@ -55,6 +108,14 @@ export class ExecutionLayer {
       };
     }
 
+    if (this.durablePort) {
+      await this.durablePort.reserveExecutionIdempotency({
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        idempotencyKey: input.idempotencyKey,
+      });
+    }
+
     const history = await buildExecutionHistory(input, this.providerRegistry);
     const structuredOutput = mapExecutionToBrainOutput({
       history,
@@ -63,7 +124,7 @@ export class ExecutionLayer {
     });
     const outputRef = `execution:${input.organizationId}:${input.projectId}:${history.createdAt}`;
 
-    this.repository.store({
+    const storeRecord = {
       key: {
         organizationId: input.organizationId,
         projectId: input.projectId,
@@ -75,7 +136,19 @@ export class ExecutionLayer {
       storedAt: new Date().toISOString(),
       idempotencyKeys: history.entries.map((e) => e.instruction.idempotencyKey),
       batchIdempotencyKey: input.idempotencyKey,
-    });
+    };
+
+    this.repository.store(storeRecord);
+
+    if (this.durablePort) {
+      await this.durablePort.confirmExecutionIdempotency({
+        organizationId: input.organizationId,
+        idempotencyKey: input.idempotencyKey,
+        status: "succeeded",
+        executionOutputRef: outputRef,
+        payload: storeRecord,
+      });
+    }
 
     return { history, structuredOutput, outputRef };
   }
@@ -87,9 +160,10 @@ export class ExecutionLayer {
 
 export function createExecutionLayer(
   repository?: ExecutionRepository,
-  providerRegistry?: ExecutionProviderRegistry
+  providerRegistry?: ExecutionProviderRegistry,
+  durablePort?: DurablePersistencePort | null
 ): ExecutionLayer {
-  return new ExecutionLayer(repository, providerRegistry);
+  return new ExecutionLayer(repository, providerRegistry, durablePort ?? getActiveDurablePersistence());
 }
 
 export async function collectExecutionHistory(input: ExecutionBrainInput): Promise<ExecutionHistory> {

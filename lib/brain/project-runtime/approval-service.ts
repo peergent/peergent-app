@@ -4,6 +4,9 @@
 
 import type { ProjectApprovalRecord, ProjectEpisodeRecord, SubmitApprovalInput } from "./types";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
+import { commitApprovalCritical } from "./episode-durable-persistence";
+import { getActiveDurablePersistence } from "../persistence/layer/active-durable-persistence";
+import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
 
 export function submitProjectApproval(input: SubmitApprovalInput): ProjectEpisodeRecord {
   const repo = getDefaultProjectEpisodeRepository();
@@ -41,4 +44,26 @@ export function submitProjectApproval(input: SubmitApprovalInput): ProjectEpisod
   repo.saveApproval(record);
   repo.save(updated);
   return updated;
+}
+
+export async function submitProjectApprovalDurable(
+  input: SubmitApprovalInput,
+  durable?: DurablePersistencePort | null
+): Promise<ProjectEpisodeRecord> {
+  const updated = submitProjectApproval(input);
+  const port = durable ?? getActiveDurablePersistence();
+  if (!port) return updated;
+
+  const record: ProjectApprovalRecord = {
+    id: input.approvalId,
+    projectId: input.projectId,
+    organizationId: input.organizationId,
+    checkpointKind: updated.snapshot.approvalCheckpoint?.kind ?? "campaign_approval",
+    decision: input.decision,
+    actor: input.actor,
+    comment: input.comment,
+    decidedAt: input.timestamp ?? new Date().toISOString(),
+  };
+
+  return commitApprovalCritical(record, updated, port);
 }

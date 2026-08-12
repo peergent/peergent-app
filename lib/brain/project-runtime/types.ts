@@ -86,6 +86,8 @@ export type ProjectEpisodeRecord = {
   resolvedGraphs: Partial<ResolvedBrainOutputs>;
   /** Cached Learning → Memory proposals for checkpoint 2 */
   cachedLearningProposals?: readonly import("../layers/learning/brain-types").MemoryWriteProposal[];
+  /** Optimistic concurrency version for durable episode store */
+  durableVersion?: number;
 };
 
 export type ResolvedBrainOutputs = {

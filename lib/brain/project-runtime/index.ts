@@ -28,7 +28,7 @@ export {
   resetDefaultProjectEpisodeRepository,
 } from "./project-episode-repository";
 
-export { submitProjectApproval } from "./approval-service";
+export { submitProjectApproval, submitProjectApprovalDurable } from "./approval-service";
 export {
   ingestPerformanceObservations,
   validatePerformanceObservation,

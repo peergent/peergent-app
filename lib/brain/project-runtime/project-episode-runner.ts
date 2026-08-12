@@ -17,7 +17,10 @@ import type { BrainResult, ProjectBrainContract, ProjectBrainRegistry } from "..
 import type { BrainResultSummary, ProjectEngineInput, ProjectBrainId } from "../project-engine/types";
 import { buildBrainPayload, buildPriorOutputs, contextGapsFromEvaluation } from "./brain-context-handoff";
 import { resolveBrainOutputs } from "./brain-output-resolver";
+import { commitEpisodeCritical } from "./episode-durable-persistence";
 import { createEmptyArtifacts, recordBrainOutputRef, brainOutputRefMap } from "./project-artifact-store";
+import { getActiveDurablePersistence } from "../persistence/layer/active-durable-persistence";
+import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
 import { learningProposalIds, proposalsFromLearningGraph } from "./learning-memory-handoff";
@@ -35,9 +38,23 @@ import type {
 const DEFAULT_MAX_STEPS = 60;
 
 export class ProjectEpisodeRunner {
-  constructor(private readonly registry: ProjectBrainRegistry = createDefaultProjectBrainRegistry()) {}
+  constructor(
+    private readonly registry: ProjectBrainRegistry = createDefaultProjectBrainRegistry(),
+    private readonly durablePort: DurablePersistencePort | null = getActiveDurablePersistence()
+  ) {}
 
-  startEpisode(input: EpisodeRunInput): ProjectEpisodeRecord {
+  private async commitEpisode(
+    episode: ProjectEpisodeRecord,
+    options?: { syncBrainDocs?: boolean }
+  ): Promise<ProjectEpisodeRecord> {
+    if (!this.durablePort) {
+      getDefaultProjectEpisodeRepository().save(episode);
+      return episode;
+    }
+    return commitEpisodeCritical(episode, this.durablePort, options);
+  }
+
+  async startEpisode(input: EpisodeRunInput): Promise<ProjectEpisodeRecord> {
     const fixture = buildMarketingPeerFixture(input.projectId.slice(-1));
     const correlationId = input.correlationId ?? `corr-${input.projectId}-${Date.now()}`;
     const snapshot = createProjectEngineSnapshot({
@@ -77,7 +94,7 @@ export class ProjectEpisodeRunner {
 
     getDefaultProjectEpisodeRepository().save(episode);
     appendRuntimeEvent({ episode, type: "project_started", brainId: null });
-    return episode;
+    return this.commitEpisode(episode, { syncBrainDocs: false });
   }
 
   async runUntilPause(input: EpisodeRunInput): Promise<EpisodeRunResult> {
@@ -85,7 +102,7 @@ export class ProjectEpisodeRunner {
       getDefaultProjectEpisodeRepository().get({
         organizationId: input.organizationId,
         projectId: input.projectId,
-      }) ?? this.startEpisode(input);
+      }) ?? (await this.startEpisode(input));
 
     const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS;
     const locale = input.locale ?? "en";
@@ -131,15 +148,15 @@ export class ProjectEpisodeRunner {
 
       if (evaluation.blocked) {
         if (evaluation.action.kind === "collect_context") {
-          return pauseEpisode(episode, "waiting_for_context", evaluation.action.reason, locale);
+          return await pauseEpisode(episode, "waiting_for_context", evaluation.action.reason, locale, this.durablePort);
         }
         if (evaluation.action.kind === "wait") {
           appendRuntimeEvent({ episode, type: "waiting_for_approval", brainId: null });
-          return pauseEpisode(episode, "waiting_for_approval", evaluation.action.reason, locale);
+          return await pauseEpisode(episode, "waiting_for_approval", evaluation.action.reason, locale, this.durablePort);
         }
         if (evaluation.action.kind === "monitor") {
           appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
-          return pauseEpisode(episode, "waiting_for_outcomes", evaluation.action.reason, locale);
+          return await pauseEpisode(episode, "waiting_for_outcomes", evaluation.action.reason, locale, this.durablePort);
         }
       }
 
@@ -167,6 +184,7 @@ export class ProjectEpisodeRunner {
         });
 
         episode = applyBrainExecution(episode, brainResult, locale, idempotencyKey);
+        episode = await this.commitEpisode(episode);
         if (brainResult.status === "failed") {
           episode = { ...episode, episodeStatus: "failed", lastError: brainResult.errorCode };
           break;
@@ -179,19 +197,20 @@ export class ProjectEpisodeRunner {
       }
     }
 
-    getDefaultProjectEpisodeRepository().save(episode);
+    episode = await this.commitEpisode(episode);
     if (episode.episodeStatus === "running") {
       if (episode.snapshot.state === "monitoring" && !episode.performanceObservationsAvailable) {
         appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
-        return pauseEpisode(
+        return await pauseEpisode(
           episode,
           "waiting_for_outcomes",
           "Awaiting performance observations",
-          input.locale ?? "en"
+          input.locale ?? "en",
+          this.durablePort
         );
       }
       episode = { ...episode, episodeStatus: "failed", lastError: "max_steps_exceeded" };
-      getDefaultProjectEpisodeRepository().save(episode);
+      episode = await this.commitEpisode(episode);
     }
     return buildRunResult(episode, episode.lastError);
   }
@@ -224,7 +243,7 @@ export class ProjectEpisodeRunner {
       appendRuntimeEvent({ episode: updated, type: "performance_observations_received", brainId: null });
     }
 
-    getDefaultProjectEpisodeRepository().save({ ...updated, episodeStatus: "running" });
+    await this.commitEpisode({ ...updated, episodeStatus: "running" });
     return this.runUntilPause({
       organizationId: input.organizationId,
       projectId: input.projectId,
@@ -479,12 +498,13 @@ function advanceIdlePhase(episode: ProjectEpisodeRecord): ProjectEpisodeRecord {
   return updated;
 }
 
-function pauseEpisode(
+async function pauseEpisode(
   episode: ProjectEpisodeRecord,
   status: EpisodeStatus,
   reason: string,
-  locale: "nl" | "en"
-): EpisodeRunResult {
+  locale: "nl" | "en",
+  durablePort: DurablePersistencePort | null = null
+): Promise<EpisodeRunResult> {
   const gaps = contextGapsFromEvaluation({
     blocked: true,
     actionKind: status === "waiting_for_context" ? "collect_context" : "wait",
@@ -539,7 +559,11 @@ function pauseEpisode(
     lastError: status === "waiting_for_approval" || status === "waiting_for_outcomes" ? null : reason,
     updatedAt: now.toISOString(),
   };
-  getDefaultProjectEpisodeRepository().save(paused);
+  if (durablePort) {
+    await commitEpisodeCritical(paused, durablePort);
+  } else {
+    getDefaultProjectEpisodeRepository().save(paused);
+  }
   return buildRunResult(paused, reason);
 }
 
@@ -596,8 +620,11 @@ function buildObservability(episode: ProjectEpisodeRecord): EpisodeObservability
   };
 }
 
-export function createProjectEpisodeRunner(registry?: ProjectBrainRegistry): ProjectEpisodeRunner {
-  return new ProjectEpisodeRunner(registry);
+export function createProjectEpisodeRunner(
+  registry?: ProjectBrainRegistry,
+  durablePort?: DurablePersistencePort | null
+): ProjectEpisodeRunner {
+  return new ProjectEpisodeRunner(registry, durablePort ?? getActiveDurablePersistence());
 }
 
 function mergeResolvedGraphs(

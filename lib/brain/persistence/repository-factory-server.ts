@@ -25,6 +25,7 @@ import type {
 import { BrainRuntimeError } from "../runtime/errors";
 import { createSupabaseBrainRepositories } from "./supabase/create-supabase-repositories";
 import type { BrainRepositoryBundle, CreateBrainRepositoriesInput } from "./repository-factory";
+import { createServerBrainRuntime } from "./server/create-server-brain-runtime";
 
 function createLiveCapabilityProvidersWithLlm(): readonly BrainCapabilityProvider[] {
   const providers: BrainCapabilityProvider[] = [];
@@ -63,6 +64,7 @@ export function createBrainRepositoriesForServer(
 
   if (env === "live") {
     if (input.supabase) {
+      createServerBrainRuntime({ supabase: input.supabase, mode: "supabase" });
       const async = createSupabaseBrainRepositories(input.supabase);
       return {
         storageMode: "supabase",
