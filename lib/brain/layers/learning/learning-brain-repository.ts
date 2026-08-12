@@ -93,16 +93,17 @@ export class InMemoryLearningBrainRepository implements LearningBrainRepository 
   }
 }
 
-let defaultRepository: InMemoryLearningBrainRepository | null = null;
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export function getDefaultLearningBrainRepository(): LearningBrainRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryLearningBrainRepository();
-  return defaultRepository;
+  return getLayerRepositories().learningBrain;
 }
 
 export function resetDefaultLearningBrainRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 export type { LearningBrainGraph, LearningSnapshot, LearningRun, LearningHistory };

@@ -1,4 +1,8 @@
 import type { CreativeGraph } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type CreativeRecordKey = {
   organizationId: string;
@@ -63,14 +67,10 @@ export class InMemoryCreativeRepository implements CreativeRepository {
   }
 }
 
-let defaultRepository: InMemoryCreativeRepository | null = null;
-
-export function getDefaultCreativeRepository(): InMemoryCreativeRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryCreativeRepository();
-  return defaultRepository;
+export function getDefaultCreativeRepository(): CreativeRepository {
+  return getLayerRepositories().creative;
 }
 
 export function resetDefaultCreativeRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }

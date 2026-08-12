@@ -1,4 +1,8 @@
 import type { ValidationGraph } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type ValidationRecordKey = {
   organizationId: string;
@@ -63,14 +67,10 @@ export class InMemoryValidationRepository implements ValidationRepository {
   }
 }
 
-let defaultRepository: InMemoryValidationRepository | null = null;
-
-export function getDefaultValidationRepository(): InMemoryValidationRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryValidationRepository();
-  return defaultRepository;
+export function getDefaultValidationRepository(): ValidationRepository {
+  return getLayerRepositories().validation;
 }
 
 export function resetDefaultValidationRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }

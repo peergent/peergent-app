@@ -122,18 +122,17 @@ export class InMemoryReasoningBrainRepository implements ReasoningBrainRepositor
   }
 }
 
-let defaultBrainRepository: ReasoningBrainRepository | null = null;
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export function getDefaultReasoningBrainRepository(): ReasoningBrainRepository {
-  if (!defaultBrainRepository) {
-    defaultBrainRepository = new InMemoryReasoningBrainRepository();
-  }
-  return defaultBrainRepository;
+  return getLayerRepositories().reasoningBrain;
 }
 
 export function resetDefaultReasoningBrainRepository(): void {
-  defaultBrainRepository?.clear();
-  defaultBrainRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 export function legacyGraphToRecord(input: {

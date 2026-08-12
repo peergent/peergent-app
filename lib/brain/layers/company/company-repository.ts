@@ -1,4 +1,8 @@
 import type { CompanyGraph, CompanyGraphSnapshot, CompanyHistory, CompanyHistoryEntry } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type CompanyStoreRecord = {
   organizationId: string;
@@ -58,14 +62,10 @@ export function appendHistoryEntry(
   };
 }
 
-let defaultRepository: InMemoryCompanyRepository | null = null;
-
-export function getDefaultCompanyRepository(): InMemoryCompanyRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryCompanyRepository();
-  return defaultRepository;
+export function getDefaultCompanyRepository(): CompanyRepository {
+  return getLayerRepositories().company;
 }
 
 export function resetDefaultCompanyRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }

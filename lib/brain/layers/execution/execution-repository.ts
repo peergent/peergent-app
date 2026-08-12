@@ -1,4 +1,8 @@
 import type { ExecutionHistory } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type ExecutionRecordKey = {
   organizationId: string;
@@ -74,14 +78,10 @@ export class InMemoryExecutionRepository implements ExecutionRepository {
   }
 }
 
-let defaultRepository: InMemoryExecutionRepository | null = null;
-
-export function getDefaultExecutionRepository(): InMemoryExecutionRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryExecutionRepository();
-  return defaultRepository;
+export function getDefaultExecutionRepository(): ExecutionRepository {
+  return getLayerRepositories().execution;
 }
 
 export function resetDefaultExecutionRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }

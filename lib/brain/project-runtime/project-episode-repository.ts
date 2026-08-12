@@ -7,6 +7,10 @@ import type {
   ProjectEpisodeRecord,
   StoredPerformanceObservation,
 } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../persistence/layer-repository-factory";
 
 export type ProjectEpisodeRepository = {
   save(episode: ProjectEpisodeRecord): void;
@@ -73,14 +77,10 @@ export class InMemoryProjectEpisodeRepository implements ProjectEpisodeRepositor
   }
 }
 
-let defaultRepo: InMemoryProjectEpisodeRepository | null = null;
-
 export function getDefaultProjectEpisodeRepository(): ProjectEpisodeRepository {
-  if (!defaultRepo) defaultRepo = new InMemoryProjectEpisodeRepository();
-  return defaultRepo;
+  return getLayerRepositories().projectEpisode;
 }
 
 export function resetDefaultProjectEpisodeRepository(): void {
-  defaultRepo?.clear();
-  defaultRepo = null;
+  resetConfiguredLayerRepositories();
 }

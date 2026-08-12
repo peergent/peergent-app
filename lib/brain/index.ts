@@ -838,6 +838,15 @@ export {
   listProjectEvents,
 } from "./project-runtime";
 
+export {
+  createLayerRepositories,
+  configureLayerRepositories,
+  getLayerRepositories,
+  resetLayerRepositoryStores,
+  resetConfiguredLayerRepositories,
+} from "./persistence/layer-repository-factory";
+export type { LayerRepositoryBundle, LayerRepositoryStorageMode } from "./persistence/layer-repository-factory";
+
 export type {
   EpisodeRunResult,
   EpisodeStatus,

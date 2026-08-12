@@ -93,16 +93,17 @@ export class InMemoryPlanningBrainRepository implements PlanningBrainRepository 
   }
 }
 
-let defaultRepository: InMemoryPlanningBrainRepository | null = null;
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export function getDefaultPlanningBrainRepository(): PlanningBrainRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryPlanningBrainRepository();
-  return defaultRepository;
+  return getLayerRepositories().planningBrain;
 }
 
 export function resetDefaultPlanningBrainRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 export type { PlanningBrainGraph, PlanningSnapshot, PlanningRun, PlanningHistory };

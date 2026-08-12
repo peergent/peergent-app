@@ -96,16 +96,17 @@ export class InMemoryStrategyBrainRepository implements StrategyBrainRepository 
   }
 }
 
-let defaultRepository: InMemoryStrategyBrainRepository | null = null;
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export function getDefaultStrategyBrainRepository(): StrategyBrainRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryStrategyBrainRepository();
-  return defaultRepository;
+  return getLayerRepositories().strategyBrain;
 }
 
 export function resetDefaultStrategyBrainRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 export type { StrategyBrainGraph, StrategySnapshot, StrategyRun, StrategyHistory };

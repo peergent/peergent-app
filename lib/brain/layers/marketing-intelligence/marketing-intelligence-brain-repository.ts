@@ -115,18 +115,17 @@ export class InMemoryMarketingIntelligenceBrainRepository implements MarketingIn
   }
 }
 
-let defaultBrainRepository: MarketingIntelligenceBrainRepository | null = null;
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export function getDefaultMarketingIntelligenceBrainRepository(): MarketingIntelligenceBrainRepository {
-  if (!defaultBrainRepository) {
-    defaultBrainRepository = new InMemoryMarketingIntelligenceBrainRepository();
-  }
-  return defaultBrainRepository;
+  return getLayerRepositories().marketingIntelligenceBrain;
 }
 
 export function resetDefaultMarketingIntelligenceBrainRepository(): void {
-  defaultBrainRepository?.clear();
-  defaultBrainRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 export type { MarketingIntelligenceBrainGraph };

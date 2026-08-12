@@ -1,4 +1,8 @@
 import type { MemoryGraph, MemoryRecord, MemorySnapshot } from "./types";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type MemoryRecordKey = {
   organizationId: string;
@@ -78,14 +82,10 @@ export class InMemoryMemoryRepository implements MemoryRepository {
   }
 }
 
-let defaultRepository: InMemoryMemoryRepository | null = null;
-
-export function getDefaultMemoryRepository(): InMemoryMemoryRepository {
-  if (!defaultRepository) defaultRepository = new InMemoryMemoryRepository();
-  return defaultRepository;
+export function getDefaultMemoryRepository(): MemoryRepository {
+  return getLayerRepositories().memory;
 }
 
 export function resetDefaultMemoryRepository(): void {
-  defaultRepository?.clear();
-  defaultRepository = null;
+  resetConfiguredLayerRepositories();
 }

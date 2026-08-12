@@ -12,6 +12,10 @@ import type {
 } from "./brain-types";
 import type { ResearchGraph } from "./types";
 import type { ResearchRecord, ResearchRecordKey, ResearchRepository } from "./research-repository";
+import {
+  getLayerRepositories,
+  resetConfiguredLayerRepositories,
+} from "../../persistence/layer-repository-factory";
 
 export type ResearchBrainRecordKey = {
   organizationId: string;
@@ -127,18 +131,12 @@ export class InMemoryResearchBrainRepository implements ResearchBrainRepository 
   }
 }
 
-let defaultBrainRepository: ResearchBrainRepository | null = null;
-
 export function getDefaultResearchBrainRepository(): ResearchBrainRepository {
-  if (!defaultBrainRepository) {
-    defaultBrainRepository = new InMemoryResearchBrainRepository();
-  }
-  return defaultBrainRepository;
+  return getLayerRepositories().researchBrain;
 }
 
 export function resetDefaultResearchBrainRepository(): void {
-  defaultBrainRepository?.clear();
-  defaultBrainRepository = null;
+  resetConfiguredLayerRepositories();
 }
 
 /** Bridge legacy ResearchGraph into brain repository when needed. */
