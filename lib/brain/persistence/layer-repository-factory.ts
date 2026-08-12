@@ -46,6 +46,10 @@ import {
 } from "./layer/persistent-repositories";
 import { resetPersistentLayerStores } from "./layer/stores";
 import { createSupabaseLayerRepositories } from "./layer/supabase-layer-repositories";
+import {
+  PersistenceConfigurationError,
+  resolveBrainPersistenceMode,
+} from "./server/persistence-config";
 
 export type LayerRepositoryStorageMode = "in_memory" | "persistent_in_memory" | "supabase";
 
@@ -136,9 +140,15 @@ export function configureLayerRepositories(input: CreateLayerRepositoriesInput =
   return activeBundle;
 }
 
-/** Get active layer repositories — defaults to persistent_in_memory for live server paths. */
+/** Get active layer repositories — defaults to persistent_in_memory for local dev/tests only. */
 export function getLayerRepositories(): LayerRepositoryBundle {
   if (!activeBundle) {
+    const mode = resolveBrainPersistenceMode();
+    if (process.env.NODE_ENV === "production" && mode === "supabase") {
+      throw new PersistenceConfigurationError(
+        "Brain layer repositories not initialized. Call ensureServerBrainRuntime() before Brain layer access."
+      );
+    }
     activeBundle = createPersistentLayerRepositories();
   }
   return activeBundle;

@@ -170,6 +170,7 @@ export async function runLiveStrategyAction(
         project: input.project,
         understanding: input.understanding,
         organizationId: auth.organizationId,
+        supabase: auth.supabase,
         locale: input.locale,
         trace,
       }),

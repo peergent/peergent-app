@@ -57,7 +57,11 @@ export async function buildLiveCampaignEvidenceAction(
       return { ok: false, error: "not_found" };
     }
 
-    const bundle = await buildLiveCampaignEvidenceServer(input);
+    const bundle = await buildLiveCampaignEvidenceServer({
+      ...input,
+      organizationId: auth.organizationId,
+      supabase: auth.supabase,
+    });
 
     markOfficeLlmTrace("ACTION_RETURNED", {
       scope: "evidence",

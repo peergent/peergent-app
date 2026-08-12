@@ -3,7 +3,9 @@ import "server-only";
 import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
+import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
+import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { logBrainServerEnvResolved } from "@/lib/brain/config/brain-server-env";
 import { markOfficeLlmTrace } from "@/lib/brain/integration/office-llm-trace";
 import {
@@ -19,6 +21,8 @@ export type BuildLiveCampaignEvidenceServerInput = {
   stepId: CampaignWorkflowStepId;
   project: MarketingProject;
   domainInput: MarketingPeerDomainInput;
+  organizationId: string;
+  supabase?: AppSupabaseClient;
   locale?: string | null;
 };
 
@@ -32,9 +36,18 @@ export async function buildLiveCampaignEvidenceServer(
     model: env.resolvedModel,
   });
 
+  if (input.supabase) {
+    await prepareBrainServerPersistence({
+      supabase: input.supabase,
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+    });
+  }
+
   const repositories = createBrainRepositoriesForServer({
     environment: "live",
     peerId: input.peerId,
+    supabase: input.supabase ?? null,
   });
   markOfficeLlmTrace("PROVIDERS_CREATED", {
     providerIds: repositories.providers.map((provider) => provider.id).join(","),

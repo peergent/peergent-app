@@ -26,6 +26,11 @@ import { BrainRuntimeError } from "../runtime/errors";
 import { createSupabaseBrainRepositories } from "./supabase/create-supabase-repositories";
 import type { BrainRepositoryBundle, CreateBrainRepositoriesInput } from "./repository-factory";
 import { createServerBrainRuntime } from "./server/create-server-brain-runtime";
+import {
+  PersistenceConfigurationError,
+  PersistenceInfrastructureError,
+  resolveBrainPersistenceMode,
+} from "./server/persistence-config";
 
 function createLiveCapabilityProvidersWithLlm(): readonly BrainCapabilityProvider[] {
   const providers: BrainCapabilityProvider[] = [];
@@ -34,6 +39,18 @@ function createLiveCapabilityProvidersWithLlm(): readonly BrainCapabilityProvide
   }
   providers.push(createDeterministicBrainProvider(), createDemoBrainProvider());
   return providers;
+}
+
+function assertSupabaseRequiredForProduction(input: CreateBrainRepositoriesInput): void {
+  const mode = resolveBrainPersistenceMode();
+  if (mode !== "supabase") return;
+  if (input.supabase) return;
+  if (process.env.NODE_ENV === "production") {
+    throw new PersistenceInfrastructureError(
+      "Supabase client required for live Brain execution in production (BRAIN_PERSISTENCE_MODE=supabase).",
+      "persistence_unavailable"
+    );
+  }
 }
 
 /** Server-only repository factory — registers LLM provider when env flag is enabled. */
@@ -63,6 +80,8 @@ export function createBrainRepositoriesForServer(
   }
 
   if (env === "live") {
+    assertSupabaseRequiredForProduction(input);
+
     if (input.supabase) {
       createServerBrainRuntime({ supabase: input.supabase, mode: "supabase" });
       const async = createSupabaseBrainRepositories(input.supabase);
@@ -73,6 +92,11 @@ export function createBrainRepositoriesForServer(
         cache: new InMemoryBrainCacheStore(),
         providers: createLiveCapabilityProvidersWithLlm(),
       };
+    }
+    if (resolveBrainPersistenceMode() === "supabase") {
+      throw new PersistenceConfigurationError(
+        "Live Brain execution requires a server Supabase client when BRAIN_PERSISTENCE_MODE=supabase."
+      );
     }
     return {
       storageMode: "persistent_in_memory",

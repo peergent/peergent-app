@@ -3,8 +3,10 @@ import "server-only";
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
+import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { executeBrainForWorkflowStep } from "@/lib/brain/integration/execute-brain-for-workflow-step";
 import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
+import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { getBrainCapability } from "@/lib/brain/capabilities/registry";
 import type { BrainRunResult } from "@/lib/brain/runtime/run-result";
 import { presentBrainOutputForCampaign } from "@/lib/brain/presentation/campaign-evidence-adapter";
@@ -50,6 +52,7 @@ export type LiveStrategyRunServerInput = {
   project: MarketingProject;
   understanding: MarketingUnderstanding | null;
   organizationId: string;
+  supabase?: AppSupabaseClient;
   locale?: string | null;
   trace?: StrategyRunTrace;
 };
@@ -194,9 +197,18 @@ async function executeLiveStrategyRunServer(
   persistStage({ status: "gathering_context" });
   recordStrategyRunTrace(trace, "server_context_gathering_started");
 
+  if (input.supabase) {
+    await prepareBrainServerPersistence({
+      supabase: input.supabase,
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+    });
+  }
+
   const serverRepositories = createBrainRepositoriesForServer({
     environment: "live",
     peerId,
+    supabase: input.supabase ?? null,
   });
   const env = logBrainServerEnvResolved("executeLiveStrategyRunServer");
   markOfficeLlmTrace("SERVER_ENV_RESOLVED", {
