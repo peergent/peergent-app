@@ -28,6 +28,8 @@ import { buildMarketingPeerFixture } from "./fixtures/marketing-peer-fixture";
 import { acquireEpisodeContext, type EpisodeAcquiredContext } from "./acquire-episode-context";
 import { assertProductionEpisodeRealContext } from "../context-acquisition/server/context-acquisition-config";
 import { isDemoPeer } from "@/lib/office/demo/demo-company";
+import { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+import type { ProjectBrainExecutionAdapter } from "./types";
 import type {
   BrainHandoffContext,
   EpisodeObservability,
@@ -43,7 +45,8 @@ const DEFAULT_MAX_STEPS = 60;
 export class ProjectEpisodeRunner {
   constructor(
     private readonly registry: ProjectBrainRegistry = createDefaultProjectBrainRegistry(),
-    private readonly durablePort: DurablePersistencePort | null = getActiveDurablePersistence()
+    private readonly durablePort: DurablePersistencePort | null = getActiveDurablePersistence(),
+    private readonly brainExecutionAdapter: ProjectBrainExecutionAdapter | null = null
   ) {}
 
   private async commitEpisode(
@@ -165,6 +168,26 @@ export class ProjectEpisodeRunner {
         contextReady: acquiredContext.contextReady,
         contextGaps: [...acquiredContext.contextGaps],
       };
+
+      const blockingGaps = acquiredContext.contextGaps.filter((gap) => gap.blocking);
+      if (!acquiredContext.contextReady || blockingGaps.length > 0) {
+        emitOrchestrationDiagnostic({
+          event: "context_gap_blocked",
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          episodeId: episode.snapshot.episodeId,
+          reason: "Required context missing",
+        });
+        appendRuntimeEvent({ episode, type: "context_gap_blocked", brainId: null });
+        return pauseEpisode(
+          episode,
+          "waiting_for_context",
+          "Required context missing",
+          locale,
+          this.durablePort
+        );
+      }
     }
 
     const contextHandoff = acquiredContext?.handoff ?? {
@@ -186,6 +209,28 @@ export class ProjectEpisodeRunner {
         performanceObservationsAvailable: episode.performanceObservationsAvailable,
         validationApprovalPending: episode.validationApprovalPending,
       });
+
+      emitOrchestrationDiagnostic({
+        event: "project_engine_evaluated",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        peerId: episode.snapshot.peerId,
+        episodeId: episode.snapshot.episodeId,
+        actionKind: evaluation.action.kind,
+        brainId: evaluation.action.brainId,
+      });
+
+      if (evaluation.action.kind !== "idle") {
+        emitOrchestrationDiagnostic({
+          event: "project_engine_action_selected",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          actionKind: evaluation.action.kind,
+          brainId: evaluation.action.brainId,
+        });
+      }
 
       episode = { ...episode, snapshot: evaluation.snapshot };
 
@@ -253,6 +298,35 @@ export class ProjectEpisodeRunner {
         episode = await this.commitEpisode(episode);
         if (brainResult.status === "failed") {
           episode = { ...episode, episodeStatus: "failed", lastError: brainResult.errorCode };
+          break;
+        }
+
+        if (
+          input.target?.targetBrain &&
+          episode.snapshot.completedBrains.includes(input.target.targetBrain)
+        ) {
+          emitOrchestrationDiagnostic({
+            event: "episode_target_reached",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: input.target.targetBrain,
+          });
+          break;
+        }
+        if (
+          input.target?.targetLifecycleState &&
+          episode.snapshot.state === input.target.targetLifecycleState
+        ) {
+          emitOrchestrationDiagnostic({
+            event: "episode_target_reached",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            reason: input.target.targetLifecycleState,
+          });
           break;
         }
       }
@@ -331,6 +405,10 @@ export class ProjectEpisodeRunner {
     locale: "nl" | "en";
     idempotencyKey: string;
   }): Promise<BrainResult<import("../project-engine/brain-contract").BrainOutput>> {
+    if (this.brainExecutionAdapter) {
+      return this.brainExecutionAdapter.execute(input);
+    }
+
     const contract = this.registry[input.brainId] as ProjectBrainContract | undefined;
     if (!contract) {
       return {
@@ -696,9 +774,14 @@ function buildObservability(episode: ProjectEpisodeRecord): EpisodeObservability
 
 export function createProjectEpisodeRunner(
   registry?: ProjectBrainRegistry,
-  durablePort?: DurablePersistencePort | null
+  durablePort?: DurablePersistencePort | null,
+  brainExecutionAdapter?: ProjectBrainExecutionAdapter | null
 ): ProjectEpisodeRunner {
-  return new ProjectEpisodeRunner(registry, durablePort ?? getActiveDurablePersistence());
+  return new ProjectEpisodeRunner(
+    registry,
+    durablePort ?? getActiveDurablePersistence(),
+    brainExecutionAdapter ?? null
+  );
 }
 
 function mergeResolvedGraphs(

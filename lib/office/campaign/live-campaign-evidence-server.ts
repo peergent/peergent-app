@@ -1,3 +1,9 @@
+/**
+ * Live campaign evidence — read-only projection path.
+ * Does NOT advance Project Engine episode state (PX-50).
+ * Uses executeBrainForWorkflowStep as capability adapter for presentation only.
+ */
+
 import "server-only";
 
 import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";

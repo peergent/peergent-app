@@ -117,6 +117,14 @@ export type ProjectRuntimeEvent = {
   customerSafeSummary?: string;
 };
 
+/** Legitimate pause boundary for production episode runs — not arbitrary step counts. */
+export type EpisodeRunTarget = {
+  /** Stop after this brain completes successfully. */
+  targetBrain?: ProjectBrainId;
+  /** Stop when lifecycle reaches this state. */
+  targetLifecycleState?: ProjectLifecycleState;
+};
+
 export type EpisodeRunInput = {
   organizationId: string;
   projectId: string;
@@ -132,6 +140,8 @@ export type EpisodeRunInput = {
   peerRole?: string;
   campaignContext?: import("@/lib/office/campaign/campaign-context").CampaignContext;
   supabase?: import("@/lib/intelligence/api/org-context").AppSupabaseClient;
+  /** PX-50 — run until target brain/state or legitimate pause (approval, context, outcomes). */
+  target?: EpisodeRunTarget;
 };
 
 export type EpisodeRunResult = {
@@ -197,4 +207,22 @@ export type BrainHandoffContext = {
   memoryCheckpointPhase: "checkpoint_1" | "checkpoint_2" | null;
   learningProposalIds: string[];
   learningProposals: readonly import("../layers/learning/brain-types").MemoryWriteProposal[];
+};
+
+/** PX-50 — optional capability adapter for production BrainRuntime execution. */
+export type ProjectBrainExecutionAdapter = {
+  execute(input: {
+    brainId: ProjectBrainId;
+    episode: ProjectEpisodeRecord;
+    contextHandoff: {
+      companySnapshot: import("../company/snapshot").CompanySnapshot;
+      brandGraph: import("../layers/brand/types").BrandGraph | null;
+      campaignContext: import("@/lib/office/campaign/campaign-context").CampaignContext;
+      priorMemories: readonly import("../layers/memory/types").MemoryRecord[];
+    };
+    locale: "nl" | "en";
+    idempotencyKey: string;
+  }): Promise<import("../project-engine/brain-contract").BrainResult<import("../project-engine/brain-contract").BrainOutput>>;
+  /** Last capability run for Office projection (e.g. strategy BrainRunResult). */
+  lastCapabilityRun?: import("../runtime/run-result").BrainRunResult | null;
 };

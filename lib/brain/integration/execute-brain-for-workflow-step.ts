@@ -1,4 +1,6 @@
 import type { CampaignWorkflowStepId } from "@/lib/office/campaign/workflow-types";
+import type { ProjectBrainId } from "../project-engine/types";
+import { primaryCapabilityForBrain } from "./brain-capability-map";
 import { buildCampaignContext, isSeedCampaign } from "@/lib/office/campaign/campaign-context";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
@@ -445,4 +447,63 @@ export function primaryCapabilityForWorkflowStep(
   stepId: CampaignWorkflowStepId
 ): BrainCapabilityId | null {
   return PRIMARY_CAPABILITY_FOR_STEP[stepId] ?? null;
+}
+
+/** Workflow step used only for correlation/progress — not lifecycle authority. */
+const WORKFLOW_STEP_FOR_BRAIN: Partial<Record<ProjectBrainId, CampaignWorkflowStepId>> = {
+  company: "business_analyzed",
+  research: "competitors_analyzed",
+  reasoning: "business_analyzed",
+  marketing_intelligence: "competitors_analyzed",
+  strategy: "strategy_determined",
+  planning: "channels_selected",
+  creative: "deliverables_created",
+  validation: "waiting_for_approval",
+  execution: "published",
+  learning: "optimizing",
+};
+
+export type ExecuteBrainForProjectBrainInput = {
+  brainId: ProjectBrainId;
+  peerId: string;
+  project: MarketingProject;
+  domainInput: MarketingPeerDomainInput;
+  locale?: string | null;
+  executionMode?: BrainRunRequestWithBudget["executionMode"];
+  approvalPolicy?: BrainRunRequestWithBudget["approvalPolicy"];
+  idempotencyKey?: string;
+};
+
+/**
+ * PX-50 — execute a Project Engine-scheduled brain via BrainRuntime capabilities.
+ * Adapter only — lifecycle authority remains Project Engine / ProjectEpisodeRunner.
+ */
+export async function executeBrainForProjectBrain(
+  input: ExecuteBrainForProjectBrainInput,
+  options?: ExecuteBrainForWorkflowStepOptions
+): Promise<ExecuteBrainForWorkflowStepResult | null> {
+  const capabilityId = primaryCapabilityForBrain(input.brainId);
+  if (!capabilityId) return null;
+
+  const stepId = WORKFLOW_STEP_FOR_BRAIN[input.brainId] ?? "strategy_determined";
+  const workflowInput: ExecuteBrainForWorkflowStepInput = {
+    stepId,
+    peerId: input.peerId,
+    project: input.project,
+    domainInput: input.domainInput,
+    locale: input.locale,
+    executionMode: input.executionMode,
+    approvalPolicy: input.approvalPolicy,
+    idempotencyKey: input.idempotencyKey,
+  };
+
+  const runtime = buildRuntimeForInput(workflowInput, options);
+  const seededOutputs = seedUpstreamOutputs(workflowInput);
+  return runWithDependenciesAsync(
+    workflowInput,
+    runtime,
+    buildBaseRequest(workflowInput, capabilityId),
+    seededOutputs,
+    options
+  );
 }

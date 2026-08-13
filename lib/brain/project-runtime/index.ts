@@ -50,3 +50,15 @@ export {
 } from "./fixtures/marketing-peer-fixture";
 
 export { acquireEpisodeContext, type EpisodeAcquiredContext, type AcquireEpisodeContextInput } from "./acquire-episode-context";
+
+export {
+  startOrResumeCampaignEpisode,
+  startOrResumeDemoCampaignEpisode,
+  episodeAuthorityNote,
+  type StartOrResumeCampaignEpisodeInput,
+  type CampaignEpisodeResult,
+} from "./campaign-episode-controller";
+
+export { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
+export { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+export type { EpisodeRunTarget, ProjectBrainExecutionAdapter } from "./types";

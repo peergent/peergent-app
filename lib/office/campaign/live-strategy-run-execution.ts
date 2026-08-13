@@ -4,7 +4,7 @@ import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
-import { executeBrainForWorkflowStep } from "@/lib/brain/integration/execute-brain-for-workflow-step";
+import { startOrResumeCampaignEpisode } from "@/lib/brain/project-runtime/campaign-episode-controller";
 import { createBrainRepositoriesForServer } from "@/lib/brain/persistence/repository-factory-server";
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { prepareBrainServerContext } from "@/lib/brain/context-acquisition/server/prepare-brain-server-context";
@@ -248,32 +248,68 @@ async function executeLiveStrategyRunServer(
   markStrategyRunTiming(runId, "BRAIN_ENTER");
 
   try {
-    const workflowResult = await runTimeout(
-      executeBrainForWorkflowStep(
-        {
-          stepId: "strategy_determined",
-          peerId,
-          project,
-          domainInput,
-          locale,
-          idempotencyKey,
+    const episodeResult = await runTimeout(
+      startOrResumeCampaignEpisode({
+        supabase: input.supabase!,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        campaignContext,
+        project,
+        domainInput,
+        locale: locale === "nl" ? "nl" : "en",
+        target: { targetBrain: "strategy" },
+        repositories: serverRepositories,
+        contextAssembly: contextPrep?.assembly,
+        onProgress: (label) => {
+          const status = mapProgressLabelToRunStatus(label);
+          persistStage({ status, stageLabel: label });
         },
-        {
-          repositories: serverRepositories,
-          dependencyTimeoutMs: 45_000,
-          contextAssembly: contextPrep?.assembly,
-          requireRealContext: Boolean(input.supabase),
-          onProgress: (label) => {
-            const status = mapProgressLabelToRunStatus(label);
-            persistStage({ status, stageLabel: label });
-          },
-        }
-      ),
+      }),
       STRATEGY_RUN_TIMEOUT_MS
     );
-    const brainResult = workflowResult?.result ?? null;
 
     recordStrategyRunTrace(trace, "server_context_gathering_completed");
+
+    if (episodeResult.status === "waiting_for_context") {
+      const failureMessageSafe = customerSafeStrategyFailureMessage("waiting_for_input", locale);
+      persistStage({
+        status: "waiting_for_input",
+        completedAt: new Date().toISOString(),
+        failureCode: "waiting_for_input",
+        failureMessageSafe,
+      });
+      return {
+        ok: false,
+        status: "waiting_for_input",
+        project,
+        failureCode: "waiting_for_input",
+        failureMessageSafe,
+        runId,
+      };
+    }
+
+    if (episodeResult.status === "waiting_for_approval") {
+      const failureMessageSafe = customerSafeStrategyFailureMessage("waiting_for_input", locale);
+      persistStage({
+        status: "waiting_for_input",
+        completedAt: new Date().toISOString(),
+        failureCode: "waiting_for_input",
+        failureMessageSafe,
+      });
+      return {
+        ok: false,
+        status: "waiting_for_input",
+        project,
+        failureCode: "waiting_for_input",
+        failureMessageSafe,
+        runId,
+      };
+    }
+
+    const brainResult = episodeResult.strategyCapabilityRun ?? null;
+
     if (brainResult?.run.usage.providerId) {
       markStrategyRunTiming(runId, "PROVIDER_SELECTED", brainResult.run.usage.providerId);
       recordStrategyRunTrace(

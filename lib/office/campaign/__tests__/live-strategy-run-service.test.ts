@@ -20,6 +20,11 @@ const PEER = "emma";
 const PROJECT_ID = "strategy-run-live-1";
 
 const executeBrainMock = vi.hoisted(() => vi.fn());
+const episodeControllerMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/brain/project-runtime/campaign-episode-controller", () => ({
+  startOrResumeCampaignEpisode: episodeControllerMock,
+}));
 
 vi.mock("@/lib/brain/integration/execute-brain-for-workflow-step", async (importOriginal) => {
   const actual = await importOriginal<
@@ -142,11 +147,55 @@ function workflowSuccess(providerId = "deterministic") {
   };
 }
 
+function episodeSuccess(providerId = "deterministic") {
+  const strategyRun = brainSuccess(providerId);
+  return {
+    orchestrationAuthority: "project_engine" as const,
+    episodeResumed: false,
+    status: "running" as const,
+    episode: {
+      snapshot: {
+        completedBrains: ["strategy"],
+        organizationId: "org-emma",
+        projectId: PROJECT_ID,
+        peerId: PEER,
+        episodeId: "ep-test",
+        state: "strategizing",
+      },
+      episodeStatus: "running",
+      contextGaps: [],
+    },
+    missingContext: [],
+    reason: null,
+    events: [],
+    observability: {
+      episodeId: "ep-test",
+      organizationId: "org-emma",
+      projectId: PROJECT_ID,
+      peerId: PEER,
+      correlationId: "corr-test",
+      currentProjectState: "strategizing",
+      currentBrain: null,
+      startedAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      completedAt: null,
+      brainOutputRefs: {},
+      eventCount: 0,
+      approvalState: "none",
+      observationState: "none",
+      lastError: null,
+    },
+    strategyCapabilityRun: strategyRun,
+    blockingContextGaps: [],
+  };
+}
+
 describe("live strategy run service", () => {
   beforeEach(() => {
     installSessionStorageMock();
     resetLiveStrategyRunServerInFlightForTests();
     executeBrainMock.mockReset();
+    episodeControllerMock.mockReset();
     saveMarketingWorkspaceState(PEER, { projects: [readyProject()], drafts: [], workUnits: [] });
   });
 
@@ -189,10 +238,10 @@ describe("live strategy run service", () => {
   });
 
   it("starts exactly one run for the same idempotency key", async () => {
-    executeBrainMock.mockImplementation(
+    episodeControllerMock.mockImplementation(
       () =>
         new Promise((resolve) => {
-          setTimeout(() => resolve(workflowSuccess()), 30);
+          setTimeout(() => resolve(episodeSuccess()), 30);
         })
     );
 
@@ -204,14 +253,14 @@ describe("live strategy run service", () => {
       enqueueLiveStrategyRunServer(input),
     ]);
 
-    expect(executeBrainMock).toHaveBeenCalledTimes(1);
+    expect(episodeControllerMock).toHaveBeenCalledTimes(1);
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
     expect(first.status).toBe("completed");
   });
 
   it("persists completed output and generated timestamp on success", async () => {
-    executeBrainMock.mockResolvedValue(workflowSuccess("deterministic"));
+    episodeControllerMock.mockResolvedValue(episodeSuccess("deterministic"));
 
     const project = readyProject();
     const result = await enqueueLiveStrategyRunServer(serverInput(project, "nl"));
@@ -223,7 +272,7 @@ describe("live strategy run service", () => {
   });
 
   it("maps successful run to review strategy CTA", async () => {
-    executeBrainMock.mockResolvedValue(workflowSuccess("deterministic"));
+    episodeControllerMock.mockResolvedValue(episodeSuccess("deterministic"));
 
     const project = readyProject();
     const result = await enqueueLiveStrategyRunServer(serverInput(project, "nl"));
@@ -243,7 +292,7 @@ describe("live strategy run service", () => {
   });
 
   it("leaves failed state instead of endless processing", async () => {
-    executeBrainMock.mockRejectedValue(new Error("provider_down"));
+    episodeControllerMock.mockRejectedValue(new Error("provider_down"));
 
     const project = readyProject();
     const result = await enqueueLiveStrategyRunServer(serverInput(project, "nl"));
@@ -263,16 +312,11 @@ describe("live strategy run service", () => {
   });
 
   it("treats waiting_for_input as non-processing primary action", async () => {
-    executeBrainMock.mockResolvedValue({
-      result: {
-        run: { status: "waiting_for_input", usage: { providerId: "llm" } },
-        assembly: { state: "needs_information" },
-        output: null,
-        policy: { requiresApproval: false },
-        presentation: null,
-        cacheHit: false,
-      },
-      resolvedUpstreamOutputs: {},
+    episodeControllerMock.mockResolvedValue({
+      ...episodeSuccess("llm"),
+      status: "waiting_for_context",
+      strategyCapabilityRun: null,
+      blockingContextGaps: [{ kind: "business", requiredBy: "project_engine", reason: "x", blocking: true, resolutionType: "customer_input" }],
     });
 
     const project = readyProject();
@@ -310,7 +354,7 @@ describe("live strategy run service", () => {
   });
 
   it("records native deterministic completion without marking fallback", async () => {
-    executeBrainMock.mockResolvedValue(workflowSuccess("deterministic"));
+    episodeControllerMock.mockResolvedValue(episodeSuccess("deterministic"));
 
     const project = readyProject();
     const result = await enqueueLiveStrategyRunServer(serverInput(project, "nl"));
@@ -322,10 +366,10 @@ describe("live strategy run service", () => {
 
   it("times out long-running provider execution", async () => {
     vi.useFakeTimers();
-    executeBrainMock.mockImplementation(
+    episodeControllerMock.mockImplementation(
       () =>
         new Promise((resolve) => {
-          setTimeout(() => resolve(workflowSuccess()), 200_000);
+          setTimeout(() => resolve(episodeSuccess()), 200_000);
         })
     );
 
@@ -342,25 +386,25 @@ describe("live strategy run service", () => {
 
   it("passes server repository bundle with llm provider when flag enabled", async () => {
     vi.stubEnv("BRAIN_USE_OPENAI", "true");
-    executeBrainMock.mockResolvedValue({
-      result: {
+    episodeControllerMock.mockResolvedValue({
+      ...episodeSuccess("llm"),
+      strategyCapabilityRun: {
         ...brainSuccess("llm"),
         run: { status: "completed", usage: { providerId: "llm", inputTokens: 10, outputTokens: 5 } },
       },
-      resolvedUpstreamOutputs: {},
     });
 
     const project = readyProject();
     const result = await enqueueLiveStrategyRunServer(serverInput(project, "nl"));
 
-    expect(executeBrainMock).toHaveBeenCalledWith(
-      expect.any(Object),
+    expect(episodeControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         repositories: expect.objectContaining({
           providers: expect.arrayContaining([
             expect.objectContaining({ id: "llm" }),
           ]),
         }),
+        target: { targetBrain: "strategy" },
       })
     );
     expect(result.provider).toBe("llm");
