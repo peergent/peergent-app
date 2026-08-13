@@ -17,7 +17,7 @@ import {
   syncCacheDocumentsToSimulatedStore,
 } from "./hydration";
 import { PersistenceConflictError } from "../server/persistence-config";
-import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
+import { emitPersistenceDiagnostic, safePersistenceError } from "./persistence-diagnostics";
 import { getLayerRepositories } from "../layer-repository-factory";
 
 export class SimulatedDurablePersistence implements DurablePersistencePort {
@@ -39,23 +39,64 @@ export class SimulatedDurablePersistence implements DurablePersistencePort {
     episode: ProjectEpisodeRecord,
     expectedVersion: number
   ): Promise<PersistEpisodeResult> {
-    const result = simulatedDurableStore.upsertEpisode(episode, expectedVersion);
-    if (result.conflict) {
+    const startedMs = Date.now();
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_upsert_started",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "simulated.upsertEpisode",
+    });
+
+    try {
+      const result = simulatedDurableStore.upsertEpisode(episode, expectedVersion);
+      if (result.conflict) {
+        emitPersistenceDiagnostic({
+          event: "persistence_conflict",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          episodeId: episode.snapshot.episodeId,
+          expectedVersion,
+          actualVersion: result.newVersion,
+          operation: "simulated.upsertEpisode",
+          durationMs: Date.now() - startedMs,
+        });
+        throw new PersistenceConflictError(
+          "Episode version conflict",
+          expectedVersion,
+          result.newVersion
+        );
+      }
+      episode.durableVersion = result.newVersion;
       emitPersistenceDiagnostic({
-        event: "persistence_conflict",
+        event: "persistence_episode_upsert_completed",
         organizationId: episode.snapshot.organizationId,
         projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
         expectedVersion,
-        actualVersion: result.newVersion,
+        newVersion: result.newVersion,
+        operation: "simulated.upsertEpisode",
+        durationMs: Date.now() - startedMs,
       });
-      throw new PersistenceConflictError(
-        "Episode version conflict",
+      return result;
+    } catch (error) {
+      if (error instanceof PersistenceConflictError) throw error;
+      const safe = safePersistenceError(error);
+      emitPersistenceDiagnostic({
+        event: "persistence_episode_upsert_failed",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
         expectedVersion,
-        result.newVersion
-      );
+        operation: "simulated.upsertEpisode",
+        errorName: safe.errorName,
+        errorCode: safe.errorCode,
+        reason: safe.reason,
+        durationMs: Date.now() - startedMs,
+      });
+      throw error;
     }
-    episode.durableVersion = result.newVersion;
-    return result;
   }
 
   async persistApprovalCritical(record: ProjectApprovalRecord): Promise<void> {

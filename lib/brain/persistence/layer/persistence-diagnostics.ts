@@ -11,19 +11,69 @@ export type PersistenceDiagnosticEvent =
   | "persistence_conflict"
   | "output_ref_missing"
   | "execution_idempotency_conflict"
-  | "execution_outcome_ambiguous";
+  | "execution_outcome_ambiguous"
+  | "episode_commit_critical_entered"
+  | "episode_commit_critical_completed"
+  | "episode_commit_critical_failed"
+  | "episode_commit_sync_brain_docs_started"
+  | "episode_commit_sync_brain_docs_completed"
+  | "episode_commit_sync_brain_docs_failed"
+  | "episode_commit_persist_started"
+  | "episode_commit_persist_completed"
+  | "episode_commit_persist_failed"
+  | "persistence_episode_upsert_started"
+  | "persistence_episode_upsert_completed"
+  | "persistence_episode_upsert_failed"
+  | "persistence_layer_document_upsert_started"
+  | "persistence_layer_document_upsert_completed"
+  | "persistence_layer_document_upsert_failed"
+  | "persistence_org_memory_upsert_started"
+  | "persistence_org_memory_upsert_completed"
+  | "persistence_org_memory_upsert_failed";
 
 export type PersistenceDiagnosticPayload = {
   event: PersistenceDiagnosticEvent;
   organizationId?: string;
   projectId?: string;
+  episodeId?: string;
   brainId?: string;
   outputRef?: string;
   idempotencyKey?: string;
   expectedVersion?: number;
   actualVersion?: number;
+  newVersion?: number;
   message?: string;
+  reason?: string;
+  errorName?: string;
+  errorCode?: string;
+  operation?: string;
+  documentKind?: string;
+  syncBrainDocs?: boolean;
+  durationMs?: number;
+  memoryCount?: number;
 };
+
+export function safePersistenceError(error: unknown): {
+  errorName: string;
+  errorCode?: string;
+  reason?: string;
+} {
+  if (error instanceof Error) {
+    const code =
+      "code" in error && typeof (error as { code?: unknown }).code === "string"
+        ? (error as { code: string }).code
+        : undefined;
+    return {
+      errorName: error.name,
+      errorCode: code,
+      reason: error.message.slice(0, 120),
+    };
+  }
+  return {
+    errorName: "UnknownError",
+    reason: String(error).slice(0, 120),
+  };
+}
 
 export function emitPersistenceDiagnostic(payload: PersistenceDiagnosticPayload): void {
   if (process.env.BRAIN_PERSISTENCE_DIAGNOSTICS === "0") return;

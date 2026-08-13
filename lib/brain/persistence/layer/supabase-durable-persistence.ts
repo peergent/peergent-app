@@ -31,57 +31,126 @@ async function upsertEpisodeVersioned(
   episode: ProjectEpisodeRecord,
   expectedVersion: number
 ): Promise<PersistEpisodeResult> {
-  const { data, error } = await brainFrom(supabase, "brain_project_episodes").rpc(
-    "upsert_brain_project_episode_versioned",
-    {
-      p_organization_id: episode.snapshot.organizationId,
-      p_project_id: episode.snapshot.projectId,
-      p_expected_version: expectedVersion,
-      p_episode: toJson(episode),
-      p_artifacts: toJson(episode.artifacts),
-      p_resolved_graphs: toJson(episode.resolvedGraphs ?? {}),
-      p_cached_learning_proposals: toJson(episode.cachedLearningProposals ?? []),
-      p_episode_id: episode.snapshot.episodeId,
-      p_peer_id: episode.snapshot.peerId,
-      p_correlation_id: episode.correlationId,
-      p_episode_status: episode.episodeStatus,
-      p_current_state: episode.snapshot.state,
-      p_current_brain: episode.snapshot.activeBrain,
-      p_started_at: episode.startedAt,
-      p_updated_at: episode.updatedAt,
-      p_completed_at: episode.completedAt,
-      p_last_error: episode.lastError,
-    }
-  );
+  const startedMs = Date.now();
+  emitPersistenceDiagnostic({
+    event: "persistence_episode_upsert_started",
+    organizationId: episode.snapshot.organizationId,
+    projectId: episode.snapshot.projectId,
+    episodeId: episode.snapshot.episodeId,
+    expectedVersion,
+    operation: "rpc.upsert_brain_project_episode_versioned",
+  });
 
-  if (error) {
-    throw new PersistenceInfrastructureError(
-      `project_episode_versioned_upsert_failed: ${error.message}`,
-      "persistence_write_failed"
+  try {
+    const { data, error } = await brainFrom(supabase, "brain_project_episodes").rpc(
+      "upsert_brain_project_episode_versioned",
+      {
+        p_organization_id: episode.snapshot.organizationId,
+        p_project_id: episode.snapshot.projectId,
+        p_expected_version: expectedVersion,
+        p_episode: toJson(episode),
+        p_artifacts: toJson(episode.artifacts),
+        p_resolved_graphs: toJson(episode.resolvedGraphs ?? {}),
+        p_cached_learning_proposals: toJson(episode.cachedLearningProposals ?? []),
+        p_episode_id: episode.snapshot.episodeId,
+        p_peer_id: episode.snapshot.peerId,
+        p_correlation_id: episode.correlationId,
+        p_episode_status: episode.episodeStatus,
+        p_current_state: episode.snapshot.state,
+        p_current_brain: episode.snapshot.activeBrain,
+        p_started_at: episode.startedAt,
+        p_updated_at: episode.updatedAt,
+        p_completed_at: episode.completedAt,
+        p_last_error: episode.lastError,
+      }
     );
-  }
 
-  const row = (Array.isArray(data) ? data[0] : data) as { new_version: number; conflict: boolean } | null;
-  if (!row) {
-    throw new PersistenceInfrastructureError("project_episode_versioned_empty_result");
-  }
+    if (error) {
+      emitPersistenceDiagnostic({
+        event: "persistence_episode_upsert_failed",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
+        expectedVersion,
+        operation: "rpc.upsert_brain_project_episode_versioned",
+        errorName: "PostgrestError",
+        reason: error.message.slice(0, 120),
+        durationMs: Date.now() - startedMs,
+      });
+      throw new PersistenceInfrastructureError(
+        `project_episode_versioned_upsert_failed: ${error.message}`,
+        "persistence_write_failed"
+      );
+    }
 
-  if (row.conflict) {
+    const row = (Array.isArray(data) ? data[0] : data) as { new_version: number; conflict: boolean } | null;
+    if (!row) {
+      emitPersistenceDiagnostic({
+        event: "persistence_episode_upsert_failed",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
+        expectedVersion,
+        operation: "rpc.upsert_brain_project_episode_versioned",
+        errorName: "PersistenceInfrastructureError",
+        errorCode: "project_episode_versioned_empty_result",
+        reason: "project_episode_versioned_empty_result",
+        durationMs: Date.now() - startedMs,
+      });
+      throw new PersistenceInfrastructureError("project_episode_versioned_empty_result");
+    }
+
+    if (row.conflict) {
+      emitPersistenceDiagnostic({
+        event: "persistence_conflict",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
+        expectedVersion,
+        actualVersion: row.new_version,
+        operation: "rpc.upsert_brain_project_episode_versioned",
+        durationMs: Date.now() - startedMs,
+      });
+      throw new PersistenceConflictError(
+        "Episode version conflict",
+        expectedVersion,
+        row.new_version
+      );
+    }
+
     emitPersistenceDiagnostic({
-      event: "persistence_conflict",
+      event: "persistence_episode_upsert_completed",
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
       expectedVersion,
-      actualVersion: row.new_version,
+      newVersion: row.new_version,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      durationMs: Date.now() - startedMs,
     });
-    throw new PersistenceConflictError(
-      "Episode version conflict",
-      expectedVersion,
-      row.new_version
-    );
-  }
 
-  return { newVersion: row.new_version, conflict: false };
+    return { newVersion: row.new_version, conflict: false };
+  } catch (error) {
+    if (
+      error instanceof PersistenceInfrastructureError ||
+      error instanceof PersistenceConflictError
+    ) {
+      throw error;
+    }
+    const reason = error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120);
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_upsert_failed",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      reason,
+      durationMs: Date.now() - startedMs,
+    });
+    throw error;
+  }
 }
 
 export class SupabaseDurablePersistence implements DurablePersistencePort {

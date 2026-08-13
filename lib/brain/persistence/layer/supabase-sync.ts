@@ -5,6 +5,7 @@
 import { brainFrom } from "../supabase/brain-supabase-client";
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { toJson } from "@/lib/business-brain/repositories/mappers";
+import { emitPersistenceDiagnostic, safePersistenceError } from "./persistence-diagnostics";
 
 export type LayerDocumentRow = {
   id?: string;
@@ -30,28 +31,81 @@ export async function upsertLayerDocument(
   supabase: AppSupabaseClient,
   row: LayerDocumentRow
 ): Promise<void> {
-  const { error } = await brainFrom(supabase, "brain_layer_documents").upsert(
-    {
-      organization_id: row.organization_id,
-      brain_id: row.brain_id,
-      document_kind: row.document_kind,
-      document_id: row.document_id,
-      scope_key: row.scope_key,
-      project_id: row.project_id ?? null,
-      campaign_id: row.campaign_id ?? null,
-      peer_id: row.peer_id ?? null,
-      output_ref: row.output_ref,
-      version: row.version,
-      status: row.status ?? null,
-      confidence: row.confidence ?? null,
-      schema_version: row.schema_version,
-      payload: toJson(row.payload),
-      supersedes_output_ref: row.supersedes_output_ref ?? null,
-      metadata: toJson(row.metadata ?? {}),
-    },
-    { onConflict: "organization_id,brain_id,document_kind,document_id" }
-  );
-  if (error) throw new Error(`layer_document_upsert_failed: ${error.message}`);
+  const startedMs = Date.now();
+  emitPersistenceDiagnostic({
+    event: "persistence_layer_document_upsert_started",
+    organizationId: row.organization_id,
+    projectId: row.project_id ?? undefined,
+    brainId: row.brain_id,
+    documentKind: row.document_kind,
+    operation: "upsert.brain_layer_documents",
+  });
+
+  try {
+    const { error } = await brainFrom(supabase, "brain_layer_documents").upsert(
+      {
+        organization_id: row.organization_id,
+        brain_id: row.brain_id,
+        document_kind: row.document_kind,
+        document_id: row.document_id,
+        scope_key: row.scope_key,
+        project_id: row.project_id ?? null,
+        campaign_id: row.campaign_id ?? null,
+        peer_id: row.peer_id ?? null,
+        output_ref: row.output_ref,
+        version: row.version,
+        status: row.status ?? null,
+        confidence: row.confidence ?? null,
+        schema_version: row.schema_version,
+        payload: toJson(row.payload),
+        supersedes_output_ref: row.supersedes_output_ref ?? null,
+        metadata: toJson(row.metadata ?? {}),
+      },
+      { onConflict: "organization_id,brain_id,document_kind,document_id" }
+    );
+    if (error) {
+      const safe = safePersistenceError(new Error(error.message));
+      emitPersistenceDiagnostic({
+        event: "persistence_layer_document_upsert_failed",
+        organizationId: row.organization_id,
+        projectId: row.project_id ?? undefined,
+        brainId: row.brain_id,
+        documentKind: row.document_kind,
+        operation: "upsert.brain_layer_documents",
+        errorName: safe.errorName,
+        reason: safe.reason,
+        durationMs: Date.now() - startedMs,
+      });
+      throw new Error(`layer_document_upsert_failed: ${error.message}`);
+    }
+    emitPersistenceDiagnostic({
+      event: "persistence_layer_document_upsert_completed",
+      organizationId: row.organization_id,
+      projectId: row.project_id ?? undefined,
+      brainId: row.brain_id,
+      documentKind: row.document_kind,
+      operation: "upsert.brain_layer_documents",
+      durationMs: Date.now() - startedMs,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("layer_document_upsert_failed:")) {
+      throw error;
+    }
+    const safe = safePersistenceError(error);
+    emitPersistenceDiagnostic({
+      event: "persistence_layer_document_upsert_failed",
+      organizationId: row.organization_id,
+      projectId: row.project_id ?? undefined,
+      brainId: row.brain_id,
+      documentKind: row.document_kind,
+      operation: "upsert.brain_layer_documents",
+      errorName: safe.errorName,
+      errorCode: safe.errorCode,
+      reason: safe.reason,
+      durationMs: Date.now() - startedMs,
+    });
+    throw error;
+  }
 }
 
 export async function upsertLayerLatestPointer(
@@ -257,26 +311,71 @@ export async function upsertOrgMemoryRecords(
   input: { organizationId: string; memories: readonly import("../../layers/memory/types").MemoryRecord[] }
 ): Promise<void> {
   if (input.memories.length === 0) return;
-  const rows = input.memories.map((mem) => ({
-    organization_id: input.organizationId,
-    memory_id: mem.id,
-    category: mem.category ?? null,
-    tags: toJson(mem.tags ?? []),
-    campaign_id: mem.relatedCampaigns?.[0] ?? null,
-    project_id: null,
-    confidence: mem.confidence ?? null,
-    importance: mem.importance ?? null,
-    durability: mem.lifecycle ?? null,
-    scope: mem.category ?? null,
-    content: toJson(mem),
-    evidence: toJson(mem.evidence ?? []),
-    relations: toJson([]),
-    expires_at: mem.expiresAt ?? null,
-  }));
-  const { error } = await brainFrom(supabase, "brain_org_memory_records").upsert(rows, {
-    onConflict: "organization_id,memory_id",
+  const startedMs = Date.now();
+  emitPersistenceDiagnostic({
+    event: "persistence_org_memory_upsert_started",
+    organizationId: input.organizationId,
+    operation: "upsert.brain_org_memory_records",
+    memoryCount: input.memories.length,
   });
-  if (error) throw new Error(`org_memory_upsert_failed: ${error.message}`);
+
+  try {
+    const rows = input.memories.map((mem) => ({
+      organization_id: input.organizationId,
+      memory_id: mem.id,
+      category: mem.category ?? null,
+      tags: toJson(mem.tags ?? []),
+      campaign_id: mem.relatedCampaigns?.[0] ?? null,
+      project_id: null,
+      confidence: mem.confidence ?? null,
+      importance: mem.importance ?? null,
+      durability: mem.lifecycle ?? null,
+      scope: mem.category ?? null,
+      content: toJson(mem),
+      evidence: toJson(mem.evidence ?? []),
+      relations: toJson([]),
+      expires_at: mem.expiresAt ?? null,
+    }));
+    const { error } = await brainFrom(supabase, "brain_org_memory_records").upsert(rows, {
+      onConflict: "organization_id,memory_id",
+    });
+    if (error) {
+      const safe = safePersistenceError(new Error(error.message));
+      emitPersistenceDiagnostic({
+        event: "persistence_org_memory_upsert_failed",
+        organizationId: input.organizationId,
+        operation: "upsert.brain_org_memory_records",
+        memoryCount: input.memories.length,
+        errorName: safe.errorName,
+        reason: safe.reason,
+        durationMs: Date.now() - startedMs,
+      });
+      throw new Error(`org_memory_upsert_failed: ${error.message}`);
+    }
+    emitPersistenceDiagnostic({
+      event: "persistence_org_memory_upsert_completed",
+      organizationId: input.organizationId,
+      operation: "upsert.brain_org_memory_records",
+      memoryCount: input.memories.length,
+      durationMs: Date.now() - startedMs,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("org_memory_upsert_failed:")) {
+      throw error;
+    }
+    const safe = safePersistenceError(error);
+    emitPersistenceDiagnostic({
+      event: "persistence_org_memory_upsert_failed",
+      organizationId: input.organizationId,
+      operation: "upsert.brain_org_memory_records",
+      memoryCount: input.memories.length,
+      errorName: safe.errorName,
+      errorCode: safe.errorCode,
+      reason: safe.reason,
+      durationMs: Date.now() - startedMs,
+    });
+    throw error;
+  }
 }
 
 import type { MemoryRecord } from "../../layers/memory/types";
