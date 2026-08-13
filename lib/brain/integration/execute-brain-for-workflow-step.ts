@@ -114,6 +114,10 @@ export type ExecuteBrainForWorkflowStepOptions = {
   contextAssembly?: ContextAssemblyResult;
   /** When true, live execution must not fall back to sync demo intelligence resolution. */
   requireRealContext?: boolean;
+  /** PX-50.3 observability-only — never used for execution decisions. */
+  runtimeDiagnosticContext?: {
+    episodeId?: string;
+  };
 };
 
 function resolveBrainEnvironment(peerId: string): BrainEnvironment {
@@ -502,7 +506,11 @@ export async function executeBrainForProjectBrain(
   return runWithDependenciesAsync(
     workflowInput,
     runtime,
-    buildBaseRequest(workflowInput, capabilityId),
+    {
+      ...buildBaseRequest(workflowInput, capabilityId),
+      runtimeDiagnosticBrainId: input.brainId,
+      runtimeDiagnosticEpisodeId: options?.runtimeDiagnosticContext?.episodeId,
+    },
     seededOutputs,
     options
   );

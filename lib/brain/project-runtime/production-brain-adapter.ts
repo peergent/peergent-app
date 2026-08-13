@@ -26,6 +26,10 @@ import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/v
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import type { ProjectBrainExecutionAdapter, ProjectEpisodeRecord } from "./types";
 import { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+import {
+  emitBrainRuntimeDiagnostic,
+  safeBrainRuntimeError,
+} from "../runtime/brain-runtime-diagnostics";
 
 function resolveOutputRef(
   brainId: ProjectBrainId,
@@ -173,17 +177,68 @@ export function createProductionBrainExecutionAdapter(
         brainId: runInput.brainId,
       });
 
-      const workflowResult = await executeBrainForProjectBrain(
-        {
+      emitBrainRuntimeDiagnostic({
+        event: "brain_execution_adapter_started",
+        organizationId: runInput.episode.snapshot.organizationId,
+        projectId: runInput.episode.snapshot.projectId,
+        brainId: runInput.brainId,
+        capabilityId,
+        episodeId: runInput.episode.snapshot.episodeId,
+        correlationId: runInput.episode.correlationId,
+      });
+
+      let workflowResult;
+      emitBrainRuntimeDiagnostic({
+        event: "brain_execution_execute_project_brain_started",
+        organizationId: runInput.episode.snapshot.organizationId,
+        projectId: runInput.episode.snapshot.projectId,
+        brainId: runInput.brainId,
+        capabilityId,
+        episodeId: runInput.episode.snapshot.episodeId,
+        correlationId: runInput.episode.correlationId,
+      });
+      try {
+        workflowResult = await executeBrainForProjectBrain(
+          {
+            brainId: runInput.brainId,
+            peerId: input.peerId,
+            project: input.project,
+            domainInput: input.domainInput,
+            locale: runInput.locale,
+            idempotencyKey: runInput.idempotencyKey,
+          },
+          {
+            ...input.workflowOptions,
+            runtimeDiagnosticContext: {
+              episodeId: runInput.episode.snapshot.episodeId,
+            },
+          }
+        );
+        emitBrainRuntimeDiagnostic({
+          event: "brain_execution_execute_project_brain_completed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
           brainId: runInput.brainId,
-          peerId: input.peerId,
-          project: input.project,
-          domainInput: input.domainInput,
-          locale: runInput.locale,
-          idempotencyKey: runInput.idempotencyKey,
-        },
-        input.workflowOptions
-      );
+          capabilityId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          correlationId: runInput.episode.correlationId,
+        });
+      } catch (error) {
+        const safe = safeBrainRuntimeError(error);
+        emitBrainRuntimeDiagnostic({
+          event: "brain_execution_execute_project_brain_failed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          brainId: runInput.brainId,
+          capabilityId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          correlationId: runInput.episode.correlationId,
+          errorName: safe.errorName,
+          errorCode: safe.errorCode,
+          reason: safe.reason,
+        });
+        throw error;
+      }
 
       if (!workflowResult) {
         return {

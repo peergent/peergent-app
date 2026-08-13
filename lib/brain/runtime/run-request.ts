@@ -8,6 +8,7 @@ import type { BrainStructuredOutput } from "../evidence/structured-output";
 import type { ResearchGraph } from "../layers/research";
 import type { ReasoningGraph } from "../layers/reasoning";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
+import type { ProjectBrainId } from "../project-engine/types";
 
 export type BrainRunRequest = {
   organizationId: string;
@@ -44,6 +45,10 @@ export type BrainRunRequest = {
   reuseStoredOutput?: BrainStructuredOutput;
   /** Demo/test performance metrics — never fabricated in live. */
   performanceMetrics?: readonly DemoPerformanceMetric[];
+  /** PX-50.3 observability-only — never read by runtime execution logic. */
+  runtimeDiagnosticBrainId?: ProjectBrainId;
+  /** PX-50.3 observability-only — never read by runtime execution logic. */
+  runtimeDiagnosticEpisodeId?: string;
 };
 
 export type BrainRuntimeBudgetLimits = {

@@ -49,6 +49,11 @@ import {
   validateCapabilityOutputQuality,
   collapseDuplicateFindings,
 } from "../capabilities/shared/output-quality";
+import {
+  emitBrainRuntimeDiagnostic,
+  isUuidRunId,
+  safeBrainRuntimeError,
+} from "./brain-runtime-diagnostics";
 
 export type BrainRuntimeDeps = {
   runRepository: BrainRunRepository;
@@ -74,6 +79,25 @@ function dimensionScoreMap(
 
 function createRunId(): string {
   return `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function runtimeDiagnosticFields(request: BrainRunRequestWithBudget) {
+  return {
+    organizationId: request.organizationId,
+    projectId: request.campaignId,
+    brainId: request.runtimeDiagnosticBrainId ?? null,
+    capabilityId: request.capabilityId,
+    episodeId: request.runtimeDiagnosticEpisodeId,
+    correlationId: request.correlationId,
+  };
+}
+
+function emitRuntimeCompleted(request: BrainRunRequestWithBudget, startedMs: number): void {
+  emitBrainRuntimeDiagnostic({
+    event: "brain_runtime_completed",
+    ...runtimeDiagnosticFields(request),
+    durationMs: Date.now() - startedMs,
+  });
 }
 
 function toRunContext(request: BrainRunRequestWithBudget, environment: ReturnType<typeof resolveBrainEnvironment>): BrainRunContext {
@@ -376,6 +400,11 @@ export class BrainRuntime {
     existingRunId?: string
   ): Promise<BrainRunResult> {
     const startedMs = Date.now();
+    emitBrainRuntimeDiagnostic({
+      event: "brain_runtime_execute_started",
+      ...runtimeDiagnosticFields(request),
+    });
+
     const environment = resolveBrainEnvironment({
       environment: request.environment,
       peerId: request.peerId,
@@ -400,6 +429,7 @@ export class BrainRuntime {
       run = await this.lookupRunAsync(request.organizationId, submitted.runId);
       if (submitted.idempotentReplay && isTerminalBrainRunStatus(run.status)) {
         const output = await this.getOutputAsync(request.organizationId, run.id);
+        emitRuntimeCompleted(request, startedMs);
         return {
           run,
           assembly: await Promise.resolve(this.deps.assembleContext(request)),
@@ -422,7 +452,18 @@ export class BrainRuntime {
       transition: "gathering_context",
     });
 
+    emitBrainRuntimeDiagnostic({
+      event: "brain_runtime_context_assembly_started",
+      ...runtimeDiagnosticFields(request),
+      runId: run.id,
+    });
     const assembly = await Promise.resolve(this.deps.assembleContext(request));
+    emitBrainRuntimeDiagnostic({
+      event: "brain_runtime_context_assembly_completed",
+      ...runtimeDiagnosticFields(request),
+      runId: run.id,
+    });
+
     const dimensionScores = dimensionScoreMap(assembly);
     const missingCritical = missingCriticalFieldsFromAssembly(
       request.capabilityId,
@@ -457,6 +498,7 @@ export class BrainRuntime {
         excludedSlices: [],
         estimatedTokens: 0,
       }, policy, false, Date.now() - startedMs);
+      emitRuntimeCompleted(request, startedMs);
       return { run, assembly, output: null, policy, presentation: null, cacheHit: false };
     }
 
@@ -507,6 +549,7 @@ export class BrainRuntime {
         snapshotVersion: String(assembly.version.version),
         errorMessage: policy.reason,
       });
+      emitRuntimeCompleted(request, startedMs);
       return { run, assembly, output: null, policy, presentation: null, cacheHit: false };
     }
 
@@ -545,6 +588,7 @@ export class BrainRuntime {
     }
 
     if (request.dryRun) {
+      emitRuntimeCompleted(request, startedMs);
       return {
         run: { ...run, status: "completed", completedAt: new Date().toISOString() },
         assembly,
@@ -592,20 +636,50 @@ export class BrainRuntime {
       });
 
       await this.writeAuditAsync(run, assembly, projected.projection, policy, true, Date.now() - startedMs, output);
+      emitRuntimeCompleted(request, startedMs);
       return { run, assembly, output, policy, presentation: null, cacheHit: true };
     }
 
     run = await this.transitionRunAsync(run, "running");
 
     if (!output) {
-      output = await this.executeProviderAsync({
-        provider,
-        runContext,
-        projected,
-        request,
-        assembly,
-        capabilityId: request.capabilityId,
+      emitBrainRuntimeDiagnostic({
+        event: "brain_runtime_provider_started",
+        ...runtimeDiagnosticFields(request),
+        runId: run.id,
+        providerId: provider.id,
       });
+      const providerStartedMs = Date.now();
+      try {
+        output = await this.executeProviderAsync({
+          provider,
+          runContext,
+          projected,
+          request,
+          assembly,
+          capabilityId: request.capabilityId,
+        });
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_provider_completed",
+          ...runtimeDiagnosticFields(request),
+          runId: run.id,
+          providerId: provider.id,
+          durationMs: Date.now() - providerStartedMs,
+        });
+      } catch (error) {
+        const safe = safeBrainRuntimeError(error);
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_provider_failed",
+          ...runtimeDiagnosticFields(request),
+          runId: run.id,
+          providerId: provider.id,
+          errorName: safe.errorName,
+          errorCode: safe.errorCode,
+          reason: safe.reason,
+          durationMs: Date.now() - providerStartedMs,
+        });
+        throw error;
+      }
 
       if (capabilityDef.cacheable && !cacheHit) {
         this.deps.cache.set(
@@ -707,6 +781,8 @@ export class BrainRuntime {
       durationMs: Date.now() - startedMs,
       repositoryOutcome: "ok",
     });
+
+    emitRuntimeCompleted(request, startedMs);
 
     return {
       run,
@@ -810,23 +886,54 @@ export class BrainRuntime {
     request: BrainRunRequestWithBudget,
     requestHash?: string
   ): Promise<BrainRunSubmitResult> {
+    emitBrainRuntimeDiagnostic({
+      event: "brain_runtime_submit_started",
+      ...runtimeDiagnosticFields(request),
+    });
+
     if (request.idempotencyKey && this.deps.asyncRepositories) {
-      const existing = await this.deps.asyncRepositories.idempotency.get(
-        request.organizationId,
-        request.capabilityId,
-        request.idempotencyKey
-      );
-      if (existing) {
-        if (requestHash && existing.requestHash !== requestHash) {
-          throw new BrainRuntimeError(
-            "idempotency_mismatch",
-            "Idempotency key reused with different request payload."
-          );
+      emitBrainRuntimeDiagnostic({
+        event: "brain_runtime_idempotency_lookup_started",
+        ...runtimeDiagnosticFields(request),
+      });
+      const idempotencyStartedMs = Date.now();
+      try {
+        const existing = await this.deps.asyncRepositories.idempotency.get(
+          request.organizationId,
+          request.capabilityId,
+          request.idempotencyKey
+        );
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_idempotency_lookup_completed",
+          ...runtimeDiagnosticFields(request),
+          durationMs: Date.now() - idempotencyStartedMs,
+        });
+        if (existing) {
+          if (requestHash && existing.requestHash !== requestHash) {
+            throw new BrainRuntimeError(
+              "idempotency_mismatch",
+              "Idempotency key reused with different request payload."
+            );
+          }
+          const run = await this.deps.asyncRepositories.runs.getById(request.organizationId, existing.runId);
+          if (run) {
+            return { runId: run.id, status: run.status, idempotentReplay: true };
+          }
         }
-        const run = await this.deps.asyncRepositories.runs.getById(request.organizationId, existing.runId);
-        if (run) {
-          return { runId: run.id, status: run.status, idempotentReplay: true };
+      } catch (error) {
+        if (error instanceof BrainRuntimeError) {
+          throw error;
         }
+        const safe = safeBrainRuntimeError(error);
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_idempotency_lookup_failed",
+          ...runtimeDiagnosticFields(request),
+          errorName: safe.errorName,
+          errorCode: safe.errorCode,
+          reason: safe.reason,
+          durationMs: Date.now() - idempotencyStartedMs,
+        });
+        throw error;
       }
     } else if (request.idempotencyKey) {
       return this.submitRun(request);
@@ -834,7 +941,36 @@ export class BrainRuntime {
 
     const run = initialRun(request);
     if (this.deps.asyncRepositories) {
-      await this.deps.asyncRepositories.runs.create(run);
+      emitBrainRuntimeDiagnostic({
+        event: "brain_runtime_run_create_started",
+        ...runtimeDiagnosticFields(request),
+        runId: run.id,
+        runIdIsUuid: isUuidRunId(run.id),
+      });
+      const createStartedMs = Date.now();
+      try {
+        await this.deps.asyncRepositories.runs.create(run);
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_run_create_completed",
+          ...runtimeDiagnosticFields(request),
+          runId: run.id,
+          runIdIsUuid: isUuidRunId(run.id),
+          durationMs: Date.now() - createStartedMs,
+        });
+      } catch (error) {
+        const safe = safeBrainRuntimeError(error);
+        emitBrainRuntimeDiagnostic({
+          event: "brain_runtime_run_create_failed",
+          ...runtimeDiagnosticFields(request),
+          runId: run.id,
+          runIdIsUuid: isUuidRunId(run.id),
+          errorName: safe.errorName,
+          errorCode: safe.errorCode,
+          reason: safe.reason,
+          durationMs: Date.now() - createStartedMs,
+        });
+        throw error;
+      }
       if (request.idempotencyKey && requestHash) {
         await this.deps.asyncRepositories.idempotency.set({
           organizationId: request.organizationId,
@@ -902,15 +1038,51 @@ export class BrainRuntime {
     snapshotVersion?: string;
     campaignId?: string;
   }): Promise<string> {
-    if (this.deps.asyncRepositories) {
-      return this.deps.asyncRepositories.outputs.store(input);
-    }
-    return this.deps.outputRepository.store({
+    emitBrainRuntimeDiagnostic({
+      event: "brain_runtime_output_store_started",
       organizationId: input.organizationId,
+      projectId: input.campaignId,
+      capabilityId: input.capabilityId,
       runId: input.runId,
-      output: input.output,
-      storedAt: input.storedAt,
+      runIdIsUuid: isUuidRunId(input.runId),
     });
+    const storeStartedMs = Date.now();
+    try {
+      let outputId: string;
+      if (this.deps.asyncRepositories) {
+        outputId = await this.deps.asyncRepositories.outputs.store(input);
+      } else {
+        outputId = this.deps.outputRepository.store({
+          organizationId: input.organizationId,
+          runId: input.runId,
+          output: input.output,
+          storedAt: input.storedAt,
+        });
+      }
+      emitBrainRuntimeDiagnostic({
+        event: "brain_runtime_output_store_completed",
+        organizationId: input.organizationId,
+        projectId: input.campaignId,
+        capabilityId: input.capabilityId,
+        runId: input.runId,
+        durationMs: Date.now() - storeStartedMs,
+      });
+      return outputId;
+    } catch (error) {
+      const safe = safeBrainRuntimeError(error);
+      emitBrainRuntimeDiagnostic({
+        event: "brain_runtime_output_store_failed",
+        organizationId: input.organizationId,
+        projectId: input.campaignId,
+        capabilityId: input.capabilityId,
+        runId: input.runId,
+        errorName: safe.errorName,
+        errorCode: safe.errorCode,
+        reason: safe.reason,
+        durationMs: Date.now() - storeStartedMs,
+      });
+      throw error;
+    }
   }
 
   private async writeAuditAsync(
