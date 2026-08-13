@@ -26,6 +26,7 @@ import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
 import { getLayerRepositories } from "../layer-repository-factory";
 import { projectScopeKey } from "./scope-keys";
 import { PersistenceConflictError, PersistenceInfrastructureError } from "../server/persistence-config";
+import { episodePayloadForPersistence } from "../../project-runtime/episode-version-state";
 
 async function upsertEpisodeVersioned(
   supabase: AppSupabaseClient,
@@ -47,7 +48,7 @@ async function upsertEpisodeVersioned(
       p_organization_id: episode.snapshot.organizationId,
       p_project_id: episode.snapshot.projectId,
       p_expected_version: expectedVersion,
-      p_episode: toJson(episode),
+      p_episode: toJson(episodePayloadForPersistence(episode)),
       p_artifacts: toJson(episode.artifacts),
       p_resolved_graphs: toJson(episode.resolvedGraphs ?? {}),
       p_cached_learning_proposals: toJson(episode.cachedLearningProposals ?? []),

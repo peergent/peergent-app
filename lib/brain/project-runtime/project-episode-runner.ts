@@ -26,6 +26,7 @@ import {
 import { createEmptyArtifacts, recordBrainOutputRef, brainOutputRefMap } from "./project-artifact-store";
 import { getActiveDurablePersistence } from "../persistence/layer/active-durable-persistence";
 import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
+import { emitPersistenceDiagnostic } from "../persistence/layer/persistence-diagnostics";
 import { PersistenceConflictError } from "../persistence/server/persistence-config";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
@@ -95,6 +96,16 @@ export class ProjectEpisodeRunner {
       correlationId: reloaded.correlationId,
       durableVersion: reloaded.durableVersion,
       actualVersion,
+    });
+    emitPersistenceDiagnostic({
+      event: "episode_version_conflict_reload_state",
+      organizationId: reloaded.snapshot.organizationId,
+      projectId: reloaded.snapshot.projectId,
+      episodeId: reloaded.snapshot.episodeId,
+      durableVersion: reloaded.durableVersion,
+      newVersion: actualVersion,
+      step: "conflict_reload",
+      source: "conflict_reload",
     });
     return hydrateEpisodeToL1(reloaded);
   }

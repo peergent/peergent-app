@@ -9,9 +9,23 @@ import {
 } from "../persistence/layer/persistence-diagnostics";
 import type { ProjectApprovalRecord, ProjectEpisodeRecord, ProjectRuntimeEvent } from "./types";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
+import { buildEpisodeVersionState } from "./episode-version-state";
 
-export function cacheEpisode(episode: ProjectEpisodeRecord): ProjectEpisodeRecord {
+export function cacheEpisode(
+  episode: ProjectEpisodeRecord,
+  source: "cache_write" = "cache_write"
+): ProjectEpisodeRecord {
   getDefaultProjectEpisodeRepository().save(episode);
+  const state = buildEpisodeVersionState(episode, { step: source, source });
+  emitPersistenceDiagnostic({
+    event: "episode_version_cache_write",
+    organizationId: state.organizationId,
+    projectId: state.projectId,
+    episodeId: state.episodeId,
+    durableVersion: state.durableVersion,
+    step: state.step,
+    source: state.source,
+  });
   return episode;
 }
 
@@ -22,17 +36,32 @@ export async function commitEpisodeCritical(
 ): Promise<ProjectEpisodeRecord> {
   const enteredMs = Date.now();
   const syncBrainDocs = options?.syncBrainDocs !== false;
+  const expectedVersion = episode.durableVersion ?? 0;
 
   emitPersistenceDiagnostic({
     event: "episode_commit_critical_entered",
     organizationId: episode.snapshot.organizationId,
     projectId: episode.snapshot.projectId,
     episodeId: episode.snapshot.episodeId,
-    expectedVersion: episode.durableVersion ?? 0,
+    expectedVersion,
     syncBrainDocs,
   });
 
-  cacheEpisode(episode);
+  const beforeCommit = buildEpisodeVersionState(episode, {
+    step: "commit_before_persist",
+    source: "commit_before_persist",
+    expectedVersion,
+  });
+  emitPersistenceDiagnostic({
+    event: "episode_version_state_before_commit",
+    organizationId: beforeCommit.organizationId,
+    projectId: beforeCommit.projectId,
+    episodeId: beforeCommit.episodeId,
+    durableVersion: beforeCommit.durableVersion,
+    expectedVersion: beforeCommit.expectedVersion,
+    step: beforeCommit.step,
+    source: beforeCommit.source,
+  });
 
   try {
     if (syncBrainDocs) {
@@ -79,12 +108,12 @@ export async function commitEpisodeCritical(
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
       episodeId: episode.snapshot.episodeId,
-      expectedVersion: episode.durableVersion ?? 0,
+      expectedVersion,
       operation: "persistEpisodeCritical",
     });
 
     try {
-      await durable.persistEpisodeCritical(episode, episode.durableVersion ?? 0);
+      await durable.persistEpisodeCritical(episode, expectedVersion);
       emitPersistenceDiagnostic({
         event: "episode_commit_persist_completed",
         organizationId: episode.snapshot.organizationId,
@@ -100,7 +129,7 @@ export async function commitEpisodeCritical(
         organizationId: episode.snapshot.organizationId,
         projectId: episode.snapshot.projectId,
         episodeId: episode.snapshot.episodeId,
-        expectedVersion: episode.durableVersion ?? 0,
+        expectedVersion,
         operation: "persistEpisodeCritical",
         errorName: safe.errorName,
         errorCode: safe.errorCode,
@@ -109,6 +138,26 @@ export async function commitEpisodeCritical(
       });
       throw error;
     }
+
+    const afterCommit = buildEpisodeVersionState(episode, {
+      step: "commit_after_persist",
+      source: "commit_after_persist",
+      expectedVersion,
+      newVersion: episode.durableVersion,
+    });
+    emitPersistenceDiagnostic({
+      event: "episode_version_state_after_commit",
+      organizationId: afterCommit.organizationId,
+      projectId: afterCommit.projectId,
+      episodeId: afterCommit.episodeId,
+      durableVersion: afterCommit.durableVersion,
+      expectedVersion: afterCommit.expectedVersion,
+      newVersion: afterCommit.newVersion,
+      step: afterCommit.step,
+      source: afterCommit.source,
+    });
+
+    cacheEpisode(episode);
 
     emitPersistenceDiagnostic({
       event: "episode_commit_critical_completed",
@@ -142,10 +191,8 @@ export async function commitApprovalCritical(
   durable: DurablePersistencePort
 ): Promise<ProjectEpisodeRecord> {
   getDefaultProjectEpisodeRepository().saveApproval(record);
-  cacheEpisode(episode);
   await durable.persistApprovalCritical(record);
-  await durable.persistEpisodeCritical(episode, episode.durableVersion ?? 0);
-  return episode;
+  return commitEpisodeCritical(episode, durable);
 }
 
 export async function appendEventDurable(

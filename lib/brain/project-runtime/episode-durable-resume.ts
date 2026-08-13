@@ -4,7 +4,9 @@
 
 import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
 import { PersistenceInfrastructureError } from "../persistence/server/persistence-config";
+import { emitPersistenceDiagnostic } from "../persistence/layer/persistence-diagnostics";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
+import { buildEpisodeVersionState } from "./episode-version-state";
 import type { EpisodeRunInput, ProjectEpisodeRecord } from "./types";
 
 export type EpisodeRunScope = Pick<EpisodeRunInput, "organizationId" | "projectId" | "peerId">;
@@ -35,6 +37,16 @@ export function assertEpisodeMatchesRunScope(
 
 export function hydrateEpisodeToL1(episode: ProjectEpisodeRecord): ProjectEpisodeRecord {
   getDefaultProjectEpisodeRepository().save(episode);
+  const state = buildEpisodeVersionState(episode, { step: "cache_write", source: "cache_write" });
+  emitPersistenceDiagnostic({
+    event: "episode_version_cache_write",
+    organizationId: state.organizationId,
+    projectId: state.projectId,
+    episodeId: state.episodeId,
+    durableVersion: state.durableVersion,
+    step: state.step,
+    source: state.source,
+  });
   return episode;
 }
 

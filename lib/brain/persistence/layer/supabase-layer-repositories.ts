@@ -55,7 +55,6 @@ import {
   upsertOrgMemoryRecords,
   upsertPerformanceObservations,
   upsertProjectApproval,
-  upsertProjectEpisode,
 } from "./supabase-sync";
 
 function logPersistenceError(context: string, error: unknown): void {
@@ -355,10 +354,8 @@ class WriteThroughProjectEpisodeRepository extends PersistentProjectEpisodeRepos
   }
 
   override save(episode: ProjectEpisodeRecord): void {
+    // L1 cache only — durable episode writes use versioned RPC via commitEpisodeCritical.
     super.save(episode);
-    void upsertProjectEpisode(this.supabase, episode).catch((err) =>
-      logPersistenceError("project_episode_save", err)
-    );
   }
 
   override saveApproval(record: ProjectApprovalRecord): void {

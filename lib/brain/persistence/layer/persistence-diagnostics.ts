@@ -31,7 +31,11 @@ export type PersistenceDiagnosticEvent =
   | "persistence_layer_document_upsert_failed"
   | "persistence_org_memory_upsert_started"
   | "persistence_org_memory_upsert_completed"
-  | "persistence_org_memory_upsert_failed";
+  | "persistence_org_memory_upsert_failed"
+  | "episode_version_state_before_commit"
+  | "episode_version_state_after_commit"
+  | "episode_version_cache_write"
+  | "episode_version_conflict_reload_state";
 
 export type PersistenceDiagnosticPayload = {
   event: PersistenceDiagnosticEvent;
@@ -57,6 +61,9 @@ export type PersistenceDiagnosticPayload = {
   hydratedDurableVersion?: number;
   episodeRowFound?: boolean;
   repositoryGeneration?: number;
+  step?: string;
+  source?: string;
+  durableVersion?: number;
 };
 
 export function safePersistenceError(error: unknown): {
