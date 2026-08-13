@@ -107,9 +107,141 @@ describe("PX-50.1 post-context instrumentation", () => {
     });
 
     const events = eventsFromLines(lines);
+    expect(events.indexOf("episode_context_acquire_call_started")).toBeLessThan(
+      events.indexOf("episode_context_acquired")
+    );
     expect(events.indexOf("episode_context_acquired")).toBeLessThan(events.indexOf("episode_loop_entering"));
     expect(events).toContain("episode_loop_entering");
     expect(result.status).toBeDefined();
+  });
+
+  it("emits acquire_call_started then acquired on successful runUntilPause acquisition", async () => {
+    const acquireEpisodeContext = await import(
+      "@/lib/brain/project-runtime/acquire-episode-context"
+    );
+
+    vi.spyOn(acquireEpisodeContext, "acquireEpisodeContext").mockResolvedValue({
+      package: {} as never,
+      sliceAvailability: { business: true, campaign: true },
+      contextReady: true,
+      contextGaps: [],
+      handoff: {
+        companySnapshot: { organizationId: ORG } as never,
+        brandGraph: null,
+        campaignContext: { projectId: "proj-order" } as never,
+        priorMemories: [],
+      },
+    });
+
+    getDefaultProjectEpisodeRepository().save({
+      snapshot: createProjectEngineSnapshot({
+        projectId: "proj-order",
+        peerId: "live-peer-not-demo",
+        organizationId: ORG,
+      }),
+      artifacts: createEmptyArtifacts({
+        organizationId: ORG,
+        projectId: "proj-order",
+        episodeId: "ep-existing",
+        correlationId: "corr-existing",
+      }),
+      episodeStatus: "running",
+      contextReady: true,
+      sliceAvailability: { business: true, campaign: true },
+      approvalSatisfied: false,
+      validationApprovalPending: false,
+      memoryCheckpoint1Complete: false,
+      memoryCheckpoint2Complete: false,
+      performanceObservationsAvailable: false,
+      approvalGrantedForExecution: false,
+      contextGaps: [],
+      executedBrainKeys: [],
+      lastError: null,
+      correlationId: "corr-existing",
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null,
+      resolvedGraphs: {},
+    } as never);
+
+    const runner = createProjectEpisodeRunner();
+    await runner.runUntilPause({
+      organizationId: ORG,
+      projectId: "proj-order",
+      peerId: "live-peer-not-demo",
+      useRealContext: true,
+      supabase: mockSupabase,
+      campaignContext: { projectId: "proj-order", goals: ["Leads"], description: "Test" } as never,
+      maxSteps: 2,
+    });
+
+    const events = eventsFromLines(parseDiagnosticLines(infoSpy));
+    const startedIdx = events.lastIndexOf("episode_context_acquire_call_started");
+    const acquiredIdx = events.lastIndexOf("episode_context_acquired");
+    expect(startedIdx).toBeGreaterThanOrEqual(0);
+    expect(acquiredIdx).toBeGreaterThan(startedIdx);
+  });
+
+  it("emits acquire_failed and rethrows when acquisition throws", async () => {
+    const acquireEpisodeContext = await import(
+      "@/lib/brain/project-runtime/acquire-episode-context"
+    );
+
+    vi.spyOn(acquireEpisodeContext, "acquireEpisodeContext").mockRejectedValue(
+      Object.assign(new Error("brand_graph_assembly_failed"), { code: "brand_graph_failed" })
+    );
+
+    getDefaultProjectEpisodeRepository().save({
+      snapshot: createProjectEngineSnapshot({
+        projectId: "proj-throw",
+        peerId: "live-peer-not-demo",
+        organizationId: ORG,
+      }),
+      artifacts: createEmptyArtifacts({
+        organizationId: ORG,
+        projectId: "proj-throw",
+        episodeId: "ep-throw",
+        correlationId: "corr-throw",
+      }),
+      episodeStatus: "running",
+      contextReady: true,
+      sliceAvailability: { business: true, campaign: true },
+      approvalSatisfied: false,
+      validationApprovalPending: false,
+      memoryCheckpoint1Complete: false,
+      memoryCheckpoint2Complete: false,
+      performanceObservationsAvailable: false,
+      approvalGrantedForExecution: false,
+      contextGaps: [],
+      executedBrainKeys: [],
+      lastError: null,
+      correlationId: "corr-throw",
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null,
+      resolvedGraphs: {},
+    } as never);
+
+    const runner = createProjectEpisodeRunner();
+    await expect(
+      runner.runUntilPause({
+        organizationId: ORG,
+        projectId: "proj-throw",
+        peerId: "live-peer-not-demo",
+        useRealContext: true,
+        supabase: mockSupabase,
+        campaignContext: { projectId: "proj-throw", goals: ["Leads"], description: "Test" } as never,
+        maxSteps: 2,
+      })
+    ).rejects.toThrow("brand_graph_assembly_failed");
+
+    const failed = parseDiagnosticLines(infoSpy).find(
+      (line) => line.event === "episode_context_acquire_failed"
+    );
+    expect(failed).toBeDefined();
+    expect(failed?.errorName).toBe("Error");
+    expect(failed?.errorCode).toBe("brand_graph_failed");
+    expect(failed?.caller).toBe("run_until_pause");
   });
 
   it("does not enter loop when acquisition gate blocks — behavior unchanged", async () => {

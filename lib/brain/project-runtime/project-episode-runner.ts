@@ -28,7 +28,7 @@ import { buildMarketingPeerFixture } from "./fixtures/marketing-peer-fixture";
 import { acquireEpisodeContext, type EpisodeAcquiredContext } from "./acquire-episode-context";
 import { assertProductionEpisodeRealContext } from "../context-acquisition/server/context-acquisition-config";
 import { isDemoPeer } from "@/lib/office/demo/demo-company";
-import { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+import { emitOrchestrationDiagnostic, safeOrchestrationError } from "./orchestration-diagnostics";
 import type { ProjectBrainExecutionAdapter } from "./types";
 import type {
   BrainHandoffContext,
@@ -85,6 +85,13 @@ export class ProjectEpisodeRunner {
     let contextGaps: import("./types").ContextGap[] = [];
 
     if (input.useRealContext && input.supabase && input.campaignContext) {
+      emitOrchestrationDiagnostic({
+        event: "episode_start_context_acquire_call_started",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        caller: "start_episode",
+      });
       const acquired = await acquireEpisodeContext({
         supabase: input.supabase,
         organizationId: input.organizationId,
@@ -93,6 +100,14 @@ export class ProjectEpisodeRunner {
         peerRole: input.peerRole ?? "Marketing",
         locale: input.locale,
         campaignContext: input.campaignContext,
+      });
+      emitOrchestrationDiagnostic({
+        event: "episode_start_context_acquire_returned",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        contextReady: acquired.contextReady,
+        caller: "start_episode",
       });
       sliceAvailability = acquired.sliceAvailability;
       contextReady = acquired.contextReady;
@@ -128,7 +143,24 @@ export class ProjectEpisodeRunner {
 
     getDefaultProjectEpisodeRepository().save(episode);
     appendRuntimeEvent({ episode, type: "project_started", brainId: null });
-    return this.commitEpisode(episode, { syncBrainDocs: false });
+    emitOrchestrationDiagnostic({
+      event: "episode_start_commit_started",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episodeId: episode.snapshot.episodeId,
+      episodeStatus: episode.episodeStatus,
+    });
+    const committed = await this.commitEpisode(episode, { syncBrainDocs: false });
+    emitOrchestrationDiagnostic({
+      event: "episode_start_commit_completed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episodeId: committed.snapshot.episodeId,
+      episodeStatus: committed.episodeStatus,
+    });
+    return committed;
   }
 
   async runUntilPause(input: EpisodeRunInput): Promise<EpisodeRunResult> {
@@ -153,15 +185,41 @@ export class ProjectEpisodeRunner {
 
     let acquiredContext: EpisodeAcquiredContext | null = null;
     if (input.useRealContext && input.supabase && input.campaignContext) {
-      acquiredContext = await acquireEpisodeContext({
-        supabase: input.supabase,
+      emitOrchestrationDiagnostic({
+        event: "episode_context_acquire_call_started",
         organizationId: input.organizationId,
         projectId: input.projectId,
         peerId: input.peerId,
-        peerRole: input.peerRole ?? "Marketing",
-        locale,
-        campaignContext: input.campaignContext,
+        episodeId: episode.snapshot.episodeId,
+        episodeStatus: episode.episodeStatus,
+        caller: "run_until_pause",
       });
+      try {
+        acquiredContext = await acquireEpisodeContext({
+          supabase: input.supabase,
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          peerRole: input.peerRole ?? "Marketing",
+          locale,
+          campaignContext: input.campaignContext,
+        });
+      } catch (error) {
+        const safe = safeOrchestrationError(error);
+        emitOrchestrationDiagnostic({
+          event: "episode_context_acquire_failed",
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          episodeId: episode.snapshot.episodeId,
+          episodeStatus: episode.episodeStatus,
+          caller: "run_until_pause",
+          errorName: safe.errorName,
+          errorCode: safe.errorCode,
+          reason: safe.reason,
+        });
+        throw error;
+      }
       episode = {
         ...episode,
         sliceAvailability: acquiredContext.sliceAvailability,

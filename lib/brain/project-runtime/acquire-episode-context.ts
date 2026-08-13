@@ -10,6 +10,7 @@ import type { CompanySnapshot } from "../company/snapshot";
 import type { BrandGraph } from "../layers/brand/types";
 import type { MemoryRecord } from "../layers/memory/types";
 import type { BrainContextSlices } from "../project-engine/brain-contract";
+import { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
 import type { ContextGap } from "./types";
 
 export type EpisodeAcquiredContext = {
@@ -52,9 +53,35 @@ export async function acquireEpisodeContext(
     campaignContext: input.campaignContext,
   });
 
+  emitOrchestrationDiagnostic({
+    event: "episode_context_brain_package_received",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    contextReady: pkg.contextReady,
+    contextGapCount: pkg.contextGaps.length,
+    blockingContextGapCount: pkg.contextGaps.filter((gap) => gap.blocking).length,
+  });
+
   const companySnapshot =
     pkg.handoff.companySnapshot ??
     buildCompanySnapshot({ organizationId: input.organizationId }).snapshot;
+
+  emitOrchestrationDiagnostic({
+    event: "episode_context_snapshot_resolved",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    hasCompanySnapshot: companySnapshot != null,
+  });
+
+  emitOrchestrationDiagnostic({
+    event: "episode_context_returning",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    contextReady: pkg.contextReady,
+  });
 
   return {
     package: pkg,

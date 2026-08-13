@@ -159,6 +159,21 @@ export async function acquireBrainContext(
     durationMs: diagnostics.durationMs,
   });
 
+  emitContextDiagnostic({
+    event: "context_acquisition_tail_started",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    contextReady,
+  });
+
+  emitContextDiagnostic({
+    event: "context_acquisition_brand_graph_started",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+  });
+
   const brandGraph =
     assembly && input.campaignContext
       ? collectBrandGraph({
@@ -167,9 +182,41 @@ export async function acquireBrainContext(
         })
       : null;
 
+  emitContextDiagnostic({
+    event: "context_acquisition_brand_graph_completed",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    brandGraphBuilt: brandGraph != null,
+  });
+
+  emitContextDiagnostic({
+    event: "context_acquisition_memories_load_started",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+  });
+
   const priorMemories = getDefaultMemoryRepository()
     .getOrgMemories(input.organizationId)
     .slice(0, budget.maxItemsPerAdapter);
+
+  emitContextDiagnostic({
+    event: "context_acquisition_memories_load_completed",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    memoryCount: priorMemories.length,
+  });
+
+  emitContextDiagnostic({
+    event: "context_acquisition_package_returning",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    contextReady,
+    itemCount: items.length,
+  });
 
   return {
     organizationId: input.organizationId,

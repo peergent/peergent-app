@@ -7,7 +7,13 @@ export type ContextDiagnosticEvent =
   | "context_source_completed"
   | "context_source_failed"
   | "context_gap_detected"
-  | "context_acquisition_completed";
+  | "context_acquisition_completed"
+  | "context_acquisition_tail_started"
+  | "context_acquisition_brand_graph_started"
+  | "context_acquisition_brand_graph_completed"
+  | "context_acquisition_memories_load_started"
+  | "context_acquisition_memories_load_completed"
+  | "context_acquisition_package_returning";
 
 export type ContextDiagnosticPayload = {
   event: ContextDiagnosticEvent;
@@ -21,6 +27,9 @@ export type ContextDiagnosticPayload = {
   durationMs?: number;
   failureCode?: string;
   message?: string;
+  brandGraphBuilt?: boolean;
+  memoryCount?: number;
+  contextReady?: boolean;
 };
 
 export function emitContextDiagnostic(payload: ContextDiagnosticPayload): void {
