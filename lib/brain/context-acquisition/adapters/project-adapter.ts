@@ -1,5 +1,22 @@
 import type { ContextAdapterInput, ContextAdapterResult, ContextSourceAdapter } from "./types";
+import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import { createContextItem } from "../normalize/context-item";
+
+/** Canonical project objective for PX-49 — distinct from categorical goal labels. */
+function resolveProjectObjectiveSummary(ctx: CampaignContext | null | undefined): {
+  summary: string;
+  confidence: "high" | "medium";
+} | null {
+  const description = ctx?.description?.trim();
+  if (description) {
+    return { summary: description, confidence: "high" };
+  }
+  const goals = ctx?.goals?.filter(Boolean) ?? [];
+  if (goals.length > 0) {
+    return { summary: goals.join("; "), confidence: "medium" };
+  }
+  return null;
+}
 
 export const projectContextAdapter: ContextSourceAdapter = {
   id: "project",
@@ -35,6 +52,27 @@ export const projectContextAdapter: ContextSourceAdapter = {
       );
     }
 
+    const objective = resolveProjectObjectiveSummary(ctx);
+    if (objective) {
+      items.push(
+        createContextItem({
+          category: "project",
+          key: "project.objective",
+          label: "Project objective",
+          summary: objective.summary,
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          provenance: {
+            kind: "campaign_context",
+            refId: `${input.projectId}:objective`,
+            capturedAt: at,
+          },
+          sourceAdapterId: "project",
+          confidence: objective.confidence,
+        })
+      );
+    }
+
     if (ctx?.goals?.length) {
       items.push(
         createContextItem({
@@ -47,20 +85,6 @@ export const projectContextAdapter: ContextSourceAdapter = {
           provenance: { kind: "campaign_context", refId: `${input.projectId}:goals`, capturedAt: at },
           sourceAdapterId: "project",
           confidence: "high",
-        })
-      );
-    } else {
-      items.push(
-        createContextItem({
-          category: "project",
-          key: "project.objective",
-          label: "Project objective",
-          summary: ctx?.description ?? "Project objective not recorded.",
-          organizationId: input.organizationId,
-          projectId: input.projectId,
-          provenance: { kind: "campaign_context", refId: `${input.projectId}:objective`, capturedAt: at },
-          sourceAdapterId: "project",
-          confidence: ctx?.description ? "medium" : "unknown",
         })
       );
     }
