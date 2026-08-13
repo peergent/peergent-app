@@ -78,7 +78,7 @@ function dimensionScoreMap(
 }
 
 function createRunId(): string {
-  return `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }
 
 function runtimeDiagnosticFields(request: BrainRunRequestWithBudget) {

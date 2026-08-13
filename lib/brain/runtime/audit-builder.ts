@@ -17,7 +17,7 @@ export function buildRunAuditRecord(input: {
   errorCodes?: readonly string[];
 }): BrainAuditRecord {
   return {
-    id: `audit-${input.run.id}-${Date.now()}`,
+    id: crypto.randomUUID(),
     traceId: input.run.traceId,
     organizationId: input.run.organizationId,
     peerId: input.run.peerId,

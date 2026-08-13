@@ -164,7 +164,7 @@ describe("PX-50.3 BrainRuntime boundary diagnostics", () => {
     );
   });
 
-  it("runs.create started fires and logs non-UUID runId for current generator", async () => {
+  it("runs.create started fires with UUID runId for Supabase schema", async () => {
     const baseRepos = createPersistentInMemoryRepositories();
     const createSpy = vi.spyOn(baseRepos.runs, "create");
     const runtime = createRuntimeWithAsync(baseRepos);
@@ -184,8 +184,8 @@ describe("PX-50.3 BrainRuntime boundary diagnostics", () => {
     );
     expect(started).toBeDefined();
     expect(typeof started?.runId).toBe("string");
-    expect(started?.runIdIsUuid).toBe(false);
-    expect(isUuidRunId(String(started?.runId))).toBe(false);
+    expect(started?.runIdIsUuid).toBe(true);
+    expect(isUuidRunId(String(started?.runId))).toBe(true);
   });
 
   it("runs.create rejection emits failed and rethrows", async () => {

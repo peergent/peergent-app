@@ -240,14 +240,17 @@ CREATE INDEX IF NOT EXISTS brain_execution_idempotency_org_project_idx
 -- updated_at triggers
 -- ---------------------------------------------------------------------------
 
+DROP TRIGGER IF EXISTS brain_layer_documents_set_updated_at ON public.brain_layer_documents;
 CREATE TRIGGER brain_layer_documents_set_updated_at
   BEFORE UPDATE ON public.brain_layer_documents
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS brain_org_memory_records_set_updated_at ON public.brain_org_memory_records;
 CREATE TRIGGER brain_org_memory_records_set_updated_at
   BEFORE UPDATE ON public.brain_org_memory_records
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS brain_project_episodes_set_updated_at ON public.brain_project_episodes;
 CREATE TRIGGER brain_project_episodes_set_updated_at
   BEFORE UPDATE ON public.brain_project_episodes
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -265,86 +268,106 @@ ALTER TABLE public.brain_project_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brain_performance_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.brain_execution_idempotency ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Brain layer documents readable by organization members" ON public.brain_layer_documents;
 CREATE POLICY "Brain layer documents readable by organization members"
   ON public.brain_layer_documents FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain layer documents insertable by organization members" ON public.brain_layer_documents;
 CREATE POLICY "Brain layer documents insertable by organization members"
   ON public.brain_layer_documents FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain layer latest readable by organization members" ON public.brain_layer_latest;
 CREATE POLICY "Brain layer latest readable by organization members"
   ON public.brain_layer_latest FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain layer latest insertable by organization members" ON public.brain_layer_latest;
 CREATE POLICY "Brain layer latest insertable by organization members"
   ON public.brain_layer_latest FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain layer latest updatable by organization members" ON public.brain_layer_latest;
 CREATE POLICY "Brain layer latest updatable by organization members"
   ON public.brain_layer_latest FOR UPDATE
   USING (public.is_org_member(organization_id))
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain org memory readable by organization members" ON public.brain_org_memory_records;
 CREATE POLICY "Brain org memory readable by organization members"
   ON public.brain_org_memory_records FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain org memory insertable by organization members" ON public.brain_org_memory_records;
 CREATE POLICY "Brain org memory insertable by organization members"
   ON public.brain_org_memory_records FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain org memory updatable by organization members" ON public.brain_org_memory_records;
 CREATE POLICY "Brain org memory updatable by organization members"
   ON public.brain_org_memory_records FOR UPDATE
   USING (public.is_org_member(organization_id))
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project episodes readable by organization members" ON public.brain_project_episodes;
 CREATE POLICY "Brain project episodes readable by organization members"
   ON public.brain_project_episodes FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project episodes insertable by organization members" ON public.brain_project_episodes;
 CREATE POLICY "Brain project episodes insertable by organization members"
   ON public.brain_project_episodes FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project episodes updatable by organization members" ON public.brain_project_episodes;
 CREATE POLICY "Brain project episodes updatable by organization members"
   ON public.brain_project_episodes FOR UPDATE
   USING (public.is_org_member(organization_id))
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project events readable by organization members" ON public.brain_project_events;
 CREATE POLICY "Brain project events readable by organization members"
   ON public.brain_project_events FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project events insertable by organization members" ON public.brain_project_events;
 CREATE POLICY "Brain project events insertable by organization members"
   ON public.brain_project_events FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project approvals readable by organization members" ON public.brain_project_approvals;
 CREATE POLICY "Brain project approvals readable by organization members"
   ON public.brain_project_approvals FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project approvals insertable by organization members" ON public.brain_project_approvals;
 CREATE POLICY "Brain project approvals insertable by organization members"
   ON public.brain_project_approvals FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain project approvals updatable by organization members" ON public.brain_project_approvals;
 CREATE POLICY "Brain project approvals updatable by organization members"
   ON public.brain_project_approvals FOR UPDATE
   USING (public.is_org_member(organization_id))
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain performance observations readable by organization members" ON public.brain_performance_observations;
 CREATE POLICY "Brain performance observations readable by organization members"
   ON public.brain_performance_observations FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain performance observations insertable by organization members" ON public.brain_performance_observations;
 CREATE POLICY "Brain performance observations insertable by organization members"
   ON public.brain_performance_observations FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain execution idempotency readable by organization members" ON public.brain_execution_idempotency;
 CREATE POLICY "Brain execution idempotency readable by organization members"
   ON public.brain_execution_idempotency FOR SELECT
   USING (public.is_org_member(organization_id));
 
+DROP POLICY IF EXISTS "Brain execution idempotency insertable by organization members" ON public.brain_execution_idempotency;
 CREATE POLICY "Brain execution idempotency insertable by organization members"
   ON public.brain_execution_idempotency FOR INSERT
   WITH CHECK (public.is_org_member(organization_id));

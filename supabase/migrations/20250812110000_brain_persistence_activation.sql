@@ -17,6 +17,7 @@ ALTER TABLE public.brain_execution_idempotency
 CREATE INDEX IF NOT EXISTS brain_execution_idempotency_status_idx
   ON public.brain_execution_idempotency (organization_id, status);
 
+DROP TRIGGER IF EXISTS brain_execution_idempotency_set_updated_at ON public.brain_execution_idempotency;
 CREATE TRIGGER brain_execution_idempotency_set_updated_at
   BEFORE UPDATE ON public.brain_execution_idempotency
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

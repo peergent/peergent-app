@@ -1,4 +1,5 @@
 import { brainFrom } from "./brain-supabase-client";
+import { BRAIN_RUNTIME_PERSISTENCE_TABLES } from "./brain-runtime-persistence-tables";
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import type { AsyncBrainIdempotencyRepository } from "../contracts";
 import type { PersistedIdempotencyRecord } from "../types";
@@ -34,7 +35,7 @@ export class SupabaseBrainIdempotencyRepository implements AsyncBrainIdempotency
     capabilityId: BrainCapabilityId,
     idempotencyKey: string
   ): Promise<PersistedIdempotencyRecord | null> {
-    const { data, error } = await brainFrom(this.supabase, "brain_idempotency_keys")
+    const { data, error } = await brainFrom(this.supabase, BRAIN_RUNTIME_PERSISTENCE_TABLES.idempotency)
       .select("*")
       .eq("organization_id", organizationId)
       .eq("capability_id", capabilityId)
@@ -49,15 +50,18 @@ export class SupabaseBrainIdempotencyRepository implements AsyncBrainIdempotency
     if (existing && existing.requestHash !== record.requestHash) {
       throw new Error("Idempotency key reused with different request payload.");
     }
-    const { error } = await brainFrom(this.supabase, "brain_idempotency_keys").upsert({
-      organization_id: record.organizationId,
-      capability_id: record.capabilityId,
-      idempotency_key: record.idempotencyKey,
-      run_id: record.runId,
-      request_hash: record.requestHash,
-      expires_at: record.expiresAt ?? null,
-      created_at: record.createdAt,
-    });
+    const { error } = await brainFrom(this.supabase, BRAIN_RUNTIME_PERSISTENCE_TABLES.idempotency).upsert(
+      {
+        organization_id: record.organizationId,
+        capability_id: record.capabilityId,
+        idempotency_key: record.idempotencyKey,
+        run_id: record.runId,
+        request_hash: record.requestHash,
+        expires_at: record.expiresAt ?? null,
+        created_at: record.createdAt,
+      },
+      { onConflict: "organization_id,capability_id,idempotency_key" }
+    );
     if (error) throw new Error(`Failed to store idempotency record: ${error.message}`);
   }
 }
