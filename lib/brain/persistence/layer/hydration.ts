@@ -115,14 +115,9 @@ export async function hydrateProjectFromSupabase(
   hydrated += projectDocs.length;
 
   const episode = await loadProjectEpisode(supabase, input);
-  const { data: versionRow } = await brainFrom(supabase, "brain_project_episodes")
-    .select("version, episode_id")
-    .eq("organization_id", input.organizationId)
-    .eq("project_id", input.projectId)
-    .maybeSingle();
 
   if (episode) {
-    repos.projectEpisode.save({ ...episode, durableVersion: episode.durableVersion ?? 0 });
+    repos.projectEpisode.save(episode);
     hydrated += 1;
   }
 
@@ -130,10 +125,10 @@ export async function hydrateProjectFromSupabase(
     event: "persistence_episode_hydration_observed",
     organizationId: input.organizationId,
     projectId: input.projectId,
-    episodeId: episode?.snapshot.episodeId ?? (versionRow as { episode_id?: string } | null)?.episode_id,
-    episodeRowFound: Boolean(versionRow),
-    dbVersion: (versionRow as { version?: number } | null)?.version,
-    hydratedDurableVersion: episode?.durableVersion ?? 0,
+    episodeId: episode?.snapshot.episodeId,
+    episodeRowFound: Boolean(episode),
+    dbVersion: episode?.durableVersion,
+    hydratedDurableVersion: episode?.durableVersion,
   });
 
   const memories = await loadOrgMemoryRecords(supabase, input.organizationId);

@@ -18,9 +18,15 @@ import type { BrainResultSummary, ProjectEngineInput, ProjectBrainId } from "../
 import { buildBrainPayload, buildPriorOutputs, contextGapsFromEvaluation } from "./brain-context-handoff";
 import { resolveBrainOutputs } from "./brain-output-resolver";
 import { commitEpisodeCritical } from "./episode-durable-persistence";
+import {
+  assertEpisodeMatchesRunScope,
+  hydrateEpisodeToL1,
+  loadDurableProjectEpisode,
+} from "./episode-durable-resume";
 import { createEmptyArtifacts, recordBrainOutputRef, brainOutputRefMap } from "./project-artifact-store";
 import { getActiveDurablePersistence } from "../persistence/layer/active-durable-persistence";
 import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
+import { PersistenceConflictError } from "../persistence/server/persistence-config";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
 import { learningProposalIds, proposalsFromLearningGraph } from "./learning-memory-handoff";
@@ -58,6 +64,101 @@ export class ProjectEpisodeRunner {
       return episode;
     }
     return commitEpisodeCritical(episode, this.durablePort, options);
+  }
+
+  private isFirstCreateConflict(error: unknown): error is PersistenceConflictError {
+    return (
+      error instanceof PersistenceConflictError &&
+      error.expectedVersion === 0 &&
+      error.actualVersion >= 1
+    );
+  }
+
+  private async reloadEpisodeAfterFirstCreateConflict(
+    input: EpisodeRunInput,
+    actualVersion: number
+  ): Promise<ProjectEpisodeRecord> {
+    if (!this.durablePort) {
+      throw new PersistenceConflictError("Episode version conflict", 0, actualVersion);
+    }
+    const reloaded = await loadDurableProjectEpisode(this.durablePort, input);
+    if (!reloaded) {
+      throw new PersistenceConflictError("Episode version conflict", 0, actualVersion);
+    }
+    assertEpisodeMatchesRunScope(reloaded, input);
+    emitOrchestrationDiagnostic({
+      event: "episode_conflict_reload",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episodeId: reloaded.snapshot.episodeId,
+      correlationId: reloaded.correlationId,
+      durableVersion: reloaded.durableVersion,
+      actualVersion,
+    });
+    return hydrateEpisodeToL1(reloaded);
+  }
+
+  private async resolveEpisodeForRun(input: EpisodeRunInput): Promise<ProjectEpisodeRecord> {
+    emitOrchestrationDiagnostic({
+      event: "runner_episode_lookup_started",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      caller: "run_until_pause",
+    });
+
+    const cached = getDefaultProjectEpisodeRepository().get({
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+    });
+    if (cached) {
+      emitOrchestrationDiagnostic({
+        event: "runner_episode_lookup_completed",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        caller: "run_until_pause",
+        found: true,
+        source: "l1_cache",
+        durableVersion: cached.durableVersion,
+        episodeId: cached.snapshot.episodeId,
+        correlationId: cached.correlationId,
+      });
+      return cached;
+    }
+
+    if (this.durablePort) {
+      const durableEpisode = await loadDurableProjectEpisode(this.durablePort, input);
+      if (durableEpisode) {
+        assertEpisodeMatchesRunScope(durableEpisode, input);
+        const hydrated = hydrateEpisodeToL1(durableEpisode);
+        emitOrchestrationDiagnostic({
+          event: "runner_episode_lookup_completed",
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          caller: "run_until_pause",
+          found: true,
+          source: "durable",
+          durableVersion: hydrated.durableVersion,
+          episodeId: hydrated.snapshot.episodeId,
+          correlationId: hydrated.correlationId,
+        });
+        return hydrated;
+      }
+    }
+
+    emitOrchestrationDiagnostic({
+      event: "runner_episode_lookup_completed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      caller: "run_until_pause",
+      found: false,
+      source: "none",
+    });
+    return this.startEpisode(input);
   }
 
   async startEpisode(input: EpisodeRunInput): Promise<ProjectEpisodeRecord> {
@@ -160,16 +261,23 @@ export class ProjectEpisodeRunner {
       episodeId: episode.snapshot.episodeId,
       episodeStatus: episode.episodeStatus,
     });
-    const committed = await this.commitEpisode(episode, { syncBrainDocs: false });
-    emitOrchestrationDiagnostic({
-      event: "episode_start_commit_completed",
-      organizationId: input.organizationId,
-      projectId: input.projectId,
-      peerId: input.peerId,
-      episodeId: committed.snapshot.episodeId,
-      episodeStatus: committed.episodeStatus,
-    });
-    return committed;
+    try {
+      const committed = await this.commitEpisode(episode, { syncBrainDocs: false });
+      emitOrchestrationDiagnostic({
+        event: "episode_start_commit_completed",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        episodeId: committed.snapshot.episodeId,
+        episodeStatus: committed.episodeStatus,
+      });
+      return committed;
+    } catch (error) {
+      if (this.isFirstCreateConflict(error)) {
+        return this.reloadEpisodeAfterFirstCreateConflict(input, error.actualVersion);
+      }
+      throw error;
+    }
   }
 
   async runUntilPause(input: EpisodeRunInput): Promise<EpisodeRunResult> {
@@ -182,33 +290,7 @@ export class ProjectEpisodeRunner {
       });
     }
 
-    let episode =
-      (() => {
-        emitOrchestrationDiagnostic({
-          event: "runner_episode_lookup_started",
-          organizationId: input.organizationId,
-          projectId: input.projectId,
-          peerId: input.peerId,
-          caller: "run_until_pause",
-        });
-        const cached = getDefaultProjectEpisodeRepository().get({
-          organizationId: input.organizationId,
-          projectId: input.projectId,
-        });
-        emitOrchestrationDiagnostic({
-          event: "runner_episode_lookup_completed",
-          organizationId: input.organizationId,
-          projectId: input.projectId,
-          peerId: input.peerId,
-          caller: "run_until_pause",
-          found: cached != null,
-          source: cached != null ? "l1_cache" : "none",
-          durableVersion: cached?.durableVersion,
-          episodeId: cached?.snapshot.episodeId,
-          correlationId: cached?.correlationId,
-        });
-        return cached;
-      })() ?? (await this.startEpisode(input));
+    let episode = await this.resolveEpisodeForRun(input);
 
     const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS;
     const locale = input.locale ?? "en";

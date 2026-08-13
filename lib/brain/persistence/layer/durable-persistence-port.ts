@@ -41,6 +41,12 @@ export interface DurablePersistencePort {
 
   hydrateOrganizationMemory(organizationId: string): Promise<void>;
 
+  /** Load the durable project episode row (includes database version as durableVersion). */
+  loadProjectEpisode(input: {
+    organizationId: string;
+    projectId: string;
+  }): Promise<ProjectEpisodeRecord | null>;
+
   persistEpisodeCritical(
     episode: ProjectEpisodeRecord,
     expectedVersion: number

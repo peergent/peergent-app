@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createProjectEpisodeRunner } from "@/lib/brain/project-runtime";
 import { createSimulatedDurablePersistence } from "@/lib/brain/persistence/layer/simulated-durable-persistence";
-import { PersistenceConflictError } from "@/lib/brain/persistence/server/persistence-config";
 import {
   configureLayerRepositories,
   getLayerRepositories,
@@ -45,7 +44,7 @@ describe("PX-50.4 episode version conflict diagnosis", () => {
     expect(stored?.durableVersion).toBe(1);
   });
 
-  it("second startEpisode on same project conflicts when L1 was reset but durable store retained version 1", async () => {
+  it("second startEpisode on same project reloads durable row after first-create conflict", async () => {
     const durable = createSimulatedDurablePersistence();
     setActiveDurablePersistence(durable);
     configureLayerRepositories({ mode: "persistent_in_memory" });
@@ -60,13 +59,12 @@ describe("PX-50.4 episode version conflict diagnosis", () => {
     createServerBrainRuntime({ mode: "persistent_in_memory" });
 
     const runnerB = createProjectEpisodeRunner(undefined, durable);
-    await expect(
-      runnerB.startEpisode({
-        organizationId: ORG,
-        projectId: "proj-l1-reset",
-        peerId: "demo",
-      })
-    ).rejects.toBeInstanceOf(PersistenceConflictError);
+    const resumed = await runnerB.startEpisode({
+      organizationId: ORG,
+      projectId: "proj-l1-reset",
+      peerId: "demo",
+    });
+    expect(resumed.durableVersion).toBe(1);
   });
 
   it("runUntilPause skips startEpisode when L1 cache hit preserves hydrated episode", async () => {

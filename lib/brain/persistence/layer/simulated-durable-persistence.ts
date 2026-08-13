@@ -35,6 +35,18 @@ export class SimulatedDurablePersistence implements DurablePersistencePort {
     orgMemoryIndex.set(organizationId, [...memories]);
   }
 
+  async loadProjectEpisode(input: {
+    organizationId: string;
+    projectId: string;
+  }): Promise<ProjectEpisodeRecord | null> {
+    const row = simulatedDurableStore.getEpisode(input.organizationId, input.projectId);
+    if (!row) return null;
+    return {
+      ...row.episode,
+      durableVersion: row.version,
+    };
+  }
+
   async persistEpisodeCritical(
     episode: ProjectEpisodeRecord,
     expectedVersion: number

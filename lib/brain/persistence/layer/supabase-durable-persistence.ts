@@ -21,6 +21,7 @@ import {
   upsertOrgMemoryRecords,
 } from "./supabase-sync";
 import { hydrateProjectFromSupabase, hydrateOrganizationMemoryFromSupabase } from "./hydration";
+import { loadProjectEpisode } from "./supabase-sync";
 import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
 import { getLayerRepositories } from "../layer-repository-factory";
 import { projectScopeKey } from "./scope-keys";
@@ -161,6 +162,13 @@ export class SupabaseDurablePersistence implements DurablePersistencePort {
 
   async hydrateOrganizationMemory(organizationId: string): Promise<void> {
     await hydrateOrganizationMemoryFromSupabase(this.supabase, organizationId);
+  }
+
+  async loadProjectEpisode(input: {
+    organizationId: string;
+    projectId: string;
+  }): Promise<ProjectEpisodeRecord | null> {
+    return loadProjectEpisode(this.supabase, input);
   }
 
   async persistEpisodeCritical(

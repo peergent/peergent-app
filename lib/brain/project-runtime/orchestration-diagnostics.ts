@@ -34,6 +34,7 @@ export type OrchestrationDiagnosticEvent =
   | "runner_episode_lookup_started"
   | "runner_episode_lookup_completed"
   | "episode_start_invoked"
+  | "episode_conflict_reload"
   | "automatic_campaign_execution_invoked";
 
 export type OrchestrationDiagnosticPayload = {
@@ -58,10 +59,11 @@ export type OrchestrationDiagnosticPayload = {
   hasCompanySnapshot?: boolean;
   caller?: "start_episode" | "run_until_pause";
   found?: boolean;
-  source?: "l1_cache" | "none";
+  source?: "l1_cache" | "durable" | "none";
   durableVersion?: number;
   correlationId?: string;
   initialDurableVersion?: number;
+  actualVersion?: number;
 };
 
 export function safeOrchestrationError(error: unknown): {

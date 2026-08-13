@@ -181,13 +181,20 @@ export async function loadProjectEpisode(
   input: { organizationId: string; projectId: string }
 ): Promise<import("../../project-runtime/types").ProjectEpisodeRecord | null> {
   const { data, error } = await brainFrom(supabase, "brain_project_episodes")
-    .select("episode")
+    .select("episode, version")
     .eq("organization_id", input.organizationId)
     .eq("project_id", input.projectId)
     .maybeSingle();
   if (error) throw new Error(`project_episode_load_failed: ${error.message}`);
   if (!data) return null;
-  return (data as { episode: import("../../project-runtime/types").ProjectEpisodeRecord }).episode;
+  const row = data as {
+    episode: import("../../project-runtime/types").ProjectEpisodeRecord;
+    version: number;
+  };
+  return {
+    ...row.episode,
+    durableVersion: row.version,
+  };
 }
 
 export async function appendProjectEvent(
