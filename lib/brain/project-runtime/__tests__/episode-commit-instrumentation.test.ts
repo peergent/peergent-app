@@ -109,25 +109,28 @@ describe("PX-50.1 episode commit persistence instrumentation", () => {
     ).toBe(1);
   });
 
-  it("Supabase upsert operation failure identifies rpc operation in diagnostics", async () => {
+  it("Supabase RPC error propagates with operation diagnostics", async () => {
     const episode = buildEpisode("proj-supabase-fail");
-    const mockSupabase = {
-      from: () => ({
-        rpc: undefined,
-      }),
-    } as never;
+    const rpc = vi.fn().mockRejectedValue(new TypeError("client.rpc is not a function"));
+    const supabase = { rpc } as unknown as AppSupabaseClient;
 
     const module = await import("@/lib/brain/persistence/layer/supabase-durable-persistence");
-    const persistence = new module.SupabaseDurablePersistence(mockSupabase);
+    const persistence = new module.SupabaseDurablePersistence(supabase);
 
-    await expect(persistence.persistEpisodeCritical(episode, 0)).rejects.toThrow();
+    await expect(persistence.persistEpisodeCritical(episode, 0)).rejects.toThrow(
+      "client.rpc is not a function"
+    );
 
     const failed = parsePersistenceLines(infoSpy, errorSpy).find(
       (line) => line.event === "persistence_episode_upsert_failed"
     );
     expect(failed).toBeDefined();
     expect(failed?.operation).toBe("rpc.upsert_brain_project_episode_versioned");
-    expect(failed?.errorName).toBeTruthy();
+    expect(failed?.errorName).toBe("TypeError");
+    expect(rpc).toHaveBeenCalledWith(
+      "upsert_brain_project_episode_versioned",
+      expect.objectContaining({ p_project_id: "proj-supabase-fail" })
+    );
   });
 
   it("orchestration does not proceed when startEpisode critical commit fails", async () => {

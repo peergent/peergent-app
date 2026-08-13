@@ -996,7 +996,7 @@ export type Database = {
           p_correlation_id: string;
           p_episode_status: string;
           p_current_state: string;
-          p_current_brain: string;
+          p_current_brain: string | null;
           p_started_at: string;
           p_updated_at: string;
           p_completed_at: string | null;

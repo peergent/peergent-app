@@ -42,28 +42,25 @@ async function upsertEpisodeVersioned(
   });
 
   try {
-    const { data, error } = await brainFrom(supabase, "brain_project_episodes").rpc(
-      "upsert_brain_project_episode_versioned",
-      {
-        p_organization_id: episode.snapshot.organizationId,
-        p_project_id: episode.snapshot.projectId,
-        p_expected_version: expectedVersion,
-        p_episode: toJson(episode),
-        p_artifacts: toJson(episode.artifacts),
-        p_resolved_graphs: toJson(episode.resolvedGraphs ?? {}),
-        p_cached_learning_proposals: toJson(episode.cachedLearningProposals ?? []),
-        p_episode_id: episode.snapshot.episodeId,
-        p_peer_id: episode.snapshot.peerId,
-        p_correlation_id: episode.correlationId,
-        p_episode_status: episode.episodeStatus,
-        p_current_state: episode.snapshot.state,
-        p_current_brain: episode.snapshot.activeBrain,
-        p_started_at: episode.startedAt,
-        p_updated_at: episode.updatedAt,
-        p_completed_at: episode.completedAt,
-        p_last_error: episode.lastError,
-      }
-    );
+    const { data, error } = await supabase.rpc("upsert_brain_project_episode_versioned", {
+      p_organization_id: episode.snapshot.organizationId,
+      p_project_id: episode.snapshot.projectId,
+      p_expected_version: expectedVersion,
+      p_episode: toJson(episode),
+      p_artifacts: toJson(episode.artifacts),
+      p_resolved_graphs: toJson(episode.resolvedGraphs ?? {}),
+      p_cached_learning_proposals: toJson(episode.cachedLearningProposals ?? []),
+      p_episode_id: episode.snapshot.episodeId,
+      p_peer_id: episode.snapshot.peerId,
+      p_correlation_id: episode.correlationId,
+      p_episode_status: episode.episodeStatus,
+      p_current_state: episode.snapshot.state,
+      p_current_brain: episode.snapshot.activeBrain,
+      p_started_at: episode.startedAt,
+      p_updated_at: episode.updatedAt,
+      p_completed_at: episode.completedAt,
+      p_last_error: episode.lastError,
+    });
 
     if (error) {
       emitPersistenceDiagnostic({
