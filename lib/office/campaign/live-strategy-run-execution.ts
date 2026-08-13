@@ -22,6 +22,7 @@ import {
 import {
   shouldExecuteStrategyOnServer,
   strategyOutputCurrent,
+  usesProjectEngineLifecycleAuthority,
   type LiveStrategyRunResult,
 } from "./live-strategy-run-service";
 import {
@@ -531,15 +532,17 @@ export async function enqueueLiveStrategyRunServer(
     domainInput,
     locale: input.locale,
   });
-  const readiness = evaluateStrategyContextReadiness(ctx);
-  if (!readiness.ready) {
-    return {
-      ok: false,
-      status: "waiting_for_input",
-      project: input.project,
-      failureCode: "waiting_for_input",
-      failureMessageSafe: customerSafeStrategyFailureMessage("waiting_for_input", input.locale),
-    };
+  if (!usesProjectEngineLifecycleAuthority(input.project)) {
+    const readiness = evaluateStrategyContextReadiness(ctx);
+    if (!readiness.ready) {
+      return {
+        ok: false,
+        status: "waiting_for_input",
+        project: input.project,
+        failureCode: "waiting_for_input",
+        failureMessageSafe: customerSafeStrategyFailureMessage("waiting_for_input", input.locale),
+      };
+    }
   }
 
   const gate = shouldExecuteStrategyOnServer(input.project, domainInput, input.locale);

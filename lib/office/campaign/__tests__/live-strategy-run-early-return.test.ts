@@ -11,18 +11,13 @@ import {
 } from "@/lib/office/campaign/live-strategy-run-service";
 import { isTerminalStrategyRunStatus } from "@/lib/office/campaign/strategy-run-timing";
 import { emptyBrainStructuredOutput } from "@/lib/brain/evidence/structured-output";
+import type { BrainRunResult } from "@/lib/brain/runtime/run-result";
 
-const executeBrainMock = vi.hoisted(() => vi.fn());
+const episodeControllerMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/brain/integration/execute-brain-for-workflow-step", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("@/lib/brain/integration/execute-brain-for-workflow-step")
-  >();
-  return {
-    ...actual,
-    executeBrainForWorkflowStep: executeBrainMock,
-  };
-});
+vi.mock("@/lib/brain/project-runtime/campaign-episode-controller", () => ({
+  startOrResumeCampaignEpisode: episodeControllerMock,
+}));
 
 const PEER = "emma";
 const PROJECT_ID = "early-return-proj";
@@ -80,48 +75,49 @@ function domainInput(project: MarketingProject) {
   };
 }
 
-function brainSuccess(providerId = "llm", delayMs = 0) {
-  return () =>
-    new Promise((resolve) => {
-      setTimeout(
-        () => {
-          const result = {
-            run: {
-              status: "completed",
-              usage: { providerId, inputTokens: 665, outputTokens: 1085, modelId: "gpt-4.1-mini" },
-            },
-            assembly: { state: "ready" },
-            output: {
-              ...emptyBrainStructuredOutput("strategy", "1.0.0", "2026-08-01T00:00:00.000Z"),
-              findings: [
-                {
-                  id: "f1",
-                  label: "Positionering",
-                  value: "Focus op ondernemers.",
-                  confidence: "high",
-                },
-              ],
-              recommendations: [
-                {
-                  id: "r1",
-                  label: "Kanaal",
-                  rationale: "LinkedIn voor B2B bereik.",
-                  priority: "high",
-                },
-              ],
-            },
-            policy: { requiresApproval: true },
-            presentation: null,
-            cacheHit: false,
-          };
-          resolve({
-            result,
-            resolvedUpstreamOutputs: result.output ? { strategy: result.output } : {},
-          });
+function brainSuccess(providerId = "llm", delayMs = 0): BrainRunResult {
+  return {
+    run: {
+      runId: "run-early",
+      status: "completed",
+      usage: { providerId, inputTokens: 665, outputTokens: 1085, modelId: "gpt-4.1-mini" },
+    },
+    assembly: { state: "ready", gaps: [] },
+    output: {
+      ...emptyBrainStructuredOutput("strategy", "1.0.0", "2026-08-01T00:00:00.000Z"),
+      findings: [
+        {
+          id: "f1",
+          label: "Positionering",
+          value: "Focus op ondernemers.",
+          confidence: "high",
         },
-        delayMs
-      );
-    });
+      ],
+      recommendations: [
+        {
+          id: "r1",
+          label: "Kanaal",
+          rationale: "LinkedIn voor B2B bereik.",
+          priority: "high",
+        },
+      ],
+    },
+  };
+}
+
+function episodeSuccess(providerId = "llm", delayMs = 0) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        status: "completed",
+        orchestrationAuthority: "project_engine",
+        episodeResumed: false,
+        strategyCapabilityRun: brainSuccess(providerId),
+        episode: { snapshot: { episodeId: "ep-early" } },
+        missingContext: [],
+      });
+    }, delayMs);
+  });
 }
 
 function serverInput(project: MarketingProject) {
@@ -139,7 +135,7 @@ describe("strategy run early-return regression", () => {
   beforeEach(() => {
     installSessionStorageMock();
     resetLiveStrategyRunServerInFlightForTests();
-    executeBrainMock.mockReset();
+    episodeControllerMock.mockReset();
     saveMarketingWorkspaceState(PEER, { projects: [readyProject()], drafts: [], workUnits: [] });
   });
 
@@ -167,7 +163,7 @@ describe("strategy run early-return regression", () => {
   });
 
   it("executes Brain when server receives optimistic gathering_context project", async () => {
-    executeBrainMock.mockImplementation(brainSuccess("llm"));
+    episodeControllerMock.mockImplementation(() => episodeSuccess("llm"));
 
     const optimistic = readyProject({
       campaignSetup: {
@@ -182,7 +178,7 @@ describe("strategy run early-return regression", () => {
 
     const result = await enqueueLiveStrategyRunServer(serverInput(optimistic));
 
-    expect(executeBrainMock).toHaveBeenCalledTimes(1);
+    expect(episodeControllerMock).toHaveBeenCalledTimes(1);
     expect(result.status).toBe("completed");
     expect(result.status).not.toBe("gathering_context");
     expect(result.project?.campaignSetup?.strategyGeneratedAt).toBeTruthy();
@@ -190,7 +186,7 @@ describe("strategy run early-return regression", () => {
   });
 
   it("waits for mocked Brain delay before returning terminal state", async () => {
-    executeBrainMock.mockImplementation(brainSuccess("llm", 80));
+    episodeControllerMock.mockImplementation(() => episodeSuccess("llm", 80));
 
     const started = Date.now();
     const result = await enqueueLiveStrategyRunServer(serverInput(readyProject()));
@@ -205,7 +201,7 @@ describe("strategy run early-return regression", () => {
   });
 
   it("concurrent enqueue calls share one Brain execution and clear in-flight in finally", async () => {
-    executeBrainMock.mockImplementation(brainSuccess("llm", 40));
+    episodeControllerMock.mockImplementation(() => episodeSuccess("llm", 40));
 
     const input = serverInput(readyProject());
     const [first, second] = await Promise.all([
@@ -213,7 +209,7 @@ describe("strategy run early-return regression", () => {
       enqueueLiveStrategyRunServer(input),
     ]);
 
-    expect(executeBrainMock).toHaveBeenCalledTimes(1);
+    expect(episodeControllerMock).toHaveBeenCalledTimes(1);
     expect(first.status).toBe("completed");
     expect(second.status).toBe("completed");
   });

@@ -9,6 +9,7 @@ import { CcRecommendationHero } from "@/features/home/command-center/visual/CcRe
 import type { CampaignDetailViewModel } from "@/lib/office/campaign/build-campaign-detail";
 import { buildCampaignExperienceModel } from "@/lib/office/campaign/build-campaign-experience";
 import type { CampaignExperienceChartMetric } from "@/lib/office/campaign/campaign-experience-types";
+import type { CampaignWorkflowViewModel } from "@/lib/office/campaign/workflow-types";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import { CeCampaignProgress } from "./visual/CeCampaignProgress";
 import { CeCreativeAssetGrid } from "./visual/CeCreativeAsset";
@@ -27,6 +28,9 @@ export type CampaignExperienceViewProps = {
   domainInput?: MarketingPeerDomainInput;
   isDemo?: boolean;
   onOpenOptimization?: () => void;
+  workflow?: CampaignWorkflowViewModel | null;
+  progressMessage?: string | null;
+  onPrimaryCta?: () => void;
 };
 
 function renderBriefSections(
@@ -75,8 +79,19 @@ export default function CampaignExperienceView({
   domainInput,
   isDemo,
   onOpenOptimization,
+  workflow,
+  progressMessage,
+  onPrimaryCta,
 }: CampaignExperienceViewProps) {
   const nl = locale === "nl";
+  const cta = workflow?.nextStepCta;
+  const primaryDisabled =
+    cta?.action === "working" ||
+    (cta?.action === "continue" && !cta.stepId);
+  const showPrimaryCta =
+    Boolean(cta && onPrimaryCta) &&
+    cta!.action !== "working" &&
+    !(cta!.action === "continue" && !cta!.stepId);
   const experience = useMemo(
     () =>
       buildCampaignExperienceModel(model, {
@@ -152,6 +167,30 @@ export default function CampaignExperienceView({
           </dl>
         </div>
       </header>
+
+      {progressMessage ? (
+        <p className="pg-ce-orchestration-status" data-testid="campaign-orchestration-status">
+          {progressMessage}
+        </p>
+      ) : null}
+
+      {showPrimaryCta && cta ? (
+        <section className="pg-ce-row" data-testid="campaign-primary-cta">
+          <button type="button" className="pg-v13-btn w-full sm:w-auto" onClick={onPrimaryCta}>
+            {cta.label}
+          </button>
+          {workflow?.nextStep ? (
+            <p className="mt-2 text-[12px] text-[var(--pg-v13-ink-soft)]">{workflow.nextStep}</p>
+          ) : null}
+        </section>
+      ) : primaryDisabled && cta ? (
+        <section className="pg-ce-row" data-testid="campaign-primary-cta">
+          <p className="text-[14px] font-semibold text-[var(--pg-v13-ink-soft)]">{cta.label}</p>
+          {workflow?.nextStep ? (
+            <p className="mt-2 text-[12px] text-[var(--pg-v13-ink-soft)]">{workflow.nextStep}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Section B — Executive Campaign Brief */}
       <section className="pg-ce-row" aria-labelledby="pg-ce-brief-title">

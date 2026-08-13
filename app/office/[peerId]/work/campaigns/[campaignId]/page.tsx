@@ -14,6 +14,7 @@ import { useCampaignWorkspaceActions } from "@/features/office/campaign/useCampa
 import OfficeDeliverableReviewModal from "@/features/office/deliverable/OfficeDeliverableReviewModal";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
 import { buildCampaignDetailViewModel, findCampaignProject } from "@/lib/office/campaign/build-campaign-detail";
+import { buildCampaignWorkflowViewModel } from "@/lib/office/campaign/build-campaign-workflow";
 import { formatOfficeDate } from "@/lib/office/campaign/campaign-optimization";
 import { buildMarketingDeskViewModel } from "@/lib/office/desk/build-marketing-desk";
 import Link from "next/link";
@@ -37,6 +38,19 @@ function CampaignDetailInner() {
     newCampaignModal,
     workspace,
   } = useOfficePeer();
+
+  const liveProject = findCampaignProject(domainInput, campaignId);
+
+  const campaignWorkflow = useMemo(() => {
+    if (!liveProject) return null;
+    return buildCampaignWorkflowViewModel({
+      peerId,
+      project: liveProject,
+      domainInput,
+      locale: localePreference,
+      isDemo,
+    });
+  }, [domainInput, isDemo, liveProject, localePreference, peerId]);
 
   const model = useMemo(
     () =>
@@ -97,11 +111,11 @@ function CampaignDetailInner() {
             locale={localePreference}
             domainInput={domainInput}
             isDemo={isDemo}
+            workflow={campaignWorkflow}
+            progressMessage={campaignActions.progressMessage}
+            onPrimaryCta={campaignActions.handleNextStepCta}
             updatedAtLabel={
-              formatOfficeDate(
-                findCampaignProject(domainInput, campaignId)?.updatedAt ?? null,
-                localePreference
-              ) ?? undefined
+              formatOfficeDate(liveProject?.updatedAt ?? null, localePreference) ?? undefined
             }
             onOpenOptimization={() => campaignActions.setOptimizationOpen(true)}
           />

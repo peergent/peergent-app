@@ -1626,6 +1626,32 @@ export function useMarketingWorkspace(
     [peerId, projects, updateProjects, logActivity]
   );
 
+  /** Persist a server-created campaign (e.g. automatic bootstrap boundary). */
+  const ingestCreatedCampaign = useCallback(
+    (project: MarketingProject): { projectId: string } => {
+      if (!peerId) {
+        throw new Error("Workspace unavailable.");
+      }
+      const exists = projectsRef.current.some((p) => p.id === project.id);
+      const next = exists
+        ? projectsRef.current.map((p) => (p.id === project.id ? project : p))
+        : [project, ...projectsRef.current];
+      updateProjects(next);
+      if (!exists) {
+        logActivity(
+          createActivity(
+            "focus_updated",
+            `Campaign created: ${project.title}`,
+            project.goal,
+            { relatedObject: project.title }
+          )
+        );
+      }
+      return { projectId: project.id };
+    },
+    [peerId, updateProjects, logActivity]
+  );
+
   const handleStartCampaignExecution = useCallback(
     async (projectId: string): Promise<CampaignExecutionWorkspaceResult> => {
       const executedAt = new Date().toISOString();
@@ -2560,6 +2586,7 @@ export function useMarketingWorkspace(
     executeRecommendedAction,
     handleExecuteDelegation,
     handleCreateCampaign,
+    ingestCreatedCampaign,
     handleCompleteCampaignOnboarding,
     handleStartCampaignExecution,
     handleExecuteMarketingWorkUnit,

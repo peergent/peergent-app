@@ -89,6 +89,8 @@ export type CreateMarketingCampaignProjectInput = {
   setupMode?: MarketingProjectCampaignSetup["setupMode"];
   secondaryGoalIds?: readonly string[];
   priority?: MarketingProjectCampaignSetup["priority"];
+  /** Optional stable id for server-side automatic bootstrap idempotency. */
+  projectId?: string;
 };
 
 function campaignTypeFromPrimaryGoal(primaryGoalId: string): MarketingCampaignType {
@@ -145,6 +147,7 @@ export function createMarketingCampaignProject(
 
   return {
     ...base,
+    ...(input.projectId ? { id: input.projectId } : {}),
     campaignType: campaignTypeFromPrimaryGoal(input.primaryGoalId),
     campaignSetup: setup,
   };

@@ -1,6 +1,10 @@
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import { buildCampaignContext } from "./campaign-context";
+import {
+  isAutomaticCampaignSetup,
+  usesProjectEngineLifecycleAuthority,
+} from "./automatic-campaign-lifecycle";
 import { evaluateStrategyContextReadiness } from "./strategy-context-readiness";
 import {
   isActiveStrategyRunStatus,
@@ -38,13 +42,6 @@ export function shouldEnqueueLiveStrategyRun(
   domainInput: MarketingPeerDomainInput,
   locale?: string | null
 ): boolean {
-  const ctx = buildCampaignContext({
-    project,
-    domainInput,
-    locale,
-  });
-  const strategyReadiness = evaluateStrategyContextReadiness(ctx);
-  if (!strategyReadiness.ready) return false;
   if (strategyOutputCurrent(project)) return false;
 
   const run = project.campaignSetup?.strategyRun;
@@ -54,6 +51,18 @@ export function shouldEnqueueLiveStrategyRun(
     return false;
   }
   if (run?.status === "failed" || run?.status === "waiting_for_input") return false;
+
+  if (usesProjectEngineLifecycleAuthority(project)) {
+    return true;
+  }
+
+  const ctx = buildCampaignContext({
+    project,
+    domainInput,
+    locale,
+  });
+  const strategyReadiness = evaluateStrategyContextReadiness(ctx);
+  if (!strategyReadiness.ready) return false;
   return true;
 }
 
@@ -76,11 +85,6 @@ export function shouldExecuteStrategyOnServer(
   domainInput: MarketingPeerDomainInput,
   locale?: string | null
 ): { execute: boolean; reason?: string } {
-  const ctx = buildCampaignContext({ project, domainInput, locale });
-  const strategyReadiness = evaluateStrategyContextReadiness(ctx);
-  if (!strategyReadiness.ready) {
-    return { execute: false, reason: "not_ready" };
-  }
   if (strategyOutputCurrent(project)) {
     return { execute: false, reason: "output_current" };
   }
@@ -91,7 +95,18 @@ export function shouldExecuteStrategyOnServer(
   if (run?.status === "completed" && strategyOutputCurrent(project)) {
     return { execute: false, reason: "completed" };
   }
+
+  if (!usesProjectEngineLifecycleAuthority(project)) {
+    const ctx = buildCampaignContext({ project, domainInput, locale });
+    const strategyReadiness = evaluateStrategyContextReadiness(ctx);
+    if (!strategyReadiness.ready) {
+      return { execute: false, reason: "not_ready" };
+    }
+  }
+
   return { execute: true };
 }
+
+export { isAutomaticCampaignSetup, usesProjectEngineLifecycleAuthority };
 
 export { isTerminalStrategyRunStatus };

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CreateCampaignModal from "@/features/marketing-workspace/components/CreateCampaignModal";
 import CreateCampaignModeModal, {
   type CampaignSetupMode,
 } from "@/features/marketing-workspace/components/CreateCampaignModeModal";
 import { createDemoCampaign } from "@/lib/office/demo/demo-campaign-store";
+import { startAutomaticCampaignAction } from "@/lib/office/campaign/start-automatic-campaign-action";
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { useMarketingWorkspace } from "@/hooks/useMarketingWorkspace";
 
@@ -37,6 +38,7 @@ export function useOfficeNewCampaign({
   const [wizardOpen, setWizardOpen] = useState(false);
   const [setupMode, setSetupMode] = useState<CampaignSetupMode>("automatic");
   const [createError, setCreateError] = useState<string | null>(null);
+  const automaticProjectIdRef = useRef<string | null>(null);
 
   const marketingPeer = peerRole.toLowerCase().includes("marketing");
 
@@ -49,6 +51,10 @@ export function useOfficeNewCampaign({
   const handleModeSelect = useCallback((mode: CampaignSetupMode) => {
     setSetupMode(mode);
     setModeOpen(false);
+    automaticProjectIdRef.current =
+      mode === "automatic"
+        ? `proj-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+        : null;
     setWizardOpen(true);
   }, []);
 
@@ -66,6 +72,29 @@ export function useOfficeNewCampaign({
       }
 
       try {
+        if (setupMode === "automatic") {
+          const stableProjectId =
+            automaticProjectIdRef.current ??
+            `proj-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          automaticProjectIdRef.current = stableProjectId;
+          const result = await startAutomaticCampaignAction({
+            ...input,
+            peerId,
+            projectId: stableProjectId,
+            setupMode: "automatic",
+            locale: localePreference,
+            understanding: workspace.understanding ?? null,
+          });
+          if (!result.project) {
+            throw new Error(result.failureCode ?? "create_failed");
+          }
+          automaticProjectIdRef.current = null;
+          const ingested = workspace.ingestCreatedCampaign(result.project);
+          setWizardOpen(false);
+          router.push(`/office/${peerId}/work/campaigns/${ingested.projectId}`);
+          return ingested;
+        }
+
         const result = await workspace.handleCreateCampaign(input);
         setWizardOpen(false);
         router.push(`/office/${peerId}/work/campaigns/${result.projectId}`);
@@ -79,7 +108,7 @@ export function useOfficeNewCampaign({
         throw new Error("create_failed");
       }
     },
-    [isDemo, localePreference, peerId, router, workspace]
+    [isDemo, localePreference, peerId, router, setupMode, workspace]
   );
 
   const newCampaignModal =

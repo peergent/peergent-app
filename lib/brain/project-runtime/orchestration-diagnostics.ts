@@ -6,6 +6,7 @@ import type { ProjectBrainId } from "../project-engine/types";
 import type { EpisodeStatus } from "./types";
 
 export type OrchestrationDiagnosticEvent =
+  | "automatic_campaign_started"
   | "episode_started"
   | "episode_resumed"
   | "project_engine_evaluated"
