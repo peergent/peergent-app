@@ -169,6 +169,20 @@ export class ProjectEpisodeRunner {
         contextGaps: [...acquiredContext.contextGaps],
       };
 
+      emitOrchestrationDiagnostic({
+        event: "episode_context_acquired",
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        episodeId: episode.snapshot.episodeId,
+        episodeStatus: episode.episodeStatus,
+        contextReady: acquiredContext.contextReady,
+        contextGapCount: acquiredContext.contextGaps.length,
+        blockingContextGapCount: acquiredContext.contextGaps.filter((gap) => gap.blocking).length,
+        sliceAvailability: acquiredContext.sliceAvailability,
+        maxSteps,
+      });
+
       const blockingGaps = acquiredContext.contextGaps.filter((gap) => gap.blocking);
       if (!acquiredContext.contextReady || blockingGaps.length > 0) {
         emitOrchestrationDiagnostic({
@@ -197,8 +211,43 @@ export class ProjectEpisodeRunner {
       priorMemories: [] as readonly import("../layers/memory/types").MemoryRecord[],
     };
 
+    emitOrchestrationDiagnostic({
+      event: "episode_loop_entering",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      peerId: episode.snapshot.peerId,
+      episodeId: episode.snapshot.episodeId,
+      episodeStatus: episode.episodeStatus,
+      snapshotState: episode.snapshot.state,
+    });
+
     for (let step = 0; step < maxSteps; step += 1) {
-      if (episode.episodeStatus === "completed" || episode.episodeStatus === "failed") break;
+      if (episode.episodeStatus === "completed" || episode.episodeStatus === "failed") {
+        emitOrchestrationDiagnostic({
+          event: "episode_loop_terminal_break",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          episodeStatus: episode.episodeStatus,
+          snapshotState: episode.snapshot.state,
+          step,
+        });
+        break;
+      }
+
+      emitOrchestrationDiagnostic({
+        event: "project_engine_evaluation_started",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        peerId: episode.snapshot.peerId,
+        episodeId: episode.snapshot.episodeId,
+        step,
+        episodeStatus: episode.episodeStatus,
+        snapshotState: episode.snapshot.state,
+        contextReady: episode.contextReady,
+        sliceAvailability: episode.sliceAvailability,
+      });
 
       const evaluation = evaluateProjectEpisode(buildEngineInput(episode), {
         locale,
@@ -219,6 +268,20 @@ export class ProjectEpisodeRunner {
         actionKind: evaluation.action.kind,
         brainId: evaluation.action.brainId,
       });
+
+      if (evaluation.blocked && evaluation.action.kind === "collect_context") {
+        emitOrchestrationDiagnostic({
+          event: "project_engine_context_blocked",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          step,
+          reason: evaluation.action.reason,
+          contextReady: episode.contextReady,
+          sliceAvailability: episode.sliceAvailability,
+        });
+      }
 
       if (evaluation.action.kind !== "idle") {
         emitOrchestrationDiagnostic({
