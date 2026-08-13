@@ -24,6 +24,8 @@ export type PersistenceDiagnosticEvent =
   | "persistence_episode_upsert_started"
   | "persistence_episode_upsert_completed"
   | "persistence_episode_upsert_failed"
+  | "persistence_episode_hydration_observed"
+  | "persistence_layer_repository_reconfigured"
   | "persistence_layer_document_upsert_started"
   | "persistence_layer_document_upsert_completed"
   | "persistence_layer_document_upsert_failed"
@@ -51,6 +53,10 @@ export type PersistenceDiagnosticPayload = {
   syncBrainDocs?: boolean;
   durationMs?: number;
   memoryCount?: number;
+  dbVersion?: number;
+  hydratedDurableVersion?: number;
+  episodeRowFound?: boolean;
+  repositoryGeneration?: number;
 };
 
 export function safePersistenceError(error: unknown): {

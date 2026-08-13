@@ -30,7 +30,11 @@ export type OrchestrationDiagnosticEvent =
   | "brain_completed"
   | "episode_paused"
   | "context_gap_blocked"
-  | "episode_target_reached";
+  | "episode_target_reached"
+  | "runner_episode_lookup_started"
+  | "runner_episode_lookup_completed"
+  | "episode_start_invoked"
+  | "automatic_campaign_execution_invoked";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -53,6 +57,11 @@ export type OrchestrationDiagnosticPayload = {
   errorCode?: string;
   hasCompanySnapshot?: boolean;
   caller?: "start_episode" | "run_until_pause";
+  found?: boolean;
+  source?: "l1_cache" | "none";
+  durableVersion?: number;
+  correlationId?: string;
+  initialDurableVersion?: number;
 };
 
 export function safeOrchestrationError(error: unknown): {

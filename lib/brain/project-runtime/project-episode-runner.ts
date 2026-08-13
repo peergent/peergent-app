@@ -144,6 +144,15 @@ export class ProjectEpisodeRunner {
     getDefaultProjectEpisodeRepository().save(episode);
     appendRuntimeEvent({ episode, type: "project_started", brainId: null });
     emitOrchestrationDiagnostic({
+      event: "episode_start_invoked",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episodeId: episode.snapshot.episodeId,
+      correlationId: episode.correlationId,
+      initialDurableVersion: episode.durableVersion ?? 0,
+    });
+    emitOrchestrationDiagnostic({
       event: "episode_start_commit_started",
       organizationId: input.organizationId,
       projectId: input.projectId,
@@ -174,10 +183,32 @@ export class ProjectEpisodeRunner {
     }
 
     let episode =
-      getDefaultProjectEpisodeRepository().get({
-        organizationId: input.organizationId,
-        projectId: input.projectId,
-      }) ?? (await this.startEpisode(input));
+      (() => {
+        emitOrchestrationDiagnostic({
+          event: "runner_episode_lookup_started",
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          caller: "run_until_pause",
+        });
+        const cached = getDefaultProjectEpisodeRepository().get({
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+        });
+        emitOrchestrationDiagnostic({
+          event: "runner_episode_lookup_completed",
+          organizationId: input.organizationId,
+          projectId: input.projectId,
+          peerId: input.peerId,
+          caller: "run_until_pause",
+          found: cached != null,
+          source: cached != null ? "l1_cache" : "none",
+          durableVersion: cached?.durableVersion,
+          episodeId: cached?.snapshot.episodeId,
+          correlationId: cached?.correlationId,
+        });
+        return cached;
+      })() ?? (await this.startEpisode(input));
 
     const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS;
     const locale = input.locale ?? "en";

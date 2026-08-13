@@ -50,6 +50,7 @@ import {
   PersistenceConfigurationError,
   resolveBrainPersistenceMode,
 } from "./server/persistence-config";
+import { emitPersistenceDiagnostic } from "./layer/persistence-diagnostics";
 
 export type LayerRepositoryStorageMode = "in_memory" | "persistent_in_memory" | "supabase";
 
@@ -133,10 +134,17 @@ export function resetLayerRepositoryStores(): void {
 }
 
 let activeBundle: LayerRepositoryBundle | null = null;
+let repositoryGeneration = 0;
 
 /** Configure global layer repositories — call from server composition root. */
 export function configureLayerRepositories(input: CreateLayerRepositoriesInput = {}): LayerRepositoryBundle {
+  repositoryGeneration += 1;
   activeBundle = createLayerRepositories(input);
+  emitPersistenceDiagnostic({
+    event: "persistence_layer_repository_reconfigured",
+    message: `generation=${repositoryGeneration}`,
+    repositoryGeneration,
+  });
   return activeBundle;
 }
 
@@ -157,4 +165,9 @@ export function getLayerRepositories(): LayerRepositoryBundle {
 export function resetConfiguredLayerRepositories(): void {
   resetLayerRepositoryStores();
   activeBundle = null;
+  repositoryGeneration = 0;
+}
+
+export function getLayerRepositoryGeneration(): number {
+  return repositoryGeneration;
 }

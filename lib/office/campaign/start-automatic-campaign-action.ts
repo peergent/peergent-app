@@ -114,6 +114,14 @@ export async function startAutomaticCampaignAction(
       peerId: input.peerId,
     });
 
+    emitOrchestrationDiagnostic({
+      event: "automatic_campaign_execution_invoked",
+      organizationId: auth.organizationId,
+      projectId: project.id,
+      peerId: input.peerId,
+      correlationId: project.id,
+    });
+
     await prepareBrainServerPersistence({
       supabase: auth.supabase,
       organizationId: auth.organizationId,
