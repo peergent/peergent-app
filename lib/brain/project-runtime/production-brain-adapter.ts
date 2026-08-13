@@ -63,14 +63,14 @@ function resolveOutputRef(
         organizationId,
         campaignId: projectId,
       });
-      return latest?.id ?? `creative:${organizationId}:${projectId}:capability`;
+      return latest?.outputRef ?? `creative:${organizationId}:${projectId}:capability`;
     }
     case "validation": {
       const latest = getDefaultValidationRepository().getLatest({
         organizationId,
         campaignId: projectId,
       });
-      return latest?.id ?? `validation:${organizationId}:${projectId}:capability`;
+      return latest?.outputRef ?? `validation:${organizationId}:${projectId}:capability`;
     }
     case "learning": {
       const latest = getDefaultLearningBrainRepository().getLatestSnapshot(key);
