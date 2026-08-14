@@ -75,6 +75,7 @@ export type BrainStatus =
   | "completed"
   | "failed"
   | "waiting_approval"
+  | "waiting_for_input"
   | "skipped";
 
 /** Result every brain returns — engine uses this to advance state. */
@@ -86,6 +87,8 @@ export type BrainResult<TOutput = BrainOutput> = {
   confidence: BrainConfidence | null;
   durationMs: number;
   errorCode: string | null;
+  /** Machine-safe readiness codes when status is waiting_for_input. */
+  readinessReasonCodes?: readonly string[];
   /** When true, engine transitions to waiting_for_approval */
   requiresApproval: boolean;
   approvalKind: string | null;

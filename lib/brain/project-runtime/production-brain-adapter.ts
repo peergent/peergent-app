@@ -30,6 +30,7 @@ import {
   emitBrainRuntimeDiagnostic,
   safeBrainRuntimeError,
 } from "../runtime/brain-runtime-diagnostics";
+import { parseStrategyReadinessReasonCodes } from "../strategy-readiness";
 
 function resolveOutputRef(
   brainId: ProjectBrainId,
@@ -85,12 +86,13 @@ function resolveOutputRef(
   }
 }
 
-function mapRunStatus(
+export function mapRunStatus(
   run: BrainRunResult
 ): BrainResult<BrainOutput>["status"] {
   if (run.run.status === "completed" || run.run.status === "partial") return "completed";
   if (run.run.status === "waiting_for_approval") return "waiting_approval";
-  if (run.run.status === "waiting_for_input" || run.run.status === "blocked") return "failed";
+  if (run.run.status === "waiting_for_input") return "waiting_for_input";
+  if (run.run.status === "blocked") return "failed";
   if (run.run.status === "failed" || run.run.status === "cancelled") return "failed";
   return run.output ? "completed" : "failed";
 }
@@ -129,8 +131,14 @@ function toBrainResult(
     durationMs: 0,
     errorCode:
       status === "failed"
-        ? run.output?.errors[0]?.code ?? "capability_failed"
-        : null,
+        ? run.output?.errors[0]?.code ?? run.run.errorCode ?? "capability_failed"
+        : status === "waiting_for_input"
+          ? run.run.errorCode ?? "readiness_insufficient"
+          : null,
+    readinessReasonCodes:
+      status === "waiting_for_input"
+        ? parseStrategyReadinessReasonCodes(run.run.errorMessage)
+        : undefined,
     requiresApproval: run.run.status === "waiting_for_approval",
     approvalKind: run.run.status === "waiting_for_approval" ? "campaign_approval" : null,
   };
@@ -212,6 +220,10 @@ export function createProductionBrainExecutionAdapter(
             runtimeDiagnosticContext: {
               episodeId: runInput.episode.snapshot.episodeId,
             },
+            strategyReadinessEnrichment:
+              runInput.brainId === "strategy"
+                ? { resolvedGraphs: runInput.episode.resolvedGraphs }
+                : null,
           }
         );
         emitBrainRuntimeDiagnostic({

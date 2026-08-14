@@ -27,6 +27,69 @@ import { getLayerRepositories } from "../layer-repository-factory";
 import { projectScopeKey } from "./scope-keys";
 import { PersistenceConflictError, PersistenceInfrastructureError } from "../server/persistence-config";
 import { episodePayloadForPersistence } from "../../project-runtime/episode-version-state";
+import { computeEpisodeCommitPayloadMetrics } from "../../project-runtime/episode-commit-payload-metrics";
+
+/** Emit slow-RPC diagnostic without aborting the in-flight request. */
+const EPISODE_RPC_SLOW_THRESHOLD_MS = 30_000;
+
+async function probeEpisodeRowVersion(
+  supabase: AppSupabaseClient,
+  episode: ProjectEpisodeRecord,
+  expectedVersion: number
+): Promise<void> {
+  const probeStartedMs = Date.now();
+  emitPersistenceDiagnostic({
+    event: "persistence_episode_rpc_lock_probe_started",
+    organizationId: episode.snapshot.organizationId,
+    projectId: episode.snapshot.projectId,
+    episodeId: episode.snapshot.episodeId,
+    expectedVersion,
+  });
+
+  try {
+    const { data, error } = await brainFrom(supabase, "brain_project_episodes")
+      .select("version")
+      .eq("organization_id", episode.snapshot.organizationId)
+      .eq("project_id", episode.snapshot.projectId)
+      .maybeSingle();
+
+    if (error) {
+      emitPersistenceDiagnostic({
+        event: "persistence_episode_rpc_lock_probe_completed",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        episodeId: episode.snapshot.episodeId,
+        expectedVersion,
+        actualVersion: undefined,
+        reason: error.message.slice(0, 120),
+        durationMs: Date.now() - probeStartedMs,
+      });
+      return;
+    }
+
+    const row = data as { version: number } | null;
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_lock_probe_completed",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      actualVersion: row?.version,
+      durationMs: Date.now() - probeStartedMs,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120);
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_lock_probe_completed",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      reason,
+      durationMs: Date.now() - probeStartedMs,
+    });
+  }
+}
 
 async function upsertEpisodeVersioned(
   supabase: AppSupabaseClient,
@@ -34,6 +97,27 @@ async function upsertEpisodeVersioned(
   expectedVersion: number
 ): Promise<PersistEpisodeResult> {
   const startedMs = Date.now();
+  const metrics = computeEpisodeCommitPayloadMetrics(episode, expectedVersion);
+  emitPersistenceDiagnostic({
+    event: "final_commit_payload_metrics",
+    organizationId: metrics.organizationId,
+    projectId: metrics.projectId,
+    episodeId: metrics.episodeId,
+    expectedVersion: metrics.expectedVersion,
+    episodeStatus: metrics.episodeStatus,
+    snapshotState: metrics.snapshotState,
+    activeBrain: metrics.activeBrain,
+    artifactCount: metrics.artifactCount,
+    resolvedGraphCount: metrics.resolvedGraphCount,
+    cachedLearningProposalCount: metrics.cachedLearningProposalCount,
+    payloadBytes: metrics.payloadBytes,
+    episodeJsonBytes: metrics.episodeJsonBytes,
+    artifactsJsonBytes: metrics.artifactsJsonBytes,
+    resolvedGraphsJsonBytes: metrics.resolvedGraphsJsonBytes,
+    completedAt: metrics.completedAt,
+    hasLastError: metrics.hasLastError,
+  });
+
   emitPersistenceDiagnostic({
     event: "persistence_episode_upsert_started",
     organizationId: episode.snapshot.organizationId,
@@ -41,9 +125,36 @@ async function upsertEpisodeVersioned(
     episodeId: episode.snapshot.episodeId,
     expectedVersion,
     operation: "rpc.upsert_brain_project_episode_versioned",
+    payloadBytes: metrics.payloadBytes,
+    resolvedGraphCount: metrics.resolvedGraphCount,
   });
 
+  await probeEpisodeRowVersion(supabase, episode, expectedVersion);
+
+  const slowRpcTimer = setTimeout(() => {
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_request_timeout",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      payloadBytes: metrics.payloadBytes,
+      durationMs: Date.now() - startedMs,
+    });
+  }, EPISODE_RPC_SLOW_THRESHOLD_MS);
+
   try {
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_request_started",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      payloadBytes: metrics.payloadBytes,
+    });
+
     const { data, error } = await supabase.rpc("upsert_brain_project_episode_versioned", {
       p_organization_id: episode.snapshot.organizationId,
       p_project_id: episode.snapshot.projectId,
@@ -62,6 +173,18 @@ async function upsertEpisodeVersioned(
       p_updated_at: episode.updatedAt,
       p_completed_at: episode.completedAt,
       p_last_error: episode.lastError,
+    });
+
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_request_returned",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      payloadBytes: metrics.payloadBytes,
+      durationMs: Date.now() - startedMs,
+      errorName: error ? "PostgrestError" : undefined,
     });
 
     if (error) {
@@ -130,6 +253,17 @@ async function upsertEpisodeVersioned(
 
     return { newVersion: row.new_version, conflict: false };
   } catch (error) {
+    emitPersistenceDiagnostic({
+      event: "persistence_episode_rpc_request_returned",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      episodeId: episode.snapshot.episodeId,
+      expectedVersion,
+      operation: "rpc.upsert_brain_project_episode_versioned",
+      payloadBytes: metrics.payloadBytes,
+      durationMs: Date.now() - startedMs,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     if (
       error instanceof PersistenceInfrastructureError ||
       error instanceof PersistenceConflictError
@@ -149,6 +283,8 @@ async function upsertEpisodeVersioned(
       durationMs: Date.now() - startedMs,
     });
     throw error;
+  } finally {
+    clearTimeout(slowRpcTimer);
   }
 }
 

@@ -33,6 +33,7 @@ import type { ContextAssemblyResult } from "../context/assembly-types";
 import {
   ContextAcquisitionConfigurationError,
 } from "../context-acquisition/server/context-acquisition-config";
+import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
 import { createResearchLayer } from "../layers/research";
 import type { ResearchGraph } from "../layers/research";
 import { createReasoningLayer } from "../layers/reasoning";
@@ -118,6 +119,8 @@ export type ExecuteBrainForWorkflowStepOptions = {
   runtimeDiagnosticContext?: {
     episodeId?: string;
   };
+  /** PX-50.11 — episode-resolved graphs for merged strategy readiness. */
+  strategyReadinessEnrichment?: StrategyReadinessRequestEnrichment | null;
 };
 
 function resolveBrainEnvironment(peerId: string): BrainEnvironment {
@@ -161,7 +164,8 @@ function buildRuntimeForInput(
 
 function buildBaseRequest(
   input: ExecuteBrainForWorkflowStepInput,
-  capabilityId: BrainCapabilityId
+  capabilityId: BrainCapabilityId,
+  options?: ExecuteBrainForWorkflowStepOptions
 ): BrainRunRequestWithBudget {
   const campaignCtx = resolveCampaignContext(input);
   const isDemo = isDemoPeer(input.peerId);
@@ -183,6 +187,8 @@ function buildBaseRequest(
     campaignContext: campaignCtx,
     marketingUnderstanding: input.domainInput.understanding ?? null,
     performanceMetrics: includeDemoMetrics ? demoPerformanceMetrics(input.project.id) : undefined,
+    strategyReadinessEnrichment: options?.strategyReadinessEnrichment ?? null,
+    runtimeDiagnosticEpisodeId: options?.runtimeDiagnosticContext?.episodeId,
   };
 }
 
@@ -425,7 +431,7 @@ export async function executeBrainForWorkflowStep(
   return runWithDependenciesAsync(
     input,
     runtime,
-    buildBaseRequest(input, capabilityId),
+    buildBaseRequest(input, capabilityId, options),
     seededOutputs,
     options
   );
@@ -507,7 +513,7 @@ export async function executeBrainForProjectBrain(
     workflowInput,
     runtime,
     {
-      ...buildBaseRequest(workflowInput, capabilityId),
+      ...buildBaseRequest(workflowInput, capabilityId, options),
       runtimeDiagnosticBrainId: input.brainId,
       runtimeDiagnosticEpisodeId: options?.runtimeDiagnosticContext?.episodeId,
     },

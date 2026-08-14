@@ -91,7 +91,7 @@ describe("PX-50.2 Supabase episode RPC persistence", () => {
         p_current_state: "created",
       })
     );
-    expect(from).not.toHaveBeenCalled();
+    expect(from).toHaveBeenCalledWith("brain_project_episodes");
     expect(result.newVersion).toBe(1);
     expect(episode.durableVersion).toBe(1);
   });

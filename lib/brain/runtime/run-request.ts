@@ -9,6 +9,7 @@ import type { ResearchGraph } from "../layers/research";
 import type { ReasoningGraph } from "../layers/reasoning";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
 import type { ProjectBrainId } from "../project-engine/types";
+import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
 
 export type BrainRunRequest = {
   organizationId: string;
@@ -49,6 +50,8 @@ export type BrainRunRequest = {
   runtimeDiagnosticBrainId?: ProjectBrainId;
   /** PX-50.3 observability-only — never read by runtime execution logic. */
   runtimeDiagnosticEpisodeId?: string;
+  /** PX-50.11 — merged strategy readiness enrichment (resolved graphs + assembly profile). */
+  strategyReadinessEnrichment?: StrategyReadinessRequestEnrichment | null;
 };
 
 export type BrainRuntimeBudgetLimits = {

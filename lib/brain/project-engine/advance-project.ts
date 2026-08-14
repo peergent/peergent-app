@@ -148,6 +148,15 @@ function applyBrainResult(
     };
   }
 
+  if (result.status === "waiting_for_input") {
+    return {
+      ...next,
+      activeBrain: result.brainId,
+      waitingReason: "missing_context",
+      updatedAt: now.toISOString(),
+    };
+  }
+
   const gate = resolveApprovalGate(result.brainId);
   const deferApprovalPause = result.brainId === "validation" && result.requiresApproval;
 

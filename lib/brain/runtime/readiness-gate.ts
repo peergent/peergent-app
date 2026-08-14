@@ -2,7 +2,12 @@ import type { BrainCapabilityId, BrainSnapshotSliceKey } from "../capabilities/r
 import type { ReadinessDimension } from "../context/readiness";
 import { getBrainCapability } from "../capabilities/registry";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
-import { evaluateStrategyContextReadiness } from "@/lib/office/campaign/strategy-context-readiness";
+import {
+  buildStrategyReadinessDiagnostic,
+  emitStrategyReadinessDiagnostic,
+  evaluateEffectiveStrategyContextReadiness,
+  type StrategyReadinessEnrichmentInput,
+} from "../strategy-readiness";
 
 export type CapabilityExecutionRequirements = {
   minimumReadinessScore: number;
@@ -115,16 +120,42 @@ export function evaluateReadinessGate(input: {
   missingCriticalFields: readonly string[];
   assemblyState: import("../context/assembly-types").ContextAssemblyState;
   campaignContext?: CampaignContext | null;
+  strategyReadinessEnrichment?: StrategyReadinessEnrichmentInput | null;
+  strategyReadinessDiagnostic?: {
+    organizationId: string;
+    projectId: string;
+    episodeId?: string;
+  } | null;
 }): ReadinessGateResult {
   if (input.capabilityId === "strategy" && input.campaignContext) {
-    const strategyReadiness = evaluateStrategyContextReadiness(input.campaignContext);
-    if (strategyReadiness.ready) {
+    const enrichment: StrategyReadinessEnrichmentInput = {
+      campaignContext: input.campaignContext,
+      companyProfile: input.strategyReadinessEnrichment?.companyProfile ?? null,
+      companyWebsiteSnapshot: input.strategyReadinessEnrichment?.companyWebsiteSnapshot ?? null,
+      resolvedGraphs: input.strategyReadinessEnrichment?.resolvedGraphs ?? null,
+    };
+    const evaluation = evaluateEffectiveStrategyContextReadiness({
+      ...enrichment,
+      campaignContext: input.campaignContext,
+    });
+    if (input.strategyReadinessDiagnostic) {
+      emitStrategyReadinessDiagnostic(
+        buildStrategyReadinessDiagnostic({
+          ...enrichment,
+          campaignContext: input.campaignContext,
+          organizationId: input.strategyReadinessDiagnostic.organizationId,
+          projectId: input.strategyReadinessDiagnostic.projectId,
+          episodeId: input.strategyReadinessDiagnostic.episodeId,
+        })
+      );
+    }
+    if (evaluation.ready) {
       return { ok: true, partial: false };
     }
     return {
       ok: false,
       status: "waiting_for_input",
-      reasons: [...strategyReadiness.machineReasonCodes],
+      reasons: [...evaluation.machineReasonCodes],
     };
   }
 

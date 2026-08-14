@@ -35,7 +35,13 @@ export type PersistenceDiagnosticEvent =
   | "episode_version_state_before_commit"
   | "episode_version_state_after_commit"
   | "episode_version_cache_write"
-  | "episode_version_conflict_reload_state";
+  | "episode_version_conflict_reload_state"
+  | "persistence_episode_rpc_request_started"
+  | "persistence_episode_rpc_request_returned"
+  | "persistence_episode_rpc_request_timeout"
+  | "persistence_episode_rpc_lock_probe_started"
+  | "persistence_episode_rpc_lock_probe_completed"
+  | "final_commit_payload_metrics";
 
 export type PersistenceDiagnosticPayload = {
   event: PersistenceDiagnosticEvent;
@@ -64,6 +70,18 @@ export type PersistenceDiagnosticPayload = {
   step?: string;
   source?: string;
   durableVersion?: number;
+  episodeStatus?: string;
+  snapshotState?: string;
+  activeBrain?: string | null;
+  artifactCount?: number;
+  resolvedGraphCount?: number;
+  cachedLearningProposalCount?: number;
+  payloadBytes?: number;
+  episodeJsonBytes?: number;
+  artifactsJsonBytes?: number;
+  resolvedGraphsJsonBytes?: number;
+  completedAt?: string | null;
+  hasLastError?: boolean;
 };
 
 export function safePersistenceError(error: unknown): {
@@ -95,7 +113,7 @@ export function emitPersistenceDiagnostic(payload: PersistenceDiagnosticPayload)
     domain: "brain_persistence",
     ...payload,
   });
-  if (payload.event.endsWith("_failed") || payload.event.includes("conflict") || payload.event.includes("missing")) {
+  if (payload.event.endsWith("_failed") || payload.event.includes("conflict") || payload.event.includes("missing") || payload.event.includes("timeout")) {
     console.error(line);
     return;
   }

@@ -539,9 +539,50 @@ export class ProjectEpisodeRunner {
           idempotencyKey,
         });
 
+        if (brainResult.status === "waiting_for_input") {
+          const pauseReason =
+            brainResult.readinessReasonCodes?.length
+              ? brainResult.readinessReasonCodes.join("; ")
+              : brainResult.errorCode ?? "readiness_insufficient";
+          emitOrchestrationDiagnostic({
+            event: "episode_runner_brain_waiting_for_context",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: brainResult.brainId,
+            errorCode: brainResult.errorCode ?? undefined,
+            readinessReasonCodes: brainResult.readinessReasonCodes,
+            correlationId: episode.correlationId,
+          });
+          episode = {
+            ...episode,
+            snapshot: { ...episode.snapshot, activeBrain: brainId },
+          };
+          return await pauseEpisode(
+            episode,
+            "waiting_for_context",
+            pauseReason,
+            locale,
+            this.durablePort
+          );
+        }
+
         episode = applyBrainExecution(episode, brainResult, locale, idempotencyKey);
         episode = await this.commitEpisode(episode);
         if (brainResult.status === "failed") {
+          emitOrchestrationDiagnostic({
+            event: "episode_runner_brain_failure_persisted",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: brainResult.brainId,
+            errorCode: brainResult.errorCode ?? undefined,
+            durableVersion: episode.durableVersion,
+            snapshotState: episode.snapshot.state,
+            correlationId: episode.correlationId,
+          });
           episode = { ...episode, episodeStatus: "failed", lastError: brainResult.errorCode };
           break;
         }
@@ -750,6 +791,7 @@ function applyBrainExecution(
     confidence: result.confidence?.value ?? null,
     durationMs: result.durationMs,
     errorCode: result.errorCode,
+    readinessReasonCodes: result.readinessReasonCodes,
     decisionIds: result.output?.decisionIds,
     requiresApproval: result.requiresApproval,
     approvalKind: result.approvalKind,

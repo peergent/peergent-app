@@ -35,7 +35,9 @@ export type OrchestrationDiagnosticEvent =
   | "runner_episode_lookup_completed"
   | "episode_start_invoked"
   | "episode_conflict_reload"
-  | "automatic_campaign_execution_invoked";
+  | "automatic_campaign_execution_invoked"
+  | "episode_runner_brain_failure_persisted"
+  | "episode_runner_brain_waiting_for_context";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -64,6 +66,7 @@ export type OrchestrationDiagnosticPayload = {
   correlationId?: string;
   initialDurableVersion?: number;
   actualVersion?: number;
+  readinessReasonCodes?: readonly string[];
 };
 
 export function safeOrchestrationError(error: unknown): {

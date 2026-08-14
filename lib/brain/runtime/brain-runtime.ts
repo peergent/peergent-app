@@ -34,6 +34,7 @@ import {
   evaluateReadinessGate,
   missingCriticalFieldsFromAssembly,
 } from "./readiness-gate";
+import type { StrategyReadinessEnrichmentInput } from "../strategy-readiness";
 import { projectBrainContext, buildCacheKeyParts } from "./context-projection";
 import { selectBrainProvider } from "./provider-selector";
 import {
@@ -235,6 +236,7 @@ export class BrainRuntime {
       missingCriticalFields: missingCritical,
       assemblyState: assembly.state,
       campaignContext: request.campaignContext,
+      ...buildStrategyReadinessGateOptions(request, assembly),
     });
 
     const policy = evaluateBrainPolicy({
@@ -476,6 +478,7 @@ export class BrainRuntime {
       missingCriticalFields: missingCritical,
       assemblyState: assembly.state,
       campaignContext: request.campaignContext,
+      ...buildStrategyReadinessGateOptions(request, assembly),
     });
 
     if (!readinessGate.ok) {
@@ -1164,4 +1167,38 @@ export class BrainRuntime {
 
 export function createBrainRuntime(deps: BrainRuntimeDeps): BrainRuntime {
   return new BrainRuntime(deps);
+}
+
+function buildStrategyReadinessGateOptions(
+  request: BrainRunRequestWithBudget,
+  assembly: ContextAssemblyResult
+): {
+  strategyReadinessEnrichment?: StrategyReadinessEnrichmentInput | null;
+  strategyReadinessDiagnostic?: {
+    organizationId: string;
+    projectId: string;
+    episodeId?: string;
+  } | null;
+} {
+  if (request.capabilityId !== "strategy" || !request.campaignContext) {
+    return {};
+  }
+
+  const enrichment: StrategyReadinessEnrichmentInput = {
+    campaignContext: request.campaignContext,
+    companyProfile: assembly.companySnapshot.profile,
+    companyWebsiteSnapshot: assembly.companySnapshot.website,
+    resolvedGraphs: request.strategyReadinessEnrichment?.resolvedGraphs ?? null,
+  };
+
+  return {
+    strategyReadinessEnrichment: enrichment,
+    strategyReadinessDiagnostic: request.campaignId
+      ? {
+          organizationId: request.organizationId,
+          projectId: request.campaignId,
+          episodeId: request.runtimeDiagnosticEpisodeId,
+        }
+      : null,
+  };
 }

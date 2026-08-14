@@ -136,7 +136,8 @@ export type BrainExecutionStatus =
   | "completed"
   | "failed"
   | "skipped"
-  | "waiting_approval";
+  | "waiting_approval"
+  | "waiting_for_input";
 
 export type ProjectEngineEvent = {
   id: string;
@@ -196,6 +197,8 @@ export type BrainResultSummary = {
   durationMs: number | null;
   errorCode: string | null;
   decisionIds?: readonly string[];
+  /** Machine-safe readiness codes when status is waiting_for_input. */
+  readinessReasonCodes?: readonly string[];
   /** PX-47 — completed brains may still require customer approval before continuing */
   requiresApproval?: boolean;
   approvalKind?: string | null;
