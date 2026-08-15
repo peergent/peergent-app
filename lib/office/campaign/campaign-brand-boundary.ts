@@ -59,7 +59,7 @@ export function campaignUsesExternalBrand(input: {
   const brand = normalizeBrandKey(input.brandName);
   const org = normalizeBrandKey(input.accountOrganizationName ?? "");
   if (!brand) return false;
-  if (!org) return true;
+  if (!org) return false;
   return brand !== org && !brand.includes(org) && !org.includes(brand);
 }
 
