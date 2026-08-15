@@ -12,7 +12,6 @@ export const CAPABILITY_DEPENDENCIES: Readonly<
   strategy: [
     "company_understanding",
     "brand_understanding",
-    "website_understanding",
   ],
   channel_planning: ["strategy"],
   campaign_planning: ["strategy"],

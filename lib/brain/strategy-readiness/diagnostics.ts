@@ -1,22 +1,30 @@
 import type { StrategyReadinessEnrichmentInput } from "./types";
-import { evaluateEffectiveStrategyContextReadiness } from "./build-effective-campaign-context";
+import {
+  evaluateEffectiveStrategyContextReadiness,
+  buildEffectiveCampaignContextForStrategyReadiness,
+} from "./build-effective-campaign-context";
+import type {
+  StrategyReadinessKnowledgeResolvedDiagnostic,
+  StrategyReadinessDiagnosticPayload,
+} from "./types";
 
-export type StrategyReadinessDiagnosticPayload = {
-  event: "strategy_readiness_context_built";
-  organizationId: string;
-  projectId: string;
-  episodeId?: string;
-  explicitFieldCount: number;
-  derivedFieldCount: number;
-  missingRequirementCodes: readonly string[];
-  websiteKnowledgeAvailable: boolean;
-  competitorKnowledgeAvailable: boolean;
-  sourceKinds: readonly string[];
-  ready: boolean;
-};
+export type { StrategyReadinessDiagnosticPayload };
 
 export function emitStrategyReadinessDiagnostic(
   payload: StrategyReadinessDiagnosticPayload
+): void {
+  if (process.env.BRAIN_ORCHESTRATION_DIAGNOSTICS === "0") return;
+  console.info(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      domain: "brain_orchestration",
+      ...payload,
+    })
+  );
+}
+
+export function emitStrategyReadinessKnowledgeResolvedDiagnostic(
+  payload: StrategyReadinessKnowledgeResolvedDiagnostic
 ): void {
   if (process.env.BRAIN_ORCHESTRATION_DIAGNOSTICS === "0") return;
   console.info(
@@ -52,6 +60,33 @@ export function buildStrategyReadinessDiagnostic(
     websiteKnowledgeAvailable,
     competitorKnowledgeAvailable,
     sourceKinds: evaluation.build.sourceKinds,
+    ready: evaluation.ready,
+  };
+}
+
+export function buildStrategyReadinessKnowledgeResolvedDiagnostic(
+  input: StrategyReadinessEnrichmentInput & {
+    organizationId: string;
+    projectId: string;
+    episodeId?: string;
+  }
+): StrategyReadinessKnowledgeResolvedDiagnostic {
+  const build = buildEffectiveCampaignContextForStrategyReadiness(input);
+  const evaluation = evaluateEffectiveStrategyContextReadiness(input);
+  const sources = build.knowledgeSources;
+
+  return {
+    event: "strategy_readiness_knowledge_resolved",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    episodeId: input.episodeId,
+    targetAudienceSource: sources.targetAudience.source,
+    industrySource: sources.industry.source,
+    uniqueValuePropositionSource: sources.uniqueValueProposition.source,
+    productOrServiceSource: sources.productOrService.source,
+    websiteDecisionSource: sources.website.source,
+    competitorDecisionSource: sources.competitors.source,
+    unresolved: build.unresolved,
     ready: evaluation.ready,
   };
 }

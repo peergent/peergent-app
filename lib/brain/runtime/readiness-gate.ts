@@ -4,7 +4,9 @@ import { getBrainCapability } from "../capabilities/registry";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import {
   buildStrategyReadinessDiagnostic,
+  buildStrategyReadinessKnowledgeResolvedDiagnostic,
   emitStrategyReadinessDiagnostic,
+  emitStrategyReadinessKnowledgeResolvedDiagnostic,
   evaluateEffectiveStrategyContextReadiness,
   type StrategyReadinessEnrichmentInput,
 } from "../strategy-readiness";
@@ -27,7 +29,7 @@ const REQUIREMENTS: Readonly<Record<BrainCapabilityId, CapabilityExecutionRequir
     minimumReadinessScore: 50,
     requiredDimensions: ["website"],
     criticalFields: ["website"],
-    partialExecutionAllowed: false,
+    partialExecutionAllowed: true,
   },
   brand_understanding: {
     minimumReadinessScore: 35,
@@ -133,20 +135,24 @@ export function evaluateReadinessGate(input: {
       companyProfile: input.strategyReadinessEnrichment?.companyProfile ?? null,
       companyWebsiteSnapshot: input.strategyReadinessEnrichment?.companyWebsiteSnapshot ?? null,
       resolvedGraphs: input.strategyReadinessEnrichment?.resolvedGraphs ?? null,
+      upstreamCapabilityOutputs: input.strategyReadinessEnrichment?.upstreamCapabilityOutputs ?? null,
+      inflightGraphs: input.strategyReadinessEnrichment?.inflightGraphs ?? null,
     };
     const evaluation = evaluateEffectiveStrategyContextReadiness({
       ...enrichment,
       campaignContext: input.campaignContext,
     });
     if (input.strategyReadinessDiagnostic) {
-      emitStrategyReadinessDiagnostic(
-        buildStrategyReadinessDiagnostic({
-          ...enrichment,
-          campaignContext: input.campaignContext,
-          organizationId: input.strategyReadinessDiagnostic.organizationId,
-          projectId: input.strategyReadinessDiagnostic.projectId,
-          episodeId: input.strategyReadinessDiagnostic.episodeId,
-        })
+      const diagnosticBase = {
+        ...enrichment,
+        campaignContext: input.campaignContext,
+        organizationId: input.strategyReadinessDiagnostic.organizationId,
+        projectId: input.strategyReadinessDiagnostic.projectId,
+        episodeId: input.strategyReadinessDiagnostic.episodeId,
+      };
+      emitStrategyReadinessDiagnostic(buildStrategyReadinessDiagnostic(diagnosticBase));
+      emitStrategyReadinessKnowledgeResolvedDiagnostic(
+        buildStrategyReadinessKnowledgeResolvedDiagnostic(diagnosticBase)
       );
     }
     if (evaluation.ready) {

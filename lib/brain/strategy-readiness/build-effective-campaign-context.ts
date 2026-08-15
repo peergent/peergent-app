@@ -3,6 +3,7 @@ import {
   evaluateStrategyContextReadiness,
   type StrategyContextReadiness,
 } from "@/lib/office/campaign/strategy-context-readiness";
+import { buildStrategyReadinessKnowledgeBundle } from "./build-knowledge-bundle";
 import {
   deriveCompetitorKnowledge,
   deriveIndustry,
@@ -16,7 +17,15 @@ import type {
   EffectiveStrategyReadinessEvaluation,
   StrategyReadinessEnrichmentInput,
   StrategyReadinessFieldSource,
+  StrategyReadinessKnowledgeDimensions,
+  StrategyReadinessKnowledgeSource,
 } from "./types";
+
+function mapKnowledgeSource(source: StrategyReadinessKnowledgeSource | null): StrategyReadinessFieldSource | null {
+  if (!source) return null;
+  if (source === "persisted_graph") return "research_graph";
+  return source;
+}
 
 function mergeBrandContext(
   base: CampaignContext,
@@ -52,6 +61,32 @@ function mergeBrandContext(
   };
 }
 
+function normalizeKnowledgeSource(
+  source:
+    | "explicit_campaign"
+    | "explicit_skip"
+    | "company_profile"
+    | "company_graph"
+    | "research_graph"
+    | "marketing_intelligence_graph"
+    | "website_snapshot"
+    | "inflight_graph"
+    | "upstream_capability"
+    | "deterministic_inference"
+    | null
+): StrategyReadinessKnowledgeSource | null {
+  if (!source) return null;
+  if (source === "company_graph" || source === "research_graph" || source === "marketing_intelligence_graph") {
+    return "persisted_graph";
+  }
+  if (source === "website_snapshot") return "company_profile";
+  return source;
+}
+
+function collectUnresolved(readiness: StrategyContextReadiness): readonly string[] {
+  return [...readiness.machineReasonCodes];
+}
+
 /**
  * Merge explicit campaign setup with Peergent-discovered knowledge for Strategy readiness.
  * Explicit user-provided values always win; derived values fill only missing signals.
@@ -59,11 +94,14 @@ function mergeBrandContext(
 export function buildEffectiveCampaignContextForStrategyReadiness(
   input: StrategyReadinessEnrichmentInput
 ): EffectiveStrategyReadinessBuildResult {
-  const base = input.campaignContext;
-  const profile = input.companyProfile ?? null;
-  const companyGraph = input.resolvedGraphs?.companyGraph ?? null;
-  const research = input.resolvedGraphs?.researchBrainGraph ?? null;
-  const marketingIntelligence = input.resolvedGraphs?.marketingIntelligenceBrainGraph ?? null;
+  const bundle = buildStrategyReadinessKnowledgeBundle(input);
+  const base = bundle.campaignContext;
+  const profile = bundle.companyProfile;
+  const companyGraph = bundle.resolvedGraphs?.companyGraph ?? null;
+  const research = bundle.resolvedGraphs?.researchBrainGraph ?? null;
+  const marketingIntelligence = bundle.resolvedGraphs?.marketingIntelligenceBrainGraph ?? null;
+  const capability = bundle.capabilityKnowledge;
+  const inflight = bundle.inflightKnowledge;
 
   const derivedFields: string[] = [];
   const sourceKinds = new Set<StrategyReadinessFieldSource>();
@@ -99,10 +137,13 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     profile,
     research,
     marketingIntelligence,
+    inflightAudience: inflight.targetAudience,
+    capabilityAudience: capability.targetAudience,
+    inferredAudience: bundle.inferredTargetAudience,
   });
   track(
     "targetAudience",
-    audience.source,
+    mapKnowledgeSource(normalizeKnowledgeSource(audience.source)),
     Boolean(base.audience.trim() || base.brandContext?.targetAudience?.trim())
   );
 
@@ -110,18 +151,22 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     explicitIndustry: base.brandContext?.industry,
     profile,
     companyGraph,
+    inflightIndustry: inflight.industry,
+    capabilityIndustry: capability.industry,
   });
-  track("industry", industry.source, Boolean(base.brandContext?.industry?.trim()));
+  track("industry", mapKnowledgeSource(normalizeKnowledgeSource(industry.source)), Boolean(base.brandContext?.industry?.trim()));
 
   const usps = deriveUniqueSellingPoints({
     explicitUsps: base.brandContext?.uniqueSellingPoints,
     profile,
     companyGraph,
     marketingIntelligence,
+    inflightUsps: inflight.uniqueSellingPoints,
+    capabilityUsps: capability.uniqueSellingPoints,
   });
   track(
     "uniqueValueProposition",
-    usps.source,
+    mapKnowledgeSource(normalizeKnowledgeSource(usps.source)),
     Boolean(base.brandContext?.uniqueSellingPoints?.filter(Boolean).length)
   );
 
@@ -130,10 +175,12 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     description: base.description,
     profile,
     companyGraph,
+    inflightProducts: inflight.productsAndServices,
+    capabilityProducts: capability.productsAndServices,
   });
   track(
     "productOrService",
-    products.source,
+    mapKnowledgeSource(normalizeKnowledgeSource(products.source)),
     Boolean(
       base.brandContext?.productsAndServices?.filter(Boolean).length ||
         base.description.trim().length >= 20
@@ -144,12 +191,16 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     websiteUrl: base.websiteUrl,
     websiteSkipped: base.websiteSource === "skipped" || base.websiteState === "skipped",
     profile,
-    websiteSnapshot: input.companyWebsiteSnapshot ?? null,
+    websiteSnapshot: bundle.companyWebsiteSnapshot,
     research,
+    inflightWebsiteKnown: inflight.websiteKnown,
+    inflightWebsiteUrl: inflight.websiteUrl,
+    capabilityWebsiteUrl: capability.websiteUrl,
+    capabilityWebsiteSemantic: capability.websiteSemantic,
   });
   track(
     "website",
-    website.source,
+    mapKnowledgeSource(normalizeKnowledgeSource(website.source)),
     Boolean(base.websiteUrl || base.websiteSource === "skipped" || base.websiteState === "skipped")
   );
 
@@ -159,12 +210,45 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     profile,
     research,
     marketingIntelligence,
+    inflightCompetitors: inflight.competitors,
+    capabilityCompetitors: capability.competitors,
+    capabilityCompetitorsSkipped: capability.competitorsExplicitlySkipped,
+    capabilityCompetitorsHasEvidence: capability.competitorsHasEvidence,
   });
   track(
     "competitors",
-    competitors.source,
+    mapKnowledgeSource(normalizeKnowledgeSource(competitors.source)),
     Boolean(base.competitors.length > 0 || base.competitorsSkipped)
   );
+
+  const knowledgeSources: StrategyReadinessKnowledgeDimensions = {
+    targetAudience: {
+      value: audience.value,
+      source: normalizeKnowledgeSource(audience.source),
+    },
+    industry: {
+      value: industry.value,
+      source: normalizeKnowledgeSource(industry.source),
+    },
+    uniqueValueProposition: {
+      values: usps.values,
+      source: normalizeKnowledgeSource(usps.source),
+    },
+    productOrService: {
+      values: products.values,
+      source: normalizeKnowledgeSource(products.source),
+    },
+    website: {
+      url: website.url,
+      semantic: website.semantic,
+      source: normalizeKnowledgeSource(website.source),
+    },
+    competitors: {
+      explicitlySkipped: competitors.explicitlySkipped,
+      hasEvidence: competitors.known,
+      source: normalizeKnowledgeSource(competitors.source),
+    },
+  };
 
   const brandContext = mergeBrandContext(base, {
     industry: industry.value,
@@ -176,7 +260,7 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
   let websiteState = base.websiteState;
   let websiteSource = base.websiteSource;
   let websiteUrl = base.websiteUrl;
-  if (website.explicitlySkipped) {
+  if (website.explicitlySkipped || website.semantic === "not_applicable") {
     websiteState = "skipped";
     websiteSource = "skipped";
     websiteUrl = null;
@@ -205,12 +289,16 @@ export function buildEffectiveCampaignContextForStrategyReadiness(
     competitorContextState,
   };
 
+  const readiness = evaluateStrategyContextReadiness(effectiveContext);
+
   return {
     effectiveContext,
     explicitFieldCount,
     derivedFieldCount,
     derivedFields,
     sourceKinds: [...sourceKinds],
+    knowledgeSources,
+    unresolved: collectUnresolved(readiness),
   };
 }
 

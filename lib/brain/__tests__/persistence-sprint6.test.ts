@@ -555,10 +555,10 @@ describe("Project Brain Sprint 6 — Persistence", () => {
         actorId: "test",
         environment: "live",
       });
-      expect(result.run.status).toBe("waiting_for_input");
-      expect(result.output).toBeNull();
+      expect(result.run.status).toBe("partial");
+      expect(result.output).not.toBeNull();
       const reloaded = await repos.runs.getById(ORG_A, result.run.id);
-      expect(reloaded?.status).toBe("waiting_for_input");
+      expect(reloaded?.status).toBe("partial");
     });
   });
 

@@ -1189,6 +1189,8 @@ function buildStrategyReadinessGateOptions(
     companyProfile: assembly.companySnapshot.profile,
     companyWebsiteSnapshot: assembly.companySnapshot.website,
     resolvedGraphs: request.strategyReadinessEnrichment?.resolvedGraphs ?? null,
+    upstreamCapabilityOutputs: request.strategyReadinessEnrichment?.upstreamCapabilityOutputs ?? null,
+    inflightGraphs: request.strategyReadinessEnrichment?.inflightGraphs ?? null,
   };
 
   return {

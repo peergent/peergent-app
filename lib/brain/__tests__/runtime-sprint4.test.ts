@@ -88,7 +88,7 @@ describe("Project Brain Sprint 4 — Runtime", () => {
   });
 
   describe("readiness gate", () => {
-    it("blocks website capability without website snapshot", () => {
+    it("allows partial website capability without website snapshot", () => {
       const profile = buildPeergentCompanyProfile("en");
       const assembly = assembleCompanyContextSync({
         organizationId: profile.organizationId,
@@ -104,8 +104,8 @@ describe("Project Brain Sprint 4 — Runtime", () => {
         missingCriticalFields: ["website"],
         assemblyState: assembly.state,
       });
-      expect(gate.ok).toBe(false);
-      if (!gate.ok) expect(gate.status).toBe("waiting_for_input");
+      expect(gate.ok).toBe(true);
+      if (gate.ok) expect(gate.partial).toBe(true);
     });
   });
 

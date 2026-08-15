@@ -23,6 +23,7 @@ import { resolveOrganizationId } from "./resolve-company-intelligence";
 import { createBrainRuntimeWithAssembly } from "./brain-runtime-factory";
 import type { BrainRepositoryBundle } from "../persistence/repository-factory";
 import { resolveCompanyIntelligence } from "./resolve-company-intelligence";
+import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
 import {
   brainCapabilityProgressLabel,
   brainFinalizeProgressLabel,
@@ -33,7 +34,6 @@ import type { ContextAssemblyResult } from "../context/assembly-types";
 import {
   ContextAcquisitionConfigurationError,
 } from "../context-acquisition/server/context-acquisition-config";
-import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
 import { createResearchLayer } from "../layers/research";
 import type { ResearchGraph } from "../layers/research";
 import { createReasoningLayer } from "../layers/reasoning";
@@ -267,6 +267,77 @@ function resolveMarketingIntelligenceGraphForRun(
   }).graph;
 }
 
+function buildStrategyReadinessEnrichmentForFinalRun(
+  request: BrainRunRequestWithBudget,
+  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
+  graphs: {
+    researchGraph: ResearchGraph | null;
+    reasoningGraph: ReasoningGraph | null;
+    marketingIntelligenceGraph: MarketingIntelligenceGraph | null;
+  },
+  options?: ExecuteBrainForWorkflowStepOptions
+): StrategyReadinessRequestEnrichment | null {
+  if (request.capabilityId !== "strategy") {
+    return options?.strategyReadinessEnrichment ?? null;
+  }
+
+  return {
+    resolvedGraphs: options?.strategyReadinessEnrichment?.resolvedGraphs ?? null,
+    upstreamCapabilityOutputs: upstreamOutputs,
+    inflightGraphs: graphs,
+  };
+}
+
+function runOptionalDependenciesSync(
+  runtime: ReturnType<typeof buildRuntimeForInput>,
+  request: BrainRunRequestWithBudget,
+  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
+  optionalDeps: readonly BrainCapabilityId[]
+): void {
+  for (const depId of optionalDeps) {
+    if (hasFreshSeededOutput(depId, upstreamOutputs[depId])) continue;
+    const depResult = runtime.executeRunSync({
+      ...request,
+      capabilityId: depId,
+      correlationId: `${request.correlationId}-opt-${depId}`,
+      upstreamOutputs,
+    });
+    if (depResult.output) upstreamOutputs[depId] = depResult.output;
+  }
+}
+
+async function runOptionalDependenciesAsync(
+  runtime: ReturnType<typeof buildRuntimeForInput>,
+  request: BrainRunRequestWithBudget,
+  upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
+  optionalDeps: readonly BrainCapabilityId[],
+  optionalDepsSet: Set<BrainCapabilityId>,
+  dependencyTimeoutMs: number,
+  onProgress?: (label: string) => void
+): Promise<void> {
+  for (const depId of optionalDeps) {
+    if (hasFreshSeededOutput(depId, upstreamOutputs[depId])) continue;
+    onProgress?.(brainCapabilityProgressLabel(depId, request.locale));
+    const depPromise = runtime.executeRun({
+      ...request,
+      capabilityId: depId,
+      correlationId: `${request.correlationId}-opt-${depId}`,
+      upstreamOutputs,
+    });
+
+    try {
+      const depResult = await runWithBoundedTimeout(
+        depPromise,
+        dependencyTimeoutMs,
+        optionalDepsSet.has(depId) ? "optional_dependency_timeout" : "dependency_timeout"
+      );
+      if (depResult.output) upstreamOutputs[depId] = depResult.output;
+    } catch {
+      continue;
+    }
+  }
+}
+
 function runWithDependenciesSync(
   input: ExecuteBrainForWorkflowStepInput,
   runtime: ReturnType<typeof buildRuntimeForInput>,
@@ -275,6 +346,7 @@ function runWithDependenciesSync(
   options?: ExecuteBrainForWorkflowStepOptions
 ): ExecuteBrainForWorkflowStepResult {
   const order = resolveCapabilityExecutionOrder(request.capabilityId);
+  const optionalDeps = getOptionalCapabilityDependencies(request.capabilityId);
   const upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>> = {
     ...seededOutputs,
   };
@@ -290,6 +362,8 @@ function runWithDependenciesSync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
+  runOptionalDependenciesSync(runtime, request, upstreamOutputs, optionalDeps);
+
   const researchGraph = resolveResearchGraphForRun(
     input,
     request,
@@ -303,6 +377,13 @@ function runWithDependenciesSync(
     request
   );
 
+  const strategyReadinessEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+    request,
+    upstreamOutputs,
+    { researchGraph, reasoningGraph, marketingIntelligenceGraph },
+    options
+  );
+
   const storedFinal = upstreamOutputs[request.capabilityId];
   const result = hasFreshSeededOutput(request.capabilityId, storedFinal)
     ? runtime.executeRunSync({
@@ -311,6 +392,7 @@ function runWithDependenciesSync(
         researchGraph,
         reasoningGraph,
         marketingIntelligenceGraph,
+        strategyReadinessEnrichment,
         reuseStoredOutput: storedFinal,
         correlationId: `${request.correlationId}-final-stored`,
       })
@@ -320,6 +402,7 @@ function runWithDependenciesSync(
         researchGraph,
         reasoningGraph,
         marketingIntelligenceGraph,
+        strategyReadinessEnrichment,
         correlationId: `${request.correlationId}-final`,
       });
 
@@ -373,6 +456,16 @@ async function runWithDependenciesAsync(
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
 
+  await runOptionalDependenciesAsync(
+    runtime,
+    request,
+    upstreamOutputs,
+    [...optionalDeps],
+    optionalDeps,
+    dependencyTimeoutMs,
+    options?.onProgress
+  );
+
   const researchGraph = resolveResearchGraphForRun(
     input,
     request,
@@ -386,6 +479,13 @@ async function runWithDependenciesAsync(
     request
   );
 
+  const strategyReadinessEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+    request,
+    upstreamOutputs,
+    { researchGraph, reasoningGraph, marketingIntelligenceGraph },
+    options
+  );
+
   const storedFinal = upstreamOutputs[request.capabilityId];
   if (hasFreshSeededOutput(request.capabilityId, storedFinal)) {
     options?.onProgress?.(brainReadyProgressLabel(request.locale));
@@ -395,6 +495,7 @@ async function runWithDependenciesAsync(
       researchGraph,
       reasoningGraph,
       marketingIntelligenceGraph,
+      strategyReadinessEnrichment,
       reuseStoredOutput: storedFinal,
       correlationId: `${request.correlationId}-final-stored`,
     });
@@ -409,6 +510,7 @@ async function runWithDependenciesAsync(
     researchGraph,
     reasoningGraph,
     marketingIntelligenceGraph,
+    strategyReadinessEnrichment,
     correlationId: `${request.correlationId}-final`,
   });
   options?.onProgress?.(brainFinalizeProgressLabel(request.locale));
