@@ -94,11 +94,24 @@ describe("live campaign business analysis boundary", () => {
     resetDemoCampaignStore();
   });
 
-  it("infers You Charge brand from campaign title", () => {
+  it("infers You Charge brand from campaign title for display legacy inference", () => {
     expect(inferCampaignBrandName("You Charge Launch", liveProject().campaignSetup)).toBe("You Charge");
   });
 
-  it("detects external brand for You Charge under Peergent account", () => {
+  it("does not treat title-inferred brand as external without explicit campaign brand", () => {
+    const project = liveProject();
+    const ctx = buildCampaignContext({
+      project,
+      domainInput: { projects: [project], understanding: peergentUnderstanding() } as never,
+      organizationName: "PeerGent",
+    });
+
+    expect(ctx.usesExternalBrand).toBe(false);
+    expect(ctx.brandName).toBe("PeerGent");
+    expect(ctx.campaignName).toBe("You Charge Launch");
+  });
+
+  it("detects external brand only with explicit campaign brand differing from org", () => {
     expect(
       campaignUsesExternalBrand({
         brandName: "You Charge",
@@ -114,12 +127,23 @@ describe("live campaign business analysis boundary", () => {
     ).toBe(false);
   });
 
-  it("does not merge Peergent MarketingUnderstanding into You Charge snapshot", () => {
-    const project = liveProject();
+  it("does not merge Peergent MarketingUnderstanding when explicit external brand is set", () => {
+    const project = liveProject({
+      campaignSetup: {
+        ...liveProject().campaignSetup!,
+        campaignBrandName: "You Charge",
+        campaignBrandContext: {
+          brandName: "You Charge",
+        },
+      },
+    });
     const ctx = buildCampaignContext({
       project,
       domainInput: { projects: [project], understanding: peergentUnderstanding() } as never,
+      organizationName: "PeerGent",
     });
+
+    expect(ctx.usesExternalBrand).toBe(true);
 
     const assembly = assembleCompanyContextSync({
       organizationId: "org-emma",
@@ -131,6 +155,27 @@ describe("live campaign business analysis boundary", () => {
     expect(assembly.companySnapshot.profile.companyName.value).toBe("You Charge");
     expect(assembly.companySnapshot.profile.positioning.value).toBeNull();
     expect(assembly.companySnapshot.profile.products.value).not.toContain("Marketing Peer");
+  });
+
+  it("merges org MarketingUnderstanding for own-org automatic campaign without explicit brand", () => {
+    const project = liveProject();
+    const ctx = buildCampaignContext({
+      project,
+      domainInput: { projects: [project], understanding: peergentUnderstanding() } as never,
+      organizationName: "PeerGent",
+    });
+
+    expect(ctx.usesExternalBrand).toBe(false);
+
+    const assembly = assembleCompanyContextSync({
+      organizationId: "org-emma",
+      marketingUnderstanding: peergentUnderstanding(),
+      campaignContext: ctx,
+      locale: "nl",
+    });
+
+    expect(assembly.companySnapshot.profile.companyName.value).toBe("PeerGent");
+    expect(assembly.companySnapshot.profile.positioning.value).toContain("Peergent");
   });
 
   it("uses saved campaign brand context instead of Peergent defaults", () => {
@@ -149,6 +194,7 @@ describe("live campaign business analysis boundary", () => {
     const ctx = buildCampaignContext({
       project,
       domainInput: { projects: [project], understanding: peergentUnderstanding() } as never,
+      organizationName: "PeerGent",
     });
     const assembly = assembleCompanyContextSync({
       organizationId: "org-emma",
@@ -276,6 +322,7 @@ describe("organization vs campaign brand isolation", () => {
         },
       }),
       domainInput: { projects: [] } as never,
+      organizationName: "PeerGent",
     });
 
     const result = buildCompanySnapshot({

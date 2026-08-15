@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import {
   enqueueLiveStrategyRunServer,
@@ -12,6 +13,9 @@ import { buildLiveCampaignEvidenceAction } from "@/lib/office/campaign/live-camp
 const requireAuthMock = vi.hoisted(() => vi.fn());
 const fetchPeerMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
+
+/** Canonical tenant for peer `emma` — matches resolveOrganizationId("emma", undefined). */
+const TEST_ORG_ID = "org-emma";
 
 vi.mock("@/lib/intelligence/api/require-org-context", async (importOriginal) => {
   const actual = await importOriginal<
@@ -200,6 +204,390 @@ function validChannelPayload() {
   };
 }
 
+function buildDomainInput(project: MarketingProject) {
+  return {
+    peerId: "emma",
+    organizationId: TEST_ORG_ID,
+    userName: "User",
+    peerName: "Emma",
+    campaignTitle: project.title,
+    generating: null,
+    generatingActivity: null,
+    understanding: null,
+    strategy: null,
+    plan: null,
+    drafts: [],
+    publicationPackages: [],
+    activityFeed: [],
+    workUnits: [],
+    projects: [project],
+    responsibilities: [],
+    automations: [],
+    connections: [],
+  };
+}
+
+function createOfficeLlmSupabaseMock(orgName = "Example Co"): AppSupabaseClient {
+  const brainRuns = new Map<string, Record<string, unknown>>();
+  const brainOutputs = new Map<string, Record<string, unknown>>();
+  const BUSINESS_BRAIN_ID = "bb-office-llm-emma";
+  const businessBrainRow = {
+    id: BUSINESS_BRAIN_ID,
+    organization_id: TEST_ORG_ID,
+    created_at: "2026-08-01T00:00:00.000Z",
+    updated_at: "2026-08-01T00:00:00.000Z",
+  };
+  const businessBrainProducts = [
+    {
+      id: "bb-prod-1",
+      business_brain_id: BUSINESS_BRAIN_ID,
+      name: "AI workforce platform",
+      description: "Premium AI workspace",
+      category: "software",
+      pricing_model: "subscription",
+      metadata: {},
+      graph_external_id: null,
+      sort_order: 0,
+      created_at: "2026-08-01T00:00:00.000Z",
+      updated_at: "2026-08-01T00:00:00.000Z",
+    },
+  ];
+  const businessBrainSegments = [
+    {
+      id: "bb-seg-1",
+      business_brain_id: BUSINESS_BRAIN_ID,
+      name: "SMB owners",
+      description: "Small business decision makers",
+      segments: [],
+      pain_points: [],
+      buying_triggers: [],
+      metadata: {},
+      graph_external_id: null,
+      sort_order: 0,
+      created_at: "2026-08-01T00:00:00.000Z",
+      updated_at: "2026-08-01T00:00:00.000Z",
+    },
+  ];
+  const companyDnaRow = {
+    id: "dna-office-llm-emma",
+    organization_id: TEST_ORG_ID,
+    mission: "Help SMB owners adopt AI workforce software",
+    values: [{ name: "Clarity", description: "Outcome-first communication" }],
+    tone_of_voice: {
+      summary: "Premium, calm, and editorial",
+      personality: ["clear", "confident"],
+      examples: [],
+    },
+    risk_profile: {},
+    decision_principles: [],
+    created_at: "2026-08-01T00:00:00.000Z",
+    updated_at: "2026-08-01T00:00:00.000Z",
+  };
+  const websiteAssessmentRow = {
+    organization_id: TEST_ORG_ID,
+    source_url: "https://example.com",
+    analyzed_at: "2026-08-01T00:00:00.000Z",
+    created_at: "2026-08-01T00:00:00.000Z",
+    assessment: {
+      meta: {
+        url: "https://example.com",
+        companyName: "Example Co",
+        industry: "B2B software",
+        analyzedAt: "2026-08-01T00:00:00.000Z",
+        analysisVersion: "1",
+      },
+      confidenceSnapshot: {
+        observed: 1,
+        likely: 0,
+        unknown: 0,
+        requiresMoreData: 0,
+        overall: "high",
+        overallReason: "Observed website content",
+      },
+      executiveSummary: {
+        conclusion: "Example Co positions an AI workforce platform for SMB owners.",
+        rationale: "Homepage hero states the value proposition clearly.",
+        confidence: { level: "high", reason: "Direct observation" },
+      },
+      companyDna: {
+        businessType: "B2B SaaS",
+        targetCustomers: "SMB owners",
+        brandPresentation: "Premium",
+        findings: [],
+        confidence: { level: "moderate", reason: "Partial" },
+      },
+      customerJourney: {
+        frictionPoints: [],
+        opportunities: [],
+        confidence: { level: "moderate", reason: "Partial" },
+      },
+      marketingGrowth: {
+        observed: [],
+        likely: [],
+        unknown: [],
+        enrichmentSlots: [],
+        confidence: { level: "moderate", reason: "Partial" },
+      },
+      operations: {
+        areas: [],
+        enrichmentSlots: [],
+        confidence: { level: "low", reason: "Limited" },
+      },
+      workforceRecommendations: {
+        recommendations: [],
+        confidence: { level: "low", reason: "Limited" },
+      },
+      businessBrainConclusion: {
+        statement: "Ready for marketing",
+        primaryAction: { label: "Continue" },
+        confidence: { level: "moderate", reason: "Partial" },
+      },
+    },
+  };
+  const businessBrainCompetitors = [
+    {
+      id: "bb-comp-1",
+      business_brain_id: BUSINESS_BRAIN_ID,
+      name: "Rival Co",
+      description: "Competing AI workspace",
+      metadata: {},
+      graph_external_id: null,
+      sort_order: 0,
+      created_at: "2026-08-01T00:00:00.000Z",
+      updated_at: "2026-08-01T00:00:00.000Z",
+    },
+  ];
+
+  const runStoreKey = (orgId: string, id: string) => `${orgId}:${id}`;
+
+  type TableFilters = {
+    orgId?: string;
+    id?: string;
+    businessBrainId?: string;
+  };
+
+  function createTableBuilder(handlers: {
+    onInsert?: (row: Record<string, unknown>) => Record<string, unknown>;
+    onSelectOne?: (filters: TableFilters) => Record<string, unknown> | null;
+    onSelectMany?: (filters: TableFilters) => readonly Record<string, unknown>[];
+    onUpdate?: (
+      filters: TableFilters,
+      patch: Record<string, unknown>
+    ) => Record<string, unknown> | null;
+  }) {
+    let filters: TableFilters = {};
+    let pendingInsert: Record<string, unknown> | null = null;
+    let pendingUpdate: Record<string, unknown> | null = null;
+
+    const builder: Record<string, unknown> = {};
+    const self = () => builder;
+
+    builder.insert = vi.fn((payload: Record<string, unknown> | Record<string, unknown>[]) => {
+      const row = Array.isArray(payload) ? payload[0]! : payload;
+      pendingInsert = handlers.onInsert?.(row) ?? row;
+      return builder;
+    });
+    builder.update = vi.fn((payload: Record<string, unknown>) => {
+      pendingUpdate = payload;
+      return builder;
+    });
+    builder.select = vi.fn(self);
+    builder.eq = vi.fn((column: string, value: string) => {
+      if (column === "organization_id") filters = { ...filters, orgId: value };
+      if (column === "id") filters = { ...filters, id: value };
+      if (column === "run_id") filters = { ...filters, id: value };
+      if (column === "business_brain_id") filters = { ...filters, businessBrainId: value };
+      return builder;
+    });
+    builder.order = vi.fn(self);
+    builder.limit = vi.fn(self);
+    builder.single = vi.fn(async () => {
+      if (pendingInsert) {
+        const row = pendingInsert;
+        pendingInsert = null;
+        return { data: row, error: null };
+      }
+      if (pendingUpdate && handlers.onUpdate) {
+        const row = handlers.onUpdate(filters, pendingUpdate);
+        pendingUpdate = null;
+        return row ? { data: row, error: null } : { data: null, error: { message: "not found" } };
+      }
+      const row = handlers.onSelectOne?.(filters) ?? null;
+      return row ? { data: row, error: null } : { data: null, error: { message: "not found" } };
+    });
+    builder.maybeSingle = vi.fn(async () => {
+      const row = handlers.onSelectOne?.(filters) ?? null;
+      return { data: row, error: null };
+    });
+    builder.upsert = vi.fn(async () => ({ data: null, error: null }));
+    builder.delete = vi.fn(self);
+    builder.then = (
+      onFulfilled?: (value: { data: unknown; error: null }) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) => {
+      const rows = handlers.onSelectMany?.(filters) ?? [];
+      const result = { data: rows, error: null as null };
+      try {
+        return Promise.resolve(onFulfilled ? onFulfilled(result) : result);
+      } catch (error) {
+        return onRejected ? Promise.resolve(onRejected(error)) : Promise.reject(error);
+      }
+    };
+    return builder;
+  }
+
+  return {
+    from: vi.fn((table: string) => {
+      if (table === "organizations") {
+        return createTableBuilder({
+          onSelectOne: () => ({
+            id: TEST_ORG_ID,
+            name: orgName,
+            slug: "example-co",
+          }),
+        });
+      }
+
+      if (table === "brain_runs") {
+        return createTableBuilder({
+          onInsert: (row) => {
+            const id = String(row.id ?? `run-${brainRuns.size + 1}`);
+            const stored = {
+              ...row,
+              id,
+              organization_id: row.organization_id ?? TEST_ORG_ID,
+              usage: row.usage ?? {},
+              budget: row.budget ?? {},
+              version: row.version ?? 1,
+            };
+            brainRuns.set(runStoreKey(String(stored.organization_id), id), stored);
+            return stored;
+          },
+          onSelectOne: ({ orgId, id }) => {
+            if (!orgId || !id) return null;
+            return brainRuns.get(runStoreKey(orgId, id)) ?? null;
+          },
+          onSelectMany: ({ orgId }) =>
+            [...brainRuns.values()].filter((row) => !orgId || row.organization_id === orgId),
+          onUpdate: ({ orgId, id }, patch) => {
+            if (!orgId || !id) return null;
+            const key = runStoreKey(orgId, id);
+            const existing = brainRuns.get(key);
+            if (!existing) return null;
+            const next = {
+              ...existing,
+              ...patch,
+              version: Number(existing.version ?? 1) + 1,
+            };
+            brainRuns.set(key, next);
+            return next;
+          },
+        });
+      }
+
+      if (table === "brain_outputs") {
+        return createTableBuilder({
+          onInsert: (row) => {
+            const id = String(row.id ?? `output-${brainOutputs.size + 1}`);
+            const stored = { ...row, id, organization_id: row.organization_id ?? TEST_ORG_ID };
+            brainOutputs.set(`${stored.organization_id}:${id}`, stored);
+            return stored;
+          },
+          onSelectOne: ({ orgId, id }) => {
+            if (!orgId || !id) return null;
+            return brainOutputs.get(`${orgId}:${id}`) ?? null;
+          },
+        });
+      }
+
+      if (table === "brain_project_episodes") {
+        return createTableBuilder({
+          onSelectOne: () => null,
+        });
+      }
+
+      if (table === "business_brains") {
+        return createTableBuilder({
+          onInsert: (row) => ({
+            ...businessBrainRow,
+            ...row,
+            id: String(row.id ?? BUSINESS_BRAIN_ID),
+          }),
+          onSelectOne: ({ orgId }) =>
+            !orgId || orgId === TEST_ORG_ID ? businessBrainRow : null,
+        });
+      }
+
+      if (table === "business_brain_products") {
+        return createTableBuilder({
+          onSelectMany: ({ businessBrainId }) =>
+            !businessBrainId || businessBrainId === BUSINESS_BRAIN_ID
+              ? businessBrainProducts
+              : [],
+        });
+      }
+
+      if (table === "business_brain_customer_segments") {
+        return createTableBuilder({
+          onSelectMany: ({ businessBrainId }) =>
+            !businessBrainId || businessBrainId === BUSINESS_BRAIN_ID
+              ? businessBrainSegments
+              : [],
+        });
+      }
+
+      if (table === "business_brain_competitors") {
+        return createTableBuilder({
+          onSelectMany: ({ businessBrainId }) =>
+            !businessBrainId || businessBrainId === BUSINESS_BRAIN_ID
+              ? businessBrainCompetitors
+              : [],
+        });
+      }
+
+      if (table === "company_dna") {
+        return createTableBuilder({
+          onInsert: (row) => ({
+            ...companyDnaRow,
+            ...row,
+            id: String(row.id ?? companyDnaRow.id),
+          }),
+          onSelectOne: ({ orgId }) => (!orgId || orgId === TEST_ORG_ID ? companyDnaRow : null),
+        });
+      }
+
+      if (table === "website_intelligence_assessments") {
+        return createTableBuilder({
+          onSelectOne: ({ orgId }) =>
+            !orgId || orgId === TEST_ORG_ID ? websiteAssessmentRow : null,
+        });
+      }
+
+      if (
+        table === "business_brain_services" ||
+        table === "business_brain_facts" ||
+        table === "business_brain_internal_processes" ||
+        table === "business_brain_knowledge_sources"
+      ) {
+        return createTableBuilder({
+          onSelectMany: () => [],
+        });
+      }
+
+      return createTableBuilder({
+        onSelectMany: () => [],
+        onSelectOne: () => null,
+      });
+    }),
+    rpc: vi.fn(async (fnName: string) => {
+      if (fnName === "upsert_brain_project_episode_versioned") {
+        return { data: { new_version: 1, conflict: false }, error: null };
+      }
+      return { data: null, error: null };
+    }),
+  } as unknown as AppSupabaseClient;
+}
+
 function openAiResponse(payload: unknown = validStrategyPayload()) {
   return {
     model: "gpt-4.1-mini",
@@ -223,11 +611,11 @@ describe("Office server LLM integration", () => {
       json: async () => openAiResponse(),
     });
     requireAuthMock.mockResolvedValue({
-      supabase: {},
-      organizationId: "org-1",
+      supabase: createOfficeLlmSupabaseMock(),
+      organizationId: TEST_ORG_ID,
       userId: "user-1",
     });
-    fetchPeerMock.mockResolvedValue({ id: "emma", organization_id: "org-1" });
+    fetchPeerMock.mockResolvedValue({ id: "emma", organization_id: TEST_ORG_ID });
   });
 
   afterEach(() => {
@@ -249,12 +637,14 @@ describe("Office server LLM integration", () => {
 
   it("runLiveStrategyRunServer executes one OpenAI fetch and returns llm usage", async () => {
     const project = readyProject();
+    const supabase = createOfficeLlmSupabaseMock();
     const result = await enqueueLiveStrategyRunServer({
       peerId: "emma",
       projectId: project.id,
       project,
       understanding: null,
-      organizationId: "org-1",
+      organizationId: TEST_ORG_ID,
+      supabase,
       locale: "en",
     });
 
@@ -276,25 +666,7 @@ describe("Office server LLM integration", () => {
       projectId: project.id,
       stepId: "strategy_determined",
       project,
-      domainInput: {
-        peerId: "emma",
-        userName: "User",
-        peerName: "Emma",
-        campaignTitle: project.title,
-        generating: null,
-        generatingActivity: null,
-        understanding: null,
-        strategy: null,
-        plan: null,
-        drafts: [],
-        publicationPackages: [],
-        activityFeed: [],
-        workUnits: [],
-        projects: [project],
-        responsibilities: [],
-        automations: [],
-        connections: [],
-      },
+      domainInput: buildDomainInput(project),
       locale: "en",
     });
 
@@ -324,25 +696,7 @@ describe("Office server LLM integration", () => {
       projectId: project.id,
       stepId: "channels_selected",
       project,
-      domainInput: {
-        peerId: "emma",
-        userName: "User",
-        peerName: "Emma",
-        campaignTitle: project.title,
-        generating: null,
-        generatingActivity: null,
-        understanding: null,
-        strategy: null,
-        plan: null,
-        drafts: [],
-        publicationPackages: [],
-        activityFeed: [],
-        workUnits: [],
-        projects: [project],
-        responsibilities: [],
-        automations: [],
-        connections: [],
-      },
+      domainInput: buildDomainInput(project),
       locale: "en",
     });
 
@@ -424,25 +778,7 @@ describe("Office server LLM integration", () => {
       projectId: project.id,
       stepId: "deliverables_created",
       project,
-      domainInput: {
-        peerId: "emma",
-        userName: "User",
-        peerName: "Emma",
-        campaignTitle: project.title,
-        generating: null,
-        generatingActivity: null,
-        understanding: null,
-        strategy: null,
-        plan: null,
-        drafts: [],
-        publicationPackages: [],
-        activityFeed: [],
-        workUnits: [],
-        projects: [project],
-        responsibilities: [],
-        automations: [],
-        connections: [],
-      },
+      domainInput: buildDomainInput(project),
       locale: "en",
     });
 

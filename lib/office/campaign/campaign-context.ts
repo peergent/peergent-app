@@ -8,11 +8,10 @@ import type {
 import type { CreateMarketingCampaignProjectInput } from "@/lib/peer-experience/marketing/projects/project-engine";
 import { DEMO_COMPANY_NAME } from "@/lib/office/demo/demo-company";
 import {
-  campaignUsesExternalBrand,
-  inferCampaignBrandName,
-  resolveAccountOrganizationName,
+  resolveCampaignBrandBoundary,
   type CampaignBrandContextFields,
 } from "@/lib/office/campaign/campaign-brand-boundary";
+import { emitCampaignBrandBoundaryDiagnostic } from "@/lib/office/campaign/campaign-brand-boundary-diagnostics";
 import {
   buildDurationAtCreation,
   computeEndDateFromPreset,
@@ -139,7 +138,12 @@ export function buildCampaignContext(input: {
   websiteUrl?: string | null;
   competitors?: readonly CampaignCompetitorEntry[];
   competitorsSkipped?: boolean;
+  /** Durable organizations.name — canonical org identity for brand boundary. */
+  organizationName?: string | null;
+  /** @deprecated Prefer organizationName — legacy caller override. */
   accountOrganizationName?: string | null;
+  /** When set, emitted in privacy-safe brand boundary diagnostics. */
+  organizationId?: string;
 }): CampaignContext {
   const { project, domainInput } = input;
   const nl = input.locale === "nl";
@@ -155,17 +159,29 @@ export function buildCampaignContext(input: {
   const description = setup?.description?.trim() || project.rawRequest?.trim() || "";
   const extraContext = project.rawRequest?.trim() || description;
 
-  const brandName = seed
-    ? DEMO_COMPANY_NAME
-    : inferCampaignBrandName(project.title, setup);
-  const campaignName = project.title.trim() || brandName;
-  const accountOrganizationName =
-    input.accountOrganizationName ??
-    resolveAccountOrganizationName(domainInput.understanding ?? null);
-  const usesExternalBrand = campaignUsesExternalBrand({
-    brandName,
-    accountOrganizationName,
+  const boundary = resolveCampaignBrandBoundary({
+    campaignTitle: project.title,
+    setup,
     isSeedCampaign: seed,
+    durableOrganizationName: input.organizationName,
+    accountOrganizationNameOverride: input.accountOrganizationName,
+    understanding: domainInput.understanding ?? null,
+    seedBrandName: DEMO_COMPANY_NAME,
+  });
+
+  const brandName = boundary.brandName;
+  const campaignName = project.title.trim() || brandName;
+  const accountOrganizationName = boundary.accountOrganizationName;
+  const usesExternalBrand = boundary.usesExternalBrand;
+
+  emitCampaignBrandBoundaryDiagnostic({
+    event: "campaign_brand_boundary_resolved",
+    organizationId: input.organizationId,
+    organizationIdentitySource: boundary.organizationIdentitySource,
+    hasExplicitCampaignBrand: boundary.hasExplicitCampaignBrand,
+    usesExternalBrand: boundary.usesExternalBrand,
+    externalBrandDecisionSource: boundary.externalBrandDecisionSource,
+    setupMode: setup?.setupMode,
   });
   const brandContext = setup?.campaignBrandContext
     ? {
@@ -272,7 +288,8 @@ export function buildCampaignContext(input: {
 export function buildCampaignContextFromCreateInput(
   project: MarketingProject,
   input: CreateMarketingCampaignProjectInput,
-  locale: "nl" | "en" = "nl"
+  locale: "nl" | "en" = "nl",
+  options?: { organizationName?: string | null; organizationId?: string }
 ): CampaignContext {
   const nl = locale === "nl";
   const goals: string[] = [];
@@ -308,13 +325,31 @@ export function buildCampaignContextFromCreateInput(
       }
     : buildDurationAtCreation(durationPreset);
 
+  const boundary = resolveCampaignBrandBoundary({
+    campaignTitle: project.title,
+    setup: project.campaignSetup,
+    isSeedCampaign: false,
+    durableOrganizationName: options?.organizationName,
+    understanding: null,
+  });
+
+  emitCampaignBrandBoundaryDiagnostic({
+    event: "campaign_brand_boundary_resolved",
+    organizationId: options?.organizationId,
+    organizationIdentitySource: boundary.organizationIdentitySource,
+    hasExplicitCampaignBrand: boundary.hasExplicitCampaignBrand,
+    usesExternalBrand: boundary.usesExternalBrand,
+    externalBrandDecisionSource: boundary.externalBrandDecisionSource,
+    setupMode: input.setupMode ?? "automatic",
+  });
+
   return {
     projectId: project.id,
-    brandName: input.name.trim(),
-    accountOrganizationName: null,
-    usesExternalBrand: false,
-    companyName: input.name.trim(),
-    campaignName: input.name.trim(),
+    brandName: boundary.brandName,
+    accountOrganizationName: boundary.accountOrganizationName,
+    usesExternalBrand: boundary.usesExternalBrand,
+    companyName: boundary.brandName,
+    campaignName: project.title.trim() || boundary.brandName,
     goals,
     audience: input.targetAudience?.trim() ?? "",
     description: input.description.trim(),

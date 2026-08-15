@@ -14,6 +14,7 @@ import type { BrainRunResult } from "@/lib/brain/runtime/run-result";
 import { presentBrainOutputForCampaign } from "@/lib/brain/presentation/campaign-evidence-adapter";
 import { isDemoPeer } from "@/lib/office/demo/demo-company";
 import { buildCampaignContext } from "./campaign-context";
+import { resolveDurableOrganizationNameServer } from "./resolve-organization-name-server";
 import { evidenceBlocksWorkflowAdvance } from "./evidence-readiness";
 import {
   applyProjectStrategyRunSuccess,
@@ -211,10 +212,17 @@ async function executeLiveStrategyRunServer(
     });
   }
 
+  const organizationName = await resolveDurableOrganizationNameServer(
+    input.supabase,
+    input.organizationId
+  );
+
   const campaignContext = buildCampaignContext({
     project,
     domainInput,
     locale,
+    organizationName,
+    organizationId: input.organizationId,
   });
 
   const contextPrep = input.supabase
@@ -531,6 +539,7 @@ export async function enqueueLiveStrategyRunServer(
     project: input.project,
     domainInput,
     locale: input.locale,
+    organizationId: input.organizationId,
   });
   if (!usesProjectEngineLifecycleAuthority(input.project)) {
     const readiness = evaluateStrategyContextReadiness(ctx);

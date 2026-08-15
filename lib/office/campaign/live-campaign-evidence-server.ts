@@ -15,6 +15,7 @@ import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/pr
 import { prepareBrainServerContext } from "@/lib/brain/context-acquisition/server/prepare-brain-server-context";
 import { assertLiveBrainServerContext } from "@/lib/brain/context-acquisition/server/context-acquisition-config";
 import { buildCampaignContext } from "./campaign-context";
+import { resolveDurableOrganizationNameServer } from "./resolve-organization-name-server";
 import { logBrainServerEnvResolved } from "@/lib/brain/config/brain-server-env";
 import { markOfficeLlmTrace } from "@/lib/brain/integration/office-llm-trace";
 import {
@@ -56,10 +57,17 @@ export async function buildLiveCampaignEvidenceServer(
     });
   }
 
+  const organizationName = await resolveDurableOrganizationNameServer(
+    input.supabase,
+    input.organizationId
+  );
+
   const campaignContext = buildCampaignContext({
     project: input.project,
     domainInput: input.domainInput,
     locale: input.locale,
+    organizationName,
+    organizationId: input.organizationId,
   });
 
   const contextPrep = input.supabase
