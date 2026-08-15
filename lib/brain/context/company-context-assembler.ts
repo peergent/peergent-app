@@ -2,6 +2,7 @@ import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import type { CompanyProfile } from "../company/profile";
 import type { CustomerCorrection } from "../company/corrections";
+import type { MaterializedOrganizationCompetitor } from "../organization-knowledge/types";
 import type { WebsiteSnapshot } from "../website/types";
 import type { WebsiteProvider } from "../website/providers/website-provider";
 import { buildCustomerSuppliedWebsiteSnapshot } from "../website/build-customer-supplied-snapshot";
@@ -23,6 +24,7 @@ export type CompanyContextAssemblerInput = {
   organizationId: string;
   companyProfile?: CompanyProfile | null;
   marketingUnderstanding?: MarketingUnderstanding | null;
+  materializedOrganizationCompetitors?: readonly MaterializedOrganizationCompetitor[];
   websiteSnapshot?: WebsiteSnapshot | null;
   websiteUrl?: string | null;
   websiteProvider?: WebsiteProvider;
@@ -57,6 +59,8 @@ function buildAssemblyResult(input: {
     organizationId: assemblerInput.organizationId,
     companyProfile: assemblerInput.companyProfile,
     marketingUnderstanding: assemblerInput.marketingUnderstanding ?? null,
+    materializedOrganizationCompetitors:
+      assemblerInput.materializedOrganizationCompetitors ?? [],
     websiteSnapshot: website,
     campaignContext: assemblerInput.campaignContext ?? null,
     corrections: assemblerInput.corrections,

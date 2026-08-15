@@ -12,7 +12,10 @@ import { fieldFromListValue, fieldFromValue } from "@/lib/brain/company/source-p
 import { evaluateEffectiveStrategyContextReadiness } from "@/lib/brain/strategy-readiness";
 import { buildWebsiteSnapshotFromAssessment } from "../build-website-snapshot-from-assessment";
 import { materializeOrganizationKnowledge } from "../materialize-organization-knowledge";
+import { normalizeOrganizationCompetitors } from "../materialize-organization-competitors";
 import { resolveOrganizationWebsiteSnapshot } from "../resolve-organization-website";
+
+const materializedRival = [{ name: "Rival One", source: "business_brain" as const }];
 
 const ORG_A = "00000000-0000-4000-8000-000000000101";
 const ORG_B = "00000000-0000-4000-8000-000000000102";
@@ -299,6 +302,7 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     const assembly = assembleCompanyContextSync({
       organizationId: ORG_A,
       marketingUnderstanding: understanding,
+      materializedOrganizationCompetitors: materializedRival,
       websiteSnapshot: null,
       campaignContext: buildCampaignContextFromCreateInput(
         createMarketingCampaignProject({
@@ -358,6 +362,7 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     const assembly = assembleCompanyContextSync({
       organizationId: ORG_A,
       marketingUnderstanding: understanding,
+      materializedOrganizationCompetitors: materializedRival,
       websiteSnapshot: null,
       campaignContext,
       locale: "en",
@@ -421,12 +426,196 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     const assembly = assembleCompanyContextSync({
       organizationId: ORG_A,
       marketingUnderstanding: understanding,
+      materializedOrganizationCompetitors: materializedRival,
       websiteSnapshot: null,
       campaignContext,
       locale: "en",
     });
 
     expect(assembly.companySnapshot.profile.mainCompetitors.value ?? []).toEqual([]);
+  });
+
+  it("PX-50.18 A: materialized competitors populate profile without Marketing Understanding", () => {
+    const assembly = assembleCompanyContextSync({
+      organizationId: ORG_A,
+      marketingUnderstanding: null,
+      materializedOrganizationCompetitors: materializedRival,
+      websiteSnapshot: null,
+      campaignContext: buildCampaignContextFromCreateInput(
+        createMarketingCampaignProject({
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        }),
+        {
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        },
+        "en"
+      ),
+      locale: "en",
+    });
+
+    expect(assembly.companySnapshot.profile.mainCompetitors.value).toEqual(["Rival One"]);
+  });
+
+  it("PX-50.18 E: explicit campaign competitors win over materialized org competitors", () => {
+    const campaignContext = {
+      ...buildCampaignContextFromCreateInput(
+        createMarketingCampaignProject({
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        }),
+        {
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        },
+        "en"
+      ),
+      competitors: [{ name: "Campaign Rival" }],
+    };
+
+    const assembly = assembleCompanyContextSync({
+      organizationId: ORG_A,
+      marketingUnderstanding: null,
+      materializedOrganizationCompetitors: materializedRival,
+      websiteSnapshot: null,
+      campaignContext,
+      locale: "en",
+    });
+
+    expect(assembly.companySnapshot.profile.mainCompetitors.value).toEqual(["Campaign Rival"]);
+  });
+
+  it("PX-50.18 F: whitespace Business Brain competitor names are not materialized", () => {
+    expect(normalizeOrganizationCompetitors([{ name: "   " }, { name: "Valid Rival" }])).toEqual([
+      { name: "Valid Rival", source: "business_brain" },
+    ]);
+
+    const assembly = assembleCompanyContextSync({
+      organizationId: ORG_A,
+      marketingUnderstanding: null,
+      materializedOrganizationCompetitors: normalizeOrganizationCompetitors([{ name: "   " }]),
+      websiteSnapshot: null,
+      campaignContext: buildCampaignContextFromCreateInput(
+        createMarketingCampaignProject({
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        }),
+        {
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        },
+        "en"
+      ),
+      locale: "en",
+    });
+
+    expect(assembly.companySnapshot.profile.mainCompetitors.value ?? []).toEqual([]);
+  });
+
+  it("PX-50.18 G: multi-tenant competitor isolation", () => {
+    const assemblyA = assembleCompanyContextSync({
+      organizationId: ORG_A,
+      marketingUnderstanding: null,
+      materializedOrganizationCompetitors: materializedRival,
+      websiteSnapshot: null,
+      campaignContext: buildCampaignContextFromCreateInput(
+        createMarketingCampaignProject({
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Org A Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        }),
+        {
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Org A Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        },
+        "en"
+      ),
+      locale: "en",
+    });
+
+    const assemblyB = assembleCompanyContextSync({
+      organizationId: ORG_B,
+      marketingUnderstanding: null,
+      materializedOrganizationCompetitors: [{ name: "Other Org Rival", source: "business_brain" }],
+      websiteSnapshot: null,
+      campaignContext: buildCampaignContextFromCreateInput(
+        createMarketingCampaignProject({
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Org B Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        }),
+        {
+          peerId: "emma",
+          ownerLabel: "Owner",
+          name: "Org B Launch",
+          goalLabel: "Leads",
+          description: "Grow pipeline",
+          primaryGoalId: "generate_leads",
+          setupMode: "automatic",
+          approvalMode: "approval_before_publication",
+        },
+        "en"
+      ),
+      locale: "en",
+    });
+
+    expect(assemblyA.companySnapshot.profile.mainCompetitors.value).toEqual(["Rival One"]);
+    expect(assemblyB.companySnapshot.profile.mainCompetitors.value).toEqual(["Other Org Rival"]);
+    expect(assemblyA.companySnapshot.organizationId).toBe(ORG_A);
+    expect(assemblyB.companySnapshot.organizationId).toBe(ORG_B);
   });
 
   it("H: multi-tenant isolation — org A website never hydrates org B", async () => {
@@ -509,6 +698,7 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     const assembly = assembleCompanyContextSync({
       organizationId: ORG_A,
       marketingUnderstanding: understanding,
+      materializedOrganizationCompetitors: materializedRival,
       websiteSnapshot: snapshot,
       campaignContext,
       locale: "en",
@@ -600,14 +790,18 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     expect(readiness.machineReasonCodes).toContain("competitor_decision_missing");
   });
 
-  it("materializer combines website intelligence and competitor count", async () => {
+  it("materializer combines website intelligence and Business Brain competitors", async () => {
     wiMocks.fetchLatestWebsiteIntelligenceAssessment.mockResolvedValue({
       assessment: sampleAssessment("https://org-a.example"),
       analyzedAt: "2026-08-01T00:00:00.000Z",
       source: "supabase",
     });
+    bbMocks.getAggregate.mockResolvedValue({
+      knowledgeSources: [],
+      competitors: [{ name: "Rival One", website: null }],
+    });
     marketingMocks.loadMarketingUnderstandingContext.mockResolvedValue({
-      slice: understandingWithCompetitors(ORG_A),
+      slice: { available: false, competitors: [] },
       sources: [],
     });
 
@@ -615,13 +809,15 @@ describe("PX-50.16 OrgKnowledgeMaterializer", () => {
     const materialized = await materializeOrganizationKnowledge({
       supabase,
       organizationId: ORG_A,
-      peerRole: "Marketing",
+      peerRole: "marketing",
     });
 
     expect(materialized.websiteSourceKind).toBe("website_intelligence");
     expect(materialized.websiteKnowledgeAvailable).toBe(true);
-    expect(materialized.competitorCount).toBe(1);
-    expect(materialized.competitorSourceKind).toBe("business_brain");
+    expect(materialized.competitorRowCount).toBe(1);
+    expect(materialized.competitorNamedCount).toBe(1);
+    expect(materialized.competitorMaterializedCount).toBe(1);
+    expect(materialized.competitors[0]?.name).toBe("Rival One");
   });
 
   it("unknown account org name does not force external-brand isolation", () => {

@@ -8,6 +8,7 @@ import { emptyCompanyProfile } from "./profile";
 import type { CustomerCorrection } from "./corrections";
 import { applyCorrectionToFieldValue, applyCorrectionToListValue } from "./corrections";
 import { fieldFromValue, fieldFromListValue, winningSource, type CompanyFactSource } from "./source-priority";
+import type { MaterializedOrganizationCompetitor } from "../organization-knowledge/types";
 import type { WebsiteSnapshot } from "../website/types";
 import type {
   CompanySnapshot,
@@ -124,6 +125,24 @@ function mergeWebsite(profile: CompanyProfile, website: WebsiteSnapshot): Compan
     });
   }
   return next;
+}
+
+function mergeMaterializedOrganizationCompetitors(
+  profile: CompanyProfile,
+  competitors: readonly MaterializedOrganizationCompetitor[],
+  at: string
+): CompanyProfile {
+  if (!competitors.length) return profile;
+  if (profile.mainCompetitors.value?.length) return profile;
+
+  return {
+    ...profile,
+    mainCompetitors: fieldFromListValue(
+      competitors.map((competitor) => competitor.name),
+      "integration",
+      { lastUpdatedAt: at, freshness: resolveFreshness(at, PROFILE_TTL_MS) }
+    ),
+  };
 }
 
 function mergeCampaignInput(
@@ -339,6 +358,7 @@ export class CompanySnapshotBuilder {
     organizationId: string;
     companyProfile?: CompanyProfile | null;
     marketingUnderstanding?: MarketingUnderstanding | null;
+    materializedOrganizationCompetitors?: readonly MaterializedOrganizationCompetitor[];
     campaignContext?: CampaignContext | null;
     websiteSnapshot?: WebsiteSnapshot | null;
     corrections?: readonly CustomerCorrection[];
@@ -352,6 +372,17 @@ export class CompanySnapshotBuilder {
     });
     if (input.marketingUnderstanding?.available && useOrgIntelligence) {
       profile = mergeMarketingUnderstanding(profile, input.marketingUnderstanding, assembledAt);
+    }
+    if (
+      useOrgIntelligence &&
+      !input.campaignContext?.competitorsSkipped &&
+      input.materializedOrganizationCompetitors?.length
+    ) {
+      profile = mergeMaterializedOrganizationCompetitors(
+        profile,
+        input.materializedOrganizationCompetitors,
+        assembledAt
+      );
     }
     if (input.campaignContext) {
       profile = mergeCampaignInput(profile, input.campaignContext, assembledAt);

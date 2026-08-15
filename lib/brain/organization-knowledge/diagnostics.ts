@@ -1,5 +1,5 @@
 /**
- * PX-50.16 — privacy-safe organization knowledge materialization diagnostics.
+ * PX-50.16 / PX-50.18 — privacy-safe organization knowledge materialization diagnostics.
  */
 
 export type OrganizationKnowledgeDiagnosticPayload = {
@@ -9,7 +9,12 @@ export type OrganizationKnowledgeDiagnosticPayload = {
   websiteKnowledgeAvailable: boolean;
   websiteAnalysisAvailable: boolean;
   competitorCount: number;
+  competitorRowCount: number;
+  competitorNamedCount: number;
+  competitorMaterializedCount: number;
   competitorSourceKind: string;
+  competitorsInjectedIntoSnapshot: boolean;
+  usesExternalBrand: boolean;
   companyProfileEnriched: boolean;
   durationMs: number;
 };

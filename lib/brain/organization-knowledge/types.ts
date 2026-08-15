@@ -15,6 +15,13 @@ export type OrganizationCompetitorSourceKind =
   | "marketing_understanding"
   | "none";
 
+/** Durable organization competitor — materialized from Business Brain. */
+export type MaterializedOrganizationCompetitor = {
+  name: string;
+  url?: string;
+  source: "business_brain";
+};
+
 export type MaterializedOrganizationKnowledge = {
   organizationId: string;
   websiteSnapshot: WebsiteSnapshot | null;
@@ -22,7 +29,11 @@ export type MaterializedOrganizationKnowledge = {
   websiteKnowledgeAvailable: boolean;
   websiteAnalysisAvailable: boolean;
   marketingUnderstanding: MarketingUnderstanding | null;
-  competitorCount: number;
+  /** Normalized durable organization competitors from Business Brain. */
+  competitors: readonly MaterializedOrganizationCompetitor[];
+  competitorRowCount: number;
+  competitorNamedCount: number;
+  competitorMaterializedCount: number;
   competitorSourceKind: OrganizationCompetitorSourceKind;
   companyProfileEnriched: boolean;
   durationMs: number;
@@ -34,4 +45,12 @@ export type MaterializeOrganizationKnowledgeInput = {
   peerId?: string;
   peerRole?: string;
   campaignWebsiteSkipped?: boolean;
+  /** For privacy-safe diagnostics only — does not affect org load scope. */
+  usesExternalBrand?: boolean;
+  competitorsSkipped?: boolean;
+};
+
+export type OrganizationKnowledgeInjectionStats = {
+  competitorsInjectedIntoSnapshot: boolean;
+  usesExternalBrand: boolean;
 };
