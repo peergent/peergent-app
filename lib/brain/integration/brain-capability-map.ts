@@ -15,8 +15,8 @@ export const PRIMARY_CAPABILITY_FOR_BRAIN: Readonly<
   strategy: "strategy",
   planning: "channel_planning",
   creative: "creative_generation",
-  validation: "strategy",
-  execution: "creative_generation",
+  validation: "validation",
+  execution: "execution",
   learning: "optimization",
 };
 

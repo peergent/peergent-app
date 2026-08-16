@@ -67,6 +67,18 @@ export {
   type ContinueCampaignEpisodeInput,
   type EpisodeContinuationTrigger,
 } from "./campaign-episode-continuation";
+export {
+  detectAutomaticCampaignPipelineStall,
+  assertAutomaticCampaignReachedPublicationBoundary,
+  shouldResumeAutomaticCampaignPipeline,
+} from "./automatic-campaign-pipeline-invariants";
+export {
+  resumeAutomaticCampaignPipeline,
+} from "./automatic-campaign-pipeline";
+export {
+  buildCampaignEpisodeServerExecutionContext,
+  type CampaignEpisodeServerExecutionContext,
+} from "./campaign-episode-server-context";
 export { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
 export {
   resolveEpisodeStepBudget,

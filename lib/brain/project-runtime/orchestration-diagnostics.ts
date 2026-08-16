@@ -42,7 +42,17 @@ export type OrchestrationDiagnosticEvent =
   | "episode_continuation_requested"
   | "episode_continuation_started"
   | "episode_continuation_completed"
-  | "episode_continuation_skipped";
+  | "episode_continuation_skipped"
+  | "episode_continuation_failed"
+  | "campaign_pipeline_recovery_started"
+  | "campaign_pipeline_recovery_completed"
+  | "campaign_episode_started"
+  | "approval_checkpoint_created"
+  | "approval_submitted"
+  | "episode_resume_started"
+  | "episode_resume_completed"
+  | "external_execution_authorized"
+  | "episode_terminal_state";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;

@@ -31,6 +31,15 @@ vi.mock("@/lib/peers/server-queries", () => ({
   fetchOrganizationPeerByIdServer: fetchPeerMock,
 }));
 
+vi.mock("@/lib/brain/project-runtime/campaign-episode-continuation", () => ({
+  shouldAutoContinueCampaignEpisode: vi.fn(() => false),
+  continueCampaignEpisode: vi.fn(),
+}));
+
+vi.mock("@/lib/brain/project-runtime/automatic-campaign-pipeline", () => ({
+  resumeAutomaticCampaignPipeline: vi.fn().mockResolvedValue(null),
+}));
+
 function readyProject(): MarketingProject {
   return {
     id: "office-llm-proj",

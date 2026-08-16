@@ -49,6 +49,9 @@ import {
 import {
   EPISODE_CONTINUATION_TIMEOUT_MS,
 } from "./strategy-run-types";
+import { buildCampaignEpisodeServerExecutionContext } from "@/lib/brain/project-runtime/campaign-episode-server-context";
+import { resumeAutomaticCampaignPipeline } from "@/lib/brain/project-runtime/automatic-campaign-pipeline";
+import { emitOrchestrationDiagnostic, safeOrchestrationError } from "@/lib/brain/project-runtime/orchestration-diagnostics";
 import {
   isTerminalStrategyRunStatus,
   markStrategyRunTiming,
@@ -161,6 +164,7 @@ async function executeLiveStrategyRunServer(
   input: EnqueueServerInput
 ): Promise<LiveStrategyRunServerResult> {
   const { peerId, projectId, locale } = input;
+  const resolvedLocale: "nl" | "en" = locale === "nl" ? "nl" : "en";
   const trace = resolveTrace(input);
   let project = input.project;
   const domainInput = buildDomainInputForStrategyRun(input);
@@ -263,6 +267,33 @@ async function executeLiveStrategyRunServer(
 
   markStrategyRunTiming(runId, "BRAIN_ENTER");
 
+  const serverContext = await buildCampaignEpisodeServerExecutionContext({
+    supabase: input.supabase!,
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId,
+    peerRole: input.peerRole ?? "Marketing",
+    campaignContext,
+    project,
+    domainInput,
+    locale: locale === "nl" ? "nl" : "en",
+    contextPhase: "strategy",
+    existingRepositories: serverRepositories,
+    existingContextAssembly: contextPrep?.assembly,
+  });
+
+  const continuationInputBase = {
+    supabase: input.supabase!,
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId,
+    peerRole: input.peerRole ?? "Marketing",
+    campaignContext,
+    domainInput,
+    locale: resolvedLocale,
+    serverContext,
+  };
+
   try {
     const episodeResult = await runTimeout(
       startOrResumeCampaignEpisode({
@@ -326,16 +357,7 @@ async function executeLiveStrategyRunServer(
           contextVersion: version,
           idempotencyKey,
           episodeResult,
-          continuationInput: {
-            supabase: input.supabase!,
-            organizationId: input.organizationId,
-            projectId: input.projectId,
-            peerId,
-            peerRole: input.peerRole ?? "Marketing",
-            campaignContext,
-            domainInput,
-            locale: locale === "nl" ? "nl" : "en",
-          },
+          continuationInput: continuationInputBase,
         });
       }
 
@@ -397,16 +419,7 @@ async function executeLiveStrategyRunServer(
       contextVersion: version,
       idempotencyKey,
       episodeResult,
-      continuationInput: {
-        supabase: input.supabase!,
-        organizationId: input.organizationId,
-        projectId: input.projectId,
-        peerId,
-        peerRole: input.peerRole ?? "Marketing",
-        campaignContext,
-        domainInput,
-        locale: locale === "nl" ? "nl" : "en",
-      },
+      continuationInput: continuationInputBase,
     });
   } catch (error) {
     const isTimeout = error instanceof Error && error.message === "strategy_run_timeout";
@@ -429,7 +442,7 @@ async function executeLiveStrategyRunServer(
   }
 }
 
-function finalizeBrainStrategyResultServer(input: {
+async function finalizeBrainStrategyResultServer(input: {
   project: MarketingProject;
   brainResult: BrainRunResult;
   locale?: string | null;
@@ -446,8 +459,9 @@ function finalizeBrainStrategyResultServer(input: {
     campaignContext: ReturnType<typeof buildCampaignContext>;
     domainInput: MarketingPeerDomainInput;
     locale: "nl" | "en";
+    serverContext: Awaited<ReturnType<typeof buildCampaignEpisodeServerExecutionContext>>;
   };
-}): LiveStrategyRunServerResult | Promise<LiveStrategyRunServerResult> {
+}): Promise<LiveStrategyRunServerResult> {
   const { brainResult, locale, runId } = input;
   const { run, output, assembly } = brainResult;
   const usageMeta = usageFromBrainResult(brainResult);
@@ -559,21 +573,94 @@ function finalizeBrainStrategyResultServer(input: {
       episodeResult: input.episodeResult,
     })
   ) {
-    return runWithBoundedTimeout(
-      continueCampaignEpisode({
-        ...input.continuationInput,
-        project,
-        trigger: "strategy_target_complete",
-        episodeResult: input.episodeResult,
-      }),
-      EPISODE_CONTINUATION_TIMEOUT_MS,
-      "episode_continuation_timeout"
-    )
-      .then(() => baseResult)
-      .catch(() => baseResult);
+    try {
+      await runWithBoundedTimeout(
+        continueCampaignEpisode({
+          ...input.continuationInput,
+          project,
+          trigger: "strategy_target_complete",
+          episodeResult: input.episodeResult,
+          serverContext: input.continuationInput.serverContext,
+        }),
+        EPISODE_CONTINUATION_TIMEOUT_MS,
+        "episode_continuation_timeout"
+      );
+    } catch (error) {
+      const safe = safeOrchestrationError(error);
+      emitOrchestrationDiagnostic({
+        event: "episode_continuation_failed",
+        organizationId: input.continuationInput.organizationId,
+        projectId: input.continuationInput.projectId,
+        peerId: input.continuationInput.peerId,
+        reason: safe.reason,
+        errorCode: safe.errorCode ?? safe.errorName,
+        correlationId: "strategy_target_complete",
+      });
+    }
   }
 
   return baseResult;
+}
+
+async function tryRecoverStalledAutomaticPipeline(
+  input: EnqueueServerInput
+): Promise<LiveStrategyRunServerResult | null> {
+  if (!usesProjectEngineLifecycleAuthority(input.project) || !input.supabase) return null;
+
+  try {
+    const domainInput = buildDomainInputForStrategyRun(input);
+    const campaignContext = buildCampaignContext({
+      project: input.project,
+      domainInput,
+      locale: input.locale,
+      organizationId: input.organizationId,
+    });
+
+    const serverContext = await buildCampaignEpisodeServerExecutionContext({
+      supabase: input.supabase,
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      peerRole: input.peerRole ?? "Marketing",
+      campaignContext,
+      project: input.project,
+      domainInput,
+      locale: input.locale === "nl" ? "nl" : "en",
+      contextPhase: "planning",
+    });
+
+    const resumed = await resumeAutomaticCampaignPipeline({
+      supabase: input.supabase,
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      peerRole: input.peerRole ?? "Marketing",
+      project: input.project,
+      domainInput,
+      serverContext,
+      trigger: "pipeline_recovery",
+    });
+
+    if (!resumed) return null;
+
+    return {
+      ok: resumed.status !== "failed",
+      status: "completed",
+      project: input.project,
+    };
+  } catch (error) {
+    const safe = safeOrchestrationError(error);
+    emitOrchestrationDiagnostic({
+      event: "campaign_pipeline_recovery_completed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      reason: safe.reason ?? "recovery_failed",
+      errorCode: safe.errorCode ?? safe.errorName,
+      correlationId: "pipeline_recovery",
+    });
+    return null;
+  }
 }
 
 export async function enqueueLiveStrategyRunServer(
@@ -610,6 +697,11 @@ export async function enqueueLiveStrategyRunServer(
   }
 
   if (strategyOutputCurrent(input.project)) {
+    const recovered = await tryRecoverStalledAutomaticPipeline(input);
+    if (recovered) {
+      markStrategyRunTiming(runIdForTiming, "ENQUEUE_RETURNED", "pipeline_recovered");
+      return recovered;
+    }
     const terminal: LiveStrategyRunServerResult = {
       ok: true,
       status: "completed",
@@ -641,6 +733,8 @@ export async function enqueueLiveStrategyRunServer(
   const gate = shouldExecuteStrategyOnServer(input.project, domainInput, input.locale);
   if (!gate.execute) {
     if (gate.reason === "output_current") {
+      const recovered = await tryRecoverStalledAutomaticPipeline(input);
+      if (recovered) return recovered;
       return { ok: true, status: "completed", project: input.project };
     }
     if (gate.reason === "waiting_for_input" || gate.reason === "failed") {
@@ -667,8 +761,12 @@ export async function enqueueLiveStrategyRunServer(
   startStrategyRunTiming(runIdForTiming);
 
   const promise = executeLiveStrategyRunServer(input)
-    .then((result) => {
+    .then(async (result) => {
       markStrategyRunTiming(runIdForTiming, "ENQUEUE_RETURNED", result.status);
+      if (result.ok && usesProjectEngineLifecycleAuthority(input.project) && input.supabase) {
+        const recovered = await tryRecoverStalledAutomaticPipeline(input);
+        if (recovered) return recovered;
+      }
       if (!isTerminalStrategyRunStatus(result.status)) {
         return {
           ...result,

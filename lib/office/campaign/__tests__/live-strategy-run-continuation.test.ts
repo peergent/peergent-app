@@ -23,6 +23,18 @@ vi.mock("@/lib/brain/project-runtime/campaign-episode-continuation", () => ({
   continueCampaignEpisode: continuationMock,
 }));
 
+vi.mock("@/lib/brain/project-runtime/automatic-campaign-pipeline", () => ({
+  resumeAutomaticCampaignPipeline: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("@/lib/brain/project-runtime/campaign-episode-server-context", () => ({
+  buildCampaignEpisodeServerExecutionContext: vi.fn().mockResolvedValue({
+    repositories: {},
+    contextAssembly: { state: "complete", gaps: [] },
+    locale: "en",
+  }),
+}));
+
 vi.mock("@/lib/brain/persistence/server/prepare-brain-server-persistence", () => ({
   prepareBrainServerPersistence: vi.fn().mockResolvedValue({}),
 }));

@@ -37,6 +37,7 @@ import {
 import { getBrainCapability } from "@/lib/brain/capabilities/registry";
 import { customerSafeStrategyFailureMessage } from "@/lib/office/campaign/strategy-run-types";
 import { triggerLiveStrategyRunViaServer, recoverStaleOptimisticStrategyRun } from "@/lib/office/campaign/live-strategy-run-client";
+import { resumeAutomaticCampaignPipelineAction } from "@/lib/office/campaign/resume-automatic-campaign-pipeline-action";
 import { recoverStaleLiveStrategyRun } from "@/lib/office/campaign/live-campaign-context-store";
 import { isInformationalWorkflowStep } from "@/lib/office/campaign/campaign-orchestration-types";
 import { inferCampaignBrandName } from "@/lib/office/campaign/campaign-brand-boundary";
@@ -150,6 +151,7 @@ export function useCampaignWorkspaceActions(input: {
   }, [liveCampaignSetup, peerId, projectId]);
   const strategyRunInFlightRef = useRef(false);
   const triggeredStrategyKeysRef = useRef(new Set<string>());
+  const pipelineRecoveryAttemptedRef = useRef(false);
 
   const syncLiveProject = useCallback(
     (updated: MarketingProject) => {
@@ -199,6 +201,20 @@ export function useCampaignWorkspaceActions(input: {
     },
     [isDemo, localePreference, peerId, projectId, syncLiveProject]
   );
+
+  useEffect(() => {
+    if (isDemo || !liveProject) return;
+    if (liveProject.campaignSetup?.setupMode === "manual") return;
+    if (!liveProject.campaignSetup?.strategyGeneratedAt) return;
+    if (pipelineRecoveryAttemptedRef.current) return;
+    pipelineRecoveryAttemptedRef.current = true;
+    void resumeAutomaticCampaignPipelineAction({
+      peerId,
+      projectId,
+      project: liveProject,
+      locale: localePreference,
+    });
+  }, [isDemo, liveProject, localePreference, peerId, projectId]);
 
   useEffect(() => {
     if (isDemo || !liveProject || !strategyTriggerKey) return;

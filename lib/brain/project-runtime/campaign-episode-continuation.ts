@@ -1,10 +1,10 @@
 import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
-import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import { usesProjectEngineLifecycleAuthority } from "@/lib/office/campaign/live-strategy-run-service";
 import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
 import { prepareBrainServerPersistence } from "../persistence/server/prepare-brain-server-persistence";
@@ -13,12 +13,17 @@ import { resolveEpisodeStepBudget } from "./episode-step-budget";
 import { createProjectEpisodeRunner } from "./project-episode-runner";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
-import { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+import { emitOrchestrationDiagnostic, safeOrchestrationError } from "./orchestration-diagnostics";
 import type { CampaignEpisodeResult } from "./campaign-episode-controller";
 import type { EpisodeRunResult, ProjectEpisodeRecord } from "./types";
+import type { CampaignEpisodeServerExecutionContext } from "./campaign-episode-server-context";
+import { loadDurableProjectEpisode } from "./episode-durable-resume";
+import { getActiveDurablePersistence } from "../persistence/layer/active-durable-persistence";
+import { hydrateEpisodeToL1 } from "./episode-durable-resume";
 
 export type EpisodeContinuationTrigger =
   | "strategy_target_complete"
+  | "pipeline_recovery"
   | "explicit_resume"
   | "duplicate_invocation";
 
@@ -33,7 +38,9 @@ export type ContinueCampaignEpisodeInput = {
   domainInput: MarketingPeerDomainInput;
   locale?: "nl" | "en";
   trigger: EpisodeContinuationTrigger;
-  /** When provided, skip eligibility re-check (caller already validated episode). */
+  /** Full server execution context — required for production brain runs. */
+  serverContext?: CampaignEpisodeServerExecutionContext;
+  /** When provided, skip episode reload (caller already validated episode). */
   episodeResult?: EpisodeRunResult;
 };
 
@@ -165,15 +172,17 @@ function emitContinuationDiagnostic(
     | "episode_continuation_requested"
     | "episode_continuation_started"
     | "episode_continuation_completed"
-    | "episode_continuation_skipped",
+    | "episode_continuation_skipped"
+    | "episode_continuation_failed",
   input: {
     organizationId: string;
     projectId: string;
     peerId: string;
-    episode: ProjectEpisodeRecord;
+    episode?: ProjectEpisodeRecord;
     trigger: EpisodeContinuationTrigger;
     reason?: string;
     durationMs?: number;
+    errorCode?: string;
   }
 ): void {
   emitOrchestrationDiagnostic({
@@ -181,14 +190,40 @@ function emitContinuationDiagnostic(
     organizationId: input.organizationId,
     projectId: input.projectId,
     peerId: input.peerId,
-    episodeId: input.episode.snapshot.episodeId,
-    snapshotState: input.episode.snapshot.state,
-    episodeStatus: input.episode.episodeStatus,
-    durableVersion: input.episode.durableVersion,
+    episodeId: input.episode?.snapshot.episodeId,
+    snapshotState: input.episode?.snapshot.state,
+    episodeStatus: input.episode?.episodeStatus,
+    durableVersion: input.episode?.durableVersion,
     reason: input.reason,
     correlationId: input.trigger,
+    errorCode: input.errorCode,
     ...(input.durationMs !== undefined ? { step: input.durationMs } : {}),
   });
+}
+
+async function resolveEpisodeForContinuation(
+  input: ContinueCampaignEpisodeInput
+): Promise<ProjectEpisodeRecord | null> {
+  if (input.episodeResult?.episode) {
+    return input.episodeResult.episode;
+  }
+
+  const cached = getDefaultProjectEpisodeRepository().get({
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+  });
+  if (cached) return cached;
+
+  const durable = getActiveDurablePersistence();
+  if (durable) {
+    const loaded = await loadDurableProjectEpisode(durable, {
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+    });
+    if (loaded) return hydrateEpisodeToL1(loaded);
+  }
+
+  return null;
 }
 
 async function executeCampaignEpisodeContinuation(
@@ -205,21 +240,15 @@ async function executeCampaignEpisodeContinuation(
     projectId: input.projectId,
   });
 
-  const episode =
-    input.episodeResult?.episode ??
-    getDefaultProjectEpisodeRepository().get({
-      organizationId: input.organizationId,
-      projectId: input.projectId,
-    });
+  const episode = await resolveEpisodeForContinuation(input);
 
   if (!episode) {
-    emitOrchestrationDiagnostic({
-      event: "episode_continuation_skipped",
+    emitContinuationDiagnostic("episode_continuation_skipped", {
       organizationId: input.organizationId,
       projectId: input.projectId,
       peerId: input.peerId,
+      trigger: input.trigger,
       reason: "episode_not_found",
-      correlationId: input.trigger,
     });
     throw new Error(`Episode not found for continuation: ${input.projectId}`);
   }
@@ -284,27 +313,48 @@ async function executeCampaignEpisodeContinuation(
   });
 
   const approvalMode = resolveApprovalMode(input.project, episode);
+  const ctx = input.serverContext;
+
   const adapter = createProductionBrainExecutionAdapter({
     peerId: input.peerId,
     project: input.project,
     domainInput: input.domainInput,
     workflowOptions: {
+      repositories: ctx?.repositories,
+      contextAssembly: ctx?.contextAssembly,
       requireRealContext: true,
     },
   });
 
   const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
-  const result = await runner.runUntilPause({
-    organizationId: input.organizationId,
-    projectId: input.projectId,
-    peerId: input.peerId,
-    peerRole: input.peerRole,
-    locale,
-    useRealContext: true,
-    supabase: input.supabase,
-    campaignContext: input.campaignContext,
-    maxSteps: resolveEpisodeStepBudget({ campaignApprovalMode: approvalMode }),
-  });
+  let result: EpisodeRunResult;
+
+  try {
+    result = await runner.runUntilPause({
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      peerRole: input.peerRole,
+      locale,
+      useRealContext: true,
+      supabase: input.supabase,
+      campaignContext: input.campaignContext,
+      maxSteps: resolveEpisodeStepBudget({ campaignApprovalMode: approvalMode }),
+    });
+  } catch (error) {
+    const safe = safeOrchestrationError(error);
+    emitContinuationDiagnostic("episode_continuation_failed", {
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episode,
+      trigger: input.trigger,
+      reason: safe.reason,
+      errorCode: safe.errorCode ?? safe.errorName,
+      durationMs: Date.now() - startedAt,
+    });
+    throw error;
+  }
 
   emitContinuationDiagnostic("episode_continuation_completed", {
     organizationId: input.organizationId,
@@ -319,9 +369,7 @@ async function executeCampaignEpisodeContinuation(
 }
 
 /**
- * PX-50.24 — resume automatic campaign pipeline after a bounded strategy target run.
- *
- * Canonical continuation owner for Project Engine lifecycle authority.
+ * PX-50.24 / PX-51 — resume automatic campaign pipeline after strategy or on recovery.
  */
 export async function continueCampaignEpisode(
   input: ContinueCampaignEpisodeInput

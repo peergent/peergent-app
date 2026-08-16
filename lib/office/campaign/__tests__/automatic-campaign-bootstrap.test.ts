@@ -35,6 +35,10 @@ vi.mock("@/lib/brain/project-runtime/campaign-episode-controller", () => ({
   startOrResumeCampaignEpisode: episodeControllerMock,
 }));
 
+vi.mock("@/lib/brain/project-runtime/automatic-campaign-pipeline", () => ({
+  resumeAutomaticCampaignPipeline: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/intelligence/api/require-org-context", () => ({
   OrgContextError: class OrgContextError extends Error {
     code = "unauthorized";

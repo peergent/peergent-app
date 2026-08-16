@@ -40,6 +40,14 @@ vi.mock("@/lib/brain/project-runtime/campaign-episode-continuation", () => ({
   continueCampaignEpisode: continuationMock,
 }));
 
+vi.mock("@/lib/brain/project-runtime/campaign-episode-server-context", () => ({
+  buildCampaignEpisodeServerExecutionContext: vi.fn().mockResolvedValue({
+    repositories: {},
+    contextAssembly: { state: "complete", gaps: [] },
+    locale: "en",
+  }),
+}));
+
 vi.mock("@/lib/brain/integration/execute-brain-for-workflow-step", async (importOriginal) => {
   const actual = await importOriginal<
     typeof import("@/lib/brain/integration/execute-brain-for-workflow-step")
