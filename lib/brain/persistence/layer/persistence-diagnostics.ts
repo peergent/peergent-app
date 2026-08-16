@@ -7,6 +7,7 @@ export type PersistenceDiagnosticEvent =
   | "persistence_hydration_started"
   | "persistence_hydration_completed"
   | "persistence_hydration_failed"
+  | "persistence_hydration_l1_apply"
   | "persistence_write_failed"
   | "persistence_conflict"
   | "output_ref_missing"
@@ -29,6 +30,7 @@ export type PersistenceDiagnosticEvent =
   | "persistence_layer_document_upsert_started"
   | "persistence_layer_document_upsert_completed"
   | "persistence_layer_document_upsert_failed"
+  | "persistence_hydration_l1_apply"
   | "persistence_org_memory_upsert_started"
   | "persistence_org_memory_upsert_completed"
   | "persistence_org_memory_upsert_failed"
@@ -82,6 +84,10 @@ export type PersistenceDiagnosticPayload = {
   resolvedGraphsJsonBytes?: number;
   completedAt?: string | null;
   hasLastError?: boolean;
+  persistenceClientMode?: "authenticated" | "service_role" | "unknown";
+  upsertIntent?: "insert_or_update";
+  rlsRejectionCategory?: "rls_update_denied" | "rls_insert_denied" | "rls_denied";
+  hydrationWrite?: boolean;
 };
 
 export function safePersistenceError(error: unknown): {

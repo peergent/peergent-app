@@ -7,6 +7,21 @@ import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
 import { toJson } from "@/lib/business-brain/repositories/mappers";
 import { emitPersistenceDiagnostic, safePersistenceError } from "./persistence-diagnostics";
 
+export type LayerDocumentUpsertConflictTarget =
+  | "organization_id,brain_id,document_kind,document_id"
+  | "organization_id,output_ref";
+
+function classifyRlsRejection(message: string):
+  | "rls_update_denied"
+  | "rls_insert_denied"
+  | "rls_denied"
+  | undefined {
+  if (!message.includes("row-level security")) return undefined;
+  if (message.includes("USING expression")) return "rls_update_denied";
+  if (message.includes("WITH CHECK")) return "rls_insert_denied";
+  return "rls_denied";
+}
+
 export type LayerDocumentRow = {
   id?: string;
   organization_id: string;
@@ -29,9 +44,17 @@ export type LayerDocumentRow = {
 
 export async function upsertLayerDocument(
   supabase: AppSupabaseClient,
-  row: LayerDocumentRow
+  row: LayerDocumentRow,
+  input?: {
+    persistenceClientMode?: "authenticated" | "service_role" | "unknown";
+    conflictTarget?: LayerDocumentUpsertConflictTarget;
+  }
 ): Promise<void> {
   const startedMs = Date.now();
+  const persistenceClientMode = input?.persistenceClientMode ?? "authenticated";
+  const conflictTarget =
+    input?.conflictTarget ?? "organization_id,brain_id,document_kind,document_id";
+
   emitPersistenceDiagnostic({
     event: "persistence_layer_document_upsert_started",
     organizationId: row.organization_id,
@@ -39,6 +62,9 @@ export async function upsertLayerDocument(
     brainId: row.brain_id,
     documentKind: row.document_kind,
     operation: "upsert.brain_layer_documents",
+    persistenceClientMode,
+    upsertIntent: "insert_or_update",
+    hydrationWrite: false,
   });
 
   try {
@@ -61,9 +87,10 @@ export async function upsertLayerDocument(
         supersedes_output_ref: row.supersedes_output_ref ?? null,
         metadata: toJson(row.metadata ?? {}),
       },
-      { onConflict: "organization_id,brain_id,document_kind,document_id" }
+      { onConflict: conflictTarget }
     );
     if (error) {
+      const rlsRejectionCategory = classifyRlsRejection(error.message);
       const safe = safePersistenceError(new Error(error.message));
       emitPersistenceDiagnostic({
         event: "persistence_layer_document_upsert_failed",
@@ -72,6 +99,9 @@ export async function upsertLayerDocument(
         brainId: row.brain_id,
         documentKind: row.document_kind,
         operation: "upsert.brain_layer_documents",
+        persistenceClientMode,
+        upsertIntent: "insert_or_update",
+        rlsRejectionCategory,
         errorName: safe.errorName,
         reason: safe.reason,
         durationMs: Date.now() - startedMs,
@@ -85,6 +115,8 @@ export async function upsertLayerDocument(
       brainId: row.brain_id,
       documentKind: row.document_kind,
       operation: "upsert.brain_layer_documents",
+      persistenceClientMode,
+      upsertIntent: "insert_or_update",
       durationMs: Date.now() - startedMs,
     });
   } catch (error) {
@@ -99,6 +131,9 @@ export async function upsertLayerDocument(
       brainId: row.brain_id,
       documentKind: row.document_kind,
       operation: "upsert.brain_layer_documents",
+      persistenceClientMode,
+      upsertIntent: "insert_or_update",
+      rlsRejectionCategory: safe.reason ? classifyRlsRejection(safe.reason) : undefined,
       errorName: safe.errorName,
       errorCode: safe.errorCode,
       reason: safe.reason,

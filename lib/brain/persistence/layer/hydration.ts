@@ -3,16 +3,6 @@
  */
 
 import type { AppSupabaseClient } from "@/lib/intelligence/api/org-context";
-import type { CompanyStoreRecord } from "../../layers/company/company-repository";
-import type { ResearchSnapshot } from "../../layers/research/brain-types";
-import type { ReasoningSnapshot } from "../../layers/reasoning/brain-types";
-import type { MarketingIntelligenceSnapshot } from "../../layers/marketing-intelligence/brain-types";
-import type { StrategySnapshot } from "../../layers/strategy/brain-types";
-import type { PlanningSnapshot } from "../../layers/planning/brain-types";
-import type { LearningSnapshot } from "../../layers/learning/brain-types";
-import type { CreativeRecord } from "../../layers/creative/creative-repository";
-import type { ValidationRecord } from "../../layers/validation/validation-repository";
-import type { MemoryStoreRecord } from "../../layers/memory/memory-repository";
 import type { ExecutionStoreRecord } from "../../layers/execution/execution-repository";
 import { projectScopeKey } from "./scope-keys";
 import {
@@ -23,53 +13,14 @@ import {
   loadOrgMemoryRecords,
   loadProjectEpisode,
 } from "./supabase-sync";
-import { brainFrom } from "../supabase/brain-supabase-client";
 import type { LayerDocumentRow } from "./supabase-sync";
+import { applyHydratedLayerDocumentToL1Cache } from "./hydrate-l1-cache";
 import { simulatedDurableStore } from "./simulated-durable-store";
 import { orgMemoryIndex } from "./stores";
 import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
 
 function applyDocumentToCache(row: LayerDocumentRow): void {
-  const repos = getLayerRepositories();
-  const payload = row.payload as Record<string, unknown>;
-
-  switch (row.document_kind) {
-    case "company_store":
-      repos.company.store(payload as unknown as CompanyStoreRecord);
-      break;
-    case "research_snapshot":
-      repos.researchBrain.storeSnapshot(payload as unknown as ResearchSnapshot);
-      break;
-    case "reasoning_snapshot":
-      repos.reasoningBrain.storeSnapshot(payload as unknown as ReasoningSnapshot);
-      break;
-    case "mi_snapshot":
-      repos.marketingIntelligenceBrain.storeSnapshot(payload as unknown as MarketingIntelligenceSnapshot);
-      break;
-    case "strategy_snapshot":
-      repos.strategyBrain.storeSnapshot(payload as unknown as StrategySnapshot);
-      break;
-    case "planning_snapshot":
-      repos.planningBrain.storeSnapshot(payload as unknown as PlanningSnapshot);
-      break;
-    case "learning_snapshot":
-      repos.learningBrain.storeSnapshot(payload as unknown as LearningSnapshot);
-      break;
-    case "creative_record":
-      repos.creative.store(payload as unknown as CreativeRecord);
-      break;
-    case "validation_record":
-      repos.validation.store(payload as unknown as ValidationRecord);
-      break;
-    case "memory_store":
-      repos.memory.store(payload as unknown as MemoryStoreRecord);
-      break;
-    case "execution_store":
-      repos.execution.store(payload as unknown as ExecutionStoreRecord);
-      break;
-    default:
-      break;
-  }
+  applyHydratedLayerDocumentToL1Cache(row);
 }
 
 function applyOrgMemoriesToCache(organizationId: string, memories: readonly import("../../layers/memory/types").MemoryRecord[]): void {
