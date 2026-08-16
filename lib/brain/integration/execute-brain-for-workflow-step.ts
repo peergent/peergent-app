@@ -17,7 +17,6 @@ import type { DemoPerformanceMetric } from "../capabilities/execution-context";
 import type { BrainRunResult } from "../runtime/run-result";
 import type { BrainRunRequestWithBudget } from "../runtime/run-request";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
-import { readCampaignBrainOutputs } from "@/lib/office/campaign/campaign-brain-outputs";
 import { getBrainCapability } from "../capabilities/registry";
 import { resolveCampaignBrainPolicy } from "../policy/campaign-approval-policy";
 import { resolveOrganizationId } from "./resolve-company-intelligence";
@@ -42,6 +41,16 @@ import { createReasoningLayer } from "../layers/reasoning";
 import type { ReasoningGraph } from "../layers/reasoning";
 import { createMarketingIntelligenceLayer } from "../layers/marketing-intelligence";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
+import type { ProjectEpisodeRecord } from "../project-runtime/types";
+import {
+  resolveEpisodeUpstreamOutputs,
+  resolveEpisodeUpstreamOutputsAsync,
+} from "./episode-upstream-outputs";
+import { buildStrategyReadinessEnrichmentForCapabilityRun } from "./build-strategy-readiness-enrichment";
+import {
+  emitBrainDependencyResolved,
+  resolveCompletedDependency,
+} from "./dependency-resolution";
 
 /**
  * Sprint 7.5 demo policy (explicit — option A):
@@ -125,6 +134,8 @@ export type ExecuteBrainForWorkflowStepOptions = {
   strategyReadinessEnrichment?: StrategyReadinessRequestEnrichment | null;
   /** PX-52 — episode + upstream artifacts for validation readiness. */
   validationReadinessEnrichment?: ValidationReadinessRequestEnrichment | null;
+  /** PX-53 — episode durable knowledge for upstream output seeding + dependency reuse. */
+  episodeContext?: ProjectEpisodeRecord | null;
 };
 
 function resolveBrainEnvironment(peerId: string): BrainEnvironment {
@@ -212,9 +223,29 @@ export type ExecuteBrainForWorkflowStepResult = {
 };
 
 function seedUpstreamOutputs(
-  input: ExecuteBrainForWorkflowStepInput
+  input: ExecuteBrainForWorkflowStepInput,
+  options?: ExecuteBrainForWorkflowStepOptions
 ): Partial<Record<BrainCapabilityId, BrainStructuredOutput>> {
-  return readCampaignBrainOutputs(input.project);
+  return resolveEpisodeUpstreamOutputs({
+    project: input.project,
+    organizationId: resolveOrganizationId(input.peerId, input.domainInput.organizationId),
+    projectId: input.project.id,
+    episode: options?.episodeContext ?? null,
+    repositories: options?.repositories,
+  });
+}
+
+async function seedUpstreamOutputsAsync(
+  input: ExecuteBrainForWorkflowStepInput,
+  options?: ExecuteBrainForWorkflowStepOptions
+): Promise<Partial<Record<BrainCapabilityId, BrainStructuredOutput>>> {
+  return resolveEpisodeUpstreamOutputsAsync({
+    project: input.project,
+    organizationId: resolveOrganizationId(input.peerId, input.domainInput.organizationId),
+    projectId: input.project.id,
+    episode: options?.episodeContext ?? null,
+    repositories: options?.repositories,
+  });
 }
 
 function hasFreshSeededOutput(
@@ -282,6 +313,7 @@ function resolveMarketingIntelligenceGraphForRun(
 }
 
 function buildStrategyReadinessEnrichmentForFinalRun(
+  capabilityId: BrainCapabilityId,
   request: BrainRunRequestWithBudget,
   upstreamOutputs: Partial<Record<BrainCapabilityId, BrainStructuredOutput>>,
   graphs: {
@@ -291,15 +323,13 @@ function buildStrategyReadinessEnrichmentForFinalRun(
   },
   options?: ExecuteBrainForWorkflowStepOptions
 ): StrategyReadinessRequestEnrichment | null {
-  if (request.capabilityId !== "strategy") {
-    return options?.strategyReadinessEnrichment ?? null;
-  }
-
-  return {
-    resolvedGraphs: options?.strategyReadinessEnrichment?.resolvedGraphs ?? null,
-    upstreamCapabilityOutputs: upstreamOutputs,
+  return buildStrategyReadinessEnrichmentForCapabilityRun({
+    capabilityId,
+    upstreamOutputs,
     inflightGraphs: graphs,
-  };
+    episode: options?.episodeContext,
+    overlay: options?.strategyReadinessEnrichment ?? null,
+  });
 }
 
 function runOptionalDependenciesSync(
@@ -366,12 +396,47 @@ function runWithDependenciesSync(
   };
 
   for (const depId of order) {
+    const depPlan = resolveCompletedDependency({
+      dependencyId: depId,
+      consumerCapabilityId: request.capabilityId,
+      episode: options?.episodeContext,
+      upstreamOutputs,
+      contextVersion: input.project.campaignSetup?.campaignContextVersion ?? 0,
+    });
+    if (options?.episodeContext) {
+      emitBrainDependencyResolved({
+        organizationId: request.organizationId,
+        projectId: input.project.id,
+        episodeId: options.runtimeDiagnosticContext?.episodeId,
+        consumerCapability: request.capabilityId,
+        dependencyBrain: depId,
+        resolution: depPlan.resolution,
+        contextVersion: input.project.campaignSetup?.campaignContextVersion ?? 0,
+        outputRefPresent: Boolean(depPlan.output),
+      });
+    }
+    if (depPlan.action === "reuse" && depPlan.output) {
+      upstreamOutputs[depId] = depPlan.output;
+      continue;
+    }
     if (hasFreshSeededOutput(depId, upstreamOutputs[depId])) continue;
+    const depEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+      depId,
+      request,
+      upstreamOutputs,
+      {
+        researchGraph: request.researchGraph ?? null,
+        reasoningGraph: request.reasoningGraph ?? null,
+        marketingIntelligenceGraph: request.marketingIntelligenceGraph ?? null,
+      },
+      options
+    );
     const depResult = runtime.executeRunSync({
       ...request,
       capabilityId: depId,
       correlationId: `${request.correlationId}-dep-${depId}`,
       upstreamOutputs,
+      strategyReadinessEnrichment: depEnrichment,
     });
     if (depResult.output) upstreamOutputs[depId] = depResult.output;
   }
@@ -392,6 +457,7 @@ function runWithDependenciesSync(
   );
 
   const strategyReadinessEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+    request.capabilityId,
     request,
     upstreamOutputs,
     { researchGraph, reasoningGraph, marketingIntelligenceGraph },
@@ -442,15 +508,67 @@ async function runWithDependenciesAsync(
   const dependencyTimeoutMs = options?.dependencyTimeoutMs ?? STRATEGY_DEPENDENCY_TIMEOUT_MS;
 
   for (const depId of order) {
+    const depPlan = resolveCompletedDependency({
+      dependencyId: depId,
+      consumerCapabilityId: request.capabilityId,
+      episode: options?.episodeContext,
+      upstreamOutputs,
+      contextVersion: input.project.campaignSetup?.campaignContextVersion ?? 0,
+    });
+    if (options?.episodeContext) {
+      emitBrainDependencyResolved({
+        organizationId: request.organizationId,
+        projectId: input.project.id,
+        episodeId: options.runtimeDiagnosticContext?.episodeId,
+        consumerCapability: request.capabilityId,
+        dependencyBrain: depId,
+        resolution: depPlan.resolution,
+        contextVersion: input.project.campaignSetup?.campaignContextVersion ?? 0,
+        outputRefPresent: Boolean(depPlan.output),
+      });
+    }
+    if (depPlan.action === "reuse" && depPlan.output) {
+      upstreamOutputs[depId] = depPlan.output;
+      continue;
+    }
     if (hasFreshSeededOutput(depId, upstreamOutputs[depId])) {
       continue;
     }
     options?.onProgress?.(brainCapabilityProgressLabel(depId, request.locale));
+
+    const depResearchGraph = resolveResearchGraphForRun(
+      input,
+      request,
+      upstreamOutputs,
+      options?.contextAssembly
+    );
+    const depReasoningGraph = resolveReasoningGraphForRun(depResearchGraph, request);
+    const depMarketingIntelligenceGraph = resolveMarketingIntelligenceGraphForRun(
+      depReasoningGraph,
+      depResearchGraph,
+      request
+    );
+    const depEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+      depId,
+      request,
+      upstreamOutputs,
+      {
+        researchGraph: depResearchGraph,
+        reasoningGraph: depReasoningGraph,
+        marketingIntelligenceGraph: depMarketingIntelligenceGraph,
+      },
+      options
+    );
+
     const depPromise = runtime.executeRun({
       ...request,
       capabilityId: depId,
       correlationId: `${request.correlationId}-dep-${depId}`,
       upstreamOutputs,
+      researchGraph: depResearchGraph,
+      reasoningGraph: depReasoningGraph,
+      marketingIntelligenceGraph: depMarketingIntelligenceGraph,
+      strategyReadinessEnrichment: depEnrichment,
     });
 
     let depResult: BrainRunResult;
@@ -494,6 +612,7 @@ async function runWithDependenciesAsync(
   );
 
   const strategyReadinessEnrichment = buildStrategyReadinessEnrichmentForFinalRun(
+    request.capabilityId,
     request,
     upstreamOutputs,
     { researchGraph, reasoningGraph, marketingIntelligenceGraph },
@@ -543,7 +662,7 @@ export async function executeBrainForWorkflowStep(
   const capabilityId = PRIMARY_CAPABILITY_FOR_STEP[input.stepId];
   if (!capabilityId) return null;
   const runtime = buildRuntimeForInput(input, options);
-  const seededOutputs = seedUpstreamOutputs(input);
+  const seededOutputs = await seedUpstreamOutputsAsync(input, options);
   return runWithDependenciesAsync(
     input,
     runtime,
@@ -624,7 +743,7 @@ export async function executeBrainForProjectBrain(
   };
 
   const runtime = buildRuntimeForInput(workflowInput, options);
-  const seededOutputs = seedUpstreamOutputs(workflowInput);
+  const seededOutputs = await seedUpstreamOutputsAsync(workflowInput, options);
   return runWithDependenciesAsync(
     workflowInput,
     runtime,

@@ -33,6 +33,7 @@ import {
 import { parseStrategyReadinessReasonCodes } from "../strategy-readiness";
 import { isPipelineGraphBrain } from "./pipeline-graph-brain-ids";
 import { executeRegistryBrainForEpisode } from "./execute-registry-brain-for-episode";
+import { materializePipelineGraphsAfterCapabilityBrain } from "./materialize-pipeline-graphs";
 
 function resolveOutputRef(
   brainId: ProjectBrainId,
@@ -169,6 +170,55 @@ export function createProductionBrainExecutionAdapter(
       return lastCapabilityRun;
     },
     async execute(runInput) {
+      if (isPipelineGraphBrain(runInput.brainId)) {
+        emitOrchestrationDiagnostic({
+          event: "brain_scheduled",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          peerId: runInput.episode.snapshot.peerId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          brainId: runInput.brainId,
+        });
+
+        if (runInput.brainId === "creative") {
+          emitOrchestrationDiagnostic({
+            event: "creative_started",
+            organizationId: runInput.episode.snapshot.organizationId,
+            projectId: runInput.episode.snapshot.projectId,
+            peerId: runInput.episode.snapshot.peerId,
+            episodeId: runInput.episode.snapshot.episodeId,
+            brainId: "creative",
+          });
+        }
+
+        const registryResult = await executeRegistryBrainForEpisode({
+          brainId: runInput.brainId,
+          episode: runInput.episode,
+          contextHandoff: runInput.contextHandoff,
+          locale: runInput.locale,
+          idempotencyKey: runInput.idempotencyKey,
+        });
+        emitOrchestrationDiagnostic({
+          event: "brain_completed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          peerId: runInput.episode.snapshot.peerId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          brainId: runInput.brainId,
+        });
+        if (runInput.brainId === "creative") {
+          emitOrchestrationDiagnostic({
+            event: "creative_completed",
+            organizationId: runInput.episode.snapshot.organizationId,
+            projectId: runInput.episode.snapshot.projectId,
+            peerId: runInput.episode.snapshot.peerId,
+            episodeId: runInput.episode.snapshot.episodeId,
+            brainId: "creative",
+          });
+        }
+        return registryResult;
+      }
+
       const capabilityId = primaryCapabilityForBrain(runInput.brainId);
       if (!capabilityId) {
         return {
@@ -203,25 +253,6 @@ export function createProductionBrainExecutionAdapter(
         correlationId: runInput.episode.correlationId,
       });
 
-      if (isPipelineGraphBrain(runInput.brainId)) {
-        const registryResult = await executeRegistryBrainForEpisode({
-          brainId: runInput.brainId,
-          episode: runInput.episode,
-          contextHandoff: runInput.contextHandoff,
-          locale: runInput.locale,
-          idempotencyKey: runInput.idempotencyKey,
-        });
-        emitOrchestrationDiagnostic({
-          event: "brain_completed",
-          organizationId: runInput.episode.snapshot.organizationId,
-          projectId: runInput.episode.snapshot.projectId,
-          peerId: runInput.episode.snapshot.peerId,
-          episodeId: runInput.episode.snapshot.episodeId,
-          brainId: runInput.brainId,
-        });
-        return registryResult;
-      }
-
       let workflowResult;
       emitBrainRuntimeDiagnostic({
         event: "brain_execution_execute_project_brain_started",
@@ -247,10 +278,10 @@ export function createProductionBrainExecutionAdapter(
             runtimeDiagnosticContext: {
               episodeId: runInput.episode.snapshot.episodeId,
             },
-            strategyReadinessEnrichment:
-              runInput.brainId === "strategy"
-                ? { resolvedGraphs: runInput.episode.resolvedGraphs }
-                : null,
+            episodeContext: runInput.episode,
+            strategyReadinessEnrichment: {
+              resolvedGraphs: runInput.episode.resolvedGraphs,
+            },
             validationReadinessEnrichment:
               runInput.brainId === "validation"
                 ? {
@@ -303,6 +334,27 @@ export function createProductionBrainExecutionAdapter(
       lastCapabilityRun = workflowResult.result;
       if (runInput.brainId === "strategy") {
         lastCapabilityRun = workflowResult.result;
+      }
+
+      materializePipelineGraphsAfterCapabilityBrain({
+        brainId: runInput.brainId,
+        organizationId: runInput.episode.snapshot.organizationId,
+        projectId: runInput.episode.snapshot.projectId,
+        episodeId: runInput.episode.snapshot.episodeId,
+        capabilityOutput: workflowResult.result.output ?? null,
+        artifacts: runInput.episode.artifacts,
+        resolvedGraphs: runInput.episode.resolvedGraphs,
+      });
+
+      if (runInput.brainId === "planning") {
+        emitOrchestrationDiagnostic({
+          event: "planning_completed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          peerId: runInput.episode.snapshot.peerId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          brainId: "planning",
+        });
       }
 
       const result = toBrainResult(

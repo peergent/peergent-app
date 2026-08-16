@@ -166,6 +166,21 @@ export async function executeRegistryBrainForEpisode(
     });
   }
 
+  if (input.brainId === "creative" && !resolved.strategyBrainGraph) {
+    const { materializePipelineGraphsAfterCapabilityBrain } = await import(
+      "./materialize-pipeline-graphs"
+    );
+    materializePipelineGraphsAfterCapabilityBrain({
+      brainId: "strategy",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      artifacts: input.episode.artifacts,
+      resolvedGraphs: resolved,
+    });
+    resolved = resolveMergedGraphs(input.episode);
+  }
+
   const context = assembleBrainContext({
     snapshot: input.episode.snapshot,
     locale: input.locale,

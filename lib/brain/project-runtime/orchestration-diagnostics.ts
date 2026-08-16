@@ -52,7 +52,13 @@ export type OrchestrationDiagnosticEvent =
   | "episode_resume_started"
   | "episode_resume_completed"
   | "external_execution_authorized"
-  | "episode_terminal_state";
+  | "episode_terminal_state"
+  | "brain_dependency_resolved"
+  | "planning_completed"
+  | "creative_start_requested"
+  | "creative_started"
+  | "creative_completed"
+  | "validation_started";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -83,6 +89,10 @@ export type OrchestrationDiagnosticPayload = {
   initialDurableVersion?: number;
   actualVersion?: number;
   readinessReasonCodes?: readonly string[];
+  contextVersion?: number;
+  outputRefPresent?: boolean;
+  dependencyCapabilityId?: string;
+  consumerCapabilityId?: string;
 };
 
 export function safeOrchestrationError(error: unknown): {

@@ -389,9 +389,73 @@ describe("PX-51 automatic campaign pipeline E2E", () => {
     });
 
     expect(continuation.episode.snapshot.completedBrains).toContain("validation");
-    expect(continuation.episode.lastError).not.toMatch(/Readiness score 30 below minimum 50/);
+    expect(String(continuation.episode.lastError ?? "")).not.toMatch(
+      /Readiness score 30 below minimum 50/
+    );
     expect(detectAutomaticCampaignPipelineStall({ project, episode: continuation.episode })?.phase).not.toBe(
       "validation"
     );
+  });
+
+  it("G — production adapter full pipeline: strategy once, planning reuses, reaches publication approval", async () => {
+    const project = automaticProject();
+    const projectId = project.id;
+    const adapter = createProductionBrainExecutionAdapter({
+      peerId: "demo",
+      project,
+      domainInput: domainInput(project),
+    });
+    const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
+
+    await runner.startEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    getDefaultProjectEpisodeRepository().save({
+      ...getDefaultProjectEpisodeRepository().get({ organizationId: FIXTURE_ORG_ID, projectId })!,
+      campaignApprovalMode: "approval_before_publication",
+    });
+
+    const strategyResult = await runner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      target: { targetBrain: "strategy" },
+    });
+
+    expect(strategyResult.episode.snapshot.completedBrains).toContain("strategy");
+
+    const continuation = await runner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudget({ campaignApprovalMode: "approval_before_publication" }),
+    });
+
+    expect(continuation.episode.snapshot.completedBrains).toContain("planning");
+    expect(continuation.episode.snapshot.completedBrains).toContain("creative");
+    expect(continuation.episode.snapshot.completedBrains).toContain("validation");
+    expect(continuation.episode.lastError).toBeNull();
+    expect(
+      continuation.status === "waiting_for_approval" ||
+        continuation.episode.snapshot.state === "waiting_for_approval"
+    ).toBe(true);
+    expect(continuation.episode.snapshot.completedBrains).not.toContain("execution");
+
+    assertAutomaticCampaignReachedPublicationBoundary({
+      project,
+      episode: continuation.episode,
+    });
   });
 });

@@ -65,6 +65,12 @@ function inferPhase(episode: ProjectEpisodeRecord): AutomaticCampaignPipelinePha
   if (snapshot.completedBrains.includes("execution")) return "execution";
   if (snapshot.completedBrains.includes("validation")) return "validation";
   if (snapshot.completedBrains.includes("creative")) return "creative";
+  if (
+    snapshot.completedBrains.includes("planning") &&
+    (snapshot.state === "generating" || snapshot.pendingBrains.includes("creative"))
+  ) {
+    return "creative";
+  }
   if (snapshot.completedBrains.includes("planning")) return "planning";
   if (snapshot.completedBrains.includes("strategy")) return "planning";
   if (snapshot.completedBrains.length > 0) return "strategy";

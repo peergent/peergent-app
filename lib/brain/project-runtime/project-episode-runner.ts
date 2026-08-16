@@ -567,6 +567,28 @@ export class ProjectEpisodeRunner {
         const brainId = evaluation.action.brainId;
         if (!brainId) continue;
 
+        if (brainId === "creative") {
+          emitOrchestrationDiagnostic({
+            event: "creative_start_requested",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: "creative",
+            snapshotState: episode.snapshot.state,
+          });
+        }
+        if (brainId === "validation") {
+          emitOrchestrationDiagnostic({
+            event: "validation_started",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: "validation",
+          });
+        }
+
         const idempotencyKey = `${episode.correlationId}:${brainId}:${episode.snapshot.state}`;
         if (episode.executedBrainKeys.includes(idempotencyKey)) {
           episode = advanceIdlePhase(episode);

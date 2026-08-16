@@ -34,8 +34,11 @@ const RUNNER_OVERHEAD_PER_BRAIN = 2;
 /** Non-brain transitions: context ready, publish state prep, approval evaluation, etc. */
 const BASE_TRANSITION_BUDGET = 8;
 
+/** Dependency resolution may consume multiple loop iterations per brain. */
+const DEPENDENCY_RESOLUTION_OVERHEAD = 12;
+
 /** Bounded safety margin — not an arbitrary cap replacement. */
-const SAFETY_MARGIN = 6;
+const SAFETY_MARGIN = 6 + DEPENDENCY_RESOLUTION_OVERHEAD;
 
 /** Iterations without snapshot progress before stale-loop protection fires. */
 export const MAX_STALE_LOOP_ITERATIONS = 8;
