@@ -82,6 +82,7 @@ export {
 export { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
 export {
   resolveEpisodeStepBudget,
+  resolveEpisodeStepBudgetForEpisode,
   snapshotProgressSignature,
   MAX_STALE_LOOP_ITERATIONS,
 } from "./episode-step-budget";

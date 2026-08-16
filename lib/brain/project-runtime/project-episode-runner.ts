@@ -51,9 +51,11 @@ import {
   isLegitimateRunnerPause,
   MAX_STALE_LOOP_ITERATIONS,
   resolveEpisodeStepBudget,
+  resolveEpisodeStepBudgetForEpisode,
   snapshotProgressSignature,
   type EpisodeLoopExit,
 } from "./episode-step-budget";
+import { evaluateEffectiveValidationContextReadiness } from "../validation-readiness";
 
 export class ProjectEpisodeRunner {
   constructor(
@@ -313,8 +315,9 @@ export class ProjectEpisodeRunner {
 
     const maxSteps =
       input.maxSteps ??
-      resolveEpisodeStepBudget({
-        campaignApprovalMode: input.campaignContext?.approvalMode ?? episode.campaignApprovalMode,
+      resolveEpisodeStepBudgetForEpisode(episode, {
+        campaignApprovalMode:
+          input.campaignContext?.approvalMode ?? episode.campaignApprovalMode,
         targetBrain: input.target?.targetBrain ?? null,
       });
     const locale = input.locale ?? "en";
@@ -579,18 +582,46 @@ export class ProjectEpisodeRunner {
           });
         }
         if (brainId === "validation") {
+          const resolvedForReadiness = mergeResolvedGraphs(
+            episode.resolvedGraphs,
+            resolveBrainOutputs({
+              organizationId: episode.snapshot.organizationId,
+              projectId: episode.snapshot.projectId,
+              artifacts: episode.artifacts,
+              episodeResolvedGraphs: episode.resolvedGraphs,
+            })
+          );
+          const readiness = evaluateEffectiveValidationContextReadiness({
+            episode,
+            resolvedGraphs: resolvedForReadiness,
+            completedBrains: episode.snapshot.completedBrains,
+            campaignContext: contextHandoff.campaignContext,
+          });
           emitOrchestrationDiagnostic({
-            event: "validation_started",
+            event: "validation_start_requested",
             organizationId: episode.snapshot.organizationId,
             projectId: episode.snapshot.projectId,
             peerId: episode.snapshot.peerId,
             episodeId: episode.snapshot.episodeId,
             brainId: "validation",
+            snapshotState: episode.snapshot.state,
+            resolvedCreativeGraphPresent: Boolean(resolvedForReadiness.creativeGraph),
+            validationReadinessScore: readiness.score,
+            validationReadinessMinimum: readiness.minimum,
           });
         }
 
         const idempotencyKey = `${episode.correlationId}:${brainId}:${episode.snapshot.state}`;
-        if (episode.executedBrainKeys.includes(idempotencyKey)) {
+        if (shouldSkipExecutedBrainKey(episode, brainId, idempotencyKey)) {
+          emitOrchestrationDiagnostic({
+            event: brainId === "validation" ? "validation_start_skipped" : "episode_loop_terminal_break",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId,
+            reason: "executed_brain_key_without_completion",
+          });
           episode = advanceIdlePhase(episode);
           continue;
         }
@@ -697,6 +728,22 @@ export class ProjectEpisodeRunner {
     if (!loopExit) {
       loopExit = { kind: "max_steps_exceeded" };
     }
+
+    episode = {
+      ...episode,
+      lastRunnerExitReason: loopExit.kind,
+    };
+
+    emitOrchestrationDiagnostic({
+      event: "episode_loop_terminal_break",
+      organizationId: episode.snapshot.organizationId,
+      projectId: episode.snapshot.projectId,
+      peerId: episode.snapshot.peerId,
+      episodeId: episode.snapshot.episodeId,
+      reason: loopExit.kind,
+      snapshotState: episode.snapshot.state,
+      runnerExitReason: loopExit.kind,
+    });
 
     episode = await this.commitEpisode(episode);
     if (episode.episodeStatus === "running") {
@@ -811,6 +858,7 @@ export class ProjectEpisodeRunner {
         organizationId: input.episode.snapshot.organizationId,
         projectId: input.episode.snapshot.projectId,
         artifacts: input.episode.artifacts,
+        episodeResolvedGraphs: input.episode.resolvedGraphs,
       })
     );
 
@@ -914,6 +962,7 @@ function applyBrainExecution(
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
       artifacts,
+      episodeResolvedGraphs: episode.resolvedGraphs,
     });
     cachedLearningProposals = proposalsFromLearningGraph(resolvedLearning.learningBrainGraph);
     artifacts = {
@@ -966,6 +1015,7 @@ function applyBrainExecution(
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
       artifacts,
+      episodeResolvedGraphs: episode.resolvedGraphs,
     })
   );
 
@@ -1169,6 +1219,15 @@ export function createProjectEpisodeRunner(
     durablePort ?? getActiveDurablePersistence(),
     brainExecutionAdapter ?? null
   );
+}
+
+function shouldSkipExecutedBrainKey(
+  episode: ProjectEpisodeRecord,
+  brainId: ProjectBrainId,
+  idempotencyKey: string
+): boolean {
+  if (!episode.executedBrainKeys.includes(idempotencyKey)) return false;
+  return episode.snapshot.completedBrains.includes(brainId);
 }
 
 function mergeResolvedGraphs(

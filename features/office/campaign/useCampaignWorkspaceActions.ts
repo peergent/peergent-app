@@ -151,7 +151,7 @@ export function useCampaignWorkspaceActions(input: {
   }, [liveCampaignSetup, peerId, projectId]);
   const strategyRunInFlightRef = useRef(false);
   const triggeredStrategyKeysRef = useRef(new Set<string>());
-  const pipelineRecoveryAttemptedRef = useRef(false);
+  const pipelineRecoveryAttemptedRef = useRef<string | null>(null);
 
   const syncLiveProject = useCallback(
     (updated: MarketingProject) => {
@@ -206,15 +206,36 @@ export function useCampaignWorkspaceActions(input: {
     if (isDemo || !liveProject) return;
     if (liveProject.campaignSetup?.setupMode === "manual") return;
     if (!liveProject.campaignSetup?.strategyGeneratedAt) return;
-    if (pipelineRecoveryAttemptedRef.current) return;
-    pipelineRecoveryAttemptedRef.current = true;
+
+    const recoverySignature = [
+      projectId,
+      liveProject.campaignSetup?.strategyRun?.status ?? "unknown",
+      liveProject.campaignSetup?.strategyGeneratedAt ?? "",
+      liveProject.updatedAt,
+    ].join(":");
+
+    if (pipelineRecoveryAttemptedRef.current === recoverySignature) return;
+    pipelineRecoveryAttemptedRef.current = recoverySignature;
+
     void resumeAutomaticCampaignPipelineAction({
       peerId,
       projectId,
       project: liveProject,
       locale: localePreference,
+    }).then((result) => {
+      if (result.resumed && result.stallReason) {
+        pipelineRecoveryAttemptedRef.current = null;
+      }
     });
-  }, [isDemo, liveProject, localePreference, peerId, projectId]);
+  }, [
+    isDemo,
+    liveProject,
+    liveProject?.campaignSetup?.strategyRun?.status,
+    liveProject?.updatedAt,
+    localePreference,
+    peerId,
+    projectId,
+  ]);
 
   useEffect(() => {
     if (isDemo || !liveProject || !strategyTriggerKey) return;

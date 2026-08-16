@@ -9,9 +9,8 @@ import { buildDomainInputForStrategyRun } from "./live-strategy-run-execution";
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { buildCampaignEpisodeServerExecutionContext } from "@/lib/brain/project-runtime/campaign-episode-server-context";
 import { resumeAutomaticCampaignPipeline } from "@/lib/brain/project-runtime/automatic-campaign-pipeline";
-import {
-  detectAutomaticCampaignPipelineStall,
-} from "@/lib/brain/project-runtime/automatic-campaign-pipeline-invariants";
+import { detectAutomaticCampaignPipelineStall } from "@/lib/brain/project-runtime/automatic-campaign-pipeline-invariants";
+import { getDefaultProjectEpisodeRepository } from "@/lib/brain/project-runtime/project-episode-repository";
 import { usesProjectEngineLifecycleAuthority } from "./live-strategy-run-service";
 
 export type ResumeAutomaticCampaignPipelineActionResult = {
@@ -67,6 +66,21 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
       organizationId: auth.organizationId,
     });
 
+    const episode =
+      getDefaultProjectEpisodeRepository().get({
+        organizationId: auth.organizationId,
+        projectId: input.projectId,
+      }) ?? null;
+
+    const contextPhase =
+      episode?.snapshot.state === "validating" &&
+      !episode.snapshot.completedBrains.includes("validation")
+        ? "validation"
+        : episode?.snapshot.state === "generating" &&
+            !episode?.snapshot.completedBrains.includes("creative")
+          ? "creative"
+          : "planning";
+
     const serverContext = await buildCampaignEpisodeServerExecutionContext({
       supabase: auth.supabase,
       organizationId: auth.organizationId,
@@ -77,7 +91,7 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
       project: input.project,
       domainInput,
       locale: input.locale === "nl" ? "nl" : "en",
-      contextPhase: "planning",
+      contextPhase,
     });
 
     const result = await resumeAutomaticCampaignPipeline({

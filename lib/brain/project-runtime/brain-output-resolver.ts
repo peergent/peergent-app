@@ -34,6 +34,8 @@ export function resolveBrainOutputs(input: {
   organizationId: string;
   projectId: string;
   artifacts: ProjectBrainArtifacts;
+  /** PX-54 — episode-resolved graph cache (durable handoff when L1 repos are cold). */
+  episodeResolvedGraphs?: Partial<ResolvedBrainOutputs>;
 }): ResolvedBrainOutputs {
   const key = { organizationId: input.organizationId, projectId: input.projectId };
 
@@ -50,18 +52,20 @@ export function resolveBrainOutputs(input: {
   const learning = getDefaultLearningBrainRepository().getLatestSnapshot(key)?.graph ?? null;
   const priorMemories = getDefaultMemoryRepository().getOrgMemories(input.organizationId);
 
+  const cached = input.episodeResolvedGraphs ?? {};
+
   return {
-    companyGraph: company,
-    researchBrainGraph: research,
-    reasoningBrainGraph: reasoning,
-    marketingIntelligenceBrainGraph: mi,
-    strategyBrainGraph: strategy,
-    planningBrainGraph: planning,
-    creativeGraph: creative,
-    validationGraph: validation,
-    memoryGraph: memory,
-    executionHistory: execution,
-    learningBrainGraph: learning,
-    priorMemories,
+    companyGraph: company ?? cached.companyGraph ?? null,
+    researchBrainGraph: research ?? cached.researchBrainGraph ?? null,
+    reasoningBrainGraph: reasoning ?? cached.reasoningBrainGraph ?? null,
+    marketingIntelligenceBrainGraph: mi ?? cached.marketingIntelligenceBrainGraph ?? null,
+    strategyBrainGraph: strategy ?? cached.strategyBrainGraph ?? null,
+    planningBrainGraph: planning ?? cached.planningBrainGraph ?? null,
+    creativeGraph: creative ?? cached.creativeGraph ?? null,
+    validationGraph: validation ?? cached.validationGraph ?? null,
+    memoryGraph: memory ?? cached.memoryGraph ?? null,
+    executionHistory: execution ?? cached.executionHistory ?? null,
+    learningBrainGraph: learning ?? cached.learningBrainGraph ?? null,
+    priorMemories: priorMemories.length > 0 ? priorMemories : cached.priorMemories ?? [],
   };
 }

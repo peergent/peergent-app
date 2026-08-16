@@ -12,7 +12,6 @@ import {
   type ProjectLifecycleState,
 } from "../project-engine/types";
 import type { ProjectEpisodeRecord } from "./types";
-
 /** Brains that run before the DEFAULT_BRAIN_PIPELINE research phase. */
 export const EPISODE_BOOTSTRAP_BRAINS: readonly ProjectBrainId[] = ["company"];
 
@@ -122,6 +121,47 @@ export function snapshotProgressSignature(episode: ProjectEpisodeRecord): string
     episode.snapshot.approvalCheckpoint?.kind ?? "",
     episode.snapshot.approvalCheckpoint?.satisfied ? "1" : "0",
   ].join(":");
+}
+
+/** Derive step budget from episode pending work — avoids validation stall after creative. */
+export function resolveEpisodeStepBudgetForEpisode(
+  episode: ProjectEpisodeRecord,
+  input?: {
+    campaignApprovalMode?: CampaignApprovalMode;
+    maxSteps?: number;
+    targetBrain?: ProjectBrainId | null;
+  }
+): number {
+  if (input?.maxSteps !== undefined) return input.maxSteps;
+
+  const mode =
+    input?.campaignApprovalMode ??
+    episode.campaignApprovalMode ??
+    "approval_before_publication";
+
+  if (input?.targetBrain) {
+    return resolveEpisodeStepBudget({ campaignApprovalMode: mode, targetBrain: input.targetBrain });
+  }
+
+  let budget = resolveEpisodeStepBudget({ campaignApprovalMode: mode });
+
+  const pending = episode.snapshot.pendingBrains ?? [];
+  const postCreativePending = pending.filter((brain) =>
+    (["validation", "memory", "execution", "learning"] as ProjectBrainId[]).includes(brain)
+  ).length;
+
+  if (postCreativePending > 0) {
+    budget += postCreativePending * RUNNER_OVERHEAD_PER_BRAIN * 3;
+  }
+
+  if (
+    episode.snapshot.state === "validating" &&
+    !episode.snapshot.completedBrains.includes("validation")
+  ) {
+    budget += RUNNER_OVERHEAD_PER_BRAIN * 4;
+  }
+
+  return budget;
 }
 
 export function isLegitimateRunnerPause(exit: EpisodeLoopExit | null): boolean {

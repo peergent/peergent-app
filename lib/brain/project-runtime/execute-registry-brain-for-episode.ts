@@ -58,6 +58,7 @@ function resolveMergedGraphs(episode: ProjectEpisodeRecord): ResolvedBrainOutput
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
       artifacts: episode.artifacts,
+      episodeResolvedGraphs: episode.resolvedGraphs,
     })
   );
 }
@@ -72,6 +73,12 @@ async function ensureCreativeGraphForValidation(input: {
   registry: ProjectBrainRegistry;
 }): Promise<ResolvedBrainOutputs> {
   if (input.resolved.creativeGraph) return input.resolved;
+
+  const fromEpisodeCache = input.episode.resolvedGraphs?.creativeGraph ?? null;
+  if (fromEpisodeCache) {
+    return { ...input.resolved, creativeGraph: fromEpisodeCache };
+  }
+
   if (!input.episode.snapshot.completedBrains.includes("creative")) return input.resolved;
 
   const contract = input.registry.creative as ProjectBrainContract | undefined;

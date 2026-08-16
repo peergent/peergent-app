@@ -58,7 +58,11 @@ export type OrchestrationDiagnosticEvent =
   | "creative_start_requested"
   | "creative_started"
   | "creative_completed"
-  | "validation_started";
+  | "validation_started"
+  | "validation_start_requested"
+  | "validation_completed"
+  | "validation_start_skipped"
+  | "validation_start_failed";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -93,6 +97,11 @@ export type OrchestrationDiagnosticPayload = {
   outputRefPresent?: boolean;
   dependencyCapabilityId?: string;
   consumerCapabilityId?: string;
+  resolvedCreativeGraphPresent?: boolean;
+  validationReadinessScore?: number;
+  validationReadinessMinimum?: number;
+  runnerExitReason?: string;
+  fromState?: ProjectLifecycleState;
 };
 
 export function safeOrchestrationError(error: unknown): {

@@ -81,6 +81,8 @@ export type ProjectEpisodeRecord = {
   contextGaps: ContextGap[];
   executedBrainKeys: string[];
   lastError: string | null;
+  /** PX-54 — last runner loop exit (privacy-safe orchestration diagnostic). */
+  lastRunnerExitReason?: string | null;
   correlationId: string;
   startedAt: string;
   updatedAt: string;

@@ -1,5 +1,5 @@
 /**
- * PX-51 — reusable invariants for automatic campaign pipeline health.
+ * PX-51 / PX-54 — reusable invariants for automatic campaign pipeline health.
  */
 
 import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
@@ -22,10 +22,18 @@ export type AutomaticCampaignPipelinePhase =
   | "failed"
   | "waiting_for_context";
 
+export type OrchestrationStallReason =
+  | `cognitive_pipeline_incomplete:${ProjectBrainId}`
+  | "ORCHESTRATION_STALL_VALIDATION_NOT_STARTED"
+  | "ORCHESTRATION_STALL_CREATIVE_NOT_STARTED"
+  | "ORCHESTRATION_STALL_MEMORY_CHECKPOINT_NOT_STARTED"
+  | "full_autonomy_pipeline_incomplete"
+  | string;
+
 export type AutomaticCampaignPipelineStall = {
   stalled: true;
   phase: AutomaticCampaignPipelinePhase;
-  reason: string;
+  reason: OrchestrationStallReason;
   episodeStatus: EpisodeStatus;
   currentState: ProjectLifecycleState;
   completedBrains: readonly ProjectBrainId[];
@@ -64,17 +72,72 @@ function inferPhase(episode: ProjectEpisodeRecord): AutomaticCampaignPipelinePha
   }
   if (snapshot.completedBrains.includes("execution")) return "execution";
   if (snapshot.completedBrains.includes("validation")) return "validation";
-  if (snapshot.completedBrains.includes("creative")) return "creative";
   if (
+    snapshot.state === "validating" &&
+    snapshot.completedBrains.includes("creative") &&
+    !snapshot.completedBrains.includes("validation")
+  ) {
+    return "validation";
+  }
+  if (
+    snapshot.state === "generating" &&
     snapshot.completedBrains.includes("planning") &&
-    (snapshot.state === "generating" || snapshot.pendingBrains.includes("creative"))
+    !snapshot.completedBrains.includes("creative")
   ) {
     return "creative";
   }
+  if (snapshot.completedBrains.includes("creative")) return "creative";
   if (snapshot.completedBrains.includes("planning")) return "planning";
   if (snapshot.completedBrains.includes("strategy")) return "planning";
   if (snapshot.completedBrains.length > 0) return "strategy";
   return "not_started";
+}
+
+function detectOrchestrationStallReason(
+  episode: ProjectEpisodeRecord
+): OrchestrationStallReason | null {
+  const { snapshot } = episode;
+  const pending = snapshot.pendingBrains ?? [];
+
+  if (
+    snapshot.state === "validating" &&
+    snapshot.completedBrains.includes("creative") &&
+    !snapshot.completedBrains.includes("validation") &&
+    pending.includes("validation") &&
+    snapshot.activeBrain == null &&
+    !snapshot.approvalCheckpoint &&
+    !snapshot.waitingReason
+  ) {
+    return "ORCHESTRATION_STALL_VALIDATION_NOT_STARTED";
+  }
+
+  if (
+    snapshot.state === "generating" &&
+    snapshot.completedBrains.includes("planning") &&
+    !snapshot.completedBrains.includes("creative") &&
+    pending.includes("creative") &&
+    snapshot.activeBrain == null
+  ) {
+    return "ORCHESTRATION_STALL_CREATIVE_NOT_STARTED";
+  }
+
+  if (
+    snapshot.state === "validating" &&
+    snapshot.completedBrains.includes("validation") &&
+    !episode.memoryCheckpoint1Complete &&
+    pending.includes("memory")
+  ) {
+    return "ORCHESTRATION_STALL_MEMORY_CHECKPOINT_NOT_STARTED";
+  }
+
+  const nextExpected = COGNITIVE_POST_STRATEGY.find(
+    (brain) => !snapshot.completedBrains.includes(brain)
+  );
+  if (nextExpected && pending.includes(nextExpected)) {
+    return `cognitive_pipeline_incomplete:${nextExpected}`;
+  }
+
+  return null;
 }
 
 /** Detect orchestration stall — e.g. running/planning with strategy done but planning never ran. */
@@ -126,22 +189,19 @@ export function detectAutomaticCampaignPipelineStall(input: {
     const cognitiveComplete = COGNITIVE_POST_STRATEGY.every((brain) =>
       episode.snapshot.completedBrains.includes(brain)
     );
-    if (cognitiveComplete) return null;
+    if (cognitiveComplete && episode.memoryCheckpoint1Complete) return null;
 
     if (episode.episodeStatus === "running") {
-      const pending = episode.snapshot.pendingBrains ?? [];
-      const nextExpected = COGNITIVE_POST_STRATEGY.find(
-        (brain) => !episode.snapshot.completedBrains.includes(brain)
-      );
-      if (nextExpected && pending.includes(nextExpected)) {
+      const orchestrationReason = detectOrchestrationStallReason(episode);
+      if (orchestrationReason) {
         return {
           stalled: true,
           phase,
-          reason: `cognitive_pipeline_incomplete:${nextExpected}`,
+          reason: orchestrationReason,
           episodeStatus: episode.episodeStatus,
           currentState: episode.snapshot.state,
           completedBrains: episode.snapshot.completedBrains,
-          pendingBrains: pending,
+          pendingBrains: episode.snapshot.pendingBrains,
           approvalCheckpoint: episode.snapshot.approvalCheckpoint?.kind ?? null,
         };
       }

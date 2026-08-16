@@ -191,6 +191,18 @@ export function createProductionBrainExecutionAdapter(
           });
         }
 
+        if (runInput.brainId === "validation") {
+          emitOrchestrationDiagnostic({
+            event: "validation_started",
+            organizationId: runInput.episode.snapshot.organizationId,
+            projectId: runInput.episode.snapshot.projectId,
+            peerId: runInput.episode.snapshot.peerId,
+            episodeId: runInput.episode.snapshot.episodeId,
+            brainId: "validation",
+            fromState: runInput.episode.snapshot.state,
+          });
+        }
+
         const registryResult = await executeRegistryBrainForEpisode({
           brainId: runInput.brainId,
           episode: runInput.episode,
@@ -214,6 +226,20 @@ export function createProductionBrainExecutionAdapter(
             peerId: runInput.episode.snapshot.peerId,
             episodeId: runInput.episode.snapshot.episodeId,
             brainId: "creative",
+          });
+        }
+        if (runInput.brainId === "validation") {
+          emitOrchestrationDiagnostic({
+            event:
+              registryResult.status === "failed"
+                ? "validation_start_failed"
+                : "validation_completed",
+            organizationId: runInput.episode.snapshot.organizationId,
+            projectId: runInput.episode.snapshot.projectId,
+            peerId: runInput.episode.snapshot.peerId,
+            episodeId: runInput.episode.snapshot.episodeId,
+            brainId: "validation",
+            errorCode: registryResult.errorCode ?? undefined,
           });
         }
         return registryResult;

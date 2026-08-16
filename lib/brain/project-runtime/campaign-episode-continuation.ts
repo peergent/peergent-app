@@ -9,7 +9,7 @@ import { usesProjectEngineLifecycleAuthority } from "@/lib/office/campaign/live-
 import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
 import { prepareBrainServerPersistence } from "../persistence/server/prepare-brain-server-persistence";
 import { assertLiveBrainServerContext } from "../context-acquisition/server/context-acquisition-config";
-import { resolveEpisodeStepBudget } from "./episode-step-budget";
+import { resolveEpisodeStepBudgetForEpisode } from "./episode-step-budget";
 import { createProjectEpisodeRunner } from "./project-episode-runner";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
@@ -339,7 +339,9 @@ async function executeCampaignEpisodeContinuation(
       useRealContext: true,
       supabase: input.supabase,
       campaignContext: input.campaignContext,
-      maxSteps: resolveEpisodeStepBudget({ campaignApprovalMode: approvalMode }),
+      maxSteps: resolveEpisodeStepBudgetForEpisode(episode, {
+        campaignApprovalMode: approvalMode,
+      }),
     });
   } catch (error) {
     const safe = safeOrchestrationError(error);

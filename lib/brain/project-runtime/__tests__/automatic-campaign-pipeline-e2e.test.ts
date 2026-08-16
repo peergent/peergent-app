@@ -44,7 +44,9 @@ import {
   detectAutomaticCampaignPipelineStall,
   resetCampaignEpisodeContinuationInFlightForTests,
   createProductionBrainExecutionAdapter,
+  resolveEpisodeStepBudgetForEpisode,
 } from "@/lib/brain/project-runtime";
+import { getDefaultCreativeRepository } from "@/lib/brain/layers/creative/creative-repository";
 import { createMarketingCampaignProject } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 
@@ -287,6 +289,38 @@ describe("PX-51 automatic campaign pipeline E2E", () => {
     expect(stall?.reason).toContain("planning");
   });
 
+  it("D2 — stall invariant detects production validation-not-started stall", () => {
+    const project = automaticProject();
+    const stall = detectAutomaticCampaignPipelineStall({
+      project,
+      episode: {
+        episodeStatus: "running",
+        lastError: null,
+        campaignApprovalMode: "approval_before_publication",
+        snapshot: {
+          state: "validating",
+          activeBrain: null,
+          completedBrains: [
+            "company",
+            "research",
+            "reasoning",
+            "marketing_intelligence",
+            "strategy",
+            "planning",
+            "creative",
+          ],
+          pendingBrains: ["validation", "execution", "memory", "learning"],
+          approvalCheckpoint: null,
+          waitingReason: null,
+        },
+      } as never,
+    });
+
+    expect(stall?.stalled).toBe(true);
+    expect(stall?.phase).toBe("validation");
+    expect(stall?.reason).toBe("ORCHESTRATION_STALL_VALIDATION_NOT_STARTED");
+  });
+
   it("E — durable episode persists cognitive pipeline progress across cold start", async () => {
     const project = automaticProject();
     const projectId = project.id;
@@ -457,5 +491,177 @@ describe("PX-51 automatic campaign pipeline E2E", () => {
       project,
       episode: continuation.episode,
     });
+  });
+
+  it("H — production validation stall: cold-start recovery reaches publication approval", async () => {
+    const project = automaticProject();
+    const projectId = project.id;
+    const adapter = createProductionBrainExecutionAdapter({
+      peerId: "demo",
+      project,
+      domainInput: domainInput(project),
+    });
+    const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
+    const repo = getDefaultProjectEpisodeRepository();
+
+    await runner.startEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    repo.save({
+      ...repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!,
+      campaignApprovalMode: "approval_before_publication",
+    });
+
+    const creativeResult = await runner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      target: { targetBrain: "creative" },
+    });
+
+    expect(creativeResult.episode.snapshot.completedBrains).toContain("creative");
+    expect(creativeResult.episode.snapshot.state).toBe("validating");
+
+    const stalledEpisode = repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!;
+    const stall = detectAutomaticCampaignPipelineStall({ project, episode: stalledEpisode });
+    expect(stall?.reason).toBe("ORCHESTRATION_STALL_VALIDATION_NOT_STARTED");
+
+    const creativeGraph = stalledEpisode.resolvedGraphs.creativeGraph;
+    expect(creativeGraph).toBeTruthy();
+
+    const validationKey = `${stalledEpisode.correlationId}:validation:validating`;
+    repo.save({
+      ...stalledEpisode,
+      executedBrainKeys: [...stalledEpisode.executedBrainKeys, validationKey],
+      snapshot: {
+        ...stalledEpisode.snapshot,
+        activeBrain: null,
+      },
+    });
+
+    resetDefaultProjectEpisodeRepository();
+
+    const durable = createSimulatedDurablePersistence();
+    await durable.hydrateProject({ organizationId: FIXTURE_ORG_ID, projectId });
+
+    getDefaultCreativeRepository().clear();
+
+    expect(
+      getDefaultCreativeRepository().getLatest({
+        organizationId: FIXTURE_ORG_ID,
+        campaignId: projectId,
+      })
+    ).toBeNull();
+
+    const reloaded = repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!;
+    expect(reloaded.resolvedGraphs.creativeGraph).toBeTruthy();
+    expect(reloaded.snapshot.state).toBe("validating");
+    expect(reloaded.snapshot.completedBrains).toContain("creative");
+    expect(reloaded.snapshot.completedBrains).not.toContain("validation");
+
+    const recoveryRunner = createProjectEpisodeRunner(undefined, durable, adapter);
+    const continuation = await recoveryRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudgetForEpisode(reloaded),
+    });
+
+    expect(continuation.episode.snapshot.completedBrains).toContain("validation");
+    expect(continuation.episode.lastError).toBeNull();
+    expect(
+      continuation.status === "waiting_for_approval" ||
+        continuation.episode.snapshot.state === "waiting_for_approval"
+    ).toBe(true);
+    expect(continuation.episode.snapshot.completedBrains).not.toContain("execution");
+
+    assertAutomaticCampaignReachedPublicationBoundary({
+      project,
+      episode: continuation.episode,
+    });
+  });
+
+  it("I — validation stall recovery then approval resumes execution once", async () => {
+    const project = automaticProject();
+    const projectId = project.id;
+    const adapter = createProductionBrainExecutionAdapter({
+      peerId: "demo",
+      project,
+      domainInput: domainInput(project),
+    });
+    const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
+    const repo = getDefaultProjectEpisodeRepository();
+
+    await runner.startEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    repo.save({
+      ...repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!,
+      campaignApprovalMode: "approval_before_publication",
+    });
+
+    await runner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      target: { targetBrain: "creative" },
+    });
+
+    const stalled = repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!;
+    resetDefaultProjectEpisodeRepository();
+
+    const durable = createSimulatedDurablePersistence();
+    await durable.hydrateProject({ organizationId: FIXTURE_ORG_ID, projectId });
+    getDefaultCreativeRepository().clear();
+    const recoveryRunner = createProjectEpisodeRunner(undefined, durable, adapter);
+    const afterRecovery = await recoveryRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudgetForEpisode(stalled),
+    });
+
+    expect(afterRecovery.status).toBe("waiting_for_approval");
+
+    await submitProjectApprovalDurable({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      approvalId: "approval-px54-e2e",
+      decision: "approved",
+      actor: "customer@test.com",
+    });
+
+    const result = await recoveryRunner.resumeEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      approvalSatisfied: true,
+    });
+
+    expect(result.episode.snapshot.completedBrains).toContain("execution");
+    expect(result.episode.lastError).toBeNull();
   });
 });
