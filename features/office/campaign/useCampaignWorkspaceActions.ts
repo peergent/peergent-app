@@ -38,6 +38,10 @@ import { getBrainCapability } from "@/lib/brain/capabilities/registry";
 import { customerSafeStrategyFailureMessage } from "@/lib/office/campaign/strategy-run-types";
 import { triggerLiveStrategyRunViaServer, recoverStaleOptimisticStrategyRun } from "@/lib/office/campaign/live-strategy-run-client";
 import { resumeAutomaticCampaignPipelineAction } from "@/lib/office/campaign/resume-automatic-campaign-pipeline-action";
+import {
+  evaluateAutomaticPipelineRecoveryOnMount,
+  isAutomaticCampaignPastStrategyBootstrap,
+} from "@/lib/office/campaign/live-strategy-run-service";
 import { recoverStaleLiveStrategyRun } from "@/lib/office/campaign/live-campaign-context-store";
 import { isInformationalWorkflowStep } from "@/lib/office/campaign/campaign-orchestration-types";
 import { inferCampaignBrandName } from "@/lib/office/campaign/campaign-brand-boundary";
@@ -205,13 +209,15 @@ export function useCampaignWorkspaceActions(input: {
   useEffect(() => {
     if (isDemo || !liveProject) return;
     if (liveProject.campaignSetup?.setupMode === "manual") return;
-    if (!liveProject.campaignSetup?.strategyGeneratedAt) return;
+
+    const mountDecision = evaluateAutomaticPipelineRecoveryOnMount(liveProject);
+    if (!mountDecision.eligible) return;
 
     const recoverySignature = [
       projectId,
       liveProject.campaignSetup?.strategyRun?.status ?? "unknown",
       liveProject.campaignSetup?.strategyGeneratedAt ?? "",
-      liveProject.updatedAt,
+      mountDecision.decisionReason,
     ].join(":");
 
     if (pipelineRecoveryAttemptedRef.current === recoverySignature) return;
@@ -222,6 +228,7 @@ export function useCampaignWorkspaceActions(input: {
       projectId,
       project: liveProject,
       locale: localePreference,
+      mountDecisionReason: mountDecision.decisionReason,
     }).then((result) => {
       if (result.resumed && result.stallReason) {
         pipelineRecoveryAttemptedRef.current = null;
@@ -231,7 +238,7 @@ export function useCampaignWorkspaceActions(input: {
     isDemo,
     liveProject,
     liveProject?.campaignSetup?.strategyRun?.status,
-    liveProject?.updatedAt,
+    liveProject?.campaignSetup?.strategyGeneratedAt,
     localePreference,
     peerId,
     projectId,
@@ -239,6 +246,12 @@ export function useCampaignWorkspaceActions(input: {
 
   useEffect(() => {
     if (isDemo || !liveProject || !strategyTriggerKey) return;
+    if (
+      isAutomaticCampaignPastStrategyBootstrap(liveProject) &&
+      !liveProject.campaignSetup?.strategyGeneratedAt
+    ) {
+      return;
+    }
     if (triggeredStrategyKeysRef.current.has(strategyTriggerKey)) return;
     const recovered =
       recoverStaleOptimisticStrategyRun(peerId, projectId, liveProject, localePreference) ??

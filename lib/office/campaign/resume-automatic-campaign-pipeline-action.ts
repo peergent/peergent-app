@@ -9,9 +9,16 @@ import { buildDomainInputForStrategyRun } from "./live-strategy-run-execution";
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { buildCampaignEpisodeServerExecutionContext } from "@/lib/brain/project-runtime/campaign-episode-server-context";
 import { resumeAutomaticCampaignPipeline } from "@/lib/brain/project-runtime/automatic-campaign-pipeline";
-import { detectAutomaticCampaignPipelineStall } from "@/lib/brain/project-runtime/automatic-campaign-pipeline-invariants";
+import {
+  detectAutomaticCampaignPipelineStall,
+  shouldResumeAutomaticCampaignPipeline,
+} from "@/lib/brain/project-runtime/automatic-campaign-pipeline-invariants";
 import { getDefaultProjectEpisodeRepository } from "@/lib/brain/project-runtime/project-episode-repository";
-import { usesProjectEngineLifecycleAuthority } from "./live-strategy-run-service";
+import { emitOrchestrationDiagnostic } from "@/lib/brain/project-runtime/orchestration-diagnostics";
+import {
+  evaluateAutomaticPipelineRecoveryOnMount,
+  usesProjectEngineLifecycleAuthority,
+} from "./live-strategy-run-service";
 
 export type ResumeAutomaticCampaignPipelineActionResult = {
   ok: boolean;
@@ -19,8 +26,36 @@ export type ResumeAutomaticCampaignPipelineActionResult = {
   episodeStatus?: string;
   currentState?: string;
   stallReason?: string;
+  decisionReason?: string;
   error?: string;
 };
+
+function emitRecoveryDiagnostic(input: {
+  event:
+    | "automatic_pipeline_recovery_candidate"
+    | "automatic_pipeline_recovery_triggered"
+    | "automatic_pipeline_recovery_skipped"
+    | "automatic_pipeline_recovery_failed";
+  organizationId: string;
+  projectId: string;
+  peerId: string;
+  snapshotState?: string;
+  stallReason?: string;
+  decisionReason?: string;
+  errorCode?: string;
+}): void {
+  emitOrchestrationDiagnostic({
+    event: input.event,
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    peerId: input.peerId,
+    snapshotState: input.snapshotState as never,
+    stallReason: input.stallReason,
+    decisionReason: input.decisionReason,
+    errorCode: input.errorCode,
+    reason: input.decisionReason ?? input.stallReason ?? input.errorCode,
+  });
+}
 
 /** One-shot server recovery for stalled automatic campaign cognitive pipeline. */
 export async function resumeAutomaticCampaignPipelineAction(input: {
@@ -28,19 +63,47 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
   projectId: string;
   project: MarketingProject;
   locale?: string | null;
+  mountDecisionReason?: string;
 }): Promise<ResumeAutomaticCampaignPipelineActionResult> {
-  if (isDemoPeer(input.peerId) || !usesProjectEngineLifecycleAuthority(input.project)) {
-    return { ok: true, resumed: false };
+  const mountDecision = evaluateAutomaticPipelineRecoveryOnMount(input.project);
+
+  if (isDemoPeer(input.peerId)) {
+    return { ok: true, resumed: false, decisionReason: "demo_peer" };
+  }
+
+  if (!usesProjectEngineLifecycleAuthority(input.project)) {
+    return { ok: true, resumed: false, decisionReason: "manual_setup" };
+  }
+
+  if (!mountDecision.eligible) {
+    return { ok: true, resumed: false, decisionReason: mountDecision.decisionReason };
   }
 
   try {
     const auth = await requireAuthenticatedOrgContext();
+    emitRecoveryDiagnostic({
+      event: "automatic_pipeline_recovery_candidate",
+      organizationId: auth.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      decisionReason: input.mountDecisionReason ?? mountDecision.decisionReason,
+    });
+
     const peer = await fetchOrganizationPeerByIdServer(
       auth.supabase,
       input.peerId,
       auth.organizationId
     );
-    if (!peer) return { ok: false, resumed: false, error: "peer_not_found" };
+    if (!peer) {
+      emitRecoveryDiagnostic({
+        event: "automatic_pipeline_recovery_skipped",
+        organizationId: auth.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        decisionReason: "peer_not_found",
+      });
+      return { ok: false, resumed: false, error: "peer_not_found", decisionReason: "peer_not_found" };
+    }
 
     await prepareBrainServerPersistence({
       supabase: auth.supabase,
@@ -72,6 +135,33 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
         projectId: input.projectId,
       }) ?? null;
 
+    if (!shouldResumeAutomaticCampaignPipeline({ project: input.project, episode })) {
+      const stall = detectAutomaticCampaignPipelineStall({
+        project: input.project,
+        episode,
+      });
+      emitRecoveryDiagnostic({
+        event: "automatic_pipeline_recovery_skipped",
+        organizationId: auth.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        snapshotState: episode?.snapshot.state,
+        stallReason: stall?.reason,
+        decisionReason: episode ? "no_stall_detected" : "episode_not_loaded",
+      });
+      return {
+        ok: true,
+        resumed: false,
+        currentState: episode?.snapshot.state,
+        decisionReason: episode ? "no_stall_detected" : "episode_not_loaded",
+      };
+    }
+
+    const stall = detectAutomaticCampaignPipelineStall({
+      project: input.project,
+      episode,
+    })!;
+
     const contextPhase =
       episode?.snapshot.state === "validating" &&
       !episode.snapshot.completedBrains.includes("validation")
@@ -94,6 +184,16 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
       contextPhase,
     });
 
+    emitRecoveryDiagnostic({
+      event: "automatic_pipeline_recovery_triggered",
+      organizationId: auth.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      snapshotState: stall.currentState,
+      stallReason: stall.reason,
+      decisionReason: input.mountDecisionReason ?? mountDecision.decisionReason,
+    });
+
     const result = await resumeAutomaticCampaignPipeline({
       supabase: auth.supabase,
       organizationId: auth.organizationId,
@@ -107,10 +207,18 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
     });
 
     if (!result) {
-      return { ok: true, resumed: false };
+      emitRecoveryDiagnostic({
+        event: "automatic_pipeline_recovery_skipped",
+        organizationId: auth.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        snapshotState: episode?.snapshot.state,
+        decisionReason: "resume_returned_null",
+      });
+      return { ok: true, resumed: false, decisionReason: "resume_returned_null" };
     }
 
-    const stall = detectAutomaticCampaignPipelineStall({
+    const postStall = detectAutomaticCampaignPipelineStall({
       project: input.project,
       episode: result.episode,
     });
@@ -120,12 +228,29 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
       resumed: true,
       episodeStatus: result.status,
       currentState: result.episode.snapshot.state,
-      stallReason: stall?.reason,
+      stallReason: postStall?.reason,
+      decisionReason: input.mountDecisionReason ?? mountDecision.decisionReason,
     };
   } catch (error) {
     if (error instanceof OrgContextError) {
-      return { ok: false, resumed: false, error: error.code };
+      emitRecoveryDiagnostic({
+        event: "automatic_pipeline_recovery_failed",
+        organizationId: "unknown",
+        projectId: input.projectId,
+        peerId: input.peerId,
+        errorCode: error.code,
+        decisionReason: error.code,
+      });
+      return { ok: false, resumed: false, error: error.code, decisionReason: error.code };
     }
-    return { ok: false, resumed: false, error: "execution_error" };
+    emitRecoveryDiagnostic({
+      event: "automatic_pipeline_recovery_failed",
+      organizationId: "unknown",
+      projectId: input.projectId,
+      peerId: input.peerId,
+      errorCode: "execution_error",
+      decisionReason: "execution_error",
+    });
+    return { ok: false, resumed: false, error: "execution_error", decisionReason: "execution_error" };
   }
 }

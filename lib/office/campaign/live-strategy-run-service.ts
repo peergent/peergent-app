@@ -4,6 +4,8 @@ import { buildCampaignContext } from "./campaign-context";
 import {
   isAutomaticCampaignSetup,
   usesProjectEngineLifecycleAuthority,
+  evaluateAutomaticPipelineRecoveryOnMount,
+  isAutomaticCampaignPastStrategyBootstrap,
 } from "./automatic-campaign-lifecycle";
 import { evaluateStrategyContextReadiness } from "./strategy-context-readiness";
 import {
@@ -107,6 +109,11 @@ export function shouldExecuteStrategyOnServer(
   return { execute: true };
 }
 
-export { isAutomaticCampaignSetup, usesProjectEngineLifecycleAuthority };
+export {
+  isAutomaticCampaignSetup,
+  usesProjectEngineLifecycleAuthority,
+  evaluateAutomaticPipelineRecoveryOnMount,
+  isAutomaticCampaignPastStrategyBootstrap,
+};
 
 export { isTerminalStrategyRunStatus };

@@ -664,4 +664,98 @@ describe("PX-51 automatic campaign pipeline E2E", () => {
     expect(result.episode.snapshot.completedBrains).toContain("execution");
     expect(result.episode.lastError).toBeNull();
   });
+
+  it("J — page-mount recovery: no strategyGeneratedAt + in-flight run resumes validation stall", async () => {
+    const baseProject = automaticProject();
+    const projectId = baseProject.id;
+    const projectWithoutStrategyTimestamp = {
+      ...baseProject,
+      campaignSetup: {
+        ...baseProject.campaignSetup!,
+        strategyGeneratedAt: undefined,
+        strategyRun: {
+          status: "running" as const,
+          startedAt: new Date().toISOString(),
+        },
+      },
+    };
+
+    const adapter = createProductionBrainExecutionAdapter({
+      peerId: "demo",
+      project: projectWithoutStrategyTimestamp,
+      domainInput: domainInput(projectWithoutStrategyTimestamp),
+    });
+    const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
+    const repo = getDefaultProjectEpisodeRepository();
+
+    await runner.startEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    repo.save({
+      ...repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!,
+      campaignApprovalMode: "approval_before_publication",
+    });
+
+    await runner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      target: { targetBrain: "creative" },
+    });
+
+    const stalled = repo.get({ organizationId: FIXTURE_ORG_ID, projectId })!;
+    expect(detectAutomaticCampaignPipelineStall({
+      project: projectWithoutStrategyTimestamp,
+      episode: stalled,
+    })?.reason).toBe("ORCHESTRATION_STALL_VALIDATION_NOT_STARTED");
+
+    resetDefaultProjectEpisodeRepository();
+
+    const durable = createSimulatedDurablePersistence();
+    await durable.hydrateProject({ organizationId: FIXTURE_ORG_ID, projectId });
+    getDefaultCreativeRepository().clear();
+
+    const recoveryRunner = createProjectEpisodeRunner(undefined, durable, adapter);
+
+    const firstMount = await recoveryRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudgetForEpisode(stalled),
+    });
+
+    expect(firstMount.episode.snapshot.completedBrains).toContain("validation");
+    expect(
+      firstMount.status === "waiting_for_approval" ||
+        firstMount.episode.snapshot.state === "waiting_for_approval"
+    ).toBe(true);
+
+    const validationKeys = firstMount.episode.executedBrainKeys.filter((key) =>
+      key.includes(":validation:")
+    );
+
+    const secondMount = await recoveryRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudgetForEpisode(firstMount.episode),
+    });
+
+    expect(secondMount.episode.executedBrainKeys.filter((key) => key.includes(":validation:"))).toEqual(
+      validationKeys
+    );
+    expect(secondMount.episode.snapshot.completedBrains).toContain("validation");
+  });
 });

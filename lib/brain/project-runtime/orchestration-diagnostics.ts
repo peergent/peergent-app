@@ -62,7 +62,11 @@ export type OrchestrationDiagnosticEvent =
   | "validation_start_requested"
   | "validation_completed"
   | "validation_start_skipped"
-  | "validation_start_failed";
+  | "validation_start_failed"
+  | "automatic_pipeline_recovery_candidate"
+  | "automatic_pipeline_recovery_triggered"
+  | "automatic_pipeline_recovery_skipped"
+  | "automatic_pipeline_recovery_failed";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -102,6 +106,8 @@ export type OrchestrationDiagnosticPayload = {
   validationReadinessMinimum?: number;
   runnerExitReason?: string;
   fromState?: ProjectLifecycleState;
+  stallReason?: string;
+  decisionReason?: string;
 };
 
 export function safeOrchestrationError(error: unknown): {
