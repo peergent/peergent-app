@@ -18,6 +18,15 @@ import {
   CampaignIntelligenceOrchestrator,
   orchestrationPrimaryActionToCta,
 } from "./campaign-intelligence-orchestrator";
+import {
+  episodeAwaitingCampaignApproval,
+  isEpisodeRuntimeAuthoritative,
+  resolveEpisodeActiveWorkflowStep,
+  resolveEpisodeNextStepCopy,
+  resolveEpisodePrimaryAction,
+  resolveEpisodeWorkflowStepState,
+  type CampaignRuntimeProjection,
+} from "./campaign-runtime-projection";
 import { strategyOutputCurrent } from "./live-strategy-run-service";
 import { readDemoCampaignOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
 import {
@@ -533,6 +542,7 @@ export function buildCampaignWorkflowViewModel(input: {
   domainInput: MarketingPeerDomainInput;
   locale?: string | null;
   isDemo?: boolean;
+  runtimeProjection?: CampaignRuntimeProjection | null;
 }): CampaignWorkflowViewModel {
   const { peerId, project, domainInput } = input;
   const isNl = input.locale === "nl";
@@ -569,7 +579,7 @@ export function buildCampaignWorkflowViewModel(input: {
   const campaignContext =
     storedContext ?? buildCampaignContext({ project, domainInput, locale: input.locale });
 
-  const orchestration = !isDemo
+  const orchestration = !isDemo && !isEpisodeRuntimeAuthoritative(input.runtimeProjection)
     ? CampaignIntelligenceOrchestrator.evaluate({
         project,
         campaignContext,
@@ -584,6 +594,10 @@ export function buildCampaignWorkflowViewModel(input: {
         publishingState,
         pendingDraftId: pendingDrafts[0]?.id,
       })
+    : null;
+
+  const episodeRuntime = isEpisodeRuntimeAuthoritative(input.runtimeProjection)
+    ? input.runtimeProjection
     : null;
 
   const projectStatus = deriveProjectStatus(
@@ -630,17 +644,19 @@ export function buildCampaignWorkflowViewModel(input: {
       domainInput,
       locale: input.locale,
     });
-    const state: CampaignWorkflowStepState = orchestration
-      ? CampaignIntelligenceOrchestrator.resolveWorkflowStepState(stepId, orchestration, {
-          pendingDeliverableCount: pendingDrafts.length,
-          isCampaignScheduled,
-          isCampaignPublished,
-          hasDrafts: drafts.length > 0 && deliverablesUnlocked,
-          stepApprovals: effectiveStepApprovals,
-          isDemo,
-          publishingState,
-        })
-      : resolveStepState(stepId, ctx);
+    const state: CampaignWorkflowStepState = episodeRuntime
+      ? resolveEpisodeWorkflowStepState(stepId, episodeRuntime)
+      : orchestration
+        ? CampaignIntelligenceOrchestrator.resolveWorkflowStepState(stepId, orchestration, {
+            pendingDeliverableCount: pendingDrafts.length,
+            isCampaignScheduled,
+            isCampaignPublished,
+            hasDrafts: drafts.length > 0 && deliverablesUnlocked,
+            stepApprovals: effectiveStepApprovals,
+            isDemo,
+            publishingState,
+          })
+        : resolveStepState(stepId, ctx);
     const statusHint = workflowStatusHintForStep({
       stepId,
       state,
@@ -649,7 +665,9 @@ export function buildCampaignWorkflowViewModel(input: {
       publishingState,
       locale: input.locale,
     });
-    const brainDeferred = isLiveBrainDeferredStep(peerId, stepId);
+    const brainDeferred =
+      isLiveBrainDeferredStep(peerId, stepId) ||
+      (stepId === "waiting_for_approval" && episodeAwaitingCampaignApproval(episodeRuntime));
     const hasEvidence =
       (Boolean(evidence?.sections.length) || brainDeferred) &&
       (state === "done" || state === "active" || state === "skipped") &&
@@ -700,12 +718,36 @@ export function buildCampaignWorkflowViewModel(input: {
     };
   });
 
+  const episodeApprovalCount =
+    episodeAwaitingCampaignApproval(episodeRuntime) && approvalItems.length === 0 ? 1 : 0;
+  const episodeApprovalItems: CampaignApprovalItem[] =
+    episodeApprovalCount > 0
+      ? [
+          {
+            id: "episode-campaign-approval",
+            draftId: "episode-campaign-approval",
+            label: isNl ? "Campagnepakket" : "Campaign package",
+            channelLabel: isNl ? "Publicatie" : "Publication",
+            description:
+              episodeRuntime?.approvalCheckpoint?.customerSummary ??
+              (isNl
+                ? "Volledig campagnepakket wacht op goedkeuring."
+                : "Full campaign package awaiting approval."),
+            previewHref: `${officeHref(peerId, "work")}/campaigns/${project.id}`,
+            detailHref: `${officeHref(peerId, "work")}/campaigns/${project.id}`,
+          },
+        ]
+      : [];
+
   const executionMode = executionModeFromApprovalMode(
     project.campaignSetup?.approvalMode
   );
 
-  const activeStep = orchestration?.activeCustomerStepId ?? steps.find((s) => s.state === "active")?.id;
+  const activeStep = episodeRuntime
+    ? resolveEpisodeActiveWorkflowStep(episodeRuntime)
+    : orchestration?.activeCustomerStepId ?? steps.find((s) => s.state === "active")?.id;
   const websiteMissing =
+    !episodeRuntime &&
     orchestration?.readiness.websiteDecision === "missing" &&
     activeStep === "website_analyzed";
 
@@ -725,38 +767,51 @@ export function buildCampaignWorkflowViewModel(input: {
       project.campaignSetup?.setupMode,
       isNl
     ),
-    nextStep: buildNextStep({
-      pendingCount: pendingDrafts.length,
-      approvedCount: approvedDrafts.length,
-      isCampaignScheduled,
-      isCampaignPublished,
-      publishingState,
-      activeStepId: activeStep,
-      locale: input.locale,
-    }),
-    nextStepCta: orchestration
-      ? orchestrationPrimaryActionToCta(
-          orchestration.primaryAction,
-          project.campaignSetup?.strategyRun
-        )
-      : buildNextStepCta({
+    nextStep: episodeRuntime
+      ? resolveEpisodeNextStepCopy(episodeRuntime, input.locale)
+      : buildNextStep({
           pendingCount: pendingDrafts.length,
           approvedCount: approvedDrafts.length,
-          publishedCount: publishedDrafts.length,
           isCampaignScheduled,
           isCampaignPublished,
-          isDemo,
-          pendingDraftId: pendingDrafts[0]?.id,
-          activeStepId: activeStep,
+          publishingState,
+          activeStepId: activeStep ?? undefined,
           locale: input.locale,
-          websiteMissing,
-          optimizationHasData,
         }),
+    nextStepCta: episodeRuntime
+      ? orchestrationPrimaryActionToCta(
+          resolveEpisodePrimaryAction(episodeRuntime, {
+            locale: input.locale,
+            pendingDeliverableCount: pendingDrafts.length,
+            pendingDraftId: pendingDrafts[0]?.id,
+            isCampaignScheduled,
+            isCampaignPublished,
+          }),
+          project.campaignSetup?.strategyRun
+        )
+      : orchestration
+        ? orchestrationPrimaryActionToCta(
+            orchestration.primaryAction,
+            project.campaignSetup?.strategyRun
+          )
+        : buildNextStepCta({
+            pendingCount: pendingDrafts.length,
+            approvedCount: approvedDrafts.length,
+            publishedCount: publishedDrafts.length,
+            isCampaignScheduled,
+            isCampaignPublished,
+            isDemo,
+            pendingDraftId: pendingDrafts[0]?.id,
+            activeStepId: activeStep ?? undefined,
+            locale: input.locale,
+            websiteMissing,
+            optimizationHasData,
+          }),
     steps,
     deliverables,
     approvalCenter: {
-      count: approvalItems.length,
-      items: approvalItems,
+      count: approvalItems.length + episodeApprovalCount,
+      items: [...approvalItems, ...episodeApprovalItems],
     },
   };
 }

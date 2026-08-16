@@ -499,7 +499,8 @@ export function orchestrationPrimaryActionToCta(
     | "add_competitors"
     | "working"
     | "retry_strategy"
-    | "view_context";
+    | "view_context"
+    | "approve_campaign";
   draftId?: string;
   stepId?: CampaignWorkflowStepId;
   workingStage?: string;
@@ -527,6 +528,12 @@ export function orchestrationPrimaryActionToCta(
       return { label: action.label, action: "continue", stepId: action.stepId };
     case "review_deliverables":
       return { label: action.label, action: "continue", stepId: action.stepId };
+    case "review_campaign":
+      return {
+        label: action.label,
+        action: "approve_campaign",
+        stepId: action.stepId ?? "waiting_for_approval",
+      };
     case "schedule":
       return { label: action.label, action: "schedule", stepId: action.stepId };
     case "view_schedule":

@@ -22,6 +22,7 @@ export type CampaignPrimaryActionKind =
   | "review_strategy"
   | "review_channels"
   | "review_deliverables"
+  | "review_campaign"
   | "schedule"
   | "publish"
   | "view_results"

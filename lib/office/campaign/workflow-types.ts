@@ -92,7 +92,8 @@ export type CampaignWorkflowViewModel = {
       | "add_competitors"
       | "working"
       | "retry_strategy"
-      | "view_context";
+      | "view_context"
+      | "approve_campaign";
     draftId?: string;
     stepId?: CampaignWorkflowStepId;
     workingStage?: string;

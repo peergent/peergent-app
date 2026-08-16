@@ -62,6 +62,10 @@ import type { CampaignWorkflowStep, CampaignWorkflowStepId } from "@/lib/office/
 import type { DemoCompetitorInput } from "@/lib/office/demo/demo-campaign-store";
 import type { DemoCampaignDomainOverlay } from "@/lib/office/demo/demo-campaign-domain-overlay";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
+import {
+  resolveEpisodeApprovalBridgeStepId,
+  type CampaignRuntimeProjection,
+} from "@/lib/office/campaign/campaign-runtime-projection";
 
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
 
@@ -96,6 +100,7 @@ export function useCampaignWorkspaceActions(input: {
   localePreference?: string | null;
   isDemo: boolean;
   workspace: Workspace;
+  runtimeProjection?: CampaignRuntimeProjection | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -482,13 +487,14 @@ export function useCampaignWorkspaceActions(input: {
         domainInput: domain,
         locale: localePreference,
         isDemo,
+        runtimeProjection: input.runtimeProjection,
       });
       const step = workflow.steps.find((s) => s.id === stepId);
       if (!step?.hasEvidence) return false;
       void openEvidenceStep(step, domain);
       return true;
     },
-    [domainInput, isDemo, localePreference, openEvidenceStep, peerId, projectId]
+    [domainInput, isDemo, localePreference, openEvidenceStep, peerId, projectId, input.runtimeProjection]
   );
 
   const advanceEvidenceStep = useCallback(
@@ -556,10 +562,15 @@ export function useCampaignWorkspaceActions(input: {
           const project = domain.projects.find((p) => p.id === projectId);
           if (!project) throw new Error("approval_persist_failed");
 
+          const bridgeStepId = resolveEpisodeApprovalBridgeStepId(
+            input.runtimeProjection,
+            stepId
+          );
+
           const bridgeResult = await submitLiveCampaignStepApprovalAction({
             peerId,
             projectId,
-            stepId,
+            stepId: bridgeStepId,
             status: "approved",
             project,
             domainInput: domain,
@@ -601,6 +612,7 @@ export function useCampaignWorkspaceActions(input: {
       peerId,
       projectId,
       syncLiveProject,
+      input.runtimeProjection,
     ]
   );
 
@@ -812,8 +824,16 @@ export function useCampaignWorkspaceActions(input: {
       domainInput: domain,
       locale: localePreference,
       isDemo,
+      runtimeProjection: input.runtimeProjection,
     });
     const cta = workflow.nextStepCta;
+    if (cta.action === "approve_campaign") {
+      const opened = openStepById("deliverables_created", domain);
+      if (!opened && cta.stepId) {
+        openStepById(cta.stepId, domain);
+      }
+      return;
+    }
     if (cta.action === "review" && cta.draftId) {
       openReview(cta.draftId);
       return;
@@ -885,6 +905,7 @@ export function useCampaignWorkspaceActions(input: {
     handleRetryStrategy,
     handleViewCampaignContext,
     setScheduleModalOpen,
+    input.runtimeProjection,
   ]);
 
   const handleSkipWebsite = useCallback(() => {

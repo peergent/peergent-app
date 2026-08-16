@@ -10,6 +10,7 @@ import CampaignScheduleModal from "@/features/office/campaign/CampaignScheduleMo
 import CampaignOptimizationPanel from "@/features/office/campaign/CampaignOptimizationPanel";
 import CampaignWebsiteModal from "@/features/office/campaign/CampaignWebsiteModal";
 import CampaignExperienceView from "@/features/office/campaign/CampaignExperienceView";
+import { useCampaignRuntimeProjection } from "@/features/office/campaign/useCampaignRuntimeProjection";
 import { useCampaignWorkspaceActions } from "@/features/office/campaign/useCampaignWorkspaceActions";
 import OfficeDeliverableReviewModal from "@/features/office/deliverable/OfficeDeliverableReviewModal";
 import { useOfficePeer } from "@/features/office/useOfficePeer";
@@ -41,6 +42,12 @@ function CampaignDetailInner() {
 
   const liveProject = findCampaignProject(domainInput, campaignId);
 
+  const { projection: runtimeProjection, loading: runtimeLoading } = useCampaignRuntimeProjection({
+    peerId,
+    projectId: campaignId,
+    isDemo,
+  });
+
   const campaignWorkflow = useMemo(() => {
     if (!liveProject) return null;
     return buildCampaignWorkflowViewModel({
@@ -49,8 +56,9 @@ function CampaignDetailInner() {
       domainInput,
       locale: localePreference,
       isDemo,
+      runtimeProjection,
     });
-  }, [domainInput, isDemo, liveProject, localePreference, peerId]);
+  }, [domainInput, isDemo, liveProject, localePreference, peerId, runtimeProjection]);
 
   const model = useMemo(
     () =>
@@ -60,8 +68,9 @@ function CampaignDetailInner() {
         domainInput,
         locale: localePreference,
         isDemo,
+        runtimeProjection,
       }),
-    [peerId, campaignId, domainInput, isDemo, localePreference]
+    [peerId, campaignId, domainInput, isDemo, localePreference, runtimeProjection]
   );
 
   const campaignActions = useCampaignWorkspaceActions({
@@ -71,6 +80,7 @@ function CampaignDetailInner() {
     localePreference,
     isDemo,
     workspace,
+    runtimeProjection,
   });
 
   const deskModel = useMemo(
@@ -103,7 +113,7 @@ function CampaignDetailInner() {
         onSearch={() => undefined}
         onNewCampaign={openNewCampaign}
       >
-        {loading ? (
+        {loading || runtimeLoading ? (
           <PgSkeletonRows rows={4} rowHeight={104} />
         ) : model ? (
           <CampaignExperienceView

@@ -18,6 +18,11 @@ import {
   EMMA_PLAN_STEPS_NL,
 } from "./build-structured-strategy-evidence";
 import { workflowBasedStatusLabel } from "./campaign-workflow-status";
+import {
+  isEpisodeRuntimeAuthoritative,
+  resolveEpisodeStatusLabel,
+  type CampaignRuntimeProjection,
+} from "./campaign-runtime-projection";
 import { readCampaignScheduleRecord } from "./campaign-schedule-state";
 import { buildOptimizationMetrics, formatOfficeDate } from "./campaign-optimization";
 import { buildCampaignResultsViewModel } from "./build-campaign-results";
@@ -162,6 +167,7 @@ export function buildCampaignDetailViewModel(input: {
   domainInput: MarketingPeerDomainInput;
   locale?: string | null;
   isDemo?: boolean;
+  runtimeProjection?: CampaignRuntimeProjection | null;
 }): CampaignDetailViewModel | null {
   const { peerId, projectId, domainInput } = input;
   const nl = input.locale === "nl";
@@ -208,21 +214,34 @@ export function buildCampaignDetailViewModel(input: {
     domainInput,
     locale: input.locale,
     isDemo,
+    runtimeProjection: input.runtimeProjection,
   });
   const activeWorkflowStep = workflow.steps.find((s) => s.state === "active");
-  const workflowStatus = workflowBasedStatusLabel({
-    activeStepId: activeWorkflowStep?.id,
-    campaignContext:
-      overlay.demoCampaignContexts?.[projectId] ??
-      buildCampaignContext({ project, domainInput, locale: input.locale }),
-    executionMode: workflow.executionMode,
-    pendingApprovalCount: workflow.approvalCenter.count,
-    locale: input.locale,
-    lifecyclePublished: lifecycleStatus === "published",
-    lifecycleScheduled: lifecycleStatus === "scheduled",
-  });
+  const episodeRuntime = isEpisodeRuntimeAuthoritative(input.runtimeProjection)
+    ? input.runtimeProjection
+    : null;
+  const workflowStatus = episodeRuntime
+    ? resolveEpisodeStatusLabel(episodeRuntime, input.locale)
+    : workflowBasedStatusLabel({
+        activeStepId: activeWorkflowStep?.id,
+        campaignContext:
+          overlay.demoCampaignContexts?.[projectId] ??
+          buildCampaignContext({ project, domainInput, locale: input.locale }),
+        executionMode: workflow.executionMode,
+        pendingApprovalCount: workflow.approvalCenter.count,
+        locale: input.locale,
+        lifecyclePublished: lifecycleStatus === "published",
+        lifecycleScheduled: lifecycleStatus === "scheduled",
+      });
   if (workflowStatus && lifecycleStatus !== "published" && lifecycleStatus !== "scheduled") {
     statusLabel = workflowStatus;
+  }
+  if (
+    episodeRuntime &&
+    (episodeRuntime.lifecycleState === "waiting_for_approval" ||
+      episodeRuntime.episodeStatus === "waiting_for_approval")
+  ) {
+    lifecycleStatus = "review";
   }
 
   const rawChannels = [
