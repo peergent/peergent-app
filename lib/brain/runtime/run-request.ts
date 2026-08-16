@@ -11,6 +11,7 @@ import type { ReasoningGraph } from "../layers/reasoning";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
 import type { ProjectBrainId } from "../project-engine/types";
 import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
+import type { ValidationReadinessRequestEnrichment } from "../validation-readiness";
 
 export type BrainRunRequest = {
   organizationId: string;
@@ -55,6 +56,8 @@ export type BrainRunRequest = {
   runtimeDiagnosticEpisodeId?: string;
   /** PX-50.11 — merged strategy readiness enrichment (resolved graphs + assembly profile). */
   strategyReadinessEnrichment?: StrategyReadinessRequestEnrichment | null;
+  /** PX-52 — pipeline-derived validation readiness (episode + upstream artifacts). */
+  validationReadinessEnrichment?: ValidationReadinessRequestEnrichment | null;
 };
 
 export type BrainRuntimeBudgetLimits = {

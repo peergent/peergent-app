@@ -31,6 +31,8 @@ import {
   safeBrainRuntimeError,
 } from "../runtime/brain-runtime-diagnostics";
 import { parseStrategyReadinessReasonCodes } from "../strategy-readiness";
+import { isPipelineGraphBrain } from "./pipeline-graph-brain-ids";
+import { executeRegistryBrainForEpisode } from "./execute-registry-brain-for-episode";
 
 function resolveOutputRef(
   brainId: ProjectBrainId,
@@ -201,6 +203,25 @@ export function createProductionBrainExecutionAdapter(
         correlationId: runInput.episode.correlationId,
       });
 
+      if (isPipelineGraphBrain(runInput.brainId)) {
+        const registryResult = await executeRegistryBrainForEpisode({
+          brainId: runInput.brainId,
+          episode: runInput.episode,
+          contextHandoff: runInput.contextHandoff,
+          locale: runInput.locale,
+          idempotencyKey: runInput.idempotencyKey,
+        });
+        emitOrchestrationDiagnostic({
+          event: "brain_completed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          peerId: runInput.episode.snapshot.peerId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          brainId: runInput.brainId,
+        });
+        return registryResult;
+      }
+
       let workflowResult;
       emitBrainRuntimeDiagnostic({
         event: "brain_execution_execute_project_brain_started",
@@ -229,6 +250,13 @@ export function createProductionBrainExecutionAdapter(
             strategyReadinessEnrichment:
               runInput.brainId === "strategy"
                 ? { resolvedGraphs: runInput.episode.resolvedGraphs }
+                : null,
+            validationReadinessEnrichment:
+              runInput.brainId === "validation"
+                ? {
+                    episode: runInput.episode,
+                    resolvedGraphs: runInput.episode.resolvedGraphs,
+                  }
                 : null,
           }
         );

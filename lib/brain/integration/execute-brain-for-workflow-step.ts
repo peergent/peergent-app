@@ -25,6 +25,7 @@ import { createBrainRuntimeWithAssembly } from "./brain-runtime-factory";
 import type { BrainRepositoryBundle } from "../persistence/repository-factory";
 import { resolveCompanyIntelligence } from "./resolve-company-intelligence";
 import type { StrategyReadinessRequestEnrichment } from "../strategy-readiness";
+import type { ValidationReadinessRequestEnrichment } from "../validation-readiness";
 import {
   brainCapabilityProgressLabel,
   brainFinalizeProgressLabel,
@@ -122,6 +123,8 @@ export type ExecuteBrainForWorkflowStepOptions = {
   };
   /** PX-50.11 — episode-resolved graphs for merged strategy readiness. */
   strategyReadinessEnrichment?: StrategyReadinessRequestEnrichment | null;
+  /** PX-52 — episode + upstream artifacts for validation readiness. */
+  validationReadinessEnrichment?: ValidationReadinessRequestEnrichment | null;
 };
 
 function resolveBrainEnvironment(peerId: string): BrainEnvironment {
@@ -198,6 +201,7 @@ function buildBaseRequest(
     marketingUnderstanding: input.domainInput.understanding ?? null,
     performanceMetrics: includeDemoMetrics ? demoPerformanceMetrics(input.project.id) : undefined,
     strategyReadinessEnrichment: options?.strategyReadinessEnrichment ?? null,
+    validationReadinessEnrichment: options?.validationReadinessEnrichment ?? null,
     runtimeDiagnosticEpisodeId: options?.runtimeDiagnosticContext?.episodeId,
   };
 }

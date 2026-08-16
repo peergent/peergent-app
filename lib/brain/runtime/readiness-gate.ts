@@ -10,6 +10,12 @@ import {
   evaluateEffectiveStrategyContextReadiness,
   type StrategyReadinessEnrichmentInput,
 } from "../strategy-readiness";
+import {
+  buildValidationReadinessDiagnostic,
+  emitValidationReadinessDiagnostic,
+  evaluateEffectiveValidationContextReadiness,
+  type ValidationReadinessEnrichmentInput,
+} from "../validation-readiness";
 
 export type CapabilityExecutionRequirements = {
   minimumReadinessScore: number;
@@ -128,6 +134,12 @@ export function evaluateReadinessGate(input: {
     projectId: string;
     episodeId?: string;
   } | null;
+  validationReadinessEnrichment?: ValidationReadinessEnrichmentInput | null;
+  validationReadinessDiagnostic?: {
+    organizationId: string;
+    projectId: string;
+    episodeId?: string;
+  } | null;
 }): ReadinessGateResult {
   if (input.capabilityId === "strategy" && input.campaignContext) {
     const enrichment: StrategyReadinessEnrichmentInput = {
@@ -162,6 +174,38 @@ export function evaluateReadinessGate(input: {
       ok: false,
       status: "waiting_for_input",
       reasons: [...evaluation.machineReasonCodes],
+    };
+  }
+
+  if (input.capabilityId === "validation" && input.campaignContext) {
+    const enrichment: ValidationReadinessEnrichmentInput = {
+      campaignContext: input.campaignContext,
+      episode: input.validationReadinessEnrichment?.episode ?? null,
+      resolvedGraphs: input.validationReadinessEnrichment?.resolvedGraphs ?? null,
+      upstreamCapabilityOutputs: input.validationReadinessEnrichment?.upstreamCapabilityOutputs ?? null,
+      completedBrains: input.validationReadinessEnrichment?.completedBrains,
+    };
+    const evaluation = evaluateEffectiveValidationContextReadiness(enrichment);
+    if (input.validationReadinessDiagnostic) {
+      emitValidationReadinessDiagnostic(
+        buildValidationReadinessDiagnostic({
+          ...enrichment,
+          organizationId: input.validationReadinessDiagnostic.organizationId,
+          projectId: input.validationReadinessDiagnostic.projectId,
+          episodeId: input.validationReadinessDiagnostic.episodeId,
+        })
+      );
+    }
+    if (evaluation.ready) {
+      return { ok: true, partial: false };
+    }
+    return {
+      ok: false,
+      status: "waiting_for_input",
+      reasons: [
+        ...evaluation.machineReasonCodes,
+        `Readiness score ${evaluation.score} below minimum ${evaluation.minimum}`,
+      ].filter(Boolean),
     };
   }
 

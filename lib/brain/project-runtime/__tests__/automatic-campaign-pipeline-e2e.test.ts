@@ -43,6 +43,7 @@ import {
   assertAutomaticCampaignReachedPublicationBoundary,
   detectAutomaticCampaignPipelineStall,
   resetCampaignEpisodeContinuationInFlightForTests,
+  createProductionBrainExecutionAdapter,
 } from "@/lib/brain/project-runtime";
 import { createMarketingCampaignProject } from "@/lib/peer-experience/marketing/projects/project-engine";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
@@ -333,5 +334,64 @@ describe("PX-51 automatic campaign pipeline E2E", () => {
     expect(reloaded.artifacts.planningOutputRef).toBeTruthy();
     expect(reloaded.artifacts.creativeOutputRef).toBeTruthy();
     expect(reloaded.artifacts.validationOutputRef).toBeTruthy();
+  });
+
+  it("F — production adapter validates after registry pipeline reaches creative", async () => {
+    const project = automaticProject();
+    const projectId = project.id;
+    const registryRunner = createProjectEpisodeRunner();
+
+    await registryRunner.startEpisode({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      sliceAvailability: {
+        business: true,
+        brand: true,
+        website: true,
+        products: true,
+        competitors: true,
+        goals: true,
+        campaign: true,
+      },
+    });
+
+    getDefaultProjectEpisodeRepository().save({
+      ...getDefaultProjectEpisodeRepository().get({ organizationId: FIXTURE_ORG_ID, projectId })!,
+      campaignApprovalMode: "approval_before_publication",
+    });
+
+    await registryRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      target: { targetBrain: "creative" },
+    });
+
+    const preValidation = getDefaultProjectEpisodeRepository().get({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+    })!;
+    expect(preValidation.snapshot.completedBrains).toContain("creative");
+
+    const adapter = createProductionBrainExecutionAdapter({
+      peerId: "demo",
+      project,
+      domainInput: domainInput(project),
+    });
+    const productionRunner = createProjectEpisodeRunner(undefined, undefined, adapter);
+
+    const continuation = await productionRunner.runUntilPause({
+      organizationId: FIXTURE_ORG_ID,
+      projectId,
+      peerId: "demo",
+      maxSteps: resolveEpisodeStepBudget({ campaignApprovalMode: "approval_before_publication" }),
+    });
+
+    expect(continuation.episode.snapshot.completedBrains).toContain("validation");
+    expect(continuation.episode.lastError).not.toMatch(/Readiness score 30 below minimum 50/);
+    expect(detectAutomaticCampaignPipelineStall({ project, episode: continuation.episode })?.phase).not.toBe(
+      "validation"
+    );
   });
 });

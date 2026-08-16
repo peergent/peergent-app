@@ -87,3 +87,6 @@ export {
 } from "./episode-step-budget";
 export type { EpisodeLoopExit, EpisodeLoopExitKind } from "./episode-step-budget";
 export type { EpisodeRunTarget, ProjectBrainExecutionAdapter } from "./types";
+export { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
+export { isPipelineGraphBrain, PIPELINE_GRAPH_BRAIN_IDS } from "./pipeline-graph-brain-ids";
+export { executeRegistryBrainForEpisode } from "./execute-registry-brain-for-episode";

@@ -35,6 +35,7 @@ import {
   missingCriticalFieldsFromAssembly,
 } from "./readiness-gate";
 import type { StrategyReadinessEnrichmentInput } from "../strategy-readiness";
+import type { ValidationReadinessEnrichmentInput } from "../validation-readiness";
 import { projectBrainContext, buildCacheKeyParts } from "./context-projection";
 import { selectBrainProvider } from "./provider-selector";
 import {
@@ -237,6 +238,7 @@ export class BrainRuntime {
       assemblyState: assembly.state,
       campaignContext: request.campaignContext,
       ...buildStrategyReadinessGateOptions(request, assembly),
+      ...buildValidationReadinessGateOptions(request, assembly),
     });
 
     const policy = resolvePolicyForBrainRun({ request });
@@ -486,6 +488,7 @@ export class BrainRuntime {
       assemblyState: assembly.state,
       campaignContext: request.campaignContext,
       ...buildStrategyReadinessGateOptions(request, assembly),
+      ...buildValidationReadinessGateOptions(request, assembly),
     });
 
     if (!readinessGate.ok) {
@@ -1168,6 +1171,42 @@ export class BrainRuntime {
     this.deps.auditRepository.append(record);
     void buildRunAuditMetadata({ assembly, projection, providerId: run.usage.providerId ?? "unknown", cacheHit, output });
   }
+}
+
+function buildValidationReadinessGateOptions(
+  request: BrainRunRequestWithBudget,
+  _assembly: ContextAssemblyResult
+): {
+  validationReadinessEnrichment?: ValidationReadinessEnrichmentInput | null;
+  validationReadinessDiagnostic?: {
+    organizationId: string;
+    projectId: string;
+    episodeId?: string;
+  } | null;
+} {
+  if (request.capabilityId !== "validation" || !request.campaignContext) {
+    return {};
+  }
+
+  const enrichment = request.validationReadinessEnrichment;
+  if (!enrichment) return {};
+
+  return {
+    validationReadinessEnrichment: {
+      campaignContext: request.campaignContext,
+      episode: enrichment.episode ?? null,
+      resolvedGraphs: enrichment.resolvedGraphs ?? null,
+      upstreamCapabilityOutputs: enrichment.upstreamCapabilityOutputs ?? null,
+      completedBrains: enrichment.episode?.snapshot.completedBrains,
+    },
+    validationReadinessDiagnostic: request.campaignId
+      ? {
+          organizationId: request.organizationId,
+          projectId: request.campaignId,
+          episodeId: request.runtimeDiagnosticEpisodeId,
+        }
+      : null,
+  };
 }
 
 export function createBrainRuntime(deps: BrainRuntimeDeps): BrainRuntime {
