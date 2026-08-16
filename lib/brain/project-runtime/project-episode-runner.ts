@@ -47,8 +47,13 @@ import type {
   ProjectEpisodeRecord,
   ResumeEpisodeInput,
 } from "./types";
-
-const DEFAULT_MAX_STEPS = 60;
+import {
+  isLegitimateRunnerPause,
+  MAX_STALE_LOOP_ITERATIONS,
+  resolveEpisodeStepBudget,
+  snapshotProgressSignature,
+  type EpisodeLoopExit,
+} from "./episode-step-budget";
 
 export class ProjectEpisodeRunner {
   constructor(
@@ -306,7 +311,12 @@ export class ProjectEpisodeRunner {
 
     let episode = await this.resolveEpisodeForRun(input);
 
-    const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS;
+    const maxSteps =
+      input.maxSteps ??
+      resolveEpisodeStepBudget({
+        campaignApprovalMode: input.campaignContext?.approvalMode ?? episode.campaignApprovalMode,
+        targetBrain: input.target?.targetBrain ?? null,
+      });
     const locale = input.locale ?? "en";
     const fixture = buildMarketingPeerFixture(input.projectId.slice(-1));
 
@@ -408,8 +418,13 @@ export class ProjectEpisodeRunner {
       snapshotState: episode.snapshot.state,
     });
 
+    let loopExit: EpisodeLoopExit | null = null;
+    let lastProgressSignature = snapshotProgressSignature(episode);
+    let staleIterations = 0;
+
     for (let step = 0; step < maxSteps; step += 1) {
       if (episode.episodeStatus === "completed" || episode.episodeStatus === "failed") {
+        loopExit = { kind: "already_terminal" };
         emitOrchestrationDiagnostic({
           event: "episode_loop_terminal_break",
           organizationId: episode.snapshot.organizationId,
@@ -421,6 +436,27 @@ export class ProjectEpisodeRunner {
           step,
         });
         break;
+      }
+
+      const progressSignature = snapshotProgressSignature(episode);
+      if (progressSignature === lastProgressSignature) {
+        staleIterations += 1;
+        if (staleIterations >= MAX_STALE_LOOP_ITERATIONS) {
+          loopExit = { kind: "stale_loop" };
+          emitOrchestrationDiagnostic({
+            event: "episode_loop_stale_detected",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            step,
+            staleIterations,
+          });
+          break;
+        }
+      } else {
+        staleIterations = 0;
+        lastProgressSignature = progressSignature;
       }
 
       emitOrchestrationDiagnostic({
@@ -523,6 +559,7 @@ export class ProjectEpisodeRunner {
 
       if (evaluation.action.kind === "complete") {
         episode = completeEpisode(episode);
+        loopExit = { kind: "completed" };
         break;
       }
 
@@ -589,6 +626,7 @@ export class ProjectEpisodeRunner {
             correlationId: episode.correlationId,
           });
           episode = { ...episode, episodeStatus: "failed", lastError: brainResult.errorCode };
+          loopExit = { kind: "brain_failed", errorCode: brainResult.errorCode };
           break;
         }
 
@@ -604,6 +642,7 @@ export class ProjectEpisodeRunner {
             episodeId: episode.snapshot.episodeId,
             brainId: input.target.targetBrain,
           });
+          loopExit = { kind: "target_brain_reached", brainId: input.target.targetBrain };
           break;
         }
         if (
@@ -618,18 +657,30 @@ export class ProjectEpisodeRunner {
             episodeId: episode.snapshot.episodeId,
             reason: input.target.targetLifecycleState,
           });
+          loopExit = {
+            kind: "target_state_reached",
+            state: input.target.targetLifecycleState,
+          };
           break;
         }
       }
 
       if (evaluation.action.kind === "retry" || evaluation.action.kind === "recover") {
         episode = { ...episode, episodeStatus: "failed", lastError: evaluation.action.reason };
+        loopExit = { kind: "brain_failed", errorCode: evaluation.action.reason };
         break;
       }
     }
 
+    if (!loopExit) {
+      loopExit = { kind: "max_steps_exceeded" };
+    }
+
     episode = await this.commitEpisode(episode);
     if (episode.episodeStatus === "running") {
+      if (isLegitimateRunnerPause(loopExit)) {
+        return buildRunResult(episode, null);
+      }
       if (episode.snapshot.state === "monitoring" && !episode.performanceObservationsAvailable) {
         appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
         return await pauseEpisode(
@@ -640,7 +691,9 @@ export class ProjectEpisodeRunner {
           this.durablePort
         );
       }
-      episode = { ...episode, episodeStatus: "failed", lastError: "max_steps_exceeded" };
+      const lastError =
+        loopExit.kind === "stale_loop" ? "stale_loop_detected" : "max_steps_exceeded";
+      episode = { ...episode, episodeStatus: "failed", lastError };
       episode = await this.commitEpisode(episode);
     }
     return buildRunResult(episode, episode.lastError);

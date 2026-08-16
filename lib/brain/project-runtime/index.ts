@@ -61,4 +61,10 @@ export {
 
 export { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
 export { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
+export {
+  resolveEpisodeStepBudget,
+  snapshotProgressSignature,
+  MAX_STALE_LOOP_ITERATIONS,
+} from "./episode-step-budget";
+export type { EpisodeLoopExit, EpisodeLoopExitKind } from "./episode-step-budget";
 export type { EpisodeRunTarget, ProjectBrainExecutionAdapter } from "./types";

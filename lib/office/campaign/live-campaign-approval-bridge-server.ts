@@ -121,7 +121,6 @@ export async function submitLiveCampaignStepApprovalServer(
     projectId: input.projectId,
     approvalSatisfied: true,
     locale: input.locale ?? "en",
-    maxSteps: 120,
   });
 
   return { ok: true, project: updatedProject, episodeResumed: true };

@@ -22,6 +22,7 @@ export type OrchestrationDiagnosticEvent =
   | "episode_start_commit_completed"
   | "episode_loop_entering"
   | "episode_loop_terminal_break"
+  | "episode_loop_stale_detected"
   | "project_engine_evaluation_started"
   | "project_engine_evaluated"
   | "project_engine_context_blocked"
@@ -51,6 +52,7 @@ export type OrchestrationDiagnosticPayload = {
   snapshotState?: ProjectLifecycleState;
   reason?: string;
   step?: number;
+  staleIterations?: number;
   contextReady?: boolean;
   contextGapCount?: number;
   blockingContextGapCount?: number;
