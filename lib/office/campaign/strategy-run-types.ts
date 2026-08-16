@@ -98,6 +98,11 @@ export function mapProgressLabelToRunStatus(label: string): StrategyRunStatus {
 }
 
 export const STRATEGY_RUN_TIMEOUT_MS = 120_000;
+/** Bounded post-strategy pipeline (planning → creative → validation → publication boundary). */
+export const EPISODE_CONTINUATION_TIMEOUT_MS = 180_000;
+/** Automatic bootstrap — strategy target + post-strategy continuation in one server action. */
+export const AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS =
+  STRATEGY_RUN_TIMEOUT_MS + EPISODE_CONTINUATION_TIMEOUT_MS + 15_000;
 /** Slightly above provider/runtime timeout — entire server action must resolve. */
 export const STRATEGY_SERVER_ACTION_TIMEOUT_MS = 135_000;
 /** Client wait budget — must exceed server action timeout. */

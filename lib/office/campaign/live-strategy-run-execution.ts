@@ -43,6 +43,13 @@ import {
 } from "./strategy-run-trace";
 import { runWithBoundedTimeout } from "./strategy-run-timeout";
 import {
+  continueCampaignEpisode,
+  shouldAutoContinueCampaignEpisode,
+} from "@/lib/brain/project-runtime/campaign-episode-continuation";
+import {
+  EPISODE_CONTINUATION_TIMEOUT_MS,
+} from "./strategy-run-types";
+import {
   isTerminalStrategyRunStatus,
   markStrategyRunTiming,
   startStrategyRunTiming,
@@ -318,6 +325,17 @@ async function executeLiveStrategyRunServer(
           runId,
           contextVersion: version,
           idempotencyKey,
+          episodeResult,
+          continuationInput: {
+            supabase: input.supabase!,
+            organizationId: input.organizationId,
+            projectId: input.projectId,
+            peerId,
+            peerRole: input.peerRole ?? "Marketing",
+            campaignContext,
+            domainInput,
+            locale: locale === "nl" ? "nl" : "en",
+          },
         });
       }
 
@@ -378,6 +396,17 @@ async function executeLiveStrategyRunServer(
       runId,
       contextVersion: version,
       idempotencyKey,
+      episodeResult,
+      continuationInput: {
+        supabase: input.supabase!,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+        peerId,
+        peerRole: input.peerRole ?? "Marketing",
+        campaignContext,
+        domainInput,
+        locale: locale === "nl" ? "nl" : "en",
+      },
     });
   } catch (error) {
     const isTimeout = error instanceof Error && error.message === "strategy_run_timeout";
@@ -407,7 +436,18 @@ function finalizeBrainStrategyResultServer(input: {
   runId: string;
   contextVersion: number;
   idempotencyKey: string;
-}): LiveStrategyRunServerResult {
+  episodeResult?: Awaited<ReturnType<typeof startOrResumeCampaignEpisode>>;
+  continuationInput?: {
+    supabase: AppSupabaseClient;
+    organizationId: string;
+    projectId: string;
+    peerId: string;
+    peerRole: string;
+    campaignContext: ReturnType<typeof buildCampaignContext>;
+    domainInput: MarketingPeerDomainInput;
+    locale: "nl" | "en";
+  };
+}): LiveStrategyRunServerResult | Promise<LiveStrategyRunServerResult> {
   const { brainResult, locale, runId } = input;
   const { run, output, assembly } = brainResult;
   const usageMeta = usageFromBrainResult(brainResult);
@@ -503,13 +543,37 @@ function finalizeBrainStrategyResultServer(input: {
     completedAt: new Date().toISOString(),
   });
 
-  return {
+  const baseResult: LiveStrategyRunServerResult = {
     ok: true,
     status: "completed",
     project,
     runId,
     ...usageMeta,
   };
+
+  if (
+    input.episodeResult &&
+    input.continuationInput &&
+    shouldAutoContinueCampaignEpisode({
+      project,
+      episodeResult: input.episodeResult,
+    })
+  ) {
+    return runWithBoundedTimeout(
+      continueCampaignEpisode({
+        ...input.continuationInput,
+        project,
+        trigger: "strategy_target_complete",
+        episodeResult: input.episodeResult,
+      }),
+      EPISODE_CONTINUATION_TIMEOUT_MS,
+      "episode_continuation_timeout"
+    )
+      .then(() => baseResult)
+      .catch(() => baseResult);
+  }
+
+  return baseResult;
 }
 
 export async function enqueueLiveStrategyRunServer(

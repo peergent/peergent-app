@@ -59,7 +59,14 @@ export {
   type CampaignEpisodeResult,
 } from "./campaign-episode-controller";
 
-export { createProductionBrainExecutionAdapter } from "./production-brain-adapter";
+export {
+  continueCampaignEpisode,
+  shouldAutoContinueCampaignEpisode,
+  evaluateCampaignEpisodeContinuation,
+  resetCampaignEpisodeContinuationInFlightForTests,
+  type ContinueCampaignEpisodeInput,
+  type EpisodeContinuationTrigger,
+} from "./campaign-episode-continuation";
 export { emitOrchestrationDiagnostic } from "./orchestration-diagnostics";
 export {
   resolveEpisodeStepBudget,

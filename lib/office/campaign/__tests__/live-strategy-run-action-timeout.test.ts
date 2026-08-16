@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
-import { STRATEGY_SERVER_ACTION_TIMEOUT_MS } from "@/lib/office/campaign/strategy-run-types";
+import { AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS } from "@/lib/office/campaign/strategy-run-types";
 
 const enqueueMock = vi.hoisted(() => vi.fn());
 
@@ -83,7 +83,7 @@ describe("runLiveStrategyAction timeout", () => {
       understanding: null,
     });
 
-    await vi.advanceTimersByTimeAsync(STRATEGY_SERVER_ACTION_TIMEOUT_MS + 1);
+    await vi.advanceTimersByTimeAsync(AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS + 1);
     const result = await promise;
 
     expect(result.ok).toBe(false);

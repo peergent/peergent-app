@@ -17,8 +17,10 @@ import {
 import {
   customerSafeStrategyFailureMessage,
   STRATEGY_SERVER_ACTION_TIMEOUT_MS,
+  AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS,
   type StrategyRunStatus,
 } from "./strategy-run-types";
+import { isAutomaticCampaignSetup } from "./automatic-campaign-lifecycle";
 import {
   createStrategyRunTrace,
   recordStrategyRunTrace,
@@ -163,6 +165,10 @@ export async function runLiveStrategyAction(
     recordStrategyRunTrace(trace, "server_domain_input_built");
     recordStrategyRunTrace(trace, "server_run_enqueued");
 
+    const serverActionTimeoutMs = isAutomaticCampaignSetup(input.project)
+      ? AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS
+      : STRATEGY_SERVER_ACTION_TIMEOUT_MS;
+
     const result = await runWithBoundedTimeout(
       enqueueLiveStrategyRunServer({
         peerId: input.peerId,
@@ -175,7 +181,7 @@ export async function runLiveStrategyAction(
         locale: input.locale,
         trace,
       }),
-      STRATEGY_SERVER_ACTION_TIMEOUT_MS,
+      serverActionTimeoutMs,
       "server_action_timeout"
     );
 

@@ -38,7 +38,11 @@ export type OrchestrationDiagnosticEvent =
   | "episode_conflict_reload"
   | "automatic_campaign_execution_invoked"
   | "episode_runner_brain_failure_persisted"
-  | "episode_runner_brain_waiting_for_context";
+  | "episode_runner_brain_waiting_for_context"
+  | "episode_continuation_requested"
+  | "episode_continuation_started"
+  | "episode_continuation_completed"
+  | "episode_continuation_skipped";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;

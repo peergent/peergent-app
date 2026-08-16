@@ -21,9 +21,23 @@ const PROJECT_ID = "strategy-run-live-1";
 
 const executeBrainMock = vi.hoisted(() => vi.fn());
 const episodeControllerMock = vi.hoisted(() => vi.fn());
+const continuationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/brain/project-runtime/campaign-episode-controller", () => ({
   startOrResumeCampaignEpisode: episodeControllerMock,
+}));
+
+vi.mock("@/lib/brain/project-runtime/campaign-episode-continuation", () => ({
+  shouldAutoContinueCampaignEpisode: vi.fn((input) => {
+    const episode = input.episodeResult.episode;
+    return (
+      episode.episodeStatus === "running" &&
+      episode.snapshot.completedBrains?.includes("strategy") &&
+      episode.snapshot.state === "planning" &&
+      (episode.snapshot.pendingBrains?.length ?? 0) > 0
+    );
+  }),
+  continueCampaignEpisode: continuationMock,
 }));
 
 vi.mock("@/lib/brain/integration/execute-brain-for-workflow-step", async (importOriginal) => {
@@ -196,6 +210,11 @@ describe("live strategy run service", () => {
     resetLiveStrategyRunServerInFlightForTests();
     executeBrainMock.mockReset();
     episodeControllerMock.mockReset();
+    continuationMock.mockResolvedValue({
+      status: "waiting_for_approval",
+      orchestrationAuthority: "project_engine",
+      episodeResumed: true,
+    });
     saveMarketingWorkspaceState(PEER, { projects: [readyProject()], drafts: [], workUnits: [] });
   });
 

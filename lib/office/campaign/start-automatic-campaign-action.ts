@@ -17,7 +17,7 @@ import {
 } from "./live-strategy-run-serialization";
 import {
   customerSafeStrategyFailureMessage,
-  STRATEGY_SERVER_ACTION_TIMEOUT_MS,
+  AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS,
   type StrategyRunStatus,
 } from "./strategy-run-types";
 import { runWithBoundedTimeout } from "./strategy-run-timeout";
@@ -145,7 +145,7 @@ export async function startAutomaticCampaignAction(
         peerRole: peer.role,
         locale: input.locale,
       }),
-      STRATEGY_SERVER_ACTION_TIMEOUT_MS,
+      AUTOMATIC_CAMPAIGN_SERVER_ACTION_TIMEOUT_MS,
       "server_action_timeout"
     )
       .then((runResult) => {
