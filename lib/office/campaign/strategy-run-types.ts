@@ -8,6 +8,7 @@ export type StrategyRunStatus =
   | "validating"
   | "completed"
   | "waiting_for_input"
+  | "waiting_for_approval"
   | "failed"
   | "cancelled";
 
@@ -134,6 +135,11 @@ export function customerSafeStrategyFailureMessage(
     return nl
       ? "Er ontbreekt nog campagnecontext om een strategie te maken."
       : "Campaign context is still missing to generate a strategy.";
+  }
+  if (code === "waiting_for_approval") {
+    return nl
+      ? "Emma wacht op jouw goedkeuring voordat ze verdergaat."
+      : "Emma is waiting for your approval before continuing.";
   }
   return nl
     ? "De strategie kon niet worden gemaakt."

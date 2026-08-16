@@ -6,6 +6,7 @@
 import type { BrainContextSlices, BrainPriorOutput } from "../project-engine/brain-contract";
 import type { ProjectBrainId, ProjectEngineSnapshot, ProjectLifecycleState } from "../project-engine/types";
 import type { PerformanceObservation } from "../layers/learning/brain-types";
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 
 export type EpisodeStatus =
   | "running"
@@ -75,6 +76,8 @@ export type ProjectEpisodeRecord = {
   memoryCheckpoint2Complete: boolean;
   performanceObservationsAvailable: boolean;
   approvalGrantedForExecution: boolean;
+  /** Canonical campaign approval mode for PE checkpoint selection. */
+  campaignApprovalMode?: CampaignApprovalMode;
   contextGaps: ContextGap[];
   executedBrainKeys: string[];
   lastError: string | null;

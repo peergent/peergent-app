@@ -187,6 +187,8 @@ export type ProjectEngineInput = {
   monitoringComplete?: boolean;
   /** PX-47 — validation completed and requires campaign approval after memory checkpoint */
   validationApprovalPending?: boolean;
+  /** Canonical campaign approval mode — drives PE checkpoint selection. */
+  campaignApprovalMode?: import("@/lib/campaign/types/campaign").CampaignApprovalMode;
 };
 
 export type BrainResultSummary = {

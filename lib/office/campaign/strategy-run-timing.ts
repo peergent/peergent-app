@@ -3,6 +3,7 @@ import type { StrategyRunStatus } from "./strategy-run-types";
 const TERMINAL: ReadonlySet<StrategyRunStatus> = new Set([
   "completed",
   "waiting_for_input",
+  "waiting_for_approval",
   "failed",
   "cancelled",
 ]);

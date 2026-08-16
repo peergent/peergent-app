@@ -300,19 +300,39 @@ async function executeLiveStrategyRunServer(
     }
 
     if (episodeResult.status === "waiting_for_approval") {
-      const failureMessageSafe = customerSafeStrategyFailureMessage("waiting_for_input", locale);
+      const approvalMode =
+        project.campaignSetup?.approvalMode ?? "approval_before_publication";
+      const isGuidedCheckpoint =
+        approvalMode === "approval_before_generation" ||
+        approvalMode === "blocked_manual_only";
+      const brainResult = episodeResult.strategyCapabilityRun ?? null;
+      const hasStrategyOutput = Boolean(
+        brainResult?.output?.findings?.length || brainResult?.run.status === "completed"
+      );
+
+      if (hasStrategyOutput && !isGuidedCheckpoint) {
+        return finalizeBrainStrategyResultServer({
+          project,
+          brainResult: brainResult!,
+          locale,
+          runId,
+          contextVersion: version,
+          idempotencyKey,
+        });
+      }
+
       persistStage({
-        status: "waiting_for_input",
+        status: "waiting_for_approval",
         completedAt: new Date().toISOString(),
-        failureCode: "waiting_for_input",
-        failureMessageSafe,
+        failureCode: "waiting_for_approval",
+        failureMessageSafe: customerSafeStrategyFailureMessage("waiting_for_approval", locale),
       });
       return {
         ok: false,
-        status: "waiting_for_input",
+        status: "waiting_for_approval",
         project,
-        failureCode: "waiting_for_input",
-        failureMessageSafe,
+        failureCode: "waiting_for_approval",
+        failureMessageSafe: customerSafeStrategyFailureMessage("waiting_for_approval", locale),
         runId,
       };
     }

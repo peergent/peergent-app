@@ -35,6 +35,7 @@ import { buildMarketingPeerFixture } from "./fixtures/marketing-peer-fixture";
 import { acquireEpisodeContext, type EpisodeAcquiredContext } from "./acquire-episode-context";
 import { assertProductionEpisodeRealContext } from "../context-acquisition/server/context-acquisition-config";
 import { isDemoPeer } from "@/lib/office/demo/demo-company";
+import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
 import { emitOrchestrationDiagnostic, safeOrchestrationError } from "./orchestration-diagnostics";
 import type { ProjectBrainExecutionAdapter } from "./types";
 import type {
@@ -243,6 +244,8 @@ export class ProjectEpisodeRunner {
       memoryCheckpoint2Complete: false,
       performanceObservationsAvailable: false,
       approvalGrantedForExecution: false,
+      campaignApprovalMode:
+        input.campaignContext?.approvalMode ?? "approval_before_publication",
       contextGaps,
       executedBrainKeys: [],
       lastError: null,
@@ -349,6 +352,8 @@ export class ProjectEpisodeRunner {
         sliceAvailability: acquiredContext.sliceAvailability,
         contextReady: acquiredContext.contextReady,
         contextGaps: [...acquiredContext.contextGaps],
+        campaignApprovalMode:
+          input.campaignContext?.approvalMode ?? episode.campaignApprovalMode ?? "approval_before_publication",
       };
 
       emitOrchestrationDiagnostic({
@@ -656,7 +661,22 @@ export class ProjectEpisodeRunner {
         { ...buildEngineInput(updated), approvalSatisfied: true },
         { locale: input.locale ?? "en" }
       );
-      updated = { ...updated, snapshot: advanced.snapshot, approvalSatisfied: false };
+      const clearedValidationApproval =
+        advanced.snapshot.state === "ready_to_publish" ||
+        advanced.snapshot.state === "publishing" ||
+        advanced.snapshot.approvalCheckpoint?.satisfied === true;
+      updated = {
+        ...updated,
+        snapshot: advanced.snapshot,
+        approvalSatisfied: false,
+        validationApprovalPending: clearedValidationApproval
+          ? false
+          : updated.validationApprovalPending,
+        approvalGrantedForExecution:
+          updated.approvalGrantedForExecution ||
+          advanced.snapshot.state === "publishing" ||
+          advanced.snapshot.state === "monitoring",
+      };
     }
 
     if (input.performanceObservations?.length) {
@@ -775,6 +795,7 @@ function buildEngineInput(episode: ProjectEpisodeRecord): ProjectEngineInput {
     approvalSatisfied: episode.approvalSatisfied,
     monitoringComplete: episode.performanceObservationsAvailable,
     validationApprovalPending: episode.validationApprovalPending,
+    campaignApprovalMode: episode.campaignApprovalMode ?? "approval_before_publication",
   };
 }
 
@@ -802,7 +823,9 @@ function applyBrainExecution(
   let validationApprovalPending = episode.validationApprovalPending;
 
   if (result.brainId === "validation" && result.status === "completed") {
-    validationApprovalPending = result.requiresApproval ?? false;
+    validationApprovalPending = requiresPublicationApproval(
+      episode.campaignApprovalMode ?? "approval_before_publication"
+    );
   }
   if (result.brainId === "memory" && result.status === "completed") {
     if (episode.snapshot.state === "validating") memoryCheckpoint1Complete = true;
@@ -979,7 +1002,9 @@ async function pauseEpisode(
                 !snapshot.completedBrains.includes("planning")
               ? ("strategy" as const)
               : null;
-    const gate = gateBrain ? resolveApprovalGate(gateBrain) : null;
+    const gate = gateBrain
+      ? resolveApprovalGate(gateBrain, episode.campaignApprovalMode ?? "approval_before_publication")
+      : null;
     if (gate) {
       snapshot = {
         ...snapshot,

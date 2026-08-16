@@ -5,8 +5,10 @@
 import {
   createApprovalCheckpoint,
   resolveApprovalGate,
+  resolvePublicationConfirmGate,
   satisfyApprovalCheckpoint,
 } from "./approval-model";
+import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
 import { appendProjectEvent, createProjectEngineEvent } from "./event-model";
 import { withProjectState } from "./create-snapshot";
 import {
@@ -157,8 +159,10 @@ function applyBrainResult(
     };
   }
 
-  const gate = resolveApprovalGate(result.brainId);
-  const deferApprovalPause = result.brainId === "validation" && result.requiresApproval;
+  const mode = input.campaignApprovalMode ?? "approval_before_publication";
+  const gate = resolveApprovalGate(result.brainId, mode);
+  const deferApprovalPause =
+    result.brainId === "validation" && requiresPublicationApproval(mode);
 
   if (
     !deferApprovalPause &&
@@ -166,6 +170,61 @@ function applyBrainResult(
       (result.status === "completed" && result.requiresApproval && gate))
   ) {
     if (!gate) {
+      if (result.status === "waiting_approval" && result.brainId === "execution") {
+        const pubGate = resolvePublicationConfirmGate();
+        const checkpoint = createApprovalCheckpoint(pubGate, nl, now);
+        return {
+          ...next,
+          state: "waiting_for_approval",
+          activeBrain: result.brainId,
+          waitingReason: "approval_required",
+          approvalCheckpoint: checkpoint,
+          eventLog: appendProjectEvent(
+            next,
+            createProjectEngineEvent({
+              type: "approval_required",
+              brainId: result.brainId,
+              state: "waiting_for_approval",
+              nl,
+              at: now,
+            })
+          ),
+          updatedAt: now.toISOString(),
+        };
+      }
+
+      if (result.status === "waiting_approval") {
+        const cognitiveAutonomous =
+          mode === "approval_before_publication" || mode === "no_approval_required";
+        if (cognitiveAutonomous) {
+          next = markBrainCompleted(next, result.brainId, now);
+          const nextState = resolveNextStateAfterBrainComplete(snapshot.state, result, next, input);
+          next = withProjectState(next, nextState, now);
+          next = {
+            ...next,
+            eventLog: appendProjectEvent(
+              next,
+              createProjectEngineEvent({
+                type: "brain_completed",
+                brainId: result.brainId,
+                state: nextState,
+                nl,
+                at: now,
+              })
+            ),
+          };
+          return next;
+        }
+
+        return {
+          ...next,
+          state: "waiting_for_approval",
+          activeBrain: result.brainId,
+          waitingReason: "approval_required",
+          updatedAt: now.toISOString(),
+        };
+      }
+
       next = markBrainCompleted(next, result.brainId, now);
       const nextState = resolveNextStateAfterBrainComplete(snapshot.state, result, next, input);
       next = withProjectState(next, nextState, now);
@@ -210,6 +269,32 @@ function applyBrainResult(
     next = markBrainCompleted(next, result.brainId, now);
     const nextState = resolveNextStateAfterBrainComplete(snapshot.state, result, next, input);
     next = withProjectState(next, nextState, now);
+
+    if (
+      nextState === "waiting_for_approval" &&
+      input.validationApprovalPending &&
+      !next.approvalCheckpoint
+    ) {
+      const gate = resolveApprovalGate("validation", mode);
+      if (gate) {
+        next = {
+          ...next,
+          waitingReason: "approval_required",
+          approvalCheckpoint: createApprovalCheckpoint(gate, nl, now),
+          eventLog: appendProjectEvent(
+            next,
+            createProjectEngineEvent({
+              type: "approval_required",
+              brainId: result.brainId,
+              state: "waiting_for_approval",
+              nl,
+              at: now,
+            })
+          ),
+        };
+      }
+    }
+
     next = {
       ...next,
       eventLog: appendProjectEvent(

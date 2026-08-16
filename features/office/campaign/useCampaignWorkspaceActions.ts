@@ -23,6 +23,7 @@ import {
 import { buildCampaignWorkflowViewModel } from "@/lib/office/campaign/build-campaign-workflow";
 import { buildCampaignStepEvidenceAsync, isLiveBrainDeferredStep } from "@/lib/office/campaign/build-campaign-workflow-evidence";
 import { buildLiveCampaignEvidenceAction } from "@/lib/office/campaign/live-campaign-evidence-action";
+import { submitLiveCampaignStepApprovalAction } from "@/lib/office/campaign/live-campaign-approval-action";
 import { runWithBoundedTimeout } from "@/lib/office/campaign/strategy-run-timeout";
 import { CREATIVE_GENERATION_CLIENT_ACTION_TIMEOUT_MS } from "@/lib/brain/llm/creative-generation-llm-config";
 import {
@@ -484,33 +485,73 @@ export function useCampaignWorkspaceActions(input: {
       setEvidencePhase("processing");
       setEvidenceError(null);
 
-      try {
-        if (isDemo) {
-          setDemoStepApproval(peerId, projectId, stepId, "approved");
-        } else {
-          const updated = workspace.updateCampaignStepApproval(projectId, stepId, "approved");
-          if (!updated) {
-            throw new Error("approval_persist_failed");
+      void (async () => {
+        try {
+          if (isDemo) {
+            setDemoStepApproval(peerId, projectId, stepId, "approved");
+            setEvidencePhase("success");
+            if (
+              stepId === "strategy_determined" ||
+              stepId === "channels_selected" ||
+              stepId === "deliverables_created"
+            ) {
+              window.setTimeout(() => closeEvidence(), prefersReducedMotion() ? 0 : 500);
+            } else {
+              advanceEvidenceStep(stepId);
+            }
+            return;
           }
+
+          const domain = freshDomainInput(domainInput, isDemo);
+          const project = domain.projects.find((p) => p.id === projectId);
+          if (!project) throw new Error("approval_persist_failed");
+
+          const bridgeResult = await submitLiveCampaignStepApprovalAction({
+            peerId,
+            projectId,
+            stepId,
+            status: "approved",
+            project,
+            domainInput: domain,
+            locale: localePreference === "nl" ? "nl" : "en",
+          });
+
+          if (!bridgeResult.ok) {
+            throw new Error(bridgeResult.error);
+          }
+
+          syncLiveProject(bridgeResult.project);
+          setEvidencePhase("success");
+          if (
+            stepId === "strategy_determined" ||
+            stepId === "channels_selected" ||
+            stepId === "deliverables_created"
+          ) {
+            window.setTimeout(() => closeEvidence(), prefersReducedMotion() ? 0 : 500);
+          } else {
+            advanceEvidenceStep(stepId);
+          }
+        } catch {
+          setEvidencePhase("error");
+          setEvidenceError(
+            nl ? "Er ging iets mis. Probeer het opnieuw." : "Something went wrong. Please try again."
+          );
         }
-        setEvidencePhase("success");
-        if (
-          stepId === "strategy_determined" ||
-          stepId === "channels_selected" ||
-          stepId === "deliverables_created"
-        ) {
-          window.setTimeout(() => closeEvidence(), prefersReducedMotion() ? 0 : 500);
-        } else {
-          advanceEvidenceStep(stepId);
-        }
-      } catch {
-        setEvidencePhase("error");
-        setEvidenceError(
-          nl ? "Er ging iets mis. Probeer het opnieuw." : "Something went wrong. Please try again."
-        );
-      }
+      })();
     },
-    [advanceEvidenceStep, closeEvidence, evidencePhase, evidenceStep?.evidenceBlocked, isDemo, nl, peerId, projectId, workspace]
+    [
+      advanceEvidenceStep,
+      closeEvidence,
+      domainInput,
+      evidencePhase,
+      evidenceStep?.evidenceBlocked,
+      isDemo,
+      localePreference,
+      nl,
+      peerId,
+      projectId,
+      syncLiveProject,
+    ]
   );
 
   const handleEvidencePrimary = useCallback(() => {

@@ -112,6 +112,8 @@ function toBrainResult(
     run.output?.decisionRecords?.map((d) => d.id) ??
     [];
 
+  const brainRequiresPause = run.run.status === "waiting_for_approval";
+
   return {
     brainId,
     status,
@@ -139,8 +141,12 @@ function toBrainResult(
       status === "waiting_for_input"
         ? parseStrategyReadinessReasonCodes(run.run.errorMessage)
         : undefined,
-    requiresApproval: run.run.status === "waiting_for_approval",
-    approvalKind: run.run.status === "waiting_for_approval" ? "campaign_approval" : null,
+    requiresApproval: brainRequiresPause,
+    approvalKind: brainRequiresPause
+      ? brainId === "execution"
+        ? "publication_confirm"
+        : "campaign_approval"
+      : null,
   };
 }
 

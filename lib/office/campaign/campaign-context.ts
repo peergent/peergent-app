@@ -1,3 +1,4 @@
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import type { MarketingPeerDomainInput } from "@/lib/peer-experience/marketing/view-models/marketing-peer-domain-input";
 import type {
   CampaignSetupChannel,
@@ -70,6 +71,8 @@ export type CampaignContext = {
   competitorsSkipped: boolean;
   competitorContextState: ContextAvailability;
   campaignMode: "automatic" | "manual";
+  /** Canonical customer approval policy for Brain + Project Engine. */
+  approvalMode: CampaignApprovalMode;
   executionMode: CampaignExecutionMode;
   selectedChannels: readonly CampaignSetupChannel[];
   selectedDeliverables: readonly CampaignSetupDeliverable[];
@@ -271,6 +274,7 @@ export function buildCampaignContext(input: {
     competitorsSkipped,
     competitorContextState,
     campaignMode: setup?.setupMode ?? "automatic",
+    approvalMode: setup?.approvalMode ?? "approval_before_publication",
     executionMode: executionModeFromSetup(setup),
     selectedChannels,
     selectedDeliverables,
@@ -364,6 +368,7 @@ export function buildCampaignContextFromCreateInput(
     competitorsSkipped: false,
     competitorContextState: "missing",
     campaignMode: input.setupMode ?? "automatic",
+    approvalMode: input.approvalMode ?? "approval_before_publication",
     executionMode:
       input.approvalMode === "approval_before_generation"
         ? "manual"

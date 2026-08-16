@@ -1,13 +1,20 @@
 /**
- * Approval gates — engine pauses; Brains never bypass customer approval.
+ * Approval gates — Project Engine workflow checkpoints.
+ *
+ * Ownership boundary (PX-50.22):
+ * - BrainRuntime policy: capability run authorization (completed vs waiting_for_approval)
+ * - Project Engine gates: guided-mode cognitive checkpoints + publication boundary only
+ * - No duplicate pause for the same cognitive decision in approval_before_publication mode
  */
 
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import type {
   ApprovalCheckpoint,
   ApprovalCheckpointKind,
   ProjectBrainId,
   ProjectLifecycleState,
 } from "./types";
+import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
 
 export type ApprovalGateDefinition = {
   kind: ApprovalCheckpointKind;
@@ -61,8 +68,45 @@ export const APPROVAL_GATE_DEFINITIONS: readonly ApprovalGateDefinition[] = [
   },
 ];
 
-export function resolveApprovalGate(brainId: ProjectBrainId): ApprovalGateDefinition | null {
-  return APPROVAL_GATE_DEFINITIONS.find((g) => g.afterBrain === brainId) ?? null;
+const GUIDED_COGNITIVE_GATES = new Set<ApprovalCheckpointKind>([
+  "strategy_review",
+  "channel_review",
+  "deliverable_review",
+]);
+
+export function resolveApprovalGate(
+  brainId: ProjectBrainId,
+  campaignApprovalMode: CampaignApprovalMode = "approval_before_publication"
+): ApprovalGateDefinition | null {
+  const gate = APPROVAL_GATE_DEFINITIONS.find((g) => g.afterBrain === brainId) ?? null;
+  if (!gate) return null;
+
+  if (campaignApprovalMode === "blocked_manual_only") {
+    return gate;
+  }
+
+  if (campaignApprovalMode === "approval_before_generation") {
+    return gate;
+  }
+
+  if (campaignApprovalMode === "no_approval_required") {
+    return null;
+  }
+
+  // approval_before_publication — only publication boundary via PE
+  if (GUIDED_COGNITIVE_GATES.has(gate.kind)) {
+    return null;
+  }
+
+  if (gate.kind === "campaign_approval" && requiresPublicationApproval(campaignApprovalMode)) {
+    return gate;
+  }
+
+  return null;
+}
+
+export function resolvePublicationConfirmGate(): ApprovalGateDefinition {
+  return APPROVAL_GATE_DEFINITIONS.find((g) => g.kind === "publication_confirm")!;
 }
 
 export function createApprovalCheckpoint(

@@ -19,6 +19,7 @@ import type { BrainRunRequestWithBudget } from "../runtime/run-request";
 import type { BrainStructuredOutput } from "../evidence/structured-output";
 import { readCampaignBrainOutputs } from "@/lib/office/campaign/campaign-brain-outputs";
 import { getBrainCapability } from "../capabilities/registry";
+import { resolveCampaignBrainPolicy } from "../policy/campaign-approval-policy";
 import { resolveOrganizationId } from "./resolve-company-intelligence";
 import { createBrainRuntimeWithAssembly } from "./brain-runtime-factory";
 import type { BrainRepositoryBundle } from "../persistence/repository-factory";
@@ -168,6 +169,14 @@ function buildBaseRequest(
   options?: ExecuteBrainForWorkflowStepOptions
 ): BrainRunRequestWithBudget {
   const campaignCtx = resolveCampaignContext(input);
+  const campaignApprovalMode =
+    input.project.campaignSetup?.approvalMode ??
+    campaignCtx.approvalMode ??
+    "approval_before_publication";
+  const resolvedPolicy = resolveCampaignBrainPolicy({
+    campaignApprovalMode,
+    capabilityId,
+  });
   const isDemo = isDemoPeer(input.peerId);
   const includeDemoMetrics =
     capabilityId === "optimization" && isDemo && isSeedCampaign(input.project.id);
@@ -180,8 +189,9 @@ function buildBaseRequest(
     campaignId: input.project.id,
     locale: input.locale,
     environment: isDemo ? "demo" : "live",
-    executionMode: input.executionMode ?? "semi_automatic",
+    executionMode: input.executionMode ?? resolvedPolicy.executionMode,
     approvalPolicy: input.approvalPolicy ?? "approval_required",
+    campaignApprovalMode,
     idempotencyKey: input.idempotencyKey,
     correlationId: `campaign-${input.project.id}-${input.stepId}-${capabilityId}`,
     campaignContext: campaignCtx,

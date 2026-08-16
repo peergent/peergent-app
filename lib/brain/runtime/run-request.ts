@@ -1,3 +1,4 @@
+import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import type { CampaignContext } from "@/lib/office/campaign/campaign-context";
 import type { MarketingUnderstanding } from "@/lib/marketing-intelligence";
 import type { BrainEnvironment } from "../domain/environment";
@@ -29,6 +30,8 @@ export type BrainRunRequest = {
   dryRun?: boolean;
   executionMode?: BrainExecutionMode;
   approvalPolicy?: "prepare_only" | "approval_required" | "fully_automatic";
+  /** Canonical campaign approval mode — drives cognitive vs external policy. */
+  campaignApprovalMode?: CampaignApprovalMode;
   requestId?: string;
   permissions?: readonly string[];
   /** Full campaign context for capability executors — not stored in BrainSnapshot slices. */

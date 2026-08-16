@@ -7,7 +7,7 @@ import { hashContextSlices } from "../providers/token-strategy";
 import { resolveBrainEnvironment } from "../context/resolve-environment";
 import { getBrainCapability } from "../capabilities/registry";
 import type { BrainCapabilityId } from "../capabilities/registry";
-import { evaluateBrainPolicy } from "../policy/approval-policy";
+import { resolvePolicyForBrainRun, resolveFinalRunStatus } from "../policy/resolve-run-policy";
 import type { BrainRunRequestWithBudget } from "./run-request";
 import type { BrainRunRecord } from "./repositories/contracts";
 import type { BrainRunRepository } from "./repositories/contracts";
@@ -239,11 +239,7 @@ export class BrainRuntime {
       ...buildStrategyReadinessGateOptions(request, assembly),
     });
 
-    const policy = evaluateBrainPolicy({
-      executionMode: request.executionMode ?? "semi_automatic",
-      approvalPolicy: request.approvalPolicy ?? "approval_required",
-      capabilityApprovalRequirement: capabilityDef.approvalRequirement,
-    });
+    const policy = resolvePolicyForBrainRun({ request });
 
     if (!readinessGate.ok) {
       run = this.transitionRun(run, readinessGate.status, {
@@ -311,7 +307,12 @@ export class BrainRuntime {
     if (request.reuseStoredOutput) {
       const output = request.reuseStoredOutput;
       run = this.transitionRun(run, "running");
-      const finalStatus = readinessGate.partial ? "partial" : "completed";
+      const finalStatus = resolveFinalRunStatus({
+        request,
+        policy: resolvePolicyForBrainRun({ request, actionProposals: output.actionProposals }),
+        output,
+        readinessPartial: readinessGate.partial,
+      });
       const outputId = this.deps.outputRepository.store({
         organizationId: request.organizationId,
         runId: run.id,
@@ -357,7 +358,13 @@ export class BrainRuntime {
     });
 
     const usage = recordZeroProviderUsage(provider.id);
-    const finalStatus = readinessGate.partial ? "partial" : "completed";
+    const finalPolicy = resolvePolicyForBrainRun({ request, actionProposals: output.actionProposals });
+    const finalStatus = resolveFinalRunStatus({
+      request,
+      policy: finalPolicy,
+      output,
+      readinessPartial: readinessGate.partial,
+    });
     const outputId = this.deps.outputRepository.store({
       organizationId: request.organizationId,
       runId: run.id,
@@ -490,11 +497,7 @@ export class BrainRuntime {
         errorCode: "readiness_insufficient",
         errorMessage: readinessGate.reasons.join("; "),
       });
-      const policy = evaluateBrainPolicy({
-        executionMode: request.executionMode ?? "semi_automatic",
-        approvalPolicy: request.approvalPolicy ?? "approval_required",
-        capabilityApprovalRequirement: capabilityDef.approvalRequirement,
-      });
+      const policy = resolvePolicyForBrainRun({ request });
       await this.writeAuditAsync(run, assembly, {
         contextHash: assembly.version.contextHash,
         includedSlices: [],
@@ -538,11 +541,7 @@ export class BrainRuntime {
     });
     assertBudgetAllowed(budgetCheck);
 
-    const policy = evaluateBrainPolicy({
-      executionMode: request.executionMode ?? "semi_automatic",
-      approvalPolicy: request.approvalPolicy ?? "approval_required",
-      capabilityApprovalRequirement: capabilityDef.approvalRequirement,
-    });
+    const policy = resolvePolicyForBrainRun({ request });
 
     if (policy.decision === "block") {
       run = await this.transitionRunAsync(run, "blocked", {
@@ -607,10 +606,13 @@ export class BrainRuntime {
       cacheHit = true;
       run = await this.transitionRunAsync(run, "running");
 
-      let finalStatus = readinessGate.partial ? "partial" : "completed";
-      if (policy.decision === "require_approval" && output.actionProposals.some((a) => a.requiresApproval)) {
-        finalStatus = "waiting_for_approval";
-      }
+      const finalPolicy = resolvePolicyForBrainRun({ request, actionProposals: output.actionProposals });
+      const finalStatus = resolveFinalRunStatus({
+        request,
+        policy: finalPolicy,
+        output,
+        readinessPartial: readinessGate.partial,
+      });
 
       const outputId = await this.storeOutputAsync({
         organizationId: request.organizationId,
@@ -716,10 +718,13 @@ export class BrainRuntime {
     }
     usage.cacheHit = cacheHit;
 
-    let finalStatus = readinessGate.partial ? "partial" : "completed";
-    if (policy.decision === "require_approval" && output.actionProposals.some((a) => a.requiresApproval)) {
-      finalStatus = "waiting_for_approval";
-    }
+    const finalPolicy = resolvePolicyForBrainRun({ request, actionProposals: output.actionProposals });
+    const finalStatus = resolveFinalRunStatus({
+      request,
+      policy: finalPolicy,
+      output,
+      readinessPartial: readinessGate.partial,
+    });
 
     const outputId = await this.storeOutputAsync({
       organizationId: request.organizationId,
