@@ -66,7 +66,13 @@ export type OrchestrationDiagnosticEvent =
   | "automatic_pipeline_recovery_candidate"
   | "automatic_pipeline_recovery_triggered"
   | "automatic_pipeline_recovery_skipped"
-  | "automatic_pipeline_recovery_failed";
+  | "automatic_pipeline_recovery_failed"
+  | "post_approval_execution_requested"
+  | "post_approval_execution_started"
+  | "post_approval_execution_skipped"
+  | "post_approval_execution_blocked"
+  | "post_approval_execution_completed"
+  | "approved_package_handoff_resolved";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -108,6 +114,11 @@ export type OrchestrationDiagnosticPayload = {
   fromState?: ProjectLifecycleState;
   stallReason?: string;
   decisionReason?: string;
+  packageId?: string;
+  packageVersion?: string;
+  integrationReady?: boolean;
+  idempotencyKeyPresent?: boolean;
+  executionMode?: string;
 };
 
 export function safeOrchestrationError(error: unknown): {

@@ -154,6 +154,7 @@ export async function executeRegistryBrainForEpisode(
     companySnapshot: input.contextHandoff.companySnapshot,
     brandGraph: input.contextHandoff.brandGraph,
     approvalGrantedForExecution: input.episode.approvalGrantedForExecution,
+    approvedExecutionHandoff: input.episode.approvedExecutionHandoff ?? null,
     performanceObservations: [
       ...getDefaultProjectEpisodeRepository().getObservations(input.episode.snapshot.projectId),
     ],

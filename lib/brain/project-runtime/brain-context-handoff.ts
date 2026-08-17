@@ -119,13 +119,21 @@ export function buildBrainPayload(
         approvalGranted: false,
         priorMemories,
       };
-    case "execution":
+    case "execution": {
+      const approved = handoff.approvedExecutionHandoff;
+      const packageKey = approved?.packageId ?? "unversioned";
       return {
-        creativeGraph,
-        validationGraph,
+        creativeGraph: resolved.creativeGraph,
+        validationGraph: resolved.validationGraph,
         approvalGranted: handoff.approvalGrantedForExecution,
-        idempotencyKey: `${handoff.correlationId}:execution`,
+        idempotencyKey: `${handoff.correlationId}:execution:${packageKey}`,
+        approvalRef: approved?.approvalId ?? null,
+        approvedPackageId: approved?.packageId ?? null,
+        approvedPackageVersion: approved?.packageVersion ?? null,
+        creativeGraphRef: approved?.creativeGraphRef ?? null,
+        validationGraphRef: approved?.validationGraphRef ?? null,
       };
+    }
     case "learning":
       return {
         performanceObservations: handoff.performanceObservations,

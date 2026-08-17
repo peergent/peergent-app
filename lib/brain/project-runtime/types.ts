@@ -93,6 +93,31 @@ export type ProjectEpisodeRecord = {
   cachedLearningProposals?: readonly import("../layers/learning/brain-types").MemoryWriteProposal[];
   /** Optimistic concurrency version for durable episode store */
   durableVersion?: number;
+  /** PX-59 — frozen approved package consumed by Execution (no regeneration). */
+  approvedExecutionHandoff?: ApprovedExecutionHandoff | null;
+};
+
+/** Immutable handoff from CampaignApprovalPackage → Execution Brain. */
+export type ApprovedExecutionHandoff = {
+  packageId: string;
+  packageVersion: string;
+  creativeGraphRef: string;
+  validationGraphRef: string;
+  planningGraphRef: string | null;
+  strategyGraphRef: string | null;
+  approvedAt: string;
+  approvalId: string;
+  deliverableIds: readonly string[];
+  channels: readonly string[];
+  /** Set when execution attempted but live integrations are missing. */
+  executionPhase?:
+    | "approved"
+    | "executing"
+    | "prepared"
+    | "blocked_integration"
+    | "completed";
+  blockedChannels?: readonly string[];
+  blockedReason?: string | null;
 };
 
 export type ResolvedBrainOutputs = {
@@ -212,6 +237,7 @@ export type BrainHandoffContext = {
   memoryCheckpointPhase: "checkpoint_1" | "checkpoint_2" | null;
   learningProposalIds: string[];
   learningProposals: readonly import("../layers/learning/brain-types").MemoryWriteProposal[];
+  approvedExecutionHandoff?: ApprovedExecutionHandoff | null;
 };
 
 /** PX-50 — optional capability adapter for production BrainRuntime execution. */

@@ -29,6 +29,14 @@ export type CampaignRuntimeProjection = {
   lastError: string | null;
   memoryCheckpoint1Complete: boolean;
   validationApprovalPending: boolean;
+  approvalGrantedForExecution: boolean;
+  executionHandoff: {
+    packageId: string;
+    packageVersion: string;
+    phase: string;
+    blockedChannels: readonly string[];
+    blockedReason: string | null;
+  } | null;
 };
 
 const WORKFLOW_STEP_ORDER: readonly CampaignWorkflowStepId[] = [
@@ -83,6 +91,16 @@ export function buildCampaignRuntimeProjectionFromEpisode(
     lastError: episode.lastError,
     memoryCheckpoint1Complete: episode.memoryCheckpoint1Complete,
     validationApprovalPending: episode.validationApprovalPending,
+    approvalGrantedForExecution: episode.approvalGrantedForExecution,
+    executionHandoff: episode.approvedExecutionHandoff
+      ? {
+          packageId: episode.approvedExecutionHandoff.packageId,
+          packageVersion: episode.approvedExecutionHandoff.packageVersion,
+          phase: episode.approvedExecutionHandoff.executionPhase ?? "approved",
+          blockedChannels: episode.approvedExecutionHandoff.blockedChannels ?? [],
+          blockedReason: episode.approvedExecutionHandoff.blockedReason ?? null,
+        }
+      : null,
   };
 }
 
@@ -227,6 +245,15 @@ export function resolveEpisodeStatusLabel(
     return nl ? "Wacht op jouw goedkeuring" : "Waiting for your approval";
   }
   if (lifecycleState === "ready_to_publish") {
+    if (projection.approvalGrantedForExecution && projection.executionHandoff?.phase === "blocked_integration") {
+      const channels = projection.executionHandoff.blockedChannels.join(", ");
+      return nl
+        ? `Goedgekeurd — koppeling vereist${channels ? `: ${channels}` : ""}`
+        : `Approved — connection required${channels ? `: ${channels}` : ""}`;
+    }
+    if (projection.approvalGrantedForExecution) {
+      return nl ? "Goedgekeurd — publicatie wordt voorbereid" : "Approved — preparing publication";
+    }
     return nl ? "Klaar om in te plannen" : "Ready to schedule";
   }
   if (lifecycleState === "publishing") {
@@ -305,6 +332,16 @@ export function resolveEpisodeNextStepCopy(
       : "Emma needs more context before continuing.";
   }
   if (lifecycleState === "ready_to_publish") {
+    if (projection.executionHandoff?.phase === "blocked_integration") {
+      return nl
+        ? "Campagne is goedgekeurd. Koppel de benodigde kanalen om publicatie te starten."
+        : "Campaign is approved. Connect the required channels to start publication.";
+    }
+    if (projection.approvalGrantedForExecution) {
+      return nl
+        ? "Emma voert het goedgekeurde campagnepakket uit — zonder opnieuw content te genereren."
+        : "Emma is executing the approved campaign package — without regenerating content.";
+    }
     return nl
       ? "Campagne is goedgekeurd — plan publicatie wanneer je klaar bent."
       : "Campaign approved — schedule publication when you are ready.";
@@ -368,6 +405,21 @@ export function resolveEpisodePrimaryAction(
   }
 
   if (lifecycleState === "ready_to_publish" && !input.isCampaignScheduled) {
+    if (projection.executionHandoff?.phase === "blocked_integration") {
+      return {
+        kind: "view_context",
+        label: nl ? "Kanaal koppelen" : "Connect channel",
+        stepId: "business_analyzed",
+      };
+    }
+    if (projection.approvalGrantedForExecution) {
+      return {
+        kind: "strategy_working",
+        label: nl ? "Publicatie wordt voorbereid…" : "Preparing publication…",
+        strategyRunStatus: "running",
+        strategyRunStageLabel: nl ? "Publicatie" : "Publication",
+      };
+    }
     return {
       kind: "schedule",
       label: nl ? "Campagne inplannen" : "Schedule campaign",

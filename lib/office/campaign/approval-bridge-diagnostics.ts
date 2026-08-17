@@ -15,7 +15,8 @@ export type ApprovalBridgeDiagnosticEvent =
   | "post_approval_resume_requested"
   | "post_approval_resume_started"
   | "post_approval_resume_failed"
-  | "post_approval_resume_completed";
+  | "post_approval_resume_completed"
+  | "approved_package_handoff_resolved";
 
 export type ApprovalBridgeDiagnosticPayload = {
   event: ApprovalBridgeDiagnosticEvent;
@@ -29,6 +30,8 @@ export type ApprovalBridgeDiagnosticPayload = {
   errorCode?: string;
   errorClass?: string;
   durationMs?: number;
+  packageId?: string;
+  packageVersion?: string;
 };
 
 export function safeApprovalBridgeError(error: unknown): {

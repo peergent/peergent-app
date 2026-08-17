@@ -22,6 +22,9 @@ import {
   emitApprovalBridgeDiagnostic,
   safeApprovalBridgeError,
 } from "./approval-bridge-diagnostics";
+import { freezeApprovedExecutionHandoff } from "@/lib/brain/approval/approved-execution-handoff";
+import { commitEpisodeCritical } from "@/lib/brain/project-runtime/episode-durable-persistence";
+import { getActiveDurablePersistence } from "@/lib/brain/persistence/layer/active-durable-persistence";
 
 const STEP_TO_CHECKPOINT: Partial<Record<CampaignWorkflowStepId, ApprovalCheckpointKind>> = {
   strategy_determined: "strategy_review",
@@ -194,12 +197,13 @@ export async function submitLiveCampaignStepApprovalServer(
     decision: "approved",
   });
 
+  const approvalId = `office-${input.stepId}-${Date.now()}`;
   const persistStartedMs = Date.now();
   try {
     await submitProjectApprovalDurable({
       organizationId: input.organizationId,
       projectId: input.projectId,
-      approvalId: `office-${input.stepId}-${Date.now()}`,
+      approvalId,
       decision: "approved",
       actor: input.actor,
       comment: `Office approval: ${input.stepId}`,
@@ -220,6 +224,41 @@ export async function submitLiveCampaignStepApprovalServer(
       durationMs: Date.now() - persistStartedMs,
     });
     return { ok: false, error: "approval_persistence_failed" };
+  }
+
+  const repo = getDefaultProjectEpisodeRepository();
+  let episodeAfterApproval = repo.get({
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+  });
+  if (episodeAfterApproval) {
+    episodeAfterApproval = freezeApprovedExecutionHandoff({
+      episode: episodeAfterApproval,
+      approvalId,
+      campaignName: updatedProject.title,
+      campaignContext: buildCampaignContext({
+        project: updatedProject,
+        domainInput: input.domainInput,
+        locale: input.locale,
+        organizationId: input.organizationId,
+      }),
+      locale: input.locale,
+    });
+    repo.save(episodeAfterApproval);
+    const durable = getActiveDurablePersistence();
+    if (durable) {
+      await commitEpisodeCritical(episodeAfterApproval, durable);
+    }
+    emitApprovalBridgeDiagnostic({
+      event: "approved_package_handoff_resolved",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episodeAfterApproval.snapshot.episodeId,
+      checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+      bridgeStepId: input.stepId,
+      packageId: episodeAfterApproval.approvedExecutionHandoff?.packageId,
+      packageVersion: episodeAfterApproval.approvedExecutionHandoff?.packageVersion,
+    });
   }
 
   emitApprovalBridgeDiagnostic({

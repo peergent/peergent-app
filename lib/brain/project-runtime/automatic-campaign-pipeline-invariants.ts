@@ -8,6 +8,7 @@ import type { ProjectBrainId, ProjectLifecycleState } from "../project-engine/ty
 import type { EpisodeStatus, ProjectEpisodeRecord } from "./types";
 import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/types";
 import { usesProjectEngineLifecycleAuthority } from "@/lib/office/campaign/live-strategy-run-service";
+import { needsPostApprovalExecution } from "../approval/approved-execution-handoff";
 
 export type AutomaticCampaignPipelinePhase =
   | "not_started"
@@ -71,6 +72,12 @@ function inferPhase(episode: ProjectEpisodeRecord): AutomaticCampaignPipelinePha
     return "publication_approval";
   }
   if (snapshot.completedBrains.includes("execution")) return "execution";
+  if (
+    episode.approvalGrantedForExecution &&
+    (snapshot.state === "ready_to_publish" || snapshot.state === "publishing")
+  ) {
+    return "execution";
+  }
   if (snapshot.completedBrains.includes("validation")) return "validation";
   if (
     snapshot.state === "validating" &&
@@ -128,6 +135,18 @@ function detectOrchestrationStallReason(
     pending.includes("memory")
   ) {
     return "ORCHESTRATION_STALL_MEMORY_CHECKPOINT_NOT_STARTED";
+  }
+
+  if (
+    episode.approvalGrantedForExecution &&
+    episode.snapshot.approvalCheckpoint?.satisfied === true &&
+    (snapshot.state === "ready_to_publish" || snapshot.state === "publishing") &&
+    pending.includes("execution") &&
+    !snapshot.completedBrains.includes("execution") &&
+    snapshot.activeBrain == null &&
+    episode.episodeStatus === "running"
+  ) {
+    return "ORCHESTRATION_STALL_EXECUTION_NOT_STARTED";
   }
 
   const nextExpected = COGNITIVE_POST_STRATEGY.find(
@@ -189,7 +208,26 @@ export function detectAutomaticCampaignPipelineStall(input: {
     const cognitiveComplete = COGNITIVE_POST_STRATEGY.every((brain) =>
       episode.snapshot.completedBrains.includes(brain)
     );
-    if (cognitiveComplete && episode.memoryCheckpoint1Complete) return null;
+    if (cognitiveComplete && episode.memoryCheckpoint1Complete) {
+      if (needsPostApprovalExecution(episode)) {
+        if (episode.episodeStatus === "running") {
+          const orchestrationReason = detectOrchestrationStallReason(episode);
+          if (orchestrationReason) {
+            return {
+              stalled: true,
+              phase,
+              reason: orchestrationReason,
+              episodeStatus: episode.episodeStatus,
+              currentState: episode.snapshot.state,
+              completedBrains: episode.snapshot.completedBrains,
+              pendingBrains: episode.snapshot.pendingBrains,
+              approvalCheckpoint: episode.snapshot.approvalCheckpoint?.kind ?? null,
+            };
+          }
+        }
+      }
+      return null;
+    }
 
     if (episode.episodeStatus === "running") {
       const orchestrationReason = detectOrchestrationStallReason(episode);

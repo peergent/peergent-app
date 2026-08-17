@@ -196,6 +196,33 @@ export function evaluateProjectEpisode(
     };
   }
 
+  if (snapshot.state === "publishing") {
+    if (!snapshot.completedBrains.includes("execution")) {
+      return {
+        snapshot,
+        action: action(
+          "run_brain",
+          "execution",
+          "Execute approved campaign package",
+          nl ? "Goedgekeurd pakket uitvoeren" : "Execute approved package"
+        ),
+        pendingBrains: snapshot.pendingBrains,
+        blocked: false,
+      };
+    }
+    return {
+      snapshot,
+      action: action(
+        "idle",
+        null,
+        "Execution complete — advance to monitoring",
+        nl ? "Publicatie voltooid" : "Publication complete"
+      ),
+      pendingBrains: snapshot.pendingBrains,
+      blocked: false,
+    };
+  }
+
   if (snapshot.state === "monitoring") {
     if (!input.monitoringComplete && !options.performanceObservationsAvailable) {
       return {

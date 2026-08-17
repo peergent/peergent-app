@@ -7,6 +7,7 @@ import type { MarketingProject } from "@/lib/peer-experience/marketing/projects/
 import type { CampaignApprovalMode } from "@/lib/campaign/types/campaign";
 import { usesProjectEngineLifecycleAuthority } from "@/lib/office/campaign/live-strategy-run-service";
 import { requiresPublicationApproval } from "../policy/campaign-approval-policy";
+import { needsPostApprovalExecution } from "../approval/approved-execution-handoff";
 import { prepareBrainServerPersistence } from "../persistence/server/prepare-brain-server-persistence";
 import { assertLiveBrainServerContext } from "../context-acquisition/server/context-acquisition-config";
 import { resolveEpisodeStepBudgetForEpisode } from "./episode-step-budget";
@@ -137,6 +138,9 @@ export function evaluateCampaignEpisodeContinuation(input: {
   }
   if (input.episode.episodeStatus === "waiting_for_approval") {
     return { eligible: false, reason: "waiting_for_approval" };
+  }
+  if (needsPostApprovalExecution(input.episode)) {
+    return { eligible: true };
   }
   if (input.episode.episodeStatus !== "running") {
     return { eligible: false, reason: "episode_not_running" };

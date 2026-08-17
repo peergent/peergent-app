@@ -13,6 +13,7 @@ import type {
 import type { ExecutionBrainInput, ExecutionBrainOutput, ExecutionBrainPayload } from "./types";
 import { ExecutionLayer } from "./execution-layer";
 import { assertProviderEvidence } from "./execution-validator";
+import { classifyExecutionIntegrationOutcome } from "../../approval/approved-execution-handoff";
 
 function confidenceFromStatus(status: string): { value: number; label: "high" | "medium" | "low" } {
   if (status === "SUCCEEDED") return { value: 0.95, label: "high" };
@@ -120,7 +121,22 @@ export class ExecutionBrainExecutor {
       };
 
       const overall = output.history.overallStatus;
+      const integrationOutcome = classifyExecutionIntegrationOutcome(output.history);
       const failed = overall === "FAILED" || overall === "CANCELLED";
+
+      if (integrationOutcome.preparedOnly) {
+        return {
+          brainId: "execution",
+          status: "failed",
+          output: null,
+          events: historyEvents(output, nl),
+          confidence: { value: 0.35, label: "low" },
+          durationMs: Date.now() - started,
+          errorCode: "integration_not_connected",
+          requiresApproval: false,
+          approvalKind: null,
+        };
+      }
 
       return {
         brainId: "execution",

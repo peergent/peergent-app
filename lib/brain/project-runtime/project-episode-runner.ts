@@ -29,6 +29,10 @@ import type { DurablePersistencePort } from "../persistence/layer/durable-persis
 import { emitPersistenceDiagnostic } from "../persistence/layer/persistence-diagnostics";
 import { PersistenceConflictError } from "../persistence/server/persistence-config";
 import { evaluateEpisodeApprovalPackageGate } from "../approval/episode-approval-gate";
+import {
+  markExecutionHandoffPhase,
+  needsPostApprovalExecution,
+} from "../approval/approved-execution-handoff";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
 import { learningProposalIds, proposalsFromLearningGraph } from "./learning-memory-handoff";
@@ -539,6 +543,16 @@ export class ProjectEpisodeRunner {
           continue;
         }
         if (episode.snapshot.state === "ready_to_publish") {
+          emitOrchestrationDiagnostic({
+            event: "post_approval_execution_requested",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            snapshotState: episode.snapshot.state,
+            packageId: episode.approvedExecutionHandoff?.packageId,
+            packageVersion: episode.approvedExecutionHandoff?.packageVersion,
+          });
           episode = {
             ...episode,
             snapshot: withProjectState(episode.snapshot, "publishing", new Date()),
@@ -612,7 +626,10 @@ export class ProjectEpisodeRunner {
           });
         }
 
-        const idempotencyKey = `${episode.correlationId}:${brainId}:${episode.snapshot.state}`;
+        const idempotencyKey =
+          brainId === "execution" && episode.approvedExecutionHandoff?.packageId
+            ? `${episode.correlationId}:execution:${episode.approvedExecutionHandoff.packageId}`
+            : `${episode.correlationId}:${brainId}:${episode.snapshot.state}`;
         if (shouldSkipExecutedBrainKey(episode, brainId, idempotencyKey)) {
           emitOrchestrationDiagnostic({
             event: brainId === "validation" ? "validation_start_skipped" : "episode_loop_terminal_break",
@@ -625,6 +642,22 @@ export class ProjectEpisodeRunner {
           });
           episode = advanceIdlePhase(episode);
           continue;
+        }
+
+        if (brainId === "execution") {
+          emitOrchestrationDiagnostic({
+            event: "post_approval_execution_started",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            brainId: "execution",
+            snapshotState: episode.snapshot.state,
+            packageId: episode.approvedExecutionHandoff?.packageId,
+            packageVersion: episode.approvedExecutionHandoff?.packageVersion,
+            idempotencyKeyPresent: Boolean(episode.approvedExecutionHandoff?.packageId),
+          });
+          episode = markExecutionHandoffPhase(episode, "executing");
         }
 
         const brainResult = await this.executeBrain({
@@ -665,6 +698,41 @@ export class ProjectEpisodeRunner {
         }
 
         episode = applyBrainExecution(episode, brainResult, locale, idempotencyKey);
+
+        if (brainId === "execution") {
+          if (brainResult.status === "failed" && brainResult.errorCode === "integration_not_connected") {
+            emitOrchestrationDiagnostic({
+              event: "post_approval_execution_blocked",
+              organizationId: episode.snapshot.organizationId,
+              projectId: episode.snapshot.projectId,
+              peerId: episode.snapshot.peerId,
+              episodeId: episode.snapshot.episodeId,
+              brainId: "execution",
+              errorCode: brainResult.errorCode,
+              packageId: episode.approvedExecutionHandoff?.packageId,
+              integrationReady: false,
+            });
+            episode = markExecutionHandoffPhase(episode, "blocked_integration", {
+              blockedReason: brainResult.errorCode ?? "integration_not_connected",
+            });
+            episode = await this.commitEpisode(episode);
+            return buildRunResult(episode, null);
+          }
+          if (brainResult.status === "completed") {
+            emitOrchestrationDiagnostic({
+              event: "post_approval_execution_completed",
+              organizationId: episode.snapshot.organizationId,
+              projectId: episode.snapshot.projectId,
+              peerId: episode.snapshot.peerId,
+              episodeId: episode.snapshot.episodeId,
+              brainId: "execution",
+              packageId: episode.approvedExecutionHandoff?.packageId,
+              integrationReady: true,
+            });
+            episode = markExecutionHandoffPhase(episode, "completed");
+          }
+        }
+
         episode = await this.commitEpisode(episode);
         if (brainResult.status === "failed") {
           emitOrchestrationDiagnostic({
@@ -797,6 +865,7 @@ export class ProjectEpisodeRunner {
           : updated.validationApprovalPending,
         approvalGrantedForExecution:
           updated.approvalGrantedForExecution ||
+          advanced.snapshot.state === "ready_to_publish" ||
           advanced.snapshot.state === "publishing" ||
           advanced.snapshot.state === "monitoring",
       };
@@ -813,12 +882,29 @@ export class ProjectEpisodeRunner {
     }
 
     await this.commitEpisode({ ...updated, episodeStatus: "running" });
+
+    if (needsPostApprovalExecution(updated)) {
+      emitOrchestrationDiagnostic({
+        event: "post_approval_execution_requested",
+        organizationId: updated.snapshot.organizationId,
+        projectId: updated.snapshot.projectId,
+        peerId: updated.snapshot.peerId,
+        episodeId: updated.snapshot.episodeId,
+        snapshotState: updated.snapshot.state,
+        packageId: updated.approvedExecutionHandoff?.packageId,
+      });
+    }
+
     return this.runUntilPause({
       organizationId: input.organizationId,
       projectId: input.projectId,
       peerId: updated.snapshot.peerId,
       locale: input.locale,
-      maxSteps: input.maxSteps,
+      maxSteps:
+        input.maxSteps ??
+        resolveEpisodeStepBudgetForEpisode(updated, {
+          campaignApprovalMode: updated.campaignApprovalMode,
+        }),
     });
   }
 
@@ -887,6 +973,7 @@ export class ProjectEpisodeRunner {
       companySnapshot: input.contextHandoff.companySnapshot,
       brandGraph: input.contextHandoff.brandGraph,
       approvalGrantedForExecution: input.episode.approvalGrantedForExecution,
+      approvedExecutionHandoff: input.episode.approvedExecutionHandoff ?? null,
       performanceObservations: [...getDefaultProjectEpisodeRepository().getObservations(input.episode.snapshot.projectId)],
       memoryCheckpointPhase,
       learningProposalIds: input.episode.artifacts.learningProposalIds,
