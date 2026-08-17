@@ -11,6 +11,10 @@ import {
   submitLiveCampaignStepApprovalServer,
   type SubmitLiveCampaignStepApprovalServerResult,
 } from "./live-campaign-approval-bridge-server";
+import {
+  emitApprovalBridgeDiagnostic,
+  safeApprovalBridgeError,
+} from "./approval-bridge-diagnostics";
 
 export type SubmitLiveCampaignStepApprovalActionInput = {
   peerId: string;
@@ -24,7 +28,16 @@ export type SubmitLiveCampaignStepApprovalActionInput = {
 
 export type SubmitLiveCampaignStepApprovalActionResult =
   | SubmitLiveCampaignStepApprovalServerResult
-  | { ok: false; error: "unauthorized" | "forbidden" | "not_found" | "invalid_input" | "demo_not_supported" };
+  | {
+      ok: false;
+      error:
+        | "unauthorized"
+        | "forbidden"
+        | "not_found"
+        | "invalid_input"
+        | "demo_not_supported"
+        | "server_error";
+    };
 
 export async function submitLiveCampaignStepApprovalAction(
   input: SubmitLiveCampaignStepApprovalActionInput
@@ -50,7 +63,7 @@ export async function submitLiveCampaignStepApprovalAction(
       return { ok: false, error: "not_found" };
     }
 
-    return submitLiveCampaignStepApprovalServer({
+    return await submitLiveCampaignStepApprovalServer({
       ...input,
       organizationId: auth.organizationId,
       supabase: auth.supabase,
@@ -61,6 +74,15 @@ export async function submitLiveCampaignStepApprovalAction(
     if (error instanceof OrgContextError) {
       return { ok: false, error: error.code };
     }
-    throw error;
+    const safe = safeApprovalBridgeError(error);
+    emitApprovalBridgeDiagnostic({
+      event: "approval_persistence_failed",
+      organizationId: "unknown",
+      projectId: input.projectId,
+      bridgeStepId: input.stepId,
+      errorCode: safe.errorCode,
+      errorClass: safe.errorClass,
+    });
+    return { ok: false, error: "server_error" };
   }
 }

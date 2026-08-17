@@ -892,10 +892,17 @@ export function useCampaignWorkspaceActions(input: {
         window.setTimeout(() => {
           closeCampaignApprovalReview();
         }, prefersReducedMotion() ? 0 : 700);
-      } catch {
+      } catch (error) {
         setApprovalPhase("error");
+        const code = error instanceof Error ? error.message : "unknown";
         setApprovalPackageError(
-          nl ? "Goedkeuring mislukt. Probeer het opnieuw." : "Approval failed. Please try again."
+          code === "checkpoint_mismatch"
+            ? nl
+              ? "Goedkeuring komt niet overeen met campagnestatus. Vernieuw en probeer opnieuw."
+              : "Approval does not match campaign state. Refresh and try again."
+            : nl
+              ? "Goedkeuring mislukt. Probeer het opnieuw."
+              : "Approval failed. Please try again."
         );
       }
     })();

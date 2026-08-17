@@ -303,6 +303,34 @@ export function persistLiveCampaignBusinessAnalysisApproval(
   });
 }
 
+/** Pure merge — safe on server (no sessionStorage). */
+export function mergeCampaignStepApprovalIntoProject(
+  project: MarketingProject,
+  stepId: CampaignWorkflowStepId,
+  status: DemoStepApprovalStatus
+): MarketingProject | null {
+  if (!project.campaignSetup) return null;
+
+  const stepApprovals = {
+    ...project.campaignSetup.stepApprovals,
+    [stepId]: status,
+  };
+
+  return {
+    ...project,
+    updatedAt: new Date().toISOString(),
+    campaignSetup: {
+      ...project.campaignSetup,
+      stepApprovals,
+      ...(stepId === "strategy_determined" &&
+      status === "approved" &&
+      !project.campaignSetup.strategyGeneratedAt
+        ? { strategyGeneratedAt: new Date().toISOString() }
+        : {}),
+    },
+  };
+}
+
 /** Persist customer review gate approval for strategy, channels, or deliverables. */
 export function persistLiveCampaignStepApproval(
   peerId: string,
@@ -315,17 +343,13 @@ export function persistLiveCampaignStepApproval(
   const project = stored.projects?.find((p) => p.id === projectId);
   if (!project?.campaignSetup) return null;
 
-  const stepApprovals = {
-    ...project.campaignSetup.stepApprovals,
-    [stepId]: status,
-  };
+  const merged = mergeCampaignStepApprovalIntoProject(project, stepId, status);
+  if (!merged) return null;
 
   const patch: Partial<NonNullable<MarketingProject["campaignSetup"]>> = {
-    stepApprovals,
-    ...(stepId === "strategy_determined" &&
-    status === "approved" &&
-    !project.campaignSetup.strategyGeneratedAt
-      ? { strategyGeneratedAt: new Date().toISOString() }
+    stepApprovals: merged.campaignSetup!.stepApprovals,
+    ...(merged.campaignSetup!.strategyGeneratedAt !== project.campaignSetup.strategyGeneratedAt
+      ? { strategyGeneratedAt: merged.campaignSetup!.strategyGeneratedAt }
       : {}),
   };
 

@@ -1,5 +1,5 @@
 /**
- * PX-50.22 — bridges Office step approvals to durable Project Engine approval + resume.
+ * PX-50.22 / PX-58 — bridges Office step approvals to durable Project Engine approval + resume.
  */
 
 import "server-only";
@@ -17,7 +17,11 @@ import { getDefaultProjectEpisodeRepository } from "@/lib/brain/project-runtime/
 import { prepareBrainServerPersistence } from "@/lib/brain/persistence/server/prepare-brain-server-persistence";
 import { buildCampaignContext } from "./campaign-context";
 import { resolveDurableOrganizationNameServer } from "./resolve-organization-name-server";
-import { persistLiveCampaignStepApproval } from "./live-campaign-context-store";
+import { mergeCampaignStepApprovalIntoProject } from "./live-campaign-context-store";
+import {
+  emitApprovalBridgeDiagnostic,
+  safeApprovalBridgeError,
+} from "./approval-bridge-diagnostics";
 
 const STEP_TO_CHECKPOINT: Partial<Record<CampaignWorkflowStepId, ApprovalCheckpointKind>> = {
   strategy_determined: "strategy_review",
@@ -42,19 +46,45 @@ export type SubmitLiveCampaignStepApprovalServerInput = {
 };
 
 export type SubmitLiveCampaignStepApprovalServerResult =
-  | { ok: true; project: MarketingProject; episodeResumed: boolean }
-  | { ok: false; error: "episode_not_found" | "checkpoint_mismatch" | "persist_failed" | "not_approved" };
+  | {
+      ok: true;
+      project: MarketingProject;
+      episodeResumed: boolean;
+      approvalPersisted: boolean;
+      resumeError?: string;
+    }
+  | {
+      ok: false;
+      error:
+        | "episode_not_found"
+        | "checkpoint_mismatch"
+        | "persist_failed"
+        | "not_approved"
+        | "approval_persistence_failed"
+        | "invalid_project";
+    };
 
 export async function submitLiveCampaignStepApprovalServer(
   input: SubmitLiveCampaignStepApprovalServerInput
 ): Promise<SubmitLiveCampaignStepApprovalServerResult> {
+  emitApprovalBridgeDiagnostic({
+    event: "approval_submission_requested",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    bridgeStepId: input.stepId,
+    decision: input.status,
+  });
+
   if (input.status !== "approved") {
     return { ok: false, error: "not_approved" };
   }
 
-  const updatedProject = persistLiveCampaignStepApproval(
-    input.peerId,
-    input.projectId,
+  if (input.project.id !== input.projectId || !input.project.campaignSetup) {
+    return { ok: false, error: "invalid_project" };
+  }
+
+  const updatedProject = mergeCampaignStepApprovalIntoProject(
+    input.project,
     input.stepId,
     input.status
   );
@@ -72,23 +102,77 @@ export async function submitLiveCampaignStepApprovalServer(
     organizationId: input.organizationId,
     projectId: input.projectId,
   });
+
   if (!episode) {
-    return { ok: true, project: updatedProject, episodeResumed: false };
+    emitApprovalBridgeDiagnostic({
+      event: "approval_bridge_resolved",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      bridgeStepId: input.stepId,
+      decision: "approved",
+      errorCode: "episode_not_found",
+    });
+    return { ok: true, project: updatedProject, episodeResumed: false, approvalPersisted: false };
   }
 
   const expectedCheckpoint = STEP_TO_CHECKPOINT[input.stepId];
   const activeCheckpoint = episode.snapshot.approvalCheckpoint?.kind;
+
+  emitApprovalBridgeDiagnostic({
+    event: "approval_bridge_resolved",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint,
+    bridgeStepId: input.stepId,
+    decision: "approved",
+  });
+
   if (
     expectedCheckpoint &&
     activeCheckpoint &&
     activeCheckpoint !== expectedCheckpoint &&
     episode.snapshot.state === "waiting_for_approval"
   ) {
+    emitApprovalBridgeDiagnostic({
+      event: "approval_checkpoint_resolution_failed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      episodeVersion: episode.durableVersion,
+      checkpointKind: activeCheckpoint,
+      bridgeStepId: input.stepId,
+      errorCode: "checkpoint_mismatch",
+    });
     return { ok: false, error: "checkpoint_mismatch" };
   }
 
+  if (episode.snapshot.approvalCheckpoint?.satisfied) {
+    emitApprovalBridgeDiagnostic({
+      event: "approval_already_satisfied",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      episodeVersion: episode.durableVersion,
+      checkpointKind: activeCheckpoint,
+      bridgeStepId: input.stepId,
+    });
+    return {
+      ok: true,
+      project: updatedProject,
+      episodeResumed: false,
+      approvalPersisted: true,
+    };
+  }
+
   if (episode.snapshot.state !== "waiting_for_approval" && !episode.snapshot.approvalCheckpoint) {
-    return { ok: true, project: updatedProject, episodeResumed: false };
+    return {
+      ok: true,
+      project: updatedProject,
+      episodeResumed: false,
+      approvalPersisted: false,
+    };
   }
 
   await resolveDurableOrganizationNameServer(input.supabase, input.organizationId);
@@ -99,13 +183,75 @@ export async function submitLiveCampaignStepApprovalServer(
     organizationId: input.organizationId,
   });
 
-  await submitProjectApprovalDurable({
+  emitApprovalBridgeDiagnostic({
+    event: "approval_persistence_started",
     organizationId: input.organizationId,
     projectId: input.projectId,
-    approvalId: `office-${input.stepId}-${Date.now()}`,
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+    bridgeStepId: input.stepId,
     decision: "approved",
-    actor: input.actor,
-    comment: `Office approval: ${input.stepId}`,
+  });
+
+  const persistStartedMs = Date.now();
+  try {
+    await submitProjectApprovalDurable({
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      approvalId: `office-${input.stepId}-${Date.now()}`,
+      decision: "approved",
+      actor: input.actor,
+      comment: `Office approval: ${input.stepId}`,
+    });
+  } catch (error) {
+    const safe = safeApprovalBridgeError(error);
+    emitApprovalBridgeDiagnostic({
+      event: "approval_persistence_failed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      episodeVersion: episode.durableVersion,
+      checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+      bridgeStepId: input.stepId,
+      decision: "approved",
+      errorCode: safe.errorCode,
+      errorClass: safe.errorClass,
+      durationMs: Date.now() - persistStartedMs,
+    });
+    return { ok: false, error: "approval_persistence_failed" };
+  }
+
+  emitApprovalBridgeDiagnostic({
+    event: "approval_persistence_completed",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+    bridgeStepId: input.stepId,
+    decision: "approved",
+    durationMs: Date.now() - persistStartedMs,
+  });
+
+  emitApprovalBridgeDiagnostic({
+    event: "approval_checkpoint_resolution_started",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+    bridgeStepId: input.stepId,
+  });
+
+  emitApprovalBridgeDiagnostic({
+    event: "post_approval_resume_requested",
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+    bridgeStepId: input.stepId,
   });
 
   const adapter = createProductionBrainExecutionAdapter({
@@ -116,12 +262,71 @@ export async function submitLiveCampaignStepApprovalServer(
   });
   const runner = createProjectEpisodeRunner(undefined, undefined, adapter);
 
-  await runner.resumeEpisode({
+  const resumeStartedMs = Date.now();
+  emitApprovalBridgeDiagnostic({
+    event: "post_approval_resume_started",
     organizationId: input.organizationId,
     projectId: input.projectId,
-    approvalSatisfied: true,
-    locale: input.locale ?? "en",
+    episodeId: episode.snapshot.episodeId,
+    episodeVersion: episode.durableVersion,
+    checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+    bridgeStepId: input.stepId,
   });
 
-  return { ok: true, project: updatedProject, episodeResumed: true };
+  try {
+    await runner.resumeEpisode({
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      approvalSatisfied: true,
+      locale: input.locale ?? "en",
+    });
+
+    emitApprovalBridgeDiagnostic({
+      event: "approval_checkpoint_resolved",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+      bridgeStepId: input.stepId,
+    });
+
+    emitApprovalBridgeDiagnostic({
+      event: "post_approval_resume_completed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+      bridgeStepId: input.stepId,
+      durationMs: Date.now() - resumeStartedMs,
+    });
+
+    return {
+      ok: true,
+      project: updatedProject,
+      episodeResumed: true,
+      approvalPersisted: true,
+    };
+  } catch (error) {
+    const safe = safeApprovalBridgeError(error);
+    emitApprovalBridgeDiagnostic({
+      event: "post_approval_resume_failed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      episodeId: episode.snapshot.episodeId,
+      checkpointKind: activeCheckpoint ?? expectedCheckpoint,
+      bridgeStepId: input.stepId,
+      errorCode: safe.errorCode,
+      errorClass: safe.errorClass,
+      durationMs: Date.now() - resumeStartedMs,
+    });
+
+    // Approval is durably persisted — do not report approval failure when resume/execution fails.
+    return {
+      ok: true,
+      project: updatedProject,
+      episodeResumed: false,
+      approvalPersisted: true,
+      resumeError: safe.errorCode,
+    };
+  }
 }
