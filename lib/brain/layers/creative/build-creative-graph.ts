@@ -30,6 +30,7 @@ import type {
   CreativeThinkingPhase,
 } from "./types";
 import { CREATIVE_LAYER_VERSION } from "./types";
+import { materializeCreativeContentArtifacts } from "./materialize-creative-content-artifacts";
 
 function sectionText(section?: StrategySection | null): string {
   return section?.description?.trim() ?? "";
@@ -462,7 +463,7 @@ function buildDeliverables(
           nl ? "Eén beslissing verandert het tempo." : "One decision changes the pace.",
         ],
         rationale: plan.why,
-        reviewStatus: "planned" as const,
+        reviewStatus: "needs_review" as const,
       };
     })
     .slice(0, 6);
@@ -576,7 +577,7 @@ export function buildCreativeGraph(input: CreativeBrainInput): CreativeGraph {
   const discardedIdeas = [...positioning.discarded, ...concepts.discarded];
   const decisions = buildCreativeDecisions(input, positioning.direction, selectedCampaign, discardedIdeas);
 
-  return {
+  const draftGraph: CreativeGraph = {
     version: CREATIVE_LAYER_VERSION,
     organizationId: input.organizationId,
     campaignId: input.projectId,
@@ -593,6 +594,16 @@ export function buildCreativeGraph(input: CreativeBrainInput): CreativeGraph {
     reasoning,
     confidence: deriveConfidence(phases),
     estimatedBusinessImpact: selectedCampaign.estimatedImpact,
+  };
+
+  const contentArtifacts = materializeCreativeContentArtifacts(draftGraph, {
+    locale: input.locale,
+    audience: audience.audienceSummary,
+  });
+
+  return {
+    ...draftGraph,
+    contentArtifacts,
   };
 }
 

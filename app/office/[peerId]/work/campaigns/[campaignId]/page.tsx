@@ -9,6 +9,7 @@ import CampaignCompetitorModal from "@/features/office/campaign/CampaignCompetit
 import CampaignScheduleModal from "@/features/office/campaign/CampaignScheduleModal";
 import CampaignOptimizationPanel from "@/features/office/campaign/CampaignOptimizationPanel";
 import CampaignWebsiteModal from "@/features/office/campaign/CampaignWebsiteModal";
+import CampaignApprovalReviewModal from "@/features/office/campaign/CampaignApprovalReviewModal";
 import CampaignExperienceView from "@/features/office/campaign/CampaignExperienceView";
 import { useCampaignRuntimeProjection } from "@/features/office/campaign/useCampaignRuntimeProjection";
 import { useCampaignWorkspaceActions } from "@/features/office/campaign/useCampaignWorkspaceActions";
@@ -140,6 +141,18 @@ function CampaignDetailInner() {
           </div>
         )}
       </PgOfficeShell>
+
+      <CampaignApprovalReviewModal
+        open={campaignActions.approvalReviewOpen}
+        onClose={campaignActions.closeCampaignApprovalReview}
+        locale={localePreference}
+        package={campaignActions.approvalPackage}
+        loading={campaignActions.approvalPackageLoading}
+        error={campaignActions.approvalPackageError}
+        phase={campaignActions.approvalPhase}
+        onApprove={campaignActions.handleApprovalPackageApprove}
+        onRequestChanges={campaignActions.handleApprovalRequestChanges}
+      />
 
       <CampaignEvidenceModal
         open={Boolean(campaignActions.evidenceStep)}

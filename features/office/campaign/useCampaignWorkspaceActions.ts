@@ -66,6 +66,8 @@ import {
   resolveEpisodeApprovalBridgeStepId,
   type CampaignRuntimeProjection,
 } from "@/lib/office/campaign/campaign-runtime-projection";
+import { loadCampaignApprovalPackageAction } from "@/lib/office/campaign/load-campaign-approval-package-action";
+import type { CampaignApprovalPackage } from "@/lib/brain/approval/campaign-approval-package-types";
 
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
 
@@ -123,6 +125,11 @@ export function useCampaignWorkspaceActions(input: {
   const [manualOptimizationOpen, setManualOptimizationOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [reviewProgress, setReviewProgress] = useState<string | null>(null);
+  const [approvalReviewOpen, setApprovalReviewOpen] = useState(false);
+  const [approvalPackage, setApprovalPackage] = useState<CampaignApprovalPackage | null>(null);
+  const [approvalPackageLoading, setApprovalPackageLoading] = useState(false);
+  const [approvalPackageError, setApprovalPackageError] = useState<string | null>(null);
+  const [approvalPhase, setApprovalPhase] = useState<"idle" | "processing" | "success" | "error">("idle");
 
   const reviewParam = searchParams.get("review");
   const viewParam = searchParams.get("view");
@@ -814,6 +821,102 @@ export function useCampaignWorkspaceActions(input: {
     publishDemoCampaign(peerId, projectId);
   }, [isDemo, peerId, projectId]);
 
+  const openCampaignApprovalReview = useCallback(async () => {
+    if (isDemo) return;
+    const domain = freshDomainInput(domainInput, isDemo);
+    const project = domain.projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    setApprovalReviewOpen(true);
+    setApprovalPackageLoading(true);
+    setApprovalPackageError(null);
+    setApprovalPhase("idle");
+
+    try {
+      const result = await loadCampaignApprovalPackageAction({
+        peerId,
+        projectId,
+        project,
+        domainInput: domain,
+        locale: localePreference === "nl" ? "nl" : "en",
+      });
+      if (!result.ok) {
+        setApprovalPackageError(result.error);
+        setApprovalPackage(null);
+        return;
+      }
+      setApprovalPackage(result.package);
+    } catch {
+      setApprovalPackageError(nl ? "Kon campagnepakket niet laden." : "Could not load campaign package.");
+      setApprovalPackage(null);
+    } finally {
+      setApprovalPackageLoading(false);
+    }
+  }, [domainInput, isDemo, localePreference, nl, peerId, projectId]);
+
+  const closeCampaignApprovalReview = useCallback(() => {
+    if (approvalPhase === "processing") return;
+    setApprovalReviewOpen(false);
+    setApprovalPackage(null);
+    setApprovalPackageError(null);
+    setApprovalPhase("idle");
+  }, [approvalPhase]);
+
+  const handleApprovalPackageApprove = useCallback(() => {
+    if (isDemo || !approvalPackage?.publicationReady) return;
+    setApprovalPhase("processing");
+    setApprovalPackageError(null);
+
+    void (async () => {
+      try {
+        const domain = freshDomainInput(domainInput, isDemo);
+        const project = domain.projects.find((p) => p.id === projectId);
+        if (!project) throw new Error("project_not_found");
+
+        const bridgeResult = await submitLiveCampaignStepApprovalAction({
+          peerId,
+          projectId,
+          stepId: resolveEpisodeApprovalBridgeStepId(input.runtimeProjection, "waiting_for_approval"),
+          status: "approved",
+          project,
+          domainInput: domain,
+          locale: localePreference === "nl" ? "nl" : "en",
+        });
+
+        if (!bridgeResult.ok) {
+          throw new Error(bridgeResult.error);
+        }
+
+        syncLiveProject(bridgeResult.project);
+        setApprovalPhase("success");
+        window.setTimeout(() => {
+          closeCampaignApprovalReview();
+        }, prefersReducedMotion() ? 0 : 700);
+      } catch {
+        setApprovalPhase("error");
+        setApprovalPackageError(
+          nl ? "Goedkeuring mislukt. Probeer het opnieuw." : "Approval failed. Please try again."
+        );
+      }
+    })();
+  }, [
+    approvalPackage?.publicationReady,
+    closeCampaignApprovalReview,
+    domainInput,
+    input.runtimeProjection,
+    isDemo,
+    localePreference,
+    nl,
+    peerId,
+    projectId,
+    syncLiveProject,
+  ]);
+
+  const handleApprovalRequestChanges = useCallback(() => {
+    closeCampaignApprovalReview();
+    setCompanyContextModalOpen(true);
+  }, [closeCampaignApprovalReview]);
+
   const handleNextStepCta = useCallback(() => {
     const domain = freshDomainInput(domainInput, isDemo);
     const project = domain.projects.find((p) => p.id === projectId);
@@ -828,10 +931,7 @@ export function useCampaignWorkspaceActions(input: {
     });
     const cta = workflow.nextStepCta;
     if (cta.action === "approve_campaign") {
-      const opened = openStepById("deliverables_created", domain);
-      if (!opened && cta.stepId) {
-        openStepById(cta.stepId, domain);
-      }
+      void openCampaignApprovalReview();
       return;
     }
     if (cta.action === "review" && cta.draftId) {
@@ -906,6 +1006,7 @@ export function useCampaignWorkspaceActions(input: {
     handleViewCampaignContext,
     setScheduleModalOpen,
     input.runtimeProjection,
+    openCampaignApprovalReview,
   ]);
 
   const handleSkipWebsite = useCallback(() => {
@@ -1072,5 +1173,13 @@ export function useCampaignWorkspaceActions(input: {
     activeReviewDraftId,
     storedWebsiteUrl,
     openStepById,
+    approvalReviewOpen,
+    approvalPackage,
+    approvalPackageLoading,
+    approvalPackageError,
+    approvalPhase,
+    closeCampaignApprovalReview,
+    handleApprovalPackageApprove,
+    handleApprovalRequestChanges,
   };
 }

@@ -80,7 +80,7 @@ export type CreativeChannelPlan = {
   readonly paid: boolean;
 };
 
-/** Creative deliverable specification — not published content. */
+/** Creative deliverable specification — planning record; see contentArtifacts for publication copy. */
 export type CreativeDeliverable = {
   readonly id: string;
   readonly type: CreativeDeliverableType;
@@ -139,6 +139,8 @@ export type CreativeGraph = {
   readonly reasoning: readonly CreativeReasoningStep[];
   readonly confidence: CreativeConfidence;
   readonly estimatedBusinessImpact: string;
+  /** PX-57 — materialized publication-ready content derived from specs + messaging. */
+  readonly contentArtifacts?: readonly import("./materialize-creative-content-artifacts").CreativeContentArtifact[];
 };
 
 /** Input to Creative Brain — assembled from Project Engine context + upstream brains. */

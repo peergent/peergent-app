@@ -28,6 +28,7 @@ import { getActiveDurablePersistence } from "../persistence/layer/active-durable
 import type { DurablePersistencePort } from "../persistence/layer/durable-persistence-port";
 import { emitPersistenceDiagnostic } from "../persistence/layer/persistence-diagnostics";
 import { PersistenceConflictError } from "../persistence/server/persistence-config";
+import { evaluateEpisodeApprovalPackageGate } from "../approval/episode-approval-gate";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import { appendRuntimeEvent, brainCompletedEventType } from "./project-event-stream";
 import { learningProposalIds, proposalsFromLearningGraph } from "./learning-memory-handoff";
@@ -1050,21 +1051,24 @@ function advanceIdlePhase(episode: ProjectEpisodeRecord): ProjectEpisodeRecord {
     snapshot = withProjectState(snapshot, "strategizing", now);
   }
   if (snapshot.state === "validating" && episode.memoryCheckpoint1Complete && episode.validationApprovalPending) {
-    snapshot = withProjectState(snapshot, "waiting_for_approval", now);
-    if (!snapshot.approvalCheckpoint) {
-      snapshot = {
-        ...snapshot,
-        waitingReason: "approval_required",
-        approvalCheckpoint: {
-          id: `approval-campaign-${now.getTime()}`,
-          kind: "campaign_approval",
-          requiredAt: "validating",
-          satisfied: false,
-          satisfiedAt: null,
-          unblocksState: "ready_to_publish",
-          customerSummary: "Approve the full campaign package for publication.",
-        },
-      };
+    const gate = evaluateEpisodeApprovalPackageGate(episode);
+    if (gate.allowed) {
+      snapshot = withProjectState(snapshot, "waiting_for_approval", now);
+      if (!snapshot.approvalCheckpoint) {
+        snapshot = {
+          ...snapshot,
+          waitingReason: "approval_required",
+          approvalCheckpoint: {
+            id: `approval-campaign-${now.getTime()}`,
+            kind: "campaign_approval",
+            requiredAt: "validating",
+            satisfied: false,
+            satisfiedAt: null,
+            unblocksState: "ready_to_publish",
+            customerSummary: "Approve the full campaign package for publication.",
+          },
+        };
+      }
     }
   }
   if (snapshot.state === "validating" && episode.memoryCheckpoint1Complete && !episode.validationApprovalPending) {

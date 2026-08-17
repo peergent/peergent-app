@@ -13,6 +13,8 @@ import {
   resolvePublicationReadiness,
   weightedOverallScore,
 } from "./scoring";
+import { materializeCreativeContentArtifacts } from "../creative/materialize-creative-content-artifacts";
+import { evaluateCreativePublicationInvariants } from "../../approval/publication-readiness-invariants";
 import type {
   BrandRisk,
   BusinessRisk,
@@ -1050,11 +1052,35 @@ export function buildValidationGraph(input: ValidationBrainInput): ValidationGra
   results.push(evaluateLegalClaims(ctx));
 
   const categories = results.map((r) => r.category);
-  const issues = results.flatMap((r) => r.issues);
+  let issues = results.flatMap((r) => r.issues);
   const warnings = results.flatMap((r) => r.warnings);
   const passes = results.flatMap((r) => r.passes);
   const businessRisks = results.flatMap((r) => r.businessRisks);
   const brandRisks = results.flatMap((r) => r.brandRisks);
+
+  const contentArtifacts = materializeCreativeContentArtifacts(creative, {
+    locale: input.locale,
+    audience: audienceTarget,
+  });
+  const publicationInvariantIssues = evaluateCreativePublicationInvariants({
+    creative,
+    contentArtifacts,
+    locale: input.locale,
+  });
+  for (const [index, invariant] of publicationInvariantIssues.filter((i) => i.blocking).entries()) {
+    issues.push({
+      id: uid("pub-inv", index + 1),
+      category: "creative_quality",
+      severity: "critical",
+      reason: invariant.message,
+      businessImpact: nl
+        ? "Publicatie kan niet doorgaan zonder volledige content."
+        : "Publication cannot proceed without complete content.",
+      suggestedResolution: nl ? "Genereer publicatieklare content." : "Generate publication-ready content.",
+      blocking: true,
+      deliverableId: invariant.deliverableId,
+    });
+  }
 
   const overallScore = weightedOverallScore(categories);
   const publicationReadiness = resolvePublicationReadiness({

@@ -72,6 +72,24 @@ export function validateCreativeGraph(graph: CreativeGraph): CreativeValidationR
     });
   }
 
+  if (!graph.contentArtifacts?.length) {
+    issues.push({
+      code: "missing_content_artifacts",
+      message: "Creative Brain must materialize publication-ready content artifacts.",
+      severity: "error",
+    });
+  } else {
+    for (const artifact of graph.contentArtifacts) {
+      if (!artifact.body?.trim() || artifact.body.trim().length < 40) {
+        issues.push({
+          code: "content_too_short",
+          message: `Content artifact ${artifact.id} is missing publication copy.`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
   const errors = issues.filter((i) => i.severity === "error");
   const warnings = issues.filter((i) => i.severity === "warning");
   const score = Math.max(0, 100 - errors.length * 25 - warnings.length * 10);
