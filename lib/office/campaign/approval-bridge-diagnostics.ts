@@ -32,6 +32,10 @@ export type ApprovalBridgeDiagnosticPayload = {
   durationMs?: number;
   packageId?: string;
   packageVersion?: string;
+  snapshotState?: string;
+  episodeStatus?: string;
+  durableVersion?: number;
+  stopReason?: string;
 };
 
 export function safeApprovalBridgeError(error: unknown): {

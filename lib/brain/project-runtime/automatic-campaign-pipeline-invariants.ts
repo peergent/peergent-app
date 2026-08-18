@@ -302,3 +302,14 @@ export function shouldResumeAutomaticCampaignPipeline(input: {
 }): boolean {
   return detectAutomaticCampaignPipelineStall(input) != null;
 }
+
+/** PX-61 — episode at an intentional wait boundary; mount recovery must not treat as stall. */
+export function isEpisodeAtHealthyRuntimeBoundary(episode: ProjectEpisodeRecord): boolean {
+  if (episode.episodeStatus === "waiting_for_outcomes") return true;
+  if (episode.episodeStatus === "waiting_for_approval") return true;
+  if (episode.episodeStatus === "completed") return true;
+  if (episode.snapshot.state === "monitoring") return true;
+  if (episode.snapshot.state === "learning") return true;
+  if (episode.snapshot.state === "complete") return true;
+  return false;
+}

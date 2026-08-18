@@ -80,7 +80,14 @@ export type OrchestrationDiagnosticEvent =
   | "brain_execution_completed"
   | "episode_re_evaluated"
   | "episode_runner_blocked"
-  | "episode_runner_completed";
+  | "episode_runner_completed"
+  | "runtime_projection_refresh_requested"
+  | "runtime_projection_refresh_completed"
+  | "runtime_projection_version_mismatch"
+  | "runtime_recovery_considered"
+  | "runtime_recovery_started"
+  | "runtime_recovery_skipped"
+  | "runtime_recovery_completed";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;

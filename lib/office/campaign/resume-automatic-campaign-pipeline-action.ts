@@ -11,6 +11,7 @@ import { buildCampaignEpisodeServerExecutionContext } from "@/lib/brain/project-
 import { resumeAutomaticCampaignPipeline } from "@/lib/brain/project-runtime/automatic-campaign-pipeline";
 import {
   detectAutomaticCampaignPipelineStall,
+  isEpisodeAtHealthyRuntimeBoundary,
   shouldResumeAutomaticCampaignPipeline,
 } from "@/lib/brain/project-runtime/automatic-campaign-pipeline-invariants";
 import { getDefaultProjectEpisodeRepository } from "@/lib/brain/project-runtime/project-episode-repository";
@@ -35,7 +36,9 @@ function emitRecoveryDiagnostic(input: {
     | "automatic_pipeline_recovery_candidate"
     | "automatic_pipeline_recovery_triggered"
     | "automatic_pipeline_recovery_skipped"
-    | "automatic_pipeline_recovery_failed";
+    | "automatic_pipeline_recovery_failed"
+    | "runtime_recovery_considered"
+    | "runtime_recovery_skipped";
   organizationId: string;
   projectId: string;
   peerId: string;
@@ -81,6 +84,13 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
 
   try {
     const auth = await requireAuthenticatedOrgContext();
+    emitRecoveryDiagnostic({
+      event: "runtime_recovery_considered",
+      organizationId: auth.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      decisionReason: input.mountDecisionReason ?? mountDecision.decisionReason,
+    });
     emitRecoveryDiagnostic({
       event: "automatic_pipeline_recovery_candidate",
       organizationId: auth.organizationId,
@@ -140,6 +150,20 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
         project: input.project,
         episode,
       });
+      const healthyBoundary = episode ? isEpisodeAtHealthyRuntimeBoundary(episode) : false;
+      emitRecoveryDiagnostic({
+        event: "runtime_recovery_skipped",
+        organizationId: auth.organizationId,
+        projectId: input.projectId,
+        peerId: input.peerId,
+        snapshotState: episode?.snapshot.state,
+        stallReason: stall?.reason,
+        decisionReason: healthyBoundary
+          ? "healthy_runtime_boundary"
+          : episode
+            ? "no_stall_detected"
+            : "episode_not_loaded",
+      });
       emitRecoveryDiagnostic({
         event: "automatic_pipeline_recovery_skipped",
         organizationId: auth.organizationId,
@@ -147,7 +171,11 @@ export async function resumeAutomaticCampaignPipelineAction(input: {
         peerId: input.peerId,
         snapshotState: episode?.snapshot.state,
         stallReason: stall?.reason,
-        decisionReason: episode ? "no_stall_detected" : "episode_not_loaded",
+        decisionReason: healthyBoundary
+          ? "healthy_runtime_boundary"
+          : episode
+            ? "no_stall_detected"
+            : "episode_not_loaded",
       });
       return {
         ok: true,

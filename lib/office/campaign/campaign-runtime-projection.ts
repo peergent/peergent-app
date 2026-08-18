@@ -349,8 +349,10 @@ export function resolveEpisodeNextStepCopy(
   if (lifecycleState === "publishing") {
     return nl ? "Campagne wordt gepubliceerd." : "Campaign is being published.";
   }
-  if (lifecycleState === "monitoring" || lifecycleState === "learning") {
-    return nl ? "Emma optimaliseert campagneprestaties." : "Emma is optimizing campaign performance.";
+  if (lifecycleState === "monitoring" || lifecycleState === "learning" || episodeStatus === "waiting_for_outcomes") {
+    return nl
+      ? "Campagne is live — Emma volgt prestaties."
+      : "Campaign is live — Emma is monitoring performance.";
   }
   return nl ? "Emma werkt aan je campagne." : "Emma is working on your campaign.";
 }
@@ -367,6 +369,27 @@ export function resolveEpisodePrimaryAction(
 ): CampaignPrimaryAction {
   const nl = isNl(input.locale);
   const { lifecycleState, episodeStatus, approvalCheckpoint } = projection;
+
+  if (
+    lifecycleState === "monitoring" ||
+    lifecycleState === "learning" ||
+    episodeStatus === "waiting_for_outcomes"
+  ) {
+    return {
+      kind: "view_results",
+      label: nl ? "Campagne live — prestaties volgen" : "Campaign live — monitoring performance",
+      stepId: "optimizing",
+    };
+  }
+
+  if (lifecycleState === "publishing") {
+    return {
+      kind: "strategy_working",
+      label: nl ? "Campagne wordt gepubliceerd…" : "Publishing campaign…",
+      strategyRunStatus: "running",
+      strategyRunStageLabel: nl ? "Publicatie" : "Publication",
+    };
+  }
 
   if (input.isCampaignPublished) {
     return {
@@ -449,27 +472,6 @@ export function resolveEpisodePrimaryAction(
       label: nl ? "Opnieuw proberen" : "Try again",
       stepId: "strategy_determined",
       failureMessageSafe: projection.lastError ?? undefined,
-    };
-  }
-
-  if (lifecycleState === "publishing") {
-    return {
-      kind: "strategy_working",
-      label: nl ? "Campagne wordt gepubliceerd…" : "Publishing campaign…",
-      strategyRunStatus: "running",
-      strategyRunStageLabel: nl ? "Publicatie" : "Publication",
-    };
-  }
-
-  if (
-    lifecycleState === "monitoring" ||
-    lifecycleState === "learning" ||
-    episodeStatus === "waiting_for_outcomes"
-  ) {
-    return {
-      kind: "view_results",
-      label: nl ? "Campagne live — prestaties volgen" : "Campaign live — monitoring performance",
-      stepId: "optimizing",
     };
   }
 

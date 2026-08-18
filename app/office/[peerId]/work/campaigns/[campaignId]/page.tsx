@@ -43,7 +43,7 @@ function CampaignDetailInner() {
 
   const liveProject = findCampaignProject(domainInput, campaignId);
 
-  const { projection: runtimeProjection, loading: runtimeLoading } = useCampaignRuntimeProjection({
+  const { projection: runtimeProjection, loading: runtimeLoading, applyRuntimeProjection, refreshRuntimeProjection } = useCampaignRuntimeProjection({
     peerId,
     projectId: campaignId,
     isDemo,
@@ -82,6 +82,8 @@ function CampaignDetailInner() {
     isDemo,
     workspace,
     runtimeProjection,
+    applyRuntimeProjection,
+    refreshRuntimeProjection,
   });
 
   const deskModel = useMemo(

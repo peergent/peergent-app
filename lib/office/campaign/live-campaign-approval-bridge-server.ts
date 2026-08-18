@@ -22,6 +22,8 @@ import {
   emitApprovalBridgeDiagnostic,
   safeApprovalBridgeError,
 } from "./approval-bridge-diagnostics";
+import { buildCampaignRuntimeProjectionFromEpisode } from "./campaign-runtime-projection";
+import type { CampaignRuntimeSyncPayload } from "./campaign-runtime-projection-sync";
 import { freezeApprovedExecutionHandoff } from "@/lib/brain/approval/approved-execution-handoff";
 import { commitEpisodeCritical } from "@/lib/brain/project-runtime/episode-durable-persistence";
 import { getActiveDurablePersistence } from "@/lib/brain/persistence/layer/active-durable-persistence";
@@ -33,6 +35,26 @@ const STEP_TO_CHECKPOINT: Partial<Record<CampaignWorkflowStepId, ApprovalCheckpo
   waiting_for_approval: "campaign_approval",
   published: "publication_confirm",
 };
+
+const approvalInFlightByKey = new Map<string, Promise<SubmitLiveCampaignStepApprovalServerResult>>();
+
+function approvalInFlightKey(organizationId: string, projectId: string): string {
+  return `${organizationId}:${projectId}`;
+}
+
+function buildRuntimeSyncFromEpisode(
+  episode: import("@/lib/brain/project-runtime/types").ProjectEpisodeRecord,
+  stopReason: import("@/lib/brain/project-runtime/episode-runner-stop-reasons").EpisodeRunnerStopReason | null | undefined
+): CampaignRuntimeSyncPayload {
+  return {
+    runtimeProjection: buildCampaignRuntimeProjectionFromEpisode(episode),
+    episodeStatus: episode.episodeStatus,
+    lifecycleState: episode.snapshot.state,
+    durableVersion: episode.durableVersion ?? 0,
+    stopReason: stopReason ?? null,
+    correlationId: episode.correlationId,
+  };
+}
 
 export type SubmitLiveCampaignStepApprovalServerInput = {
   peerId: string;
@@ -55,6 +77,7 @@ export type SubmitLiveCampaignStepApprovalServerResult =
       episodeResumed: boolean;
       approvalPersisted: boolean;
       resumeError?: string;
+      runtimeSync?: CampaignRuntimeSyncPayload;
     }
   | {
       ok: false;
@@ -68,6 +91,34 @@ export type SubmitLiveCampaignStepApprovalServerResult =
     };
 
 export async function submitLiveCampaignStepApprovalServer(
+  input: SubmitLiveCampaignStepApprovalServerInput
+): Promise<SubmitLiveCampaignStepApprovalServerResult> {
+  const key = approvalInFlightKey(input.organizationId, input.projectId);
+  const inflight = approvalInFlightByKey.get(key);
+  if (inflight) {
+    emitApprovalBridgeDiagnostic({
+      event: "approval_submission_requested",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      bridgeStepId: input.stepId,
+      decision: input.status,
+      errorCode: "duplicate_invocation",
+    });
+    return inflight;
+  }
+
+  const promise = executeLiveCampaignStepApprovalServer(input).finally(() => {
+    approvalInFlightByKey.delete(key);
+  });
+  approvalInFlightByKey.set(key, promise);
+  return promise;
+}
+
+export function resetApprovalBridgeInFlightForTests(): void {
+  approvalInFlightByKey.clear();
+}
+
+async function executeLiveCampaignStepApprovalServer(
   input: SubmitLiveCampaignStepApprovalServerInput
 ): Promise<SubmitLiveCampaignStepApprovalServerResult> {
   emitApprovalBridgeDiagnostic({
@@ -308,7 +359,7 @@ export async function submitLiveCampaignStepApprovalServer(
   });
 
   try {
-    await runner.resumeEpisode({
+    const runResult = await runner.resumeEpisode({
       organizationId: input.organizationId,
       projectId: input.projectId,
       peerId: input.peerId,
@@ -320,6 +371,13 @@ export async function submitLiveCampaignStepApprovalServer(
       campaignContext,
     });
 
+    const finalEpisode =
+      repo.get({
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+      }) ?? runResult.episode;
+    const runtimeSync = buildRuntimeSyncFromEpisode(finalEpisode, runResult.stopReason);
+
     emitApprovalBridgeDiagnostic({
       event: "approval_checkpoint_resolved",
       organizationId: input.organizationId,
@@ -327,6 +385,10 @@ export async function submitLiveCampaignStepApprovalServer(
       episodeId: episode.snapshot.episodeId,
       checkpointKind: activeCheckpoint ?? expectedCheckpoint,
       bridgeStepId: input.stepId,
+      snapshotState: finalEpisode.snapshot.state,
+      episodeStatus: finalEpisode.episodeStatus,
+      durableVersion: finalEpisode.durableVersion,
+      stopReason: runResult.stopReason ?? undefined,
     });
 
     emitApprovalBridgeDiagnostic({
@@ -337,6 +399,8 @@ export async function submitLiveCampaignStepApprovalServer(
       checkpointKind: activeCheckpoint ?? expectedCheckpoint,
       bridgeStepId: input.stepId,
       durationMs: Date.now() - resumeStartedMs,
+      snapshotState: finalEpisode.snapshot.state,
+      episodeStatus: finalEpisode.episodeStatus,
     });
 
     return {
@@ -344,6 +408,7 @@ export async function submitLiveCampaignStepApprovalServer(
       project: updatedProject,
       episodeResumed: true,
       approvalPersisted: true,
+      runtimeSync,
     };
   } catch (error) {
     const safe = safeApprovalBridgeError(error);

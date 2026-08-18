@@ -77,6 +77,7 @@ export {
   detectAutomaticCampaignPipelineStall,
   assertAutomaticCampaignReachedPublicationBoundary,
   shouldResumeAutomaticCampaignPipeline,
+  isEpisodeAtHealthyRuntimeBoundary,
 } from "./automatic-campaign-pipeline-invariants";
 export {
   resumeAutomaticCampaignPipeline,

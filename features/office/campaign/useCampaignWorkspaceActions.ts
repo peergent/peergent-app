@@ -67,8 +67,8 @@ import {
   type CampaignRuntimeProjection,
 } from "@/lib/office/campaign/campaign-runtime-projection";
 import { loadCampaignApprovalPackageAction } from "@/lib/office/campaign/load-campaign-approval-package-action";
+import type { SubmitLiveCampaignStepApprovalActionResult } from "@/lib/office/campaign/live-campaign-approval-action";
 import type { CampaignApprovalPackage } from "@/lib/brain/approval/campaign-approval-package-types";
-
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
 
 /** Derived open state for results panel — URL param or explicit user action. */
@@ -103,6 +103,8 @@ export function useCampaignWorkspaceActions(input: {
   isDemo: boolean;
   workspace: Workspace;
   runtimeProjection?: CampaignRuntimeProjection | null;
+  applyRuntimeProjection?: (projection: CampaignRuntimeProjection) => void;
+  refreshRuntimeProjection?: () => Promise<CampaignRuntimeProjection | null>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -168,6 +170,17 @@ export function useCampaignWorkspaceActions(input: {
   const strategyRunInFlightRef = useRef(false);
   const triggeredStrategyKeysRef = useRef(new Set<string>());
   const pipelineRecoveryAttemptedRef = useRef<string | null>(null);
+
+  const syncRuntimeProjectionAfterMutation = useCallback(
+    async (result: SubmitLiveCampaignStepApprovalActionResult) => {
+      if (!result.ok || !result.runtimeSync) return;
+      input.applyRuntimeProjection?.(result.runtimeSync.runtimeProjection);
+      if (input.refreshRuntimeProjection) {
+        await input.refreshRuntimeProjection();
+      }
+    },
+    [input.applyRuntimeProjection, input.refreshRuntimeProjection]
+  );
 
   const syncLiveProject = useCallback(
     (updated: MarketingProject) => {
@@ -593,7 +606,7 @@ export function useCampaignWorkspaceActions(input: {
           }
 
           syncLiveProject(bridgeResult.project);
-          router.refresh();
+          await syncRuntimeProjectionAfterMutation(bridgeResult);
           setEvidencePhase("success");
           if (
             stepId === "strategy_determined" ||
@@ -625,7 +638,7 @@ export function useCampaignWorkspaceActions(input: {
       projectId,
       syncLiveProject,
       input.runtimeProjection,
-      router,
+      syncRuntimeProjectionAfterMutation,
     ]
   );
 
@@ -894,6 +907,7 @@ export function useCampaignWorkspaceActions(input: {
         }
 
         syncLiveProject(bridgeResult.project);
+        await syncRuntimeProjectionAfterMutation(bridgeResult);
         setApprovalPhase("success");
         window.setTimeout(() => {
           closeCampaignApprovalReview();
@@ -923,6 +937,7 @@ export function useCampaignWorkspaceActions(input: {
     peerId,
     projectId,
     syncLiveProject,
+    syncRuntimeProjectionAfterMutation,
   ]);
 
   const handleApprovalRequestChanges = useCallback(() => {
