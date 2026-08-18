@@ -11,6 +11,7 @@ import {
   type ProjectBrainId,
   type ProjectLifecycleState,
 } from "../project-engine/types";
+import { needsPostApprovalExecution } from "../approval/approved-execution-handoff";
 import type { ProjectEpisodeRecord } from "./types";
 /** Brains that run before the DEFAULT_BRAIN_PIPELINE research phase. */
 export const EPISODE_BOOTSTRAP_BRAINS: readonly ProjectBrainId[] = ["company"];
@@ -157,6 +158,24 @@ export function resolveEpisodeStepBudgetForEpisode(
   if (
     episode.snapshot.state === "validating" &&
     !episode.snapshot.completedBrains.includes("validation")
+  ) {
+    budget += RUNNER_OVERHEAD_PER_BRAIN * 4;
+  }
+
+  // PX-60 — post-approval execution + monitoring must complete in one invocation.
+  if (needsPostApprovalExecution(episode)) {
+    budget += RUNNER_OVERHEAD_PER_BRAIN * 8;
+  } else if (
+    episode.approvalGrantedForExecution &&
+    !episode.snapshot.completedBrains.includes("execution")
+  ) {
+    budget += RUNNER_OVERHEAD_PER_BRAIN * 6;
+  }
+
+  if (
+    episode.snapshot.state === "ready_to_publish" ||
+    episode.snapshot.state === "publishing" ||
+    episode.snapshot.state === "monitoring"
   ) {
     budget += RUNNER_OVERHEAD_PER_BRAIN * 4;
   }

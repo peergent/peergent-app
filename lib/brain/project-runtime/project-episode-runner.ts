@@ -60,6 +60,11 @@ import {
   snapshotProgressSignature,
   type EpisodeLoopExit,
 } from "./episode-step-budget";
+import {
+  mapLoopExitToStopReason,
+  mapPauseStatusToStopReason,
+  type EpisodeRunnerStopReason,
+} from "./episode-runner-stop-reasons";
 import { evaluateEffectiveValidationContextReadiness } from "../validation-readiness";
 
 export class ProjectEpisodeRunner {
@@ -307,6 +312,11 @@ export class ProjectEpisodeRunner {
   }
 
   async runUntilPause(input: EpisodeRunInput): Promise<EpisodeRunResult> {
+    return this.runEpisodeUntilBlocked(input);
+  }
+
+  /** PX-60 — canonical autonomous driver: continue until an explicit stop reason. */
+  async runEpisodeUntilBlocked(input: EpisodeRunInput): Promise<EpisodeRunResult> {
     if (process.env.NODE_ENV === "production" && !isDemoPeer(input.peerId)) {
       assertProductionEpisodeRealContext({
         peerId: input.peerId,
@@ -329,7 +339,8 @@ export class ProjectEpisodeRunner {
     const fixture = buildMarketingPeerFixture(input.projectId.slice(-1));
 
     let acquiredContext: EpisodeAcquiredContext | null = null;
-    if (input.useRealContext && input.supabase && input.campaignContext) {
+    const skipContextReacquisition = shouldSkipContextReacquisition(episode);
+    if (input.useRealContext && input.supabase && input.campaignContext && !skipContextReacquisition) {
       emitOrchestrationDiagnostic({
         event: "episode_context_acquire_call_started",
         organizationId: input.organizationId,
@@ -417,6 +428,17 @@ export class ProjectEpisodeRunner {
     };
 
     emitOrchestrationDiagnostic({
+      event: "episode_runner_started",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId,
+      episodeId: episode.snapshot.episodeId,
+      episodeStatus: episode.episodeStatus,
+      snapshotState: episode.snapshot.state,
+      maxSteps,
+    });
+
+    emitOrchestrationDiagnostic({
       event: "episode_loop_entering",
       organizationId: episode.snapshot.organizationId,
       projectId: episode.snapshot.projectId,
@@ -491,6 +513,18 @@ export class ProjectEpisodeRunner {
       });
 
       emitOrchestrationDiagnostic({
+        event: "episode_evaluated",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        peerId: episode.snapshot.peerId,
+        episodeId: episode.snapshot.episodeId,
+        actionKind: evaluation.action.kind,
+        brainId: evaluation.action.brainId,
+        snapshotState: episode.snapshot.state,
+        step,
+      });
+
+      emitOrchestrationDiagnostic({
         event: "project_engine_evaluated",
         organizationId: episode.snapshot.organizationId,
         projectId: episode.snapshot.projectId,
@@ -529,7 +563,20 @@ export class ProjectEpisodeRunner {
       episode = { ...episode, snapshot: evaluation.snapshot };
 
       if (evaluation.action.kind === "idle") {
+        const beforeState = episode.snapshot.state;
         episode = advanceIdlePhase(episode);
+        if (episode.snapshot.state !== beforeState) {
+          episode = await this.commitEpisode(episode);
+          emitOrchestrationDiagnostic({
+            event: "episode_transitioned",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            fromState: beforeState,
+            snapshotState: episode.snapshot.state,
+          });
+        }
         continue;
       }
 
@@ -553,25 +600,58 @@ export class ProjectEpisodeRunner {
             packageId: episode.approvedExecutionHandoff?.packageId,
             packageVersion: episode.approvedExecutionHandoff?.packageVersion,
           });
+          const fromState = episode.snapshot.state;
           episode = {
             ...episode,
             snapshot: withProjectState(episode.snapshot, "publishing", new Date()),
           };
+          episode = await this.commitEpisode(episode);
+          emitOrchestrationDiagnostic({
+            event: "episode_transitioned",
+            organizationId: episode.snapshot.organizationId,
+            projectId: episode.snapshot.projectId,
+            peerId: episode.snapshot.peerId,
+            episodeId: episode.snapshot.episodeId,
+            fromState,
+            snapshotState: episode.snapshot.state,
+          });
           continue;
         }
       }
 
+      if (evaluation.action.kind === "monitor") {
+        appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
+        const stopReason: EpisodeRunnerStopReason = "waiting_for_external_outcomes";
+        emitOrchestrationDiagnostic({
+          event: "episode_runner_blocked",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          stopReason,
+          snapshotState: episode.snapshot.state,
+          episodeStatus: episode.episodeStatus,
+          reason: evaluation.action.reason,
+        });
+        const paused = await pauseEpisode(
+          episode,
+          "waiting_for_outcomes",
+          evaluation.action.reason,
+          locale,
+          this.durablePort
+        );
+        return { ...paused, stopReason };
+      }
+
       if (evaluation.blocked) {
         if (evaluation.action.kind === "collect_context") {
-          return await pauseEpisode(episode, "waiting_for_context", evaluation.action.reason, locale, this.durablePort);
+          const paused = await pauseEpisode(episode, "waiting_for_context", evaluation.action.reason, locale, this.durablePort);
+          return { ...paused, stopReason: "waiting_for_context" };
         }
         if (evaluation.action.kind === "wait") {
           appendRuntimeEvent({ episode, type: "waiting_for_approval", brainId: null });
-          return await pauseEpisode(episode, "waiting_for_approval", evaluation.action.reason, locale, this.durablePort);
-        }
-        if (evaluation.action.kind === "monitor") {
-          appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
-          return await pauseEpisode(episode, "waiting_for_outcomes", evaluation.action.reason, locale, this.durablePort);
+          const paused = await pauseEpisode(episode, "waiting_for_approval", evaluation.action.reason, locale, this.durablePort);
+          return { ...paused, stopReason: "waiting_for_human_approval" };
         }
       }
 
@@ -660,6 +740,16 @@ export class ProjectEpisodeRunner {
           episode = markExecutionHandoffPhase(episode, "executing");
         }
 
+        emitOrchestrationDiagnostic({
+          event: "brain_execution_started",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          brainId,
+          snapshotState: episode.snapshot.state,
+        });
+
         const brainResult = await this.executeBrain({
           brainId,
           episode,
@@ -688,16 +778,37 @@ export class ProjectEpisodeRunner {
             ...episode,
             snapshot: { ...episode.snapshot, activeBrain: brainId },
           };
-          return await pauseEpisode(
+          return { ...(await pauseEpisode(
             episode,
             "waiting_for_context",
             pauseReason,
             locale,
             this.durablePort
-          );
+          )), stopReason: "waiting_for_context" };
         }
 
         episode = applyBrainExecution(episode, brainResult, locale, idempotencyKey);
+
+        emitOrchestrationDiagnostic({
+          event: "brain_execution_completed",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          brainId: brainResult.brainId,
+          snapshotState: episode.snapshot.state,
+          errorCode: brainResult.errorCode ?? undefined,
+        });
+
+        emitOrchestrationDiagnostic({
+          event: "episode_re_evaluated",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          snapshotState: episode.snapshot.state,
+          episodeStatus: episode.episodeStatus,
+        });
 
         if (brainId === "execution") {
           if (brainResult.status === "failed" && brainResult.errorCode === "integration_not_connected") {
@@ -716,7 +827,16 @@ export class ProjectEpisodeRunner {
               blockedReason: brainResult.errorCode ?? "integration_not_connected",
             });
             episode = await this.commitEpisode(episode);
-            return buildRunResult(episode, null);
+            emitOrchestrationDiagnostic({
+              event: "episode_runner_blocked",
+              organizationId: episode.snapshot.organizationId,
+              projectId: episode.snapshot.projectId,
+              peerId: episode.snapshot.peerId,
+              episodeId: episode.snapshot.episodeId,
+              stopReason: "integration_blocked",
+              snapshotState: episode.snapshot.state,
+            });
+            return { ...buildRunResult(episode, null), stopReason: "integration_blocked" };
           }
           if (brainResult.status === "completed") {
             emitOrchestrationDiagnostic({
@@ -817,24 +937,70 @@ export class ProjectEpisodeRunner {
     episode = await this.commitEpisode(episode);
     if (episode.episodeStatus === "running") {
       if (isLegitimateRunnerPause(loopExit)) {
-        return buildRunResult(episode, null);
+        const stopReason = mapLoopExitToStopReason(loopExit, episode);
+        emitOrchestrationDiagnostic({
+          event: "episode_runner_completed",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          stopReason,
+          snapshotState: episode.snapshot.state,
+          runnerExitReason: loopExit.kind,
+        });
+        return { ...buildRunResult(episode, null), stopReason };
       }
       if (episode.snapshot.state === "monitoring" && !episode.performanceObservationsAvailable) {
         appendRuntimeEvent({ episode, type: "waiting_for_outcomes", brainId: null });
-        return await pauseEpisode(
+        emitOrchestrationDiagnostic({
+          event: "episode_runner_blocked",
+          organizationId: episode.snapshot.organizationId,
+          projectId: episode.snapshot.projectId,
+          peerId: episode.snapshot.peerId,
+          episodeId: episode.snapshot.episodeId,
+          stopReason: "waiting_for_external_outcomes",
+          snapshotState: episode.snapshot.state,
+          episodeStatus: episode.episodeStatus,
+        });
+        const paused = await pauseEpisode(
           episode,
           "waiting_for_outcomes",
           "Awaiting performance observations",
           input.locale ?? "en",
           this.durablePort
         );
+        return { ...paused, stopReason: "waiting_for_external_outcomes" };
       }
       const lastError =
         loopExit.kind === "stale_loop" ? "stale_loop_detected" : "max_steps_exceeded";
       episode = { ...episode, episodeStatus: "failed", lastError };
       episode = await this.commitEpisode(episode);
+      emitOrchestrationDiagnostic({
+        event: "episode_runner_blocked",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        peerId: episode.snapshot.peerId,
+        episodeId: episode.snapshot.episodeId,
+        stopReason: mapLoopExitToStopReason(loopExit, episode),
+        snapshotState: episode.snapshot.state,
+        runnerExitReason: loopExit.kind,
+      });
+    } else {
+      emitOrchestrationDiagnostic({
+        event: "episode_runner_completed",
+        organizationId: episode.snapshot.organizationId,
+        projectId: episode.snapshot.projectId,
+        peerId: episode.snapshot.peerId,
+        episodeId: episode.snapshot.episodeId,
+        stopReason: mapPauseStatusToStopReason(episode.episodeStatus),
+        snapshotState: episode.snapshot.state,
+        episodeStatus: episode.episodeStatus,
+      });
     }
-    return buildRunResult(episode, episode.lastError);
+    return {
+      ...buildRunResult(episode, episode.lastError),
+      stopReason: mapLoopExitToStopReason(loopExit, episode),
+    };
   }
 
   async resumeEpisode(input: ResumeEpisodeInput): Promise<EpisodeRunResult> {
@@ -844,32 +1010,16 @@ export class ProjectEpisodeRunner {
     });
     if (!episode) throw new Error(`Episode not found: ${input.projectId}`);
 
-    let updated = episode;
-    if (input.approvalSatisfied) {
-      updated = { ...updated, approvalSatisfied: true, episodeStatus: "running" };
-      appendRuntimeEvent({ episode: updated, type: "approval_received", brainId: null });
-      const advanced = advanceProjectEpisode(
-        { ...buildEngineInput(updated), approvalSatisfied: true },
-        { locale: input.locale ?? "en" }
-      );
-      const clearedValidationApproval =
-        advanced.snapshot.state === "ready_to_publish" ||
-        advanced.snapshot.state === "publishing" ||
-        advanced.snapshot.approvalCheckpoint?.satisfied === true;
-      updated = {
-        ...updated,
-        snapshot: advanced.snapshot,
-        approvalSatisfied: false,
-        validationApprovalPending: clearedValidationApproval
-          ? false
-          : updated.validationApprovalPending,
-        approvalGrantedForExecution:
-          updated.approvalGrantedForExecution ||
-          advanced.snapshot.state === "ready_to_publish" ||
-          advanced.snapshot.state === "publishing" ||
-          advanced.snapshot.state === "monitoring",
-      };
-    }
+    emitOrchestrationDiagnostic({
+      event: "episode_resume_started",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: input.peerId ?? episode.snapshot.peerId,
+      episodeId: episode.snapshot.episodeId,
+      snapshotState: episode.snapshot.state,
+    });
+
+    let updated = applyApprovalResumeAdvance(episode, input.approvalSatisfied === true, input.locale);
 
     if (input.performanceObservations?.length) {
       const { ingestPerformanceObservations } = await import("./performance-observation-service");
@@ -895,17 +1045,33 @@ export class ProjectEpisodeRunner {
       });
     }
 
-    return this.runUntilPause({
+    const result = await this.runEpisodeUntilBlocked({
       organizationId: input.organizationId,
       projectId: input.projectId,
-      peerId: updated.snapshot.peerId,
+      peerId: input.peerId ?? updated.snapshot.peerId,
+      peerRole: input.peerRole,
       locale: input.locale,
+      useRealContext: input.useRealContext,
+      supabase: input.supabase,
+      campaignContext: input.campaignContext,
       maxSteps:
         input.maxSteps ??
         resolveEpisodeStepBudgetForEpisode(updated, {
           campaignApprovalMode: updated.campaignApprovalMode,
         }),
     });
+
+    emitOrchestrationDiagnostic({
+      event: "episode_resume_completed",
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      peerId: updated.snapshot.peerId,
+      episodeId: updated.snapshot.episodeId,
+      snapshotState: result.episode.snapshot.state,
+      stopReason: result.stopReason ?? undefined,
+    });
+
+    return result;
   }
 
   private async executeBrain(input: {
@@ -997,6 +1163,81 @@ export class ProjectEpisodeRunner {
       retryAttempt: input.episode.snapshot.retryCount[input.brainId] ?? 0,
     });
   }
+}
+
+function shouldSkipContextReacquisition(episode: ProjectEpisodeRecord): boolean {
+  if (needsPostApprovalExecution(episode)) return true;
+  if (
+    episode.snapshot.state === "ready_to_publish" ||
+    episode.snapshot.state === "publishing" ||
+    episode.snapshot.state === "monitoring" ||
+    episode.snapshot.state === "learning"
+  ) {
+    return true;
+  }
+  if (
+    episode.snapshot.completedBrains.includes("validation") &&
+    episode.memoryCheckpoint1Complete &&
+    episode.snapshot.completedBrains.includes("memory")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function applyApprovalResumeAdvance(
+  episode: ProjectEpisodeRecord,
+  approvalSatisfied: boolean,
+  locale?: "nl" | "en"
+): ProjectEpisodeRecord {
+  const checkpoint = episode.snapshot.approvalCheckpoint;
+  const needsAdvance =
+    approvalSatisfied ||
+    (checkpoint?.satisfied === true && episode.snapshot.state === "waiting_for_approval");
+
+  if (!needsAdvance) {
+    return { ...episode, episodeStatus: "running" };
+  }
+
+  let updated: ProjectEpisodeRecord = {
+    ...episode,
+    approvalSatisfied: true,
+    episodeStatus: "running",
+  };
+  appendRuntimeEvent({ episode: updated, type: "approval_received", brainId: null });
+
+  const advanced = advanceProjectEpisode(
+    { ...buildEngineInput(updated), approvalSatisfied: true },
+    { locale: locale ?? "en" }
+  );
+
+  let snapshot = advanced.snapshot;
+  if (
+    snapshot.state === "waiting_for_approval" &&
+    checkpoint?.satisfied === true &&
+    checkpoint.unblocksState
+  ) {
+    snapshot = withProjectState(snapshot, checkpoint.unblocksState, new Date());
+  }
+
+  const clearedValidationApproval =
+    snapshot.state === "ready_to_publish" ||
+    snapshot.state === "publishing" ||
+    snapshot.approvalCheckpoint?.satisfied === true;
+
+  return {
+    ...updated,
+    snapshot,
+    approvalSatisfied: false,
+    validationApprovalPending: clearedValidationApproval
+      ? false
+      : updated.validationApprovalPending,
+    approvalGrantedForExecution:
+      updated.approvalGrantedForExecution ||
+      snapshot.state === "ready_to_publish" ||
+      snapshot.state === "publishing" ||
+      snapshot.state === "monitoring",
+  };
 }
 
 function buildEngineInput(episode: ProjectEpisodeRecord): ProjectEngineInput {

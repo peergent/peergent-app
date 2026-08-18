@@ -181,6 +181,8 @@ export type EpisodeRunResult = {
   reason: string | null;
   events: readonly ProjectRuntimeEvent[];
   observability: EpisodeObservability;
+  /** PX-60 — why the runner stopped (privacy-safe). */
+  stopReason?: import("./episode-runner-stop-reasons").EpisodeRunnerStopReason | null;
 };
 
 export type EpisodeObservability = {
@@ -208,6 +210,12 @@ export type ResumeEpisodeInput = {
   performanceObservations?: readonly PerformanceObservation[];
   locale?: "nl" | "en";
   maxSteps?: number;
+  /** PX-60 — pass through production execution context for post-approval continuation. */
+  peerId?: string;
+  peerRole?: string;
+  useRealContext?: boolean;
+  supabase?: import("@/lib/intelligence/api/org-context").AppSupabaseClient;
+  campaignContext?: import("@/lib/office/campaign/campaign-context").CampaignContext;
 };
 
 export type SubmitApprovalInput = {

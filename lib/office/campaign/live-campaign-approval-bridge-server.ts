@@ -179,7 +179,7 @@ export async function submitLiveCampaignStepApprovalServer(
   }
 
   await resolveDurableOrganizationNameServer(input.supabase, input.organizationId);
-  buildCampaignContext({
+  const campaignContext = buildCampaignContext({
     project: updatedProject,
     domainInput: input.domainInput,
     locale: input.locale,
@@ -236,12 +236,7 @@ export async function submitLiveCampaignStepApprovalServer(
       episode: episodeAfterApproval,
       approvalId,
       campaignName: updatedProject.title,
-      campaignContext: buildCampaignContext({
-        project: updatedProject,
-        domainInput: input.domainInput,
-        locale: input.locale,
-        organizationId: input.organizationId,
-      }),
+      campaignContext,
       locale: input.locale,
     });
     repo.save(episodeAfterApproval);
@@ -316,8 +311,13 @@ export async function submitLiveCampaignStepApprovalServer(
     await runner.resumeEpisode({
       organizationId: input.organizationId,
       projectId: input.projectId,
+      peerId: input.peerId,
+      peerRole: input.peerRole,
       approvalSatisfied: true,
       locale: input.locale ?? "en",
+      useRealContext: true,
+      supabase: input.supabase,
+      campaignContext,
     });
 
     emitApprovalBridgeDiagnostic({

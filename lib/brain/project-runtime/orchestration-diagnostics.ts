@@ -72,7 +72,15 @@ export type OrchestrationDiagnosticEvent =
   | "post_approval_execution_skipped"
   | "post_approval_execution_blocked"
   | "post_approval_execution_completed"
-  | "approved_package_handoff_resolved";
+  | "approved_package_handoff_resolved"
+  | "episode_runner_started"
+  | "episode_evaluated"
+  | "episode_transitioned"
+  | "brain_execution_started"
+  | "brain_execution_completed"
+  | "episode_re_evaluated"
+  | "episode_runner_blocked"
+  | "episode_runner_completed";
 
 export type OrchestrationDiagnosticPayload = {
   event: OrchestrationDiagnosticEvent;
@@ -119,6 +127,7 @@ export type OrchestrationDiagnosticPayload = {
   integrationReady?: boolean;
   idempotencyKeyPresent?: boolean;
   executionMode?: string;
+  stopReason?: string;
 };
 
 export function safeOrchestrationError(error: unknown): {

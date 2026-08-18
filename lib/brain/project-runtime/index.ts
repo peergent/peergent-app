@@ -23,6 +23,12 @@ export {
   createProjectEpisodeRunner,
 } from "./project-episode-runner";
 
+export type { EpisodeRunnerStopReason } from "./episode-runner-stop-reasons";
+export {
+  mapLoopExitToStopReason,
+  mapPauseStatusToStopReason,
+} from "./episode-runner-stop-reasons";
+
 export {
   getDefaultProjectEpisodeRepository,
   resetDefaultProjectEpisodeRepository,

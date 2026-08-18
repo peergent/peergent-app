@@ -227,8 +227,10 @@ export function useCampaignWorkspaceActions(input: {
 
     const recoverySignature = [
       projectId,
+      input.runtimeProjection?.durableVersion ?? "unknown",
+      input.runtimeProjection?.lifecycleState ?? "unknown",
+      input.runtimeProjection?.episodeStatus ?? "unknown",
       liveProject.campaignSetup?.strategyRun?.status ?? "unknown",
-      liveProject.campaignSetup?.strategyGeneratedAt ?? "",
       mountDecision.decisionReason,
     ].join(":");
 
@@ -250,7 +252,9 @@ export function useCampaignWorkspaceActions(input: {
     isDemo,
     liveProject,
     liveProject?.campaignSetup?.strategyRun?.status,
-    liveProject?.campaignSetup?.strategyGeneratedAt,
+    input.runtimeProjection?.durableVersion,
+    input.runtimeProjection?.lifecycleState,
+    input.runtimeProjection?.episodeStatus,
     localePreference,
     peerId,
     projectId,
@@ -589,6 +593,7 @@ export function useCampaignWorkspaceActions(input: {
           }
 
           syncLiveProject(bridgeResult.project);
+          router.refresh();
           setEvidencePhase("success");
           if (
             stepId === "strategy_determined" ||
@@ -620,6 +625,7 @@ export function useCampaignWorkspaceActions(input: {
       projectId,
       syncLiveProject,
       input.runtimeProjection,
+      router,
     ]
   );
 

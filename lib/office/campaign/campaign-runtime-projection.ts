@@ -452,6 +452,27 @@ export function resolveEpisodePrimaryAction(
     };
   }
 
+  if (lifecycleState === "publishing") {
+    return {
+      kind: "strategy_working",
+      label: nl ? "Campagne wordt gepubliceerd…" : "Publishing campaign…",
+      strategyRunStatus: "running",
+      strategyRunStageLabel: nl ? "Publicatie" : "Publication",
+    };
+  }
+
+  if (
+    lifecycleState === "monitoring" ||
+    lifecycleState === "learning" ||
+    episodeStatus === "waiting_for_outcomes"
+  ) {
+    return {
+      kind: "view_results",
+      label: nl ? "Campagne live — prestaties volgen" : "Campaign live — monitoring performance",
+      stepId: "optimizing",
+    };
+  }
+
   const active = resolveEpisodeActiveWorkflowStep(projection);
   if (active === "strategy_determined" || lifecycleState === "strategizing") {
     return {
