@@ -68,6 +68,12 @@ import {
 } from "@/lib/office/campaign/campaign-runtime-projection";
 import { loadCampaignApprovalPackageAction } from "@/lib/office/campaign/load-campaign-approval-package-action";
 import type { SubmitLiveCampaignStepApprovalActionResult } from "@/lib/office/campaign/live-campaign-approval-action";
+import type { SubmitLiveCampaignCompanyContextActionResult } from "@/lib/office/campaign/live-campaign-context-action";
+import {
+  submitCampaignContextResolutionAction,
+  type SubmitCampaignContextResolutionActionResult,
+} from "@/lib/office/campaign/campaign-context-resolution-action";
+import type { CampaignContextResolutionInput } from "@/lib/office/campaign/campaign-context-resolution-types";
 import type { CampaignApprovalPackage } from "@/lib/brain/approval/campaign-approval-package-types";
 type Workspace = ReturnType<typeof useMarketingWorkspace>;
 
@@ -172,8 +178,13 @@ export function useCampaignWorkspaceActions(input: {
   const pipelineRecoveryAttemptedRef = useRef<string | null>(null);
 
   const syncRuntimeProjectionAfterMutation = useCallback(
-    async (result: SubmitLiveCampaignStepApprovalActionResult) => {
-      if (!result.ok || !result.runtimeSync) return;
+    async (
+      result:
+        | SubmitLiveCampaignStepApprovalActionResult
+        | SubmitLiveCampaignCompanyContextActionResult
+        | SubmitCampaignContextResolutionActionResult
+    ) => {
+      if (!result.ok || !("runtimeSync" in result) || !result.runtimeSync) return;
       input.applyRuntimeProjection?.(result.runtimeSync.runtimeProjection);
       if (input.refreshRuntimeProjection) {
         await input.refreshRuntimeProjection();
@@ -187,6 +198,85 @@ export function useCampaignWorkspaceActions(input: {
       workspace.applyLiveCampaignProjectUpdate(updated);
     },
     [workspace]
+  );
+
+  const submitContextResolutionAndSync = useCallback(
+    async (
+      resolution: CampaignContextResolutionInput,
+      options?: { progressMessage?: string; onSuccess?: () => void }
+    ): Promise<void> => {
+      const domain = freshDomainInput(domainInput, isDemo);
+      const project = domain.projects.find((p) => p.id === projectId);
+      if (!project) {
+        throw new Error("project_not_found");
+      }
+
+      const bridgeResult = await submitCampaignContextResolutionAction({
+        peerId,
+        projectId,
+        project,
+        domainInput: domain,
+        resolution,
+        locale: localePreference === "nl" ? "nl" : "en",
+      });
+
+      if (!bridgeResult.ok) {
+        if (bridgeResult.error === "validation_failed" && bridgeResult.validation) {
+          const v = bridgeResult.validation;
+          if (v.kind === "company") {
+            const e = v.errors;
+            const first =
+              e.brandNameError ??
+              e.industryError ??
+              e.targetAudienceError ??
+              e.productsError ??
+              e.uspError;
+            throw new Error(first ?? "validation_failed");
+          }
+          if (v.kind === "website") {
+            throw new Error(nl ? "Ongeldige website-URL." : "Invalid website URL.");
+          }
+          if (v.kind === "competitors") {
+            throw new Error(nl ? "Voeg minimaal één concurrent toe." : "Add at least one competitor.");
+          }
+        }
+        if (bridgeResult.error === "episode_not_waiting") {
+          throw new Error(
+            nl
+              ? "Campagnestatus komt niet overeen. Vernieuw de pagina en probeer opnieuw."
+              : "Campaign state mismatch. Refresh the page and try again."
+          );
+        }
+        throw new Error(bridgeResult.error);
+      }
+
+      syncLiveProject(bridgeResult.project);
+      await syncRuntimeProjectionAfterMutation(bridgeResult);
+
+      if (bridgeResult.resumeError) {
+        throw new Error(
+          nl
+            ? "Context opgeslagen, maar de campagne kon niet verder. Probeer opnieuw."
+            : "Context saved, but the campaign could not continue. Please try again."
+        );
+      }
+
+      options?.onSuccess?.();
+      if (options?.progressMessage) {
+        setProgressMessage(options.progressMessage);
+        window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
+      }
+    },
+    [
+      domainInput,
+      isDemo,
+      localePreference,
+      nl,
+      peerId,
+      projectId,
+      syncLiveProject,
+      syncRuntimeProjectionAfterMutation,
+    ]
   );
 
   const triggerLiveStrategyRun = useCallback(
@@ -670,26 +760,31 @@ export function useCampaignWorkspaceActions(input: {
 
   const handleSaveCompanyContext = useCallback(
     async (context: CampaignCompanyContextInput) => {
-      const normalized = normalizeCampaignCompanyContext(context);
-      const updated = workspace.updateCampaignBrandContext(projectId, normalized);
-      if (!updated) {
-        throw new Error("Failed to persist company context");
+      if (isDemo) {
+        const normalized = normalizeCampaignCompanyContext(context);
+        const updated = workspace.updateCampaignBrandContext(projectId, normalized);
+        if (!updated) {
+          throw new Error("Failed to persist company context");
+        }
+        setCompanyContextModalOpen(false);
+        return;
       }
 
-      setCompanyContextModalOpen(false);
-      setProgressMessage(
-        nl ? "Emma verwerkt je campagnecontext…" : "Emma is processing your campaign context…"
+      await submitContextResolutionAndSync(
+        {
+          kind: "company",
+          decision: "supplied",
+          brandContext: normalizeCampaignCompanyContext(context),
+        },
+        {
+          onSuccess: () => setCompanyContextModalOpen(false),
+          progressMessage: nl
+            ? "Emma verwerkt je campagnecontext…"
+            : "Emma is processing your campaign context…",
+        }
       );
-
-      const nextDomain: MarketingPeerDomainInput = {
-        ...domainInput,
-        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
-      };
-
-      void triggerLiveStrategyRun(nextDomain);
-      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
     },
-    [domainInput, nl, projectId, triggerLiveStrategyRun, workspace]
+    [isDemo, nl, projectId, submitContextResolutionAndSync, workspace]
   );
 
   const handleApproveAll = useCallback(() => {
@@ -1037,7 +1132,7 @@ export function useCampaignWorkspaceActions(input: {
     openCampaignApprovalReview,
   ]);
 
-  const handleSkipWebsite = useCallback(() => {
+  const handleSkipWebsite = useCallback(async () => {
     if (isDemo) {
       skipDemoWebsiteAnalysis(peerId, projectId);
       advanceAfter(
@@ -1047,16 +1142,11 @@ export function useCampaignWorkspaceActions(input: {
       return;
     }
 
-    const updated = workspace.updateCampaignWebsiteDecision(projectId, { kind: "skip" });
-    if (!updated) return;
-    setProgressMessage(nl ? "Website overgeslagen." : "Website skipped.");
-    const nextDomain: MarketingPeerDomainInput = {
-      ...domainInput,
-      projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
-    };
-    void triggerLiveStrategyRun(nextDomain);
-    window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
-  }, [domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace, advanceAfter]);
+    await submitContextResolutionAndSync(
+      { kind: "website", decision: "skipped" },
+      { progressMessage: nl ? "Website overgeslagen." : "Website skipped." }
+    );
+  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, submitContextResolutionAndSync]);
 
   const handleAddWebsiteUrl = useCallback(
     async (url: string) => {
@@ -1070,25 +1160,18 @@ export function useCampaignWorkspaceActions(input: {
         return;
       }
 
-      const updated = workspace.updateCampaignWebsiteDecision(projectId, { kind: "url", url });
-      if (!updated) {
-        throw new Error("Failed to persist website URL");
-      }
-      setWebsiteModalOpen(false);
-      setProgressMessage(
-        nl ? "Website opgeslagen als context." : "Website saved as context."
+      await submitContextResolutionAndSync(
+        { kind: "website", decision: "supplied", url },
+        {
+          onSuccess: () => setWebsiteModalOpen(false),
+          progressMessage: nl ? "Website opgeslagen als context." : "Website saved as context.",
+        }
       );
-      const nextDomain: MarketingPeerDomainInput = {
-        ...domainInput,
-        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
-      };
-      void triggerLiveStrategyRun(nextDomain);
-      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
     },
-    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]
+    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, submitContextResolutionAndSync]
   );
 
-  const handleSkipCompetitors = useCallback(() => {
+  const handleSkipCompetitors = useCallback(async () => {
     if (isDemo) {
       skipDemoCompetitorAnalysis(peerId, projectId);
       advanceAfter(
@@ -1098,16 +1181,11 @@ export function useCampaignWorkspaceActions(input: {
       return;
     }
 
-    const updated = workspace.updateCampaignCompetitorDecision(projectId, { kind: "skip" });
-    if (!updated) return;
-    setProgressMessage(nl ? "Concurrentieanalyse overgeslagen." : "Competitor analysis skipped.");
-    const nextDomain: MarketingPeerDomainInput = {
-      ...domainInput,
-      projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
-    };
-    void triggerLiveStrategyRun(nextDomain);
-    window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
-  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]);
+    await submitContextResolutionAndSync(
+      { kind: "competitors", decision: "skipped" },
+      { progressMessage: nl ? "Concurrentieanalyse overgeslagen." : "Competitor analysis skipped." }
+    );
+  }, [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, submitContextResolutionAndSync]);
 
   const handleAddCompetitors = useCallback(
     async (competitors: readonly DemoCompetitorInput[]) => {
@@ -1121,25 +1199,15 @@ export function useCampaignWorkspaceActions(input: {
         return;
       }
 
-      const updated = workspace.updateCampaignCompetitorDecision(projectId, {
-        kind: "list",
-        competitors,
-      });
-      if (!updated) {
-        throw new Error("Failed to persist competitors");
-      }
-      setCompetitorModalOpen(false);
-      setProgressMessage(
-        nl ? "Concurrenten toegevoegd als context." : "Competitors added as context."
+      await submitContextResolutionAndSync(
+        { kind: "competitors", decision: "supplied", competitors },
+        {
+          onSuccess: () => setCompetitorModalOpen(false),
+          progressMessage: nl ? "Concurrenten toegevoegd als context." : "Competitors added as context.",
+        }
       );
-      const nextDomain: MarketingPeerDomainInput = {
-        ...domainInput,
-        projects: domainInput.projects.map((p) => (p.id === projectId ? updated : p)),
-      };
-      void triggerLiveStrategyRun(nextDomain);
-      window.setTimeout(() => setProgressMessage(null), prefersReducedMotion() ? 0 : 2400);
     },
-    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, triggerLiveStrategyRun, workspace]
+    [advanceAfter, domainInput, isDemo, nl, openStepById, peerId, projectId, submitContextResolutionAndSync]
   );
 
   const handleEvidenceRequestChanges = useCallback(() => {

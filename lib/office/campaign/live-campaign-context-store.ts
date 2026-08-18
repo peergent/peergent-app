@@ -264,6 +264,202 @@ export function readLiveCompetitorDecision(project: MarketingProject): {
   };
 }
 
+/** Pure merge — safe on server (no sessionStorage). PX-61 context bridge. */
+export function mergeCampaignBrandContextIntoProject(
+  project: MarketingProject,
+  context: LiveCampaignBrandContext
+): MarketingProject | null {
+  const brandName = context.brandName.trim();
+  if (!brandName || !project.campaignSetup) return null;
+
+  const contextVersion = nextCampaignContextVersion(project);
+  const approvalClear = approvalsToClearOnInvalidation("brand_context");
+  const stepApprovals = mergeStepApprovals(project.campaignSetup.stepApprovals, approvalClear);
+
+  return {
+    ...project,
+    updatedAt: new Date().toISOString(),
+    campaignSetup: {
+      ...project.campaignSetup,
+      campaignBrandName: brandName,
+      campaignBrandContext: {
+        brandName,
+        industry: context.industry?.trim() || undefined,
+        mission: context.mission?.trim() || undefined,
+        uniqueSellingPoints: context.uniqueSellingPoints?.filter(Boolean),
+        productsAndServices: context.productsAndServices?.filter(Boolean),
+        positioning: context.positioning?.trim() || undefined,
+        tone: context.tone?.trim() || undefined,
+        targetAudience: context.targetAudience?.trim() || undefined,
+      },
+      campaignBrandContextAt: new Date().toISOString(),
+      campaignBrandContextSource: "customer_supplied",
+      businessAnalyzedApproved: false,
+      businessAnalyzedAt: undefined,
+      campaignContextVersion: contextVersion,
+      stepApprovals,
+      strategyGeneratedAt: undefined,
+      strategyRun: undefined,
+      campaignBrainOutputs: undefined,
+    },
+  };
+}
+
+/** Hydrate project brand context from durable episode cache when sessionStorage is stale. */
+export function mergeSuppliedBrandContextFromEpisode(
+  project: MarketingProject,
+  supplied: import("@/lib/brain/project-runtime/types").SuppliedCampaignBrandContext | null | undefined
+): MarketingProject {
+  if (!supplied?.brandName?.trim() || !project.campaignSetup) return project;
+  if (project.campaignSetup.campaignBrandContext?.brandName?.trim()) return project;
+  return (
+    mergeCampaignBrandContextIntoProject(project, {
+      brandName: supplied.brandName,
+      industry: supplied.industry,
+      mission: supplied.mission,
+      uniqueSellingPoints: supplied.uniqueSellingPoints,
+      productsAndServices: supplied.productsAndServices,
+      positioning: supplied.positioning,
+      tone: supplied.tone,
+      targetAudience: supplied.targetAudience,
+    }) ?? project
+  );
+}
+
+function patchSetupWithInvalidation(
+  project: MarketingProject,
+  patch: Partial<NonNullable<MarketingProject["campaignSetup"]>>,
+  invalidationTrigger: CampaignContextChangeTrigger
+): MarketingProject | null {
+  if (!project.campaignSetup) return null;
+  const contextVersion = nextCampaignContextVersion(project);
+  const approvalClear = approvalsToClearOnInvalidation(invalidationTrigger);
+  const stepApprovals = mergeStepApprovals(project.campaignSetup.stepApprovals, approvalClear);
+  return {
+    ...project,
+    updatedAt: new Date().toISOString(),
+    campaignSetup: {
+      ...project.campaignSetup,
+      ...patch,
+      campaignContextVersion: contextVersion,
+      stepApprovals,
+      strategyGeneratedAt: undefined,
+      businessAnalyzedApproved: false,
+      strategyRun: undefined,
+      campaignBrainOutputs: undefined,
+    },
+  };
+}
+
+/** Pure merge — website URL supplied (server-safe). */
+export function mergeCampaignWebsiteUrlIntoProject(
+  project: MarketingProject,
+  url: string
+): MarketingProject | null {
+  const normalized = normalizeCampaignWebsiteUrl(url);
+  if (!normalized) return null;
+  return patchSetupWithInvalidation(
+    project,
+    {
+      websiteUrl: normalized,
+      websiteSkipped: false,
+      websiteDecisionAt: new Date().toISOString(),
+      websiteDecisionSource: "customer_supplied",
+    },
+    "website"
+  );
+}
+
+/** Pure merge — explicit website skip (server-safe). */
+export function mergeCampaignWebsiteSkipIntoProject(project: MarketingProject): MarketingProject | null {
+  return patchSetupWithInvalidation(
+    project,
+    {
+      websiteUrl: undefined,
+      websiteSkipped: true,
+      websiteDecisionAt: new Date().toISOString(),
+      websiteDecisionSource: "customer_skipped",
+    },
+    "website"
+  );
+}
+
+/** Pure merge — competitors supplied (server-safe). */
+export function mergeCampaignCompetitorsIntoProject(
+  project: MarketingProject,
+  competitors: readonly { name: string; url?: string }[]
+): MarketingProject | null {
+  const entries = normalizeCompetitorEntries(competitors);
+  if (entries.length === 0) return null;
+  return patchSetupWithInvalidation(
+    project,
+    {
+      campaignCompetitors: entries,
+      competitorsSkipped: false,
+      competitorsDecisionAt: new Date().toISOString(),
+      competitorsDecisionSource: "customer_supplied",
+    },
+    "competitors"
+  );
+}
+
+/** Pure merge — explicit competitor skip (server-safe). */
+export function mergeCampaignCompetitorSkipIntoProject(project: MarketingProject): MarketingProject | null {
+  return patchSetupWithInvalidation(
+    project,
+    {
+      campaignCompetitors: [],
+      competitorsSkipped: true,
+      competitorsDecisionAt: new Date().toISOString(),
+      competitorsDecisionSource: "customer_skipped",
+    },
+    "competitors"
+  );
+}
+
+/** Hydrate website decision from durable episode cache. */
+export function mergeSuppliedWebsiteFromEpisode(
+  project: MarketingProject,
+  supplied: import("@/lib/brain/project-runtime/types").SuppliedCampaignWebsiteDecision | null | undefined
+): MarketingProject {
+  if (!supplied || !project.campaignSetup) return project;
+  if (project.campaignSetup.websiteDecisionAt) return project;
+  if (supplied.decision === "skipped") {
+    return mergeCampaignWebsiteSkipIntoProject(project) ?? project;
+  }
+  if (supplied.websiteUrl) {
+    return mergeCampaignWebsiteUrlIntoProject(project, supplied.websiteUrl) ?? project;
+  }
+  return project;
+}
+
+/** Hydrate competitor decision from durable episode cache. */
+export function mergeSuppliedCompetitorsFromEpisode(
+  project: MarketingProject,
+  supplied: import("@/lib/brain/project-runtime/types").SuppliedCampaignCompetitorDecision | null | undefined
+): MarketingProject {
+  if (!supplied || !project.campaignSetup) return project;
+  if (project.campaignSetup.competitorsDecisionAt) return project;
+  if (supplied.decision === "skipped") {
+    return mergeCampaignCompetitorSkipIntoProject(project) ?? project;
+  }
+  if (supplied.competitors?.length) {
+    return mergeCampaignCompetitorsIntoProject(project, supplied.competitors) ?? project;
+  }
+  return project;
+}
+
+/** Hydrate all durable episode context onto a client project (reload recovery). */
+export function mergeSuppliedContextFromEpisode(
+  project: MarketingProject,
+  episode: import("@/lib/brain/project-runtime/types").ProjectEpisodeRecord
+): MarketingProject {
+  let next = mergeSuppliedBrandContextFromEpisode(project, episode.suppliedCampaignBrandContext);
+  next = mergeSuppliedWebsiteFromEpisode(next, episode.suppliedCampaignWebsiteDecision);
+  next = mergeSuppliedCompetitorsFromEpisode(next, episode.suppliedCampaignCompetitorDecision);
+  return next;
+}
+
 /** Persist customer-supplied brand/company context scoped to this campaign. */
 export function persistLiveCampaignBrandContext(
   peerId: string,

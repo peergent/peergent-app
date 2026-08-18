@@ -95,6 +95,42 @@ export type ProjectEpisodeRecord = {
   durableVersion?: number;
   /** PX-59 — frozen approved package consumed by Execution (no regeneration). */
   approvedExecutionHandoff?: ApprovedExecutionHandoff | null;
+  /** PX-61 — durable customer-supplied campaign brand context (survives reload). */
+  suppliedCampaignBrandContext?: SuppliedCampaignBrandContext | null;
+  /** PX-61B — durable website decision (supplied URL or explicit skip). */
+  suppliedCampaignWebsiteDecision?: SuppliedCampaignWebsiteDecision | null;
+  /** PX-61B — durable competitor decision (supplied list or explicit skip). */
+  suppliedCampaignCompetitorDecision?: SuppliedCampaignCompetitorDecision | null;
+};
+
+/** Customer-supplied brand context persisted on the episode for durable reload. */
+export type SuppliedCampaignBrandContext = {
+  brandName: string;
+  industry?: string;
+  mission?: string;
+  uniqueSellingPoints?: readonly string[];
+  productsAndServices?: readonly string[];
+  positioning?: string;
+  tone?: string;
+  targetAudience?: string;
+  suppliedAt: string;
+  source: "customer_supplied";
+};
+
+/** Durable website decision on episode — distinct from missing. */
+export type SuppliedCampaignWebsiteDecision = {
+  decision: "supplied" | "skipped";
+  websiteUrl?: string;
+  decidedAt: string;
+  source: "customer_supplied" | "customer_skipped";
+};
+
+/** Durable competitor decision on episode — distinct from missing. */
+export type SuppliedCampaignCompetitorDecision = {
+  decision: "supplied" | "skipped";
+  competitors?: readonly { name: string; url?: string }[];
+  decidedAt: string;
+  source: "customer_supplied" | "customer_skipped";
 };
 
 /** Immutable handoff from CampaignApprovalPackage → Execution Brain. */

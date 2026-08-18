@@ -49,6 +49,10 @@ function CampaignCompanyContextModalBody({
   );
   const [uspsText, setUspsText] = useState(initialValues?.uniqueSellingPoints?.join("\n") ?? "");
   const [brandNameError, setBrandNameError] = useState<string | null>(null);
+  const [industryError, setIndustryError] = useState<string | null>(null);
+  const [targetAudienceError, setTargetAudienceError] = useState<string | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [uspError, setUspError] = useState<string | null>(null);
   const [phase, setPhase] = useState<CampaignCompanyContextModalPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -62,6 +66,10 @@ function CampaignCompanyContextModalBody({
   const handleSubmit = useCallback(async () => {
     setErrorMessage(null);
     setBrandNameError(null);
+    setIndustryError(null);
+    setTargetAudienceError(null);
+    setProductsError(null);
+    setUspError(null);
     setPhase("validating");
 
     const payload: CampaignCompanyContextInput = {
@@ -78,6 +86,10 @@ function CampaignCompanyContextModalBody({
     const validation = validateCampaignCompanyContext(payload, nl);
     if (!validation.valid) {
       setBrandNameError(validation.brandNameError ?? null);
+      setIndustryError(validation.industryError ?? null);
+      setTargetAudienceError(validation.targetAudienceError ?? null);
+      setProductsError(validation.productsError ?? null);
+      setUspError(validation.uspError ?? null);
       setPhase("error");
       return;
     }
@@ -86,13 +98,15 @@ function CampaignCompanyContextModalBody({
     try {
       await onSubmit(payload);
       setPhase("success");
-    } catch {
+    } catch (error) {
       setPhase("error");
-      setErrorMessage(
-        nl
-          ? "Bedrijfsinformatie kon niet worden opgeslagen. Probeer het opnieuw."
-          : "Could not save company information. Please try again."
-      );
+      const message =
+        error instanceof Error && error.message && error.message !== "Error"
+          ? error.message
+          : nl
+            ? "Bedrijfsinformatie kon niet worden opgeslagen. Probeer het opnieuw."
+            : "Could not save company information. Please try again.";
+      setErrorMessage(message);
     }
   }, [
     brandName,
@@ -145,9 +159,12 @@ function CampaignCompanyContextModalBody({
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
-                {nl ? "Branche" : "Industry"}
+                {nl ? "Branche" : "Industry"} *
               </span>
-              <input className="pg-v13-input mt-1 w-full" value={industry} disabled={busy} onChange={(e) => setIndustry(e.target.value)} />
+              <input className="pg-v13-input mt-1 w-full" value={industry} disabled={busy} onChange={(e) => setIndustry(e.target.value)} data-testid="company-context-industry" />
+              {industryError ? (
+                <p className="mt-1 text-[12px] text-[var(--pg-v13-attention)]">{industryError}</p>
+              ) : null}
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
@@ -157,7 +174,7 @@ function CampaignCompanyContextModalBody({
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
-                {nl ? "Producten en diensten" : "Products and services"}
+                {nl ? "Producten en diensten" : "Products and services"} *
               </span>
               <textarea
                 className="pg-v13-input mt-1 w-full min-h-[72px]"
@@ -165,11 +182,15 @@ function CampaignCompanyContextModalBody({
                 disabled={busy}
                 onChange={(e) => setProductsText(e.target.value)}
                 placeholder={nl ? "Één per regel" : "One per line"}
+                data-testid="company-context-products"
               />
+              {productsError ? (
+                <p className="mt-1 text-[12px] text-[var(--pg-v13-attention)]">{productsError}</p>
+              ) : null}
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
-                {nl ? "Unieke voordelen" : "Unique selling points"}
+                {nl ? "Unieke voordelen" : "Unique selling points"} *
               </span>
               <textarea
                 className="pg-v13-input mt-1 w-full min-h-[72px]"
@@ -177,13 +198,20 @@ function CampaignCompanyContextModalBody({
                 disabled={busy}
                 onChange={(e) => setUspsText(e.target.value)}
                 placeholder={nl ? "Één per regel" : "One per line"}
+                data-testid="company-context-usps"
               />
+              {uspError ? (
+                <p className="mt-1 text-[12px] text-[var(--pg-v13-attention)]">{uspError}</p>
+              ) : null}
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
-                {nl ? "Doelgroep" : "Target audience"}
+                {nl ? "Doelgroep" : "Target audience"} *
               </span>
-              <input className="pg-v13-input mt-1 w-full" value={targetAudience} disabled={busy} onChange={(e) => setTargetAudience(e.target.value)} />
+              <input className="pg-v13-input mt-1 w-full" value={targetAudience} disabled={busy} onChange={(e) => setTargetAudience(e.target.value)} data-testid="company-context-target-audience" />
+              {targetAudienceError ? (
+                <p className="mt-1 text-[12px] text-[var(--pg-v13-attention)]">{targetAudienceError}</p>
+              ) : null}
             </label>
             <label className="block">
               <span className="pg-v13-mono text-[10px] uppercase text-[var(--pg-v13-ink-faint)]">
@@ -215,7 +243,13 @@ function CampaignCompanyContextModalBody({
       <div className="flex flex-wrap gap-2 border-t border-[var(--pg-v13-line-soft)] px-7 py-4">
         {phase !== "success" ? (
           <button type="button" className="pg-v13-btn" onClick={() => void handleSubmit()} disabled={busy} data-testid="company-context-submit">
-            {nl ? "Opslaan" : "Save"}
+            {busy
+              ? nl
+                ? "Opslaan…"
+                : "Saving…"
+              : nl
+                ? "Opslaan"
+                : "Save"}
           </button>
         ) : null}
         <button type="button" className="pg-v13-btn pg-v13-btn--ghost ml-auto" onClick={onClose} disabled={busy}>

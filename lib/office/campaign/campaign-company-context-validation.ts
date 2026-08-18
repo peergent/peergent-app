@@ -9,17 +9,51 @@ export function parseMultilineList(raw: string): string[] {
     .filter(Boolean);
 }
 
+export type CampaignCompanyContextValidationResult = {
+  valid: boolean;
+  brandNameError?: string;
+  industryError?: string;
+  targetAudienceError?: string;
+  productsError?: string;
+  uspError?: string;
+};
+
 export function validateCampaignCompanyContext(
   input: CampaignCompanyContextInput,
   nl: boolean
-): { valid: boolean; brandNameError?: string } {
+): CampaignCompanyContextValidationResult {
+  const errors: CampaignCompanyContextValidationResult = { valid: true };
+
   if (!input.brandName?.trim()) {
-    return {
-      valid: false,
-      brandNameError: nl ? "Vul een bedrijfs- of merknaam in." : "Enter a company or brand name.",
-    };
+    errors.valid = false;
+    errors.brandNameError = nl
+      ? "Vul een bedrijfs- of merknaam in."
+      : "Enter a company or brand name.";
   }
-  return { valid: true };
+  if (!input.industry?.trim()) {
+    errors.valid = false;
+    errors.industryError = nl ? "Vul een branche in." : "Enter an industry.";
+  }
+  if (!input.targetAudience?.trim()) {
+    errors.valid = false;
+    errors.targetAudienceError = nl ? "Vul een doelgroep in." : "Enter a target audience.";
+  }
+  const products = input.productsAndServices?.filter(Boolean) ?? [];
+  if (products.length === 0) {
+    errors.valid = false;
+    errors.productsError = nl
+      ? "Voeg minimaal één product of dienst toe."
+      : "Add at least one product or service.";
+  }
+  const usps = input.uniqueSellingPoints?.filter(Boolean) ?? [];
+  if (usps.length === 0) {
+    errors.valid = false;
+    errors.uspError = nl
+      ? "Voeg minimaal één uniek voordeel toe."
+      : "Add at least one unique selling point.";
+  }
+
+  return errors;
 }
 
 export function normalizeCampaignCompanyContext(
