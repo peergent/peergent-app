@@ -12,6 +12,7 @@ import type {
 } from "../../project-engine/brain-contract";
 import type { StrategyBrainInput, StrategyBrainOutput, StrategyBrainPayload } from "./brain-types";
 import { StrategyBrainLayer } from "./strategy-brain-layer";
+import { IntelligenceLlmUnavailableError } from "../../llm/intelligence-llm-errors";
 
 function confidenceValue(label: "low" | "medium" | "high"): number {
   return label === "high" ? 0.82 : label === "medium" ? 0.62 : 0.38;
@@ -49,7 +50,7 @@ function fail(started: number, code: string): BrainResult<BrainOutput> {
 export class StrategyBrainExecutor {
   constructor(private readonly layer = new StrategyBrainLayer()) {}
 
-  execute(input: StrategyBrainInput): StrategyBrainOutput {
+  execute(input: StrategyBrainInput): Promise<StrategyBrainOutput> {
     return this.layer.produce(input);
   }
 
@@ -86,10 +87,14 @@ export class StrategyBrainExecutor {
       constraints: payload.constraints,
       customerPriorities: payload.customerPriorities,
       approvalPolicy: payload.approvalPolicy,
+      peerId: payload.peerId,
+      llmProvider: payload.llmProvider,
     };
 
     try {
-      const output = this.layer.produce(stratInput);
+      const { produceStrategyBrainGraph } = await import("./produce-strategy-brain-graph");
+      const graph = await produceStrategyBrainGraph(stratInput);
+      const output = await this.layer.persistGraph(stratInput, graph);
 
       const companyVersionAfter = payload.companyGraph.version ?? "unknown";
       if (companyVersionBefore !== companyVersionAfter) {
@@ -118,6 +123,9 @@ export class StrategyBrainExecutor {
         approvalKind: output.graph.approval.approvalKind,
       };
     } catch (error) {
+      if (error instanceof IntelligenceLlmUnavailableError) {
+        return fail(started, error.code);
+      }
       return {
         brainId: "strategy",
         status: "failed",

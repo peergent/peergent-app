@@ -7,6 +7,10 @@ import type { BrainMemoryCandidate } from "../memory/candidate";
 import type { ResearchGraph } from "../layers/research";
 import type { ReasoningGraph } from "../layers/reasoning";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
+import type { ResearchBrainGraph } from "../layers/research/brain-types";
+import type { ReasoningBrainGraph } from "../layers/reasoning/brain-types";
+import type { MarketingIntelligenceBrainGraph } from "../layers/marketing-intelligence/brain-types";
+import type { CompanyGraph } from "../layers/company/types";
 
 /** Task-specific projection passed to capability executors — provider-neutral. */
 export type CapabilityExecutionContext = {
@@ -20,6 +24,11 @@ export type CapabilityExecutionContext = {
   reasoningGraph?: ReasoningGraph | null;
   /** Marketing Intelligence Layer — marketing thinking for Strategy (Sprint 9.3). */
   marketingIntelligenceGraph?: MarketingIntelligenceGraph | null;
+  /** PX-63 — canonical brain graphs from registry intelligence pipeline. */
+  companyGraph?: CompanyGraph | null;
+  researchBrainGraph?: ResearchBrainGraph | null;
+  reasoningBrainGraph?: ReasoningBrainGraph | null;
+  marketingIntelligenceBrainGraph?: MarketingIntelligenceBrainGraph | null;
   performanceMetrics?: readonly DemoPerformanceMetric[];
   locale: "nl" | "en";
 };

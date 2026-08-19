@@ -5,6 +5,9 @@ import type { ProjectBrainId } from "../project-engine/types";
  * executors — not generic BrainRuntime capability stubs.
  */
 export const PIPELINE_GRAPH_BRAIN_IDS: readonly ProjectBrainId[] = [
+  "research",
+  "reasoning",
+  "marketing_intelligence",
   "creative",
   "validation",
   "execution",

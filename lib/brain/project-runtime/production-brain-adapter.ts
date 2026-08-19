@@ -34,6 +34,7 @@ import { parseStrategyReadinessReasonCodes } from "../strategy-readiness";
 import { isPipelineGraphBrain } from "./pipeline-graph-brain-ids";
 import { executeRegistryBrainForEpisode } from "./execute-registry-brain-for-episode";
 import { materializePipelineGraphsAfterCapabilityBrain } from "./materialize-pipeline-graphs";
+import { emitIntelligencePipelineDiagnostic } from "./intelligence-pipeline-diagnostics";
 
 function resolveOutputRef(
   brainId: ProjectBrainId,
@@ -242,6 +243,25 @@ export function createProductionBrainExecutionAdapter(
             errorCode: registryResult.errorCode ?? undefined,
           });
         }
+        if (
+          ["research", "reasoning", "marketing_intelligence"].includes(runInput.brainId) &&
+          registryResult.status === "completed"
+        ) {
+          emitIntelligencePipelineDiagnostic({
+            event:
+              runInput.brainId === "research"
+                ? "research_completed"
+                : runInput.brainId === "reasoning"
+                  ? "reasoning_completed"
+                  : "marketing_intelligence_completed",
+            organizationId: runInput.episode.snapshot.organizationId,
+            projectId: runInput.episode.snapshot.projectId,
+            episodeId: runInput.episode.snapshot.episodeId,
+            brainId: runInput.brainId,
+            graphRef: registryResult.output?.outputRef,
+            durationMs: registryResult.durationMs,
+          });
+        }
         return registryResult;
       }
 
@@ -399,6 +419,17 @@ export function createProductionBrainExecutionAdapter(
         episodeId: runInput.episode.snapshot.episodeId,
         brainId: runInput.brainId,
       });
+
+      if (runInput.brainId === "strategy" && result.status === "completed") {
+        emitIntelligencePipelineDiagnostic({
+          event: "strategy_intelligence_handoff_completed",
+          organizationId: runInput.episode.snapshot.organizationId,
+          projectId: runInput.episode.snapshot.projectId,
+          episodeId: runInput.episode.snapshot.episodeId,
+          brainId: "strategy",
+          graphRef: result.output?.outputRef,
+        });
+      }
 
       return result;
     },

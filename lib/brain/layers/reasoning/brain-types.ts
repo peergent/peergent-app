@@ -5,6 +5,7 @@
 
 import type { CompanyGraph } from "../company/types";
 import type { ResearchBrainGraph } from "../research/brain-types";
+import type { IntelligenceProviderMetadata } from "../../llm/intelligence-provider-metadata";
 import type { ReasoningGraph } from "./types";
 
 export const REASONING_BRAIN_VERSION = "1.0.0";
@@ -186,6 +187,8 @@ export type ReasoningBrainGraph = {
   readonly escalations: readonly ReasoningEscalation[];
   readonly summary: ReasoningSummary;
   readonly confidence: ReasoningConfidenceLabel;
+  /** PX-63B — how this graph was produced. */
+  readonly providerMeta?: IntelligenceProviderMetadata;
   /** Strangler — legacy reasoning graph when built from legacy research graph. */
   readonly legacyGraph?: ReasoningGraph;
 };
@@ -240,6 +243,8 @@ export type ReasoningBrainInput = {
   readonly knownRisks?: readonly string[];
   readonly customerPriorities?: readonly string[];
   readonly correlationId?: string;
+  readonly peerId?: string;
+  readonly llmProvider?: import("../../llm/provider").BrainLlmProvider;
 };
 
 export type ReasoningBrainOutput = {
@@ -259,6 +264,8 @@ export type ReasoningBrainPayload = {
   readonly knownConstraints?: readonly string[];
   readonly knownRisks?: readonly string[];
   readonly customerPriorities?: readonly string[];
+  readonly peerId?: string;
+  readonly llmProvider?: import("../../llm/provider").BrainLlmProvider;
 };
 
 export function emptyReasoningBrainGraph(input: {

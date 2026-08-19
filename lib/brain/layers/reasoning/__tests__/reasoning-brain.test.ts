@@ -326,7 +326,7 @@ describe("Reasoning Brain", () => {
     const { createReasoningBrainLayer } = await import(
       "@/lib/brain/layers/reasoning/reasoning-brain-layer"
     );
-    const output = createReasoningBrainLayer().produce({
+    const output = await createReasoningBrainLayer().produce({
       organizationId: PEERGENT_DEMO_ORG_ID,
       companyGraph,
       researchGraph,

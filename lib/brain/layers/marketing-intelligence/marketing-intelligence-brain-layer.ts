@@ -31,7 +31,14 @@ export class MarketingIntelligenceBrainLayer {
     private readonly repository: MarketingIntelligenceBrainRepository = getDefaultMarketingIntelligenceBrainRepository()
   ) {}
 
-  produce(input: MarketingIntelligenceBrainInput): MarketingIntelligenceBrainOutput {
+  async produce(input: MarketingIntelligenceBrainInput): Promise<MarketingIntelligenceBrainOutput> {
+    return this.persistGraph(input, buildMarketingIntelligenceBrainGraph(input));
+  }
+
+  async persistGraph(
+    input: MarketingIntelligenceBrainInput,
+    graph: import("./brain-types").MarketingIntelligenceBrainGraph
+  ): Promise<MarketingIntelligenceBrainOutput> {
     runIdCounter += 1;
     const runId = `mi-run-${runIdCounter}`;
     const startedAt = new Date().toISOString();
@@ -48,7 +55,6 @@ export class MarketingIntelligenceBrainLayer {
     };
     this.repository.storeRun(run);
 
-    const graph = buildMarketingIntelligenceBrainGraph(input);
     const validation = validateMarketingIntelligenceBrainGraph(graph);
 
     if (!validation.valid) {
@@ -117,7 +123,7 @@ export function createMarketingIntelligenceBrainLayer(
 
 export function collectMarketingIntelligenceBrainGraph(
   input: MarketingIntelligenceBrainInput
-): MarketingIntelligenceBrainOutput {
+): Promise<MarketingIntelligenceBrainOutput> {
   return createMarketingIntelligenceBrainLayer().produce(input);
 }
 

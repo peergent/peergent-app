@@ -1,5 +1,3 @@
-import "server-only";
-
 import { BrainLlmError, BrainLlmMissingKeyError, BrainLlmParseError, BrainLlmValidationError, BrainLlmBusinessValidationError, BrainLlmValidationRetryExhaustedError, BrainLlmTimeoutError } from "./errors";
 import { isBrainUseOpenAIEnabled } from "../config/brain-feature-flags";
 import { getOpenAIApiKey } from "@/lib/ai-runtime/env";

@@ -489,14 +489,14 @@ describe("Strategy Brain", () => {
 
   it("persists repository version history", async () => {
     const { companyGraph, researchGraph, reasoningGraph, miGraph } = await pipelineUpstream();
-    const output1 = buildStrategyBrainGraphOutput({
+    const output1 = await buildStrategyBrainGraphOutput({
       organizationId: PEERGENT_DEMO_ORG_ID,
       companyGraph,
       researchGraph,
       reasoningGraph,
       marketingIntelligenceGraph: miGraph,
     });
-    const output2 = buildStrategyBrainGraphOutput({
+    const output2 = await buildStrategyBrainGraphOutput({
       organizationId: PEERGENT_DEMO_ORG_ID,
       companyGraph,
       researchGraph,

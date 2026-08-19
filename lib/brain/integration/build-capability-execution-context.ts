@@ -11,6 +11,15 @@ import type { ReasoningGraph } from "../layers/reasoning";
 import { buildReasoningGraph } from "../layers/reasoning";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence";
 import { buildMarketingIntelligenceGraph } from "../layers/marketing-intelligence";
+import type { ResearchBrainGraph } from "../layers/research/brain-types";
+import type { ReasoningBrainGraph } from "../layers/reasoning/brain-types";
+import type { MarketingIntelligenceBrainGraph } from "../layers/marketing-intelligence/brain-types";
+import type { CompanyGraph } from "../layers/company/types";
+import {
+  bridgeMarketingIntelligenceBrainGraphToLegacy,
+  bridgeReasoningBrainGraphToLegacy,
+  bridgeResearchBrainGraphToLegacy,
+} from "./bridge-brain-graphs-to-legacy";
 
 export function buildCapabilityExecutionContext(input: {
   assembly: ContextAssemblyResult;
@@ -21,12 +30,22 @@ export function buildCapabilityExecutionContext(input: {
   researchGraph?: ResearchGraph | null;
   reasoningGraph?: ReasoningGraph | null;
   marketingIntelligenceGraph?: MarketingIntelligenceGraph | null;
+  companyGraph?: CompanyGraph | null;
+  researchBrainGraph?: ResearchBrainGraph | null;
+  reasoningBrainGraph?: ReasoningBrainGraph | null;
+  marketingIntelligenceBrainGraph?: MarketingIntelligenceBrainGraph | null;
 }): CapabilityExecutionContext {
   const upstreamOutputs = input.upstreamOutputs ?? input.request.upstreamOutputs ?? {};
   const campaignContext = input.campaignContext ?? input.request.campaignContext ?? null;
+
+  const researchBrainGraph = input.researchBrainGraph ?? null;
+  const reasoningBrainGraph = input.reasoningBrainGraph ?? null;
+  const marketingIntelligenceBrainGraph = input.marketingIntelligenceBrainGraph ?? null;
+
   const researchGraph =
     input.researchGraph ??
     input.request.researchGraph ??
+    (researchBrainGraph ? bridgeResearchBrainGraphToLegacy(researchBrainGraph) : null) ??
     buildResearchGraphFromUpstream({
       companySnapshot: input.assembly.companySnapshot,
       campaignContext,
@@ -37,11 +56,15 @@ export function buildCapabilityExecutionContext(input: {
   const reasoningGraph =
     input.reasoningGraph ??
     input.request.reasoningGraph ??
+    (reasoningBrainGraph ? bridgeReasoningBrainGraphToLegacy(reasoningBrainGraph) : null) ??
     buildReasoningGraphFromResearch(researchGraph);
 
   const marketingIntelligenceGraph =
     input.marketingIntelligenceGraph ??
     input.request.marketingIntelligenceGraph ??
+    (marketingIntelligenceBrainGraph
+      ? bridgeMarketingIntelligenceBrainGraphToLegacy(marketingIntelligenceBrainGraph)
+      : null) ??
     buildMarketingIntelligenceFromReasoning(reasoningGraph, {
       researchGraph,
       campaignContext,
@@ -57,6 +80,10 @@ export function buildCapabilityExecutionContext(input: {
     researchGraph,
     reasoningGraph,
     marketingIntelligenceGraph,
+    companyGraph: input.companyGraph ?? null,
+    researchBrainGraph,
+    reasoningBrainGraph,
+    marketingIntelligenceBrainGraph,
     performanceMetrics: input.request.performanceMetrics,
     locale: input.request.locale === "nl" ? "nl" : "en",
   };

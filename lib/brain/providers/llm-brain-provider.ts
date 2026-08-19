@@ -10,6 +10,7 @@ import type { CapabilityExecutionContext } from "../capabilities/execution-conte
 import type { BrainUsageMetadata } from "../runtime/run-lifecycle";
 import type { BrainContextProjection } from "../providers/token-strategy";
 import { isBrainUseOpenAIEnabled } from "../config/brain-feature-flags";
+import { isProductionIntelligenceLlmEnabled } from "../llm/intelligence-provider-policy";
 import { executeDeterministicCapability } from "./deterministic-provider";
 import { executeStrategyWithLlmFallback } from "../llm/execute-strategy-llm";
 import { executeChannelPlanningWithLlmFallback } from "../llm/execute-channel-planning-llm";
@@ -54,7 +55,12 @@ export class LlmBrainCapabilityProvider implements BrainCapabilityProvider {
 
   async execute(input: ProviderInput): Promise<BrainStructuredOutput> {
     this.lastUsage = undefined;
-    const useOpenAI = this.options.useOpenAI ?? isBrainUseOpenAIEnabled();
+    const useOpenAI =
+      this.options.useOpenAI ??
+      isProductionIntelligenceLlmEnabled({
+        environment: input.context.environment,
+        peerId: input.context.peerId,
+      });
 
     const skipCategory = classifyPreLlmSkip({
       useOpenAI,

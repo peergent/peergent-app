@@ -327,6 +327,7 @@ export type MarketingIntelligenceBrainGraph = {
   readonly strategyInputs: MarketingStrategyInput;
   readonly summary: MarketingIntelligenceSummary;
   readonly confidence: MarketingIntelligenceConfidence;
+  readonly providerMeta?: import("../../llm/intelligence-provider-metadata").IntelligenceProviderMetadata;
 };
 
 export type MarketingIntelligenceSnapshot = {
@@ -382,6 +383,8 @@ export type MarketingIntelligenceBrainInput = {
   readonly channelData?: readonly string[];
   readonly selectedChannels?: readonly string[];
   readonly priorMarketingDecisions?: readonly string[];
+  readonly peerId?: string;
+  readonly llmProvider?: import("../../llm/provider").BrainLlmProvider;
 };
 
 export type MarketingIntelligenceBrainOutput = {
@@ -405,6 +408,8 @@ export type MarketingIntelligenceBrainPayload = {
   readonly channelData?: readonly string[];
   readonly selectedChannels?: readonly string[];
   readonly priorMarketingDecisions?: readonly string[];
+  readonly peerId?: string;
+  readonly llmProvider?: import("../../llm/provider").BrainLlmProvider;
 };
 
 export function emptyMessagingIntelligence(): MessagingIntelligence {

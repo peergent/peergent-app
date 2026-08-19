@@ -24,6 +24,8 @@ import { aggregateGraphConfidence, enforceConfidenceCeiling } from "./research-c
 import type { ResearchProviderRegistry } from "./research-provider-registry";
 import { getDefaultResearchProviderRegistry } from "./research-provider-registry";
 import type { ResearchBrainInput } from "./brain-types";
+import { fetchExternalResearchTargets } from "./providers/external-web-research-provider";
+import { resolveResearchRuntimeConfig } from "./research-config";
 
 let runCounter = 0;
 
@@ -120,10 +122,9 @@ export async function buildResearchBrainGraph(
   });
 
   let budgetState = initBudgetState();
-  const provider = registry.list()[0];
-  if (!provider) {
-    return finalizeGraph(graph, budgetState, startedAt);
-  }
+  const stubProvider =
+    registry.list().find((p) => p.id === "company_context_stub") ?? registry.list()[0];
+  const externalProvider = registry.list().find((p) => p.id === "external_web_fetch") ?? null;
 
   const ctx = {
     companyGraph: input.companyGraph,
@@ -135,6 +136,49 @@ export async function buildResearchBrainGraph(
   const allEvidence = [...graph.evidence];
   const allCitations = [...graph.citations];
   const allFindings = [...graph.findings];
+
+  let providerIdUsed = stubProvider?.id ?? "none";
+  let externalFetchCount = 0;
+  let fetchFailures = 0;
+  let fallbackUsed = false;
+
+  if (externalProvider && resolveResearchRuntimeConfig().enableExternalFetch) {
+    const external = await fetchExternalResearchTargets({
+      companyGraph: input.companyGraph,
+      websiteUrl: input.websiteUrl,
+      competitors: input.competitors,
+      organizationId: input.organizationId,
+    });
+    providerIdUsed = external.providerId;
+    externalFetchCount = external.items.length;
+    fetchFailures = external.fetchFailures;
+    if (external.items.length > 0) {
+      const converted = providerItemsToEvidence({
+        items: external.items,
+        defaultConfidence: "medium",
+      });
+      allSources.push(...converted.sources);
+      allEvidence.push(...converted.evidence);
+      allCitations.push(...converted.citations);
+      budgetState = applyProviderUsage(
+        budgetState,
+        {
+          requestsUsed: external.requestsUsed,
+          pagesUsed: external.pagesUsed,
+          costUsed: external.costUsed,
+          sourceCount: converted.sources.length,
+        },
+        plan.budget
+      );
+    } else if (external.fetchFailures > 0 || (input.websiteUrl || input.competitors?.length)) {
+      fallbackUsed = true;
+    }
+  }
+
+  const provider = stubProvider;
+  if (!provider) {
+    return finalizeGraph(graph, budgetState, startedAt);
+  }
 
   for (const domain of plan.domains) {
     if (budgetState.exhausted) break;
@@ -331,6 +375,10 @@ export async function buildResearchBrainGraph(
       contradictionCount: positioningResult.contradictions.length,
       proposalCount: proposals.length,
       unresolvedCount: unresolved.length,
+      providerId: providerIdUsed,
+      fallbackUsed,
+      externalFetchCount,
+      fetchFailures,
     },
     confidence: aggregateGraphConfidence(findingsWithConfidence),
     budgetState,

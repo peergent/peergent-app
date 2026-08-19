@@ -17,6 +17,7 @@ import type {
 } from "./brain-types";
 import { ReasoningBrainLayer } from "./reasoning-brain-layer";
 import { validateReasoningBrainGraph } from "./reasoning-validator";
+import { IntelligenceLlmUnavailableError } from "../../llm/intelligence-llm-errors";
 
 function confidenceValue(label: "low" | "medium" | "high"): number {
   return label === "high" ? 0.8 : label === "medium" ? 0.6 : 0.35;
@@ -40,7 +41,7 @@ function domainEvents(output: ReasoningBrainOutput, nl: boolean): BrainEvent[] {
 export class ReasoningBrainExecutor {
   constructor(private readonly layer = new ReasoningBrainLayer()) {}
 
-  execute(input: ReasoningBrainInput): ReasoningBrainOutput {
+  execute(input: ReasoningBrainInput): Promise<ReasoningBrainOutput> {
     return this.layer.produce(input);
   }
 
@@ -92,10 +93,14 @@ export class ReasoningBrainExecutor {
       knownConstraints: payload.knownConstraints,
       knownRisks: payload.knownRisks,
       customerPriorities: payload.customerPriorities,
+      peerId: payload.peerId,
+      llmProvider: payload.llmProvider,
     };
 
     try {
-      const output = this.execute(reasoningInput);
+      const { produceReasoningBrainGraph } = await import("./produce-reasoning-brain-graph");
+      const graph = await produceReasoningBrainGraph(reasoningInput);
+      const output = await this.layer.persistGraph(reasoningInput, graph);
       const meta = validateReasoningBrainGraph(output.graph);
 
       if (!meta.valid) {
@@ -136,6 +141,19 @@ export class ReasoningBrainExecutor {
           : null,
       };
     } catch (error) {
+      if (error instanceof IntelligenceLlmUnavailableError) {
+        return {
+          brainId: "reasoning",
+          status: "failed",
+          output: null,
+          events: [],
+          confidence: null,
+          durationMs: Date.now() - started,
+          errorCode: error.code,
+          requiresApproval: false,
+          approvalKind: null,
+        };
+      }
       return {
         brainId: "reasoning",
         status: "failed",

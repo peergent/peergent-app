@@ -75,6 +75,8 @@ export class ResearchBrainExecutor {
       budget: payload.budget,
       projectObjective: payload.projectObjective,
       priorResearchSnapshotId: payload.priorResearchSnapshotId,
+      websiteUrl: payload.websiteUrl,
+      competitors: payload.competitors,
     };
 
     try {

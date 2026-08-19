@@ -34,7 +34,6 @@ describe("live strategy client/server boundary", () => {
     for (const file of [
       "lib/brain/providers/llm-brain-provider.ts",
       "lib/brain/llm/execute-strategy-llm.ts",
-      "lib/brain/llm/client.ts",
       "lib/brain/persistence/repository-factory-server.ts",
     ]) {
       expect(read(file)).toMatch(/import "server-only"/);

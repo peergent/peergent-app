@@ -282,6 +282,7 @@ export type BrainHandoffContext = {
   learningProposalIds: string[];
   learningProposals: readonly import("../layers/learning/brain-types").MemoryWriteProposal[];
   approvedExecutionHandoff?: ApprovedExecutionHandoff | null;
+  peerId?: string;
 };
 
 /** PX-50 — optional capability adapter for production BrainRuntime execution. */

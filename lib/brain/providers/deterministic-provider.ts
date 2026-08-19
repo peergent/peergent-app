@@ -16,6 +16,7 @@ import { executeChannelPlanning } from "../capabilities/channel-planning";
 import { executeCreativeGeneration } from "../capabilities/creative-generation";
 import { executePerformanceInterpretation } from "../capabilities/performance-interpretation";
 import { executeOptimization } from "../capabilities/optimization";
+import { PLACEHOLDER_MARKET_UNDERSTANDING_VALUE } from "../project-runtime/intelligence-pipeline-diagnostics";
 
 type ProviderInput = {
   context: BrainRunContext;
@@ -79,6 +80,58 @@ export function executeDeterministicCapability(input: ProviderInput): BrainStruc
       return executePerformanceInterpretation(execCtx);
     case "optimization":
       return executeOptimization(execCtx);
+    case "market_understanding":
+      if (input.context.environment === "live") {
+        return {
+          ...emptyBrainStructuredOutput(input.capabilityId, def.version, generatedAt),
+          warnings: [
+            {
+              id: "warn-market-understanding-blocked",
+              code: "market_understanding_requires_brain_pipeline",
+              message:
+                "Market understanding must be produced by Reasoning/Marketing Intelligence brain layers in production.",
+              provenance: [
+                {
+                  kind: "assumption",
+                  refId: `${input.context.organizationId}:market_understanding:blocked`,
+                },
+              ],
+            },
+          ],
+          errors: [
+            {
+              id: "err-market-understanding-blocked",
+              code: "placeholder_blocked",
+              message: PLACEHOLDER_MARKET_UNDERSTANDING_VALUE,
+              retryable: false,
+              provenance: [
+                {
+                  kind: "assumption",
+                  refId: `${input.context.organizationId}:market_understanding:blocked`,
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return {
+        ...emptyBrainStructuredOutput(input.capabilityId, def.version, generatedAt),
+        findings: [
+          {
+            id: `deterministic-${input.capabilityId}`,
+            label: "Deterministic output",
+            value: `Deterministic output for ${input.capabilityId}`,
+            confidence: "medium",
+            provenance: [
+              {
+                kind: "assumption",
+                refId: `${input.context.organizationId}:${input.capabilityId}`,
+                capturedAt: generatedAt,
+              },
+            ],
+          },
+        ],
+      };
     default:
       return {
         ...emptyBrainStructuredOutput(input.capabilityId, def.version, generatedAt),

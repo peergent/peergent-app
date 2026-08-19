@@ -7,6 +7,8 @@ import type { CompanyGraph } from "../company/types";
 import type { MarketingIntelligenceBrainGraph, MarketingStrategyInput } from "../marketing-intelligence/brain-types";
 import type { ReasoningBrainGraph } from "../reasoning/brain-types";
 import type { ResearchBrainGraph } from "../research/brain-types";
+import type { IntelligenceProviderMetadata } from "../../llm/intelligence-provider-metadata";
+import type { BrainLlmProvider } from "../../llm/provider";
 
 export const STRATEGY_BRAIN_VERSION = "1.0.0";
 
@@ -354,6 +356,7 @@ export type StrategyBrainGraph = {
   readonly approval: StrategyApprovalRequirement;
   readonly summary: StrategyGraphSummary;
   readonly confidence: StrategyConfidence;
+  readonly providerMeta?: IntelligenceProviderMetadata;
 };
 
 export type StrategySnapshot = {
@@ -416,6 +419,8 @@ export type StrategyBrainInput = {
   readonly constraints?: readonly string[];
   readonly customerPriorities?: readonly string[];
   readonly approvalPolicy?: "always" | "major_only" | "none";
+  readonly peerId?: string;
+  readonly llmProvider?: BrainLlmProvider;
 };
 
 export type StrategyBrainOutput = {
@@ -441,6 +446,8 @@ export type StrategyBrainPayload = {
   readonly constraints?: readonly string[];
   readonly customerPriorities?: readonly string[];
   readonly approvalPolicy?: "always" | "major_only" | "none";
+  readonly peerId?: string;
+  readonly llmProvider?: BrainLlmProvider;
 };
 
 export function emptyPositioningStrategy(): PositioningStrategy {

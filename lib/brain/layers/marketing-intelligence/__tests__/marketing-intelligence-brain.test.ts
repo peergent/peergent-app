@@ -383,7 +383,7 @@ describe("Marketing Intelligence Brain", () => {
     const { createMarketingIntelligenceBrainLayer } = await import(
       "@/lib/brain/layers/marketing-intelligence/marketing-intelligence-brain-layer"
     );
-    const output = createMarketingIntelligenceBrainLayer().produce({
+    const output = await createMarketingIntelligenceBrainLayer().produce({
       organizationId: PEERGENT_DEMO_ORG_ID,
       companyGraph,
       researchGraph,

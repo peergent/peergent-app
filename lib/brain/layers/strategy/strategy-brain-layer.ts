@@ -32,7 +32,14 @@ export class StrategyBrainLayer {
     private readonly repository: StrategyBrainRepository = getDefaultStrategyBrainRepository()
   ) {}
 
-  produce(input: StrategyBrainInput): StrategyBrainOutput {
+  async produce(input: StrategyBrainInput): Promise<StrategyBrainOutput> {
+    return this.persistGraph(input, buildStrategyBrainGraph(input));
+  }
+
+  async persistGraph(
+    input: StrategyBrainInput,
+    graph: import("./brain-types").StrategyBrainGraph
+  ): Promise<StrategyBrainOutput> {
     runIdCounter += 1;
     const runId = `strat-run-${runIdCounter}`;
     const startedAt = new Date().toISOString();
@@ -49,7 +56,6 @@ export class StrategyBrainLayer {
     };
     this.repository.storeRun(run);
 
-    const graph = buildStrategyBrainGraph(input);
     const validation = validateStrategyBrainGraph(graph);
 
     if (!validation.valid) {
@@ -117,7 +123,7 @@ export function createStrategyBrainLayer(
   return new StrategyBrainLayer(repository);
 }
 
-export function buildStrategyBrainGraphOutput(input: StrategyBrainInput): StrategyBrainOutput {
+export function buildStrategyBrainGraphOutput(input: StrategyBrainInput): Promise<StrategyBrainOutput> {
   return createStrategyBrainLayer().produce(input);
 }
 

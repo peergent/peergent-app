@@ -38,12 +38,19 @@ export function buildBrainPayload(
         companyGraph,
         memoryRefs: handoff.priorOutputs.filter((o) => o.brainId === "memory").map((o) => o.outputRef),
         projectObjective: handoff.campaignContext.goals[0] ?? handoff.campaignContext.campaignName,
+        websiteUrl: handoff.campaignContext.websiteUrl,
+        competitors: handoff.campaignContext.competitors.map((c) => ({
+          name: c.name,
+          url: c.url ?? null,
+        })),
       };
     case "reasoning":
       return {
         companyGraph,
         researchBrainGraph,
         memoryGraph: resolved.memoryGraph,
+        projectObjective: handoff.campaignContext.goals[0] ?? handoff.campaignContext.campaignName,
+        peerId: handoff.peerId,
       };
     case "marketing_intelligence":
       return {
@@ -54,6 +61,7 @@ export function buildBrainPayload(
         channelData: handoff.campaignContext.selectedChannels,
         projectObjective: handoff.campaignContext.goals[0] ?? handoff.campaignContext.campaignName,
         memoryGraph: resolved.memoryGraph,
+        peerId: handoff.peerId,
       };
     case "strategy":
       return {
@@ -65,6 +73,7 @@ export function buildBrainPayload(
         memoryGraph: resolved.memoryGraph,
         availableBudget: { amount: 10000, currency: "EUR" },
         projectObjective: handoff.campaignContext.goals[0] ?? handoff.campaignContext.campaignName,
+        peerId: handoff.peerId,
       };
     case "planning":
       return {

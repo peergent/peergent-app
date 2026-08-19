@@ -2,8 +2,10 @@
  * Research Brain — provider registry.
  */
 
-import type { ResearchProvider, ResearchProviderCapability } from "./research-provider";
+import type { ResearchProvider } from "./research-provider";
 import { createCompanyContextStubProvider } from "./providers/company-context-stub-provider";
+import { createExternalWebResearchProvider } from "./providers/external-web-research-provider";
+import { resolveResearchRuntimeConfig } from "./research-config";
 
 export class ResearchProviderRegistry {
   private providers = new Map<string, ResearchProvider>();
@@ -20,7 +22,7 @@ export class ResearchProviderRegistry {
     return [...this.providers.values()];
   }
 
-  findByCapability(capability: ResearchProviderCapability): ResearchProvider[] {
+  findByCapability(capability: import("./research-provider").ResearchProviderCapability): ResearchProvider[] {
     return this.list().filter((p) => p.capabilities.capabilities.includes(capability));
   }
 
@@ -33,6 +35,10 @@ let defaultRegistry: ResearchProviderRegistry | null = null;
 
 export function createDefaultResearchProviderRegistry(): ResearchProviderRegistry {
   const registry = new ResearchProviderRegistry();
+  const config = resolveResearchRuntimeConfig();
+  if (config.enableExternalFetch) {
+    registry.register(createExternalWebResearchProvider());
+  }
   registry.register(createCompanyContextStubProvider());
   return registry;
 }

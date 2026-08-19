@@ -12,9 +12,13 @@ import { buildBrainPayload, buildPriorOutputs } from "./brain-context-handoff";
 import { resolveBrainOutputs } from "./brain-output-resolver";
 import { getDefaultProjectEpisodeRepository } from "./project-episode-repository";
 import type { BrainHandoffContext, ProjectEpisodeRecord } from "./types";
-import { proposalsFromLearningGraph } from "./learning-memory-handoff";
-import { learningProposalIds } from "./learning-memory-handoff";
 import type { ResolvedBrainOutputs } from "./brain-output-resolver";
+import { ensureCompanyGraphFromHandoff } from "./ensure-company-graph-from-handoff";
+import { emitIntelligencePipelineDiagnostic } from "./intelligence-pipeline-diagnostics";
+import { getDefaultResearchBrainRepository } from "../layers/research/research-brain-repository";
+import { getDefaultReasoningBrainRepository } from "../layers/reasoning/reasoning-brain-repository";
+import { getDefaultMarketingIntelligenceBrainRepository } from "../layers/marketing-intelligence/marketing-intelligence-brain-repository";
+import { proposalsFromLearningGraph, learningProposalIds } from "./learning-memory-handoff";
 
 export type ExecuteRegistryBrainForEpisodeInput = {
   brainId: ProjectBrainId;
@@ -111,6 +115,7 @@ async function ensureCreativeGraphForValidation(input: {
 export async function executeRegistryBrainForEpisode(
   input: ExecuteRegistryBrainForEpisodeInput
 ): Promise<BrainResult<BrainOutput>> {
+  const started = Date.now();
   const registry = input.registry ?? createDefaultProjectBrainRegistry();
   const contract = registry[input.brainId] as ProjectBrainContract | undefined;
 
@@ -161,7 +166,167 @@ export async function executeRegistryBrainForEpisode(
     memoryCheckpointPhase,
     learningProposalIds: input.episode.artifacts.learningProposalIds,
     learningProposals: input.episode.cachedLearningProposals ?? [],
+    peerId: input.episode.snapshot.peerId,
   };
+
+  if (["research", "reasoning", "marketing_intelligence", "strategy"].includes(input.brainId)) {
+    const companyGraph = ensureCompanyGraphFromHandoff(handoff);
+    resolved = { ...resolved, companyGraph };
+  }
+
+  if (input.brainId === "research") {
+    const existing =
+      resolved.researchBrainGraph ??
+      getDefaultResearchBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      })?.graph ??
+      null;
+    if (existing) {
+      emitIntelligencePipelineDiagnostic({
+        event: "research_completed",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "research",
+        evidenceCount: existing.evidence.length,
+        graphRef: `research:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        fallbackUsed: existing.summary.fallbackUsed,
+        durationMs: Date.now() - started,
+      });
+      return {
+        brainId: "research",
+        status: "completed",
+        output: {
+          outputRef: `research:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+          capabilityIds: ["competitor_understanding"],
+          decisionIds: [],
+          generatedAt: existing.updatedAt,
+        },
+        events: [],
+        confidence: { value: 0.65, label: "medium" },
+        durationMs: Date.now() - started,
+        errorCode: null,
+        requiresApproval: false,
+        approvalKind: null,
+      };
+    }
+    emitIntelligencePipelineDiagnostic({
+      event: "research_started",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      brainId: "research",
+    });
+  }
+
+  if (input.brainId === "reasoning") {
+    const existing =
+      resolved.reasoningBrainGraph ??
+      getDefaultReasoningBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      })?.graph ??
+      null;
+    if (existing) {
+      emitIntelligencePipelineDiagnostic({
+        event: "intelligence_graph_reused",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "reasoning",
+        graphReused: true,
+        providerMode: existing.providerMeta?.providerMode,
+        graphRef: `reasoning:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+      });
+      emitIntelligencePipelineDiagnostic({
+        event: "reasoning_completed",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "reasoning",
+        evidenceCount: existing.evidence.length,
+        durationMs: Date.now() - started,
+      });
+      return {
+        brainId: "reasoning",
+        status: "completed",
+        output: {
+          outputRef: `reasoning:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+          capabilityIds: ["market_understanding"],
+          decisionIds: [],
+          generatedAt: existing.updatedAt,
+        },
+        events: [],
+        confidence: { value: 0.6, label: "medium" },
+        durationMs: Date.now() - started,
+        errorCode: null,
+        requiresApproval: false,
+        approvalKind: null,
+      };
+    }
+    emitIntelligencePipelineDiagnostic({
+      event: "reasoning_started",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      brainId: "reasoning",
+    });
+  }
+
+  if (input.brainId === "marketing_intelligence") {
+    const existing =
+      resolved.marketingIntelligenceBrainGraph ??
+      getDefaultMarketingIntelligenceBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      })?.graph ??
+      null;
+    if (existing) {
+      emitIntelligencePipelineDiagnostic({
+        event: "intelligence_graph_reused",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "marketing_intelligence",
+        graphReused: true,
+        providerMode: existing.providerMeta?.providerMode,
+        graphRef: `mi:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+      });
+      emitIntelligencePipelineDiagnostic({
+        event: "marketing_intelligence_completed",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "marketing_intelligence",
+        evidenceCount: existing.evidence.length,
+        durationMs: Date.now() - started,
+      });
+      return {
+        brainId: "marketing_intelligence",
+        status: "completed",
+        output: {
+          outputRef: `mi:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+          capabilityIds: ["market_understanding"],
+          decisionIds: [],
+          generatedAt: existing.updatedAt,
+        },
+        events: [],
+        confidence: { value: 0.6, label: "medium" },
+        durationMs: Date.now() - started,
+        errorCode: null,
+        requiresApproval: false,
+        approvalKind: null,
+      };
+    }
+    emitIntelligencePipelineDiagnostic({
+      event: "marketing_intelligence_started",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      brainId: "marketing_intelligence",
+    });
+  }
 
   if (input.brainId === "validation") {
     resolved = await ensureCreativeGraphForValidation({
@@ -198,13 +363,105 @@ export async function executeRegistryBrainForEpisode(
 
   const payload = buildBrainPayload(input.brainId, resolved, handoff);
 
-  return contract.execute({
+  const result = await contract.execute({
     brainId: input.brainId,
     context,
     payload,
     idempotencyKey: input.idempotencyKey,
     retryAttempt: input.episode.snapshot.retryCount[input.brainId] ?? 0,
   });
+
+  const key = {
+    organizationId: input.episode.snapshot.organizationId,
+    projectId: input.episode.snapshot.projectId,
+  };
+
+  if (input.brainId === "research") {
+    const graph = getDefaultResearchBrainRepository().getLatestSnapshot(key)?.graph ?? null;
+    if (result.status === "completed" && graph) {
+      emitIntelligencePipelineDiagnostic({
+        event: "research_completed",
+        organizationId: key.organizationId,
+        projectId: key.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "research",
+        provider: graph.summary.providerId,
+        sourceCount: graph.sources.length,
+        evidenceCount: graph.evidence.length,
+        graphRef: result.output?.outputRef,
+        fallbackUsed: graph.summary.fallbackUsed,
+        fetchFailures: graph.summary.fetchFailures,
+        durationMs: Date.now() - started,
+      });
+      if (graph.summary.fallbackUsed) {
+        emitIntelligencePipelineDiagnostic({
+          event: "research_fallback_used",
+          organizationId: key.organizationId,
+          projectId: key.projectId,
+          episodeId: input.episode.snapshot.episodeId,
+          brainId: "research",
+          fallbackUsed: true,
+          fetchFailures: graph.summary.fetchFailures,
+          reason: "external_fetch_unavailable_or_empty",
+        });
+      }
+    }
+  }
+
+  if (input.brainId === "reasoning") {
+    const graph = getDefaultReasoningBrainRepository().getLatestSnapshot(key)?.graph ?? null;
+    if (result.status === "completed" && graph) {
+      emitIntelligencePipelineDiagnostic({
+        event: "reasoning_completed",
+        organizationId: key.organizationId,
+        projectId: key.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "reasoning",
+        evidenceCount: graph.evidence.length,
+        graphRef: result.output?.outputRef,
+        durationMs: Date.now() - started,
+      });
+    } else if (result.status === "failed") {
+      emitIntelligencePipelineDiagnostic({
+        event: "reasoning_fallback_used",
+        organizationId: key.organizationId,
+        projectId: key.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "reasoning",
+        fallbackUsed: true,
+        reason: result.errorCode ?? "reasoning_failed",
+      });
+    }
+  }
+
+  if (input.brainId === "marketing_intelligence") {
+    const graph =
+      getDefaultMarketingIntelligenceBrainRepository().getLatestSnapshot(key)?.graph ?? null;
+    if (result.status === "completed" && graph) {
+      emitIntelligencePipelineDiagnostic({
+        event: "marketing_intelligence_completed",
+        organizationId: key.organizationId,
+        projectId: key.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "marketing_intelligence",
+        evidenceCount: graph.evidence.length,
+        graphRef: result.output?.outputRef,
+        durationMs: Date.now() - started,
+      });
+    } else if (result.status === "failed") {
+      emitIntelligencePipelineDiagnostic({
+        event: "marketing_intelligence_fallback_used",
+        organizationId: key.organizationId,
+        projectId: key.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "marketing_intelligence",
+        fallbackUsed: true,
+        reason: result.errorCode ?? "marketing_intelligence_failed",
+      });
+    }
+  }
+
+  return result;
 }
 
 /** @internal test helper — expose creative materialization entry */

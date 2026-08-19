@@ -17,6 +17,7 @@ import type {
 } from "./brain-types";
 import { MarketingIntelligenceBrainLayer } from "./marketing-intelligence-brain-layer";
 import { validateMarketingIntelligenceBrainGraph } from "./marketing-intelligence-validator";
+import { IntelligenceLlmUnavailableError } from "../../llm/intelligence-llm-errors";
 
 function confidenceValue(label: "low" | "medium" | "high"): number {
   return label === "high" ? 0.82 : label === "medium" ? 0.62 : 0.38;
@@ -40,7 +41,7 @@ function domainEvents(output: MarketingIntelligenceBrainOutput, nl: boolean): Br
 export class MarketingIntelligenceBrainExecutor {
   constructor(private readonly layer = new MarketingIntelligenceBrainLayer()) {}
 
-  execute(input: MarketingIntelligenceBrainInput): MarketingIntelligenceBrainOutput {
+  execute(input: MarketingIntelligenceBrainInput): Promise<MarketingIntelligenceBrainOutput> {
     return this.layer.produce(input);
   }
 
@@ -78,10 +79,16 @@ export class MarketingIntelligenceBrainExecutor {
       channelData: payload.channelData ?? payload.selectedChannels,
       selectedChannels: payload.selectedChannels,
       priorMarketingDecisions: payload.priorMarketingDecisions,
+      peerId: payload.peerId,
+      llmProvider: payload.llmProvider,
     };
 
     try {
-      const output = this.execute(miInput);
+      const { produceMarketingIntelligenceBrainGraph } = await import(
+        "./produce-marketing-intelligence-brain-graph"
+      );
+      const graph = await produceMarketingIntelligenceBrainGraph(miInput);
+      const output = await this.layer.persistGraph(miInput, graph);
       const meta = validateMarketingIntelligenceBrainGraph(output.graph);
 
       if (!meta.valid) {
@@ -120,6 +127,9 @@ export class MarketingIntelligenceBrainExecutor {
         approvalKind: null,
       };
     } catch (error) {
+      if (error instanceof IntelligenceLlmUnavailableError) {
+        return fail(started, error.code);
+      }
       return fail(
         started,
         error instanceof Error ? error.message : "marketing_intelligence_failed"

@@ -32,7 +32,14 @@ export class ReasoningBrainLayer {
     private readonly repository: ReasoningBrainRepository = getDefaultReasoningBrainRepository()
   ) {}
 
-  produce(input: ReasoningBrainInput): ReasoningBrainOutput {
+  async produce(input: ReasoningBrainInput): Promise<ReasoningBrainOutput> {
+    return this.persistGraph(input, buildReasoningBrainGraph(input));
+  }
+
+  async persistGraph(
+    input: ReasoningBrainInput,
+    graph: import("./brain-types").ReasoningBrainGraph
+  ): Promise<ReasoningBrainOutput> {
     runIdCounter += 1;
     const runId = `rsn-run-${runIdCounter}`;
     const startedAt = new Date().toISOString();
@@ -49,7 +56,6 @@ export class ReasoningBrainLayer {
     };
     this.repository.storeRun(run);
 
-    const graph = buildReasoningBrainGraph(input);
     const validation = validateReasoningBrainGraph(graph);
 
     if (!validation.valid) {
@@ -124,7 +130,7 @@ export function createReasoningBrainLayer(
   return new ReasoningBrainLayer(repository);
 }
 
-export function collectReasoningBrainGraph(input: ReasoningBrainInput): ReasoningBrainOutput {
+export function collectReasoningBrainGraph(input: ReasoningBrainInput): Promise<ReasoningBrainOutput> {
   return createReasoningBrainLayer().produce(input);
 }
 

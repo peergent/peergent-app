@@ -51,6 +51,7 @@ import {
   emitBrainDependencyResolved,
   resolveCompletedDependency,
 } from "./dependency-resolution";
+import { resolveEpisodeIntelligenceGraphs } from "./resolve-episode-intelligence-graphs";
 
 /**
  * Sprint 7.5 demo policy (explicit — option A):
@@ -254,6 +255,28 @@ function hasFreshSeededOutput(
 ): output is BrainStructuredOutput {
   if (!output) return false;
   return output.capabilityVersion === getBrainCapability(capabilityId).version;
+}
+
+function enrichRequestWithEpisodeIntelligence(
+  request: BrainRunRequestWithBudget,
+  options?: ExecuteBrainForWorkflowStepOptions
+): BrainRunRequestWithBudget {
+  const intelligence = resolveEpisodeIntelligenceGraphs(options?.episodeContext);
+  if (
+    !intelligence.researchGraph &&
+    !intelligence.reasoningGraph &&
+    !intelligence.marketingIntelligenceGraph
+  ) {
+    return request;
+  }
+
+  return {
+    ...request,
+    researchGraph: request.researchGraph ?? intelligence.researchGraph,
+    reasoningGraph: request.reasoningGraph ?? intelligence.reasoningGraph,
+    marketingIntelligenceGraph:
+      request.marketingIntelligenceGraph ?? intelligence.marketingIntelligenceGraph,
+  };
 }
 
 function resolveResearchGraphForRun(
@@ -663,13 +686,11 @@ export async function executeBrainForWorkflowStep(
   if (!capabilityId) return null;
   const runtime = buildRuntimeForInput(input, options);
   const seededOutputs = await seedUpstreamOutputsAsync(input, options);
-  return runWithDependenciesAsync(
-    input,
-    runtime,
+  const request = enrichRequestWithEpisodeIntelligence(
     buildBaseRequest(input, capabilityId, options),
-    seededOutputs,
     options
   );
+  return runWithDependenciesAsync(input, runtime, request, seededOutputs, options);
 }
 
 /** Synchronous runtime execution for campaign evidence (demo provider). */
@@ -744,15 +765,13 @@ export async function executeBrainForProjectBrain(
 
   const runtime = buildRuntimeForInput(workflowInput, options);
   const seededOutputs = await seedUpstreamOutputsAsync(workflowInput, options);
-  return runWithDependenciesAsync(
-    workflowInput,
-    runtime,
+  const request = enrichRequestWithEpisodeIntelligence(
     {
       ...buildBaseRequest(workflowInput, capabilityId, options),
       runtimeDiagnosticBrainId: input.brainId,
       runtimeDiagnosticEpisodeId: options?.runtimeDiagnosticContext?.episodeId,
     },
-    seededOutputs,
     options
   );
+  return runWithDependenciesAsync(workflowInput, runtime, request, seededOutputs, options);
 }

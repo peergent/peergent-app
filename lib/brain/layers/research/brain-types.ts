@@ -315,6 +315,11 @@ export type ResearchSummary = {
   readonly contradictionCount: number;
   readonly proposalCount: number;
   readonly unresolvedCount: number;
+  /** PX-63 — pipeline metadata for truthful runtime / Office surfacing */
+  readonly providerId?: string;
+  readonly fallbackUsed?: boolean;
+  readonly externalFetchCount?: number;
+  readonly fetchFailures?: number;
 };
 
 /** Layered Research Graph — every conclusion references evidence. */
@@ -401,6 +406,8 @@ export type ResearchBrainInput = {
   readonly projectObjective?: string;
   readonly correlationId?: string;
   readonly author?: string;
+  readonly websiteUrl?: string | null;
+  readonly competitors?: readonly { readonly name: string; readonly url?: string | null }[];
 };
 
 export type ResearchBrainOutput = {
@@ -419,6 +426,8 @@ export type ResearchBrainPayload = {
   readonly budget?: Partial<ResearchBudget>;
   readonly projectObjective?: string;
   readonly priorResearchSnapshotId?: string;
+  readonly websiteUrl?: string | null;
+  readonly competitors?: readonly { readonly name: string; readonly url?: string | null }[];
 };
 
 export const DEFAULT_RESEARCH_BUDGET: ResearchBudget = {

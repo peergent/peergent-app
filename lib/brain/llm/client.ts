@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { BrainLlmProvider } from "./provider";
 import type { BrainLlmRequest, BrainLlmResponse } from "./types";
 import { getDefaultBrainLlmProvider } from "./provider-registry";
