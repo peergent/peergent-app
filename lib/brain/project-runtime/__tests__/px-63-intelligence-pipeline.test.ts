@@ -263,7 +263,7 @@ describe("PX-63 intelligence pipeline", () => {
     expect(isPipelineGraphBrain("research")).toBe(true);
     expect(isPipelineGraphBrain("reasoning")).toBe(true);
     expect(isPipelineGraphBrain("marketing_intelligence")).toBe(true);
-    expect(isPipelineGraphBrain("strategy")).toBe(false);
+    expect(isPipelineGraphBrain("strategy")).toBe(true);
   });
 
   it("B — research returns evidence with provenance when external fetch succeeds", async () => {

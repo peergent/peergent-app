@@ -9,6 +9,7 @@ import type {
   MarketingIntelligenceRun,
   MarketingIntelligenceSnapshot,
 } from "./brain-types";
+import { readLatestSnapshot } from "../../persistence/layer/snapshot-index-keys";
 import type {
   MarketingIntelligenceRecord,
   MarketingIntelligenceRecordKey,
@@ -79,7 +80,7 @@ export class InMemoryMarketingIntelligenceBrainRepository implements MarketingIn
     projectId?: string;
     campaignId?: string;
   }): MarketingIntelligenceSnapshot | null {
-    return this.snapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(this.snapshots, input);
   }
 
   storeRun(run: MarketingIntelligenceRun): void {

@@ -246,7 +246,7 @@ export async function appendProjectEvent(
       correlation_id: event.correlationId,
       output_ref: event.outputRef,
       customer_safe_summary: event.customerSafeSummary ?? null,
-      metadata: toJson({}),
+      metadata: toJson(event.metadata ?? {}),
     },
     { onConflict: "organization_id,project_id,event_id", ignoreDuplicates: true }
   );

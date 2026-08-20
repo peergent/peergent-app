@@ -10,6 +10,7 @@ import type {
   ResearchRun,
   ResearchSnapshot,
 } from "./brain-types";
+import { readLatestSnapshot } from "../../persistence/layer/snapshot-index-keys";
 import type { ResearchGraph } from "./types";
 import type { ResearchRecord, ResearchRecordKey, ResearchRepository } from "./research-repository";
 import {
@@ -100,8 +101,7 @@ export class InMemoryResearchBrainRepository implements ResearchBrainRepository 
     projectId?: string;
     campaignId?: string;
   }): ResearchSnapshot | null {
-    const indexKey = this.snapshotIndexKey(input);
-    return this.snapshots.get(`latest:${indexKey}`) ?? null;
+    return readLatestSnapshot(this.snapshots, input);
   }
 
   storeRun(run: ResearchRun): void {

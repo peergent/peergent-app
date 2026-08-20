@@ -181,6 +181,8 @@ export type ProjectRuntimeEvent = {
   type: string;
   outputRef: string | null;
   customerSafeSummary?: string;
+  /** PX-63D — safe audit metadata (no prompts or raw customer content). */
+  metadata?: Record<string, unknown>;
 };
 
 /** Legitimate pause boundary for production episode runs — not arbitrary step counts. */

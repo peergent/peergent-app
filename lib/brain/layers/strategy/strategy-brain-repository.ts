@@ -9,6 +9,7 @@ import type {
   StrategyRun,
   StrategySnapshot,
 } from "./brain-types";
+import { readLatestSnapshot } from "../../persistence/layer/snapshot-index-keys";
 
 export type StrategyBrainRepository = {
   storeSnapshot(snapshot: StrategySnapshot): void;
@@ -61,7 +62,7 @@ export class InMemoryStrategyBrainRepository implements StrategyBrainRepository 
     projectId?: string;
     campaignId?: string;
   }): StrategySnapshot | null {
-    return this.snapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(this.snapshots, input);
   }
 
   storeRun(run: StrategyRun): void {

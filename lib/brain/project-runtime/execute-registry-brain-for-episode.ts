@@ -18,7 +18,13 @@ import { emitIntelligencePipelineDiagnostic } from "./intelligence-pipeline-diag
 import { getDefaultResearchBrainRepository } from "../layers/research/research-brain-repository";
 import { getDefaultReasoningBrainRepository } from "../layers/reasoning/reasoning-brain-repository";
 import { getDefaultMarketingIntelligenceBrainRepository } from "../layers/marketing-intelligence/marketing-intelligence-brain-repository";
+import { getDefaultStrategyBrainRepository } from "../layers/strategy/strategy-brain-repository";
 import { proposalsFromLearningGraph, learningProposalIds } from "./learning-memory-handoff";
+import {
+  completeIntelligenceGraphReuse,
+  finalizeIntelligenceBrainExecution,
+  isIntelligencePersistenceBrain,
+} from "./finalize-intelligence-brain-execution";
 
 export type ExecuteRegistryBrainForEpisodeInput = {
   brainId: ProjectBrainId;
@@ -183,33 +189,30 @@ export async function executeRegistryBrainForEpisode(
       })?.graph ??
       null;
     if (existing) {
+      const snapshot = getDefaultResearchBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      });
       emitIntelligencePipelineDiagnostic({
-        event: "research_completed",
+        event: "intelligence_graph_reused",
         organizationId: input.episode.snapshot.organizationId,
         projectId: input.episode.snapshot.projectId,
         episodeId: input.episode.snapshot.episodeId,
         brainId: "research",
-        evidenceCount: existing.evidence.length,
-        graphRef: `research:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
-        fallbackUsed: existing.summary.fallbackUsed,
-        durationMs: Date.now() - started,
+        graphReused: true,
+        graphRef: snapshot?.outputRef ?? existing.updatedAt,
       });
-      return {
+      return completeIntelligenceGraphReuse({
         brainId: "research",
-        status: "completed",
-        output: {
-          outputRef: `research:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
-          capabilityIds: ["competitor_understanding"],
-          decisionIds: [],
-          generatedAt: existing.updatedAt,
-        },
-        events: [],
+        episode: input.episode,
+        graph: existing,
+        outputRef:
+          snapshot?.outputRef ??
+          `research:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        startedMs: started,
+        capabilityIds: ["competitor_understanding"],
         confidence: { value: 0.65, label: "medium" },
-        durationMs: Date.now() - started,
-        errorCode: null,
-        requiresApproval: false,
-        approvalKind: null,
-      };
+      });
     }
     emitIntelligencePipelineDiagnostic({
       event: "research_started",
@@ -229,6 +232,10 @@ export async function executeRegistryBrainForEpisode(
       })?.graph ??
       null;
     if (existing) {
+      const snapshot = getDefaultReasoningBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      });
       emitIntelligencePipelineDiagnostic({
         event: "intelligence_graph_reused",
         organizationId: input.episode.snapshot.organizationId,
@@ -237,33 +244,18 @@ export async function executeRegistryBrainForEpisode(
         brainId: "reasoning",
         graphReused: true,
         providerMode: existing.providerMeta?.providerMode,
-        graphRef: `reasoning:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        graphRef: snapshot?.outputRef ?? existing.updatedAt,
       });
-      emitIntelligencePipelineDiagnostic({
-        event: "reasoning_completed",
-        organizationId: input.episode.snapshot.organizationId,
-        projectId: input.episode.snapshot.projectId,
-        episodeId: input.episode.snapshot.episodeId,
+      return completeIntelligenceGraphReuse({
         brainId: "reasoning",
-        evidenceCount: existing.evidence.length,
-        durationMs: Date.now() - started,
+        episode: input.episode,
+        graph: existing,
+        outputRef:
+          snapshot?.outputRef ??
+          `reasoning:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        startedMs: started,
+        capabilityIds: ["market_understanding"],
       });
-      return {
-        brainId: "reasoning",
-        status: "completed",
-        output: {
-          outputRef: `reasoning:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
-          capabilityIds: ["market_understanding"],
-          decisionIds: [],
-          generatedAt: existing.updatedAt,
-        },
-        events: [],
-        confidence: { value: 0.6, label: "medium" },
-        durationMs: Date.now() - started,
-        errorCode: null,
-        requiresApproval: false,
-        approvalKind: null,
-      };
     }
     emitIntelligencePipelineDiagnostic({
       event: "reasoning_started",
@@ -283,6 +275,10 @@ export async function executeRegistryBrainForEpisode(
       })?.graph ??
       null;
     if (existing) {
+      const snapshot = getDefaultMarketingIntelligenceBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      });
       emitIntelligencePipelineDiagnostic({
         event: "intelligence_graph_reused",
         organizationId: input.episode.snapshot.organizationId,
@@ -291,33 +287,18 @@ export async function executeRegistryBrainForEpisode(
         brainId: "marketing_intelligence",
         graphReused: true,
         providerMode: existing.providerMeta?.providerMode,
-        graphRef: `mi:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        graphRef: snapshot?.outputRef ?? existing.updatedAt,
       });
-      emitIntelligencePipelineDiagnostic({
-        event: "marketing_intelligence_completed",
-        organizationId: input.episode.snapshot.organizationId,
-        projectId: input.episode.snapshot.projectId,
-        episodeId: input.episode.snapshot.episodeId,
+      return completeIntelligenceGraphReuse({
         brainId: "marketing_intelligence",
-        evidenceCount: existing.evidence.length,
-        durationMs: Date.now() - started,
+        episode: input.episode,
+        graph: existing,
+        outputRef:
+          snapshot?.outputRef ??
+          `mi:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        startedMs: started,
+        capabilityIds: ["market_understanding"],
       });
-      return {
-        brainId: "marketing_intelligence",
-        status: "completed",
-        output: {
-          outputRef: `mi:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
-          capabilityIds: ["market_understanding"],
-          decisionIds: [],
-          generatedAt: existing.updatedAt,
-        },
-        events: [],
-        confidence: { value: 0.6, label: "medium" },
-        durationMs: Date.now() - started,
-        errorCode: null,
-        requiresApproval: false,
-        approvalKind: null,
-      };
     }
     emitIntelligencePipelineDiagnostic({
       event: "marketing_intelligence_started",
@@ -325,6 +306,51 @@ export async function executeRegistryBrainForEpisode(
       projectId: input.episode.snapshot.projectId,
       episodeId: input.episode.snapshot.episodeId,
       brainId: "marketing_intelligence",
+    });
+  }
+
+  if (input.brainId === "strategy") {
+    const existing =
+      resolved.strategyBrainGraph ??
+      getDefaultStrategyBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      })?.graph ??
+      null;
+    if (existing) {
+      emitIntelligencePipelineDiagnostic({
+        event: "intelligence_graph_reused",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "strategy",
+        graphReused: true,
+        providerMode: existing.providerMeta?.providerMode,
+        graphRef: `strategy:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+      });
+      const snapshot = getDefaultStrategyBrainRepository().getLatestSnapshot({
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+      });
+      return completeIntelligenceGraphReuse({
+        brainId: "strategy",
+        episode: input.episode,
+        graph: existing,
+        outputRef:
+          snapshot?.outputRef ??
+          `strategy:${input.episode.snapshot.organizationId}:${existing.updatedAt}`,
+        startedMs: started,
+        capabilityIds: ["strategy"],
+        requiresApproval: existing.approval.requiresApproval,
+        approvalKind: existing.approval.approvalKind,
+      });
+    }
+    emitIntelligencePipelineDiagnostic({
+      event: "strategy_llm_started",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      brainId: "strategy",
     });
   }
 
@@ -337,21 +363,6 @@ export async function executeRegistryBrainForEpisode(
       idempotencyKey: input.idempotencyKey,
       registry,
     });
-  }
-
-  if (input.brainId === "creative" && !resolved.strategyBrainGraph) {
-    const { materializePipelineGraphsAfterCapabilityBrain } = await import(
-      "./materialize-pipeline-graphs"
-    );
-    materializePipelineGraphsAfterCapabilityBrain({
-      brainId: "strategy",
-      organizationId: input.episode.snapshot.organizationId,
-      projectId: input.episode.snapshot.projectId,
-      episodeId: input.episode.snapshot.episodeId,
-      artifacts: input.episode.artifacts,
-      resolvedGraphs: resolved,
-    });
-    resolved = resolveMergedGraphs(input.episode);
   }
 
   const context = assembleBrainContext({
@@ -371,94 +382,13 @@ export async function executeRegistryBrainForEpisode(
     retryAttempt: input.episode.snapshot.retryCount[input.brainId] ?? 0,
   });
 
-  const key = {
-    organizationId: input.episode.snapshot.organizationId,
-    projectId: input.episode.snapshot.projectId,
-  };
-
-  if (input.brainId === "research") {
-    const graph = getDefaultResearchBrainRepository().getLatestSnapshot(key)?.graph ?? null;
-    if (result.status === "completed" && graph) {
-      emitIntelligencePipelineDiagnostic({
-        event: "research_completed",
-        organizationId: key.organizationId,
-        projectId: key.projectId,
-        episodeId: input.episode.snapshot.episodeId,
-        brainId: "research",
-        provider: graph.summary.providerId,
-        sourceCount: graph.sources.length,
-        evidenceCount: graph.evidence.length,
-        graphRef: result.output?.outputRef,
-        fallbackUsed: graph.summary.fallbackUsed,
-        fetchFailures: graph.summary.fetchFailures,
-        durationMs: Date.now() - started,
-      });
-      if (graph.summary.fallbackUsed) {
-        emitIntelligencePipelineDiagnostic({
-          event: "research_fallback_used",
-          organizationId: key.organizationId,
-          projectId: key.projectId,
-          episodeId: input.episode.snapshot.episodeId,
-          brainId: "research",
-          fallbackUsed: true,
-          fetchFailures: graph.summary.fetchFailures,
-          reason: "external_fetch_unavailable_or_empty",
-        });
-      }
-    }
-  }
-
-  if (input.brainId === "reasoning") {
-    const graph = getDefaultReasoningBrainRepository().getLatestSnapshot(key)?.graph ?? null;
-    if (result.status === "completed" && graph) {
-      emitIntelligencePipelineDiagnostic({
-        event: "reasoning_completed",
-        organizationId: key.organizationId,
-        projectId: key.projectId,
-        episodeId: input.episode.snapshot.episodeId,
-        brainId: "reasoning",
-        evidenceCount: graph.evidence.length,
-        graphRef: result.output?.outputRef,
-        durationMs: Date.now() - started,
-      });
-    } else if (result.status === "failed") {
-      emitIntelligencePipelineDiagnostic({
-        event: "reasoning_fallback_used",
-        organizationId: key.organizationId,
-        projectId: key.projectId,
-        episodeId: input.episode.snapshot.episodeId,
-        brainId: "reasoning",
-        fallbackUsed: true,
-        reason: result.errorCode ?? "reasoning_failed",
-      });
-    }
-  }
-
-  if (input.brainId === "marketing_intelligence") {
-    const graph =
-      getDefaultMarketingIntelligenceBrainRepository().getLatestSnapshot(key)?.graph ?? null;
-    if (result.status === "completed" && graph) {
-      emitIntelligencePipelineDiagnostic({
-        event: "marketing_intelligence_completed",
-        organizationId: key.organizationId,
-        projectId: key.projectId,
-        episodeId: input.episode.snapshot.episodeId,
-        brainId: "marketing_intelligence",
-        evidenceCount: graph.evidence.length,
-        graphRef: result.output?.outputRef,
-        durationMs: Date.now() - started,
-      });
-    } else if (result.status === "failed") {
-      emitIntelligencePipelineDiagnostic({
-        event: "marketing_intelligence_fallback_used",
-        organizationId: key.organizationId,
-        projectId: key.projectId,
-        episodeId: input.episode.snapshot.episodeId,
-        brainId: "marketing_intelligence",
-        fallbackUsed: true,
-        reason: result.errorCode ?? "marketing_intelligence_failed",
-      });
-    }
+  if (isIntelligencePersistenceBrain(input.brainId)) {
+    return finalizeIntelligenceBrainExecution({
+      brainId: input.brainId,
+      episode: input.episode,
+      result,
+      startedMs: started,
+    });
   }
 
   return result;

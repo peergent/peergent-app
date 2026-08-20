@@ -244,7 +244,9 @@ export function createProductionBrainExecutionAdapter(
           });
         }
         if (
-          ["research", "reasoning", "marketing_intelligence"].includes(runInput.brainId) &&
+          ["research", "reasoning", "marketing_intelligence", "strategy"].includes(
+            runInput.brainId
+          ) &&
           registryResult.status === "completed"
         ) {
           emitIntelligencePipelineDiagnostic({
@@ -253,7 +255,9 @@ export function createProductionBrainExecutionAdapter(
                 ? "research_completed"
                 : runInput.brainId === "reasoning"
                   ? "reasoning_completed"
-                  : "marketing_intelligence_completed",
+                  : runInput.brainId === "marketing_intelligence"
+                    ? "marketing_intelligence_completed"
+                    : "strategy_llm_completed",
             organizationId: runInput.episode.snapshot.organizationId,
             projectId: runInput.episode.snapshot.projectId,
             episodeId: runInput.episode.snapshot.episodeId,

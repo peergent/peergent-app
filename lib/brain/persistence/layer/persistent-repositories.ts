@@ -70,6 +70,7 @@ import type {
   StoredPerformanceObservation,
 } from "../../project-runtime/types";
 import { outputRefKey, projectScopeKey, recordKey } from "./scope-keys";
+import { readLatestSnapshot } from "./snapshot-index-keys";
 import {
   companyLatest,
   companyVersions,
@@ -177,7 +178,7 @@ export class PersistentResearchBrainRepository implements ResearchBrainRepositor
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): ResearchSnapshot | null {
-    return researchSnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(researchSnapshots, input);
   }
 
   storeRun(run: ResearchRun): void {
@@ -246,7 +247,7 @@ export class PersistentReasoningBrainRepository implements ReasoningBrainReposit
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): ReasoningSnapshot | null {
-    return reasoningSnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(reasoningSnapshots, input);
   }
 
   storeRun(run: ReasoningRun): void {
@@ -315,7 +316,7 @@ export class PersistentMarketingIntelligenceBrainRepository implements Marketing
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): MarketingIntelligenceSnapshot | null {
-    return miSnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(miSnapshots, input);
   }
 
   storeRun(run: MarketingIntelligenceRun): void {
@@ -361,7 +362,7 @@ export class PersistentStrategyBrainRepository implements StrategyBrainRepositor
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): StrategySnapshot | null {
-    return strategySnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(strategySnapshots, input);
   }
 
   storeRun(run: StrategyRun): void {
@@ -429,7 +430,7 @@ export class PersistentPlanningBrainRepository implements PlanningBrainRepositor
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): PlanningSnapshot | null {
-    return planningSnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(planningSnapshots, input);
   }
 
   storeRun(run: PlanningRun): void {
@@ -635,7 +636,7 @@ export class PersistentLearningBrainRepository implements LearningBrainRepositor
   }
 
   getLatestSnapshot(input: { organizationId: string; projectId?: string; campaignId?: string }): LearningSnapshot | null {
-    return learningSnapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(learningSnapshots, input);
   }
 
   storeRun(run: LearningRun): void {

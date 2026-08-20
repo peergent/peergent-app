@@ -1,18 +1,9 @@
 /**
- * PX-55 — read-only hydration into L1 module stores (no Supabase write-through).
+ * PX-55 / PX-63D — read-only hydration into shared L1 module stores (no Supabase write-through).
  */
 
-import type { CompanyStoreRecord } from "../../layers/company/company-repository";
-import type { ResearchSnapshot } from "../../layers/research/brain-types";
-import type { ReasoningSnapshot } from "../../layers/reasoning/brain-types";
-import type { MarketingIntelligenceSnapshot } from "../../layers/marketing-intelligence/brain-types";
-import type { StrategySnapshot } from "../../layers/strategy/brain-types";
-import type { PlanningSnapshot } from "../../layers/planning/brain-types";
-import type { LearningSnapshot } from "../../layers/learning/brain-types";
-import type { CreativeRecord } from "../../layers/creative/creative-repository";
-import type { ValidationRecord } from "../../layers/validation/validation-repository";
-import type { MemoryStoreRecord } from "../../layers/memory/memory-repository";
-import type { ExecutionStoreRecord } from "../../layers/execution/execution-repository";
+import type { LayerDocumentRow } from "./supabase-sync";
+import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
 import {
   PersistentCompanyRepository,
   PersistentCreativeRepository,
@@ -26,9 +17,8 @@ import {
   PersistentStrategyBrainRepository,
   PersistentValidationRepository,
 } from "./persistent-repositories";
-import type { LayerDocumentRow } from "./supabase-sync";
-import { emitPersistenceDiagnostic } from "./persistence-diagnostics";
 
+/** Persistent-only repos — share module stores with active bundle without write-through. */
 const hydrationRepos = {
   company: new PersistentCompanyRepository(),
   researchBrain: new PersistentResearchBrainRepository(),
@@ -43,7 +33,7 @@ const hydrationRepos = {
   execution: new PersistentExecutionRepository(),
 };
 
-/** Populate L1 cache from durable rows — must never write back to Supabase. */
+/** Populate shared L1 cache from durable rows — must never write back to Supabase. */
 export function applyHydratedLayerDocumentToL1Cache(row: LayerDocumentRow): void {
   emitPersistenceDiagnostic({
     event: "persistence_hydration_l1_apply",
@@ -58,39 +48,39 @@ export function applyHydratedLayerDocumentToL1Cache(row: LayerDocumentRow): void
 
   switch (row.document_kind) {
     case "company_store":
-      hydrationRepos.company.store(payload as unknown as CompanyStoreRecord);
+      hydrationRepos.company.store(payload as unknown as import("../../layers/company/company-repository").CompanyStoreRecord);
       break;
     case "research_snapshot":
-      hydrationRepos.researchBrain.storeSnapshot(payload as unknown as ResearchSnapshot);
+      hydrationRepos.researchBrain.storeSnapshot(payload as unknown as import("../../layers/research/brain-types").ResearchSnapshot);
       break;
     case "reasoning_snapshot":
-      hydrationRepos.reasoningBrain.storeSnapshot(payload as unknown as ReasoningSnapshot);
+      hydrationRepos.reasoningBrain.storeSnapshot(payload as unknown as import("../../layers/reasoning/brain-types").ReasoningSnapshot);
       break;
     case "mi_snapshot":
       hydrationRepos.marketingIntelligenceBrain.storeSnapshot(
-        payload as unknown as MarketingIntelligenceSnapshot
+        payload as unknown as import("../../layers/marketing-intelligence/brain-types").MarketingIntelligenceSnapshot
       );
       break;
     case "strategy_snapshot":
-      hydrationRepos.strategyBrain.storeSnapshot(payload as unknown as StrategySnapshot);
+      hydrationRepos.strategyBrain.storeSnapshot(payload as unknown as import("../../layers/strategy/brain-types").StrategySnapshot);
       break;
     case "planning_snapshot":
-      hydrationRepos.planningBrain.storeSnapshot(payload as unknown as PlanningSnapshot);
+      hydrationRepos.planningBrain.storeSnapshot(payload as unknown as import("../../layers/planning/brain-types").PlanningSnapshot);
       break;
     case "learning_snapshot":
-      hydrationRepos.learningBrain.storeSnapshot(payload as unknown as LearningSnapshot);
+      hydrationRepos.learningBrain.storeSnapshot(payload as unknown as import("../../layers/learning/brain-types").LearningSnapshot);
       break;
     case "creative_record":
-      hydrationRepos.creative.store(payload as unknown as CreativeRecord);
+      hydrationRepos.creative.store(payload as unknown as import("../../layers/creative/creative-repository").CreativeRecord);
       break;
     case "validation_record":
-      hydrationRepos.validation.store(payload as unknown as ValidationRecord);
+      hydrationRepos.validation.store(payload as unknown as import("../../layers/validation/validation-repository").ValidationRecord);
       break;
     case "memory_store":
-      hydrationRepos.memory.store(payload as unknown as MemoryStoreRecord);
+      hydrationRepos.memory.store(payload as unknown as import("../../layers/memory/memory-repository").MemoryStoreRecord);
       break;
     case "execution_store":
-      hydrationRepos.execution.store(payload as unknown as ExecutionStoreRecord);
+      hydrationRepos.execution.store(payload as unknown as import("../../layers/execution/execution-repository").ExecutionStoreRecord);
       break;
     default:
       break;

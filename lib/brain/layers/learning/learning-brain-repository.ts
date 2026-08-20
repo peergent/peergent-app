@@ -9,6 +9,7 @@ import type {
   LearningRun,
   LearningSnapshot,
 } from "./brain-types";
+import { readLatestSnapshot } from "../../persistence/layer/snapshot-index-keys";
 
 export type LearningBrainRepository = {
   storeSnapshot(snapshot: LearningSnapshot): void;
@@ -61,7 +62,7 @@ export class InMemoryLearningBrainRepository implements LearningBrainRepository 
     projectId?: string;
     campaignId?: string;
   }): LearningSnapshot | null {
-    return this.snapshots.get(`latest:${this.indexKey(input)}`) ?? null;
+    return readLatestSnapshot(this.snapshots, input);
   }
 
   storeRun(run: LearningRun): void {

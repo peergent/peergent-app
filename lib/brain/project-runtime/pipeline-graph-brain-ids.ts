@@ -8,6 +8,8 @@ export const PIPELINE_GRAPH_BRAIN_IDS: readonly ProjectBrainId[] = [
   "research",
   "reasoning",
   "marketing_intelligence",
+  "strategy",
+  "planning",
   "creative",
   "validation",
   "execution",

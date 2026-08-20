@@ -21,6 +21,11 @@ export function materializePipelineGraphsAfterCapabilityBrain(input: {
   artifacts: ProjectBrainArtifacts;
   resolvedGraphs?: Partial<ResolvedBrainOutputs>;
 }): void {
+  // PX-63D — strategy is registry-only (LLM + critical persistence). Never materialize here.
+  if (input.brainId === "strategy") {
+    return;
+  }
+
   const key = { organizationId: input.organizationId, projectId: input.projectId };
   const resolved = {
     ...(input.resolvedGraphs ?? {}),
@@ -30,15 +35,6 @@ export function materializePipelineGraphsAfterCapabilityBrain(input: {
       artifacts: input.artifacts,
     }),
   };
-
-  if (input.brainId === "strategy") {
-    materializeStrategyGraph({
-      key,
-      episodeId: input.episodeId,
-      capabilityOutput: input.capabilityOutput,
-      resolved,
-    });
-  }
 
   if (input.brainId === "planning") {
     materializePlanningGraph({

@@ -115,7 +115,24 @@ describe("PX-52 production brain adapter pipeline graph routing", () => {
     expect(capabilityMock).not.toHaveBeenCalled();
   });
 
-  it("routes strategy through BrainRuntime capability path", async () => {
+  it("routes strategy through registry executor, not legacy capability path", async () => {
+    registryMock.mockResolvedValue({
+      brainId: "strategy",
+      status: "completed",
+      output: {
+        outputRef: "strategy:org-1:str-1",
+        capabilityIds: ["strategy"],
+        decisionIds: [],
+        generatedAt: new Date().toISOString(),
+      },
+      events: [],
+      confidence: { value: 0.8, label: "high" },
+      durationMs: 1,
+      errorCode: null,
+      requiresApproval: false,
+      approvalKind: null,
+    });
+
     const adapter = createProductionBrainExecutionAdapter({
       peerId: "emma",
       project: { id: "proj-1" } as never,
@@ -135,7 +152,9 @@ describe("PX-52 production brain adapter pipeline graph routing", () => {
       idempotencyKey: "str-1",
     });
 
-    expect(capabilityMock).toHaveBeenCalled();
-    expect(registryMock).not.toHaveBeenCalled();
+    expect(registryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ brainId: "strategy" })
+    );
+    expect(capabilityMock).not.toHaveBeenCalled();
   });
 });

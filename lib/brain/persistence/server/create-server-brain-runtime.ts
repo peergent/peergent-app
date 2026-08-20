@@ -25,12 +25,17 @@ export type ServerBrainRuntime = {
   mode: BrainPersistenceMode;
   repositories: LayerRepositoryBundle;
   durable: DurablePersistencePort | null;
+  supabase: AppSupabaseClient | null;
 };
 
 let activeRuntime: ServerBrainRuntime | null = null;
 
 export function getActiveServerBrainRuntime(): ServerBrainRuntime | null {
   return activeRuntime;
+}
+
+export function getActiveSupabaseClient(): AppSupabaseClient | null {
+  return activeRuntime?.supabase ?? null;
 }
 
 export { getActiveDurablePersistence };
@@ -48,7 +53,7 @@ export function createServerBrainRuntime(input: {
 
   const durable = createDurablePersistence({ mode, supabase: input.supabase ?? null });
 
-  activeRuntime = { mode, repositories, durable };
+  activeRuntime = { mode, repositories, durable, supabase: input.supabase ?? null };
   setActiveDurablePersistence(durable);
 
   emitPersistenceDiagnostic({

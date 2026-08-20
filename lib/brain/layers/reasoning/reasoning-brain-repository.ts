@@ -9,6 +9,7 @@ import type {
   ReasoningRun,
   ReasoningSnapshot,
 } from "./brain-types";
+import { readLatestSnapshot } from "../../persistence/layer/snapshot-index-keys";
 import type { ReasoningRecord, ReasoningRecordKey, ReasoningRepository } from "./reasoning-repository";
 
 export type ReasoningBrainRepository = ReasoningRepository & {
@@ -86,7 +87,7 @@ export class InMemoryReasoningBrainRepository implements ReasoningBrainRepositor
     projectId?: string;
     campaignId?: string;
   }): ReasoningSnapshot | null {
-    return this.snapshots.get(`latest:${this.snapshotIndexKey(input)}`) ?? null;
+    return readLatestSnapshot(this.snapshots, input);
   }
 
   storeRun(run: ReasoningRun): void {
