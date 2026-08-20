@@ -14,6 +14,11 @@ import {
   MARKETING_INTELLIGENCE_LAYER_VERSION,
 } from "../layers/marketing-intelligence/types";
 import type { MarketingIntelligenceGraph } from "../layers/marketing-intelligence/types";
+import type { StrategyBrainGraph } from "../layers/strategy/brain-types";
+import type { StrategyGraph, StrategySection } from "../strategy/strategy-graph";
+import type { PlanningBrainGraph } from "../layers/planning/brain-types";
+import type { PlanningGraph, PlanningNode } from "../layers/planning/types";
+import { PLANNING_LAYER_VERSION } from "../layers/planning/types";
 
 function brainEvidenceToLegacy(
   ev: ResearchBrainEvidence,
@@ -289,5 +294,218 @@ export function bridgeMarketingIntelligenceBrainGraphToLegacy(
       insight(`mi-missing-${i}`, "Insufficient evidence", String(r), [])
     ),
     assumptions: [],
+  };
+}
+
+function toStrategySection(
+  title: string,
+  description: string,
+  evidenceIds: readonly string[] = [],
+  confidence: StrategySection["confidence"] = "medium"
+): StrategySection {
+  return {
+    title,
+    description: description.trim(),
+    confidence: description.trim() ? confidence : "low",
+    supportingEvidence: [...evidenceIds],
+    reasoningReferences: [],
+  };
+}
+
+export function bridgeStrategyBrainGraphToLegacy(graph: StrategyBrainGraph): StrategyGraph {
+  const audience =
+    graph.audienceStrategy.find((a) => a.priority === "primary") ?? graph.audienceStrategy[0];
+  const primaryProblem = graph.strategicProblems[0];
+  const createdAt = graph.createdAt;
+
+  return {
+    version: graph.version,
+    organizationId: graph.organizationId,
+    campaignId: graph.campaignId ?? graph.projectId,
+    createdAt,
+    businessSummary: toStrategySection("Business summary", graph.businessObjective),
+    strategicPositioning: toStrategySection(
+      "Strategic positioning",
+      graph.positioningStrategy.positioningStatement,
+      graph.positioningStrategy.evidenceIds
+    ),
+    valueProposition: toStrategySection(
+      "Value proposition",
+      graph.messagingStrategyDirection.primaryMessageTerritory ||
+        graph.positioningStrategy.strategicAngle,
+      graph.positioningStrategy.evidenceIds
+    ),
+    primaryAudience: toStrategySection(
+      "Primary audience",
+      audience ? `${audience.segment} — ${audience.whySelected}` : "",
+      audience?.evidenceIds ?? []
+    ),
+    secondaryAudience: graph.audienceStrategy[1]
+      ? toStrategySection(
+          "Secondary audience",
+          `${graph.audienceStrategy[1].segment} — ${graph.audienceStrategy[1].whySelected}`,
+          graph.audienceStrategy[1].evidenceIds
+        )
+      : undefined,
+    customerProblems: toStrategySection(
+      "Customer problems",
+      primaryProblem
+        ? `${primaryProblem.title}: ${primaryProblem.description}`
+        : graph.messagingStrategyDirection.objectionThemes.join("; "),
+      primaryProblem?.evidenceIds ?? []
+    ),
+    customerMotivations: toStrategySection(
+      "Customer motivations",
+      graph.messagingStrategyDirection.emotionalDirection,
+      graph.positioningStrategy.evidenceIds
+    ),
+    buyingTriggers: toStrategySection(
+      "Buying triggers",
+      graph.offerStrategyDirection.urgencyApproach,
+      graph.positioningStrategy.evidenceIds
+    ),
+    objections: toStrategySection(
+      "Objections",
+      graph.messagingStrategyDirection.objectionThemes.join("; "),
+      graph.positioningStrategy.evidenceIds
+    ),
+    differentiators: toStrategySection(
+      "Differentiators",
+      graph.positioningStrategy.differentiation.join("; "),
+      graph.positioningStrategy.evidenceIds
+    ),
+    strategicThemes: graph.strategicPriorities.slice(0, 4).map((p) =>
+      toStrategySection(p.subject, p.rationale, [], p.priority === "high" ? "high" : "medium")
+    ),
+    priorityOpportunities: graph.opportunitySelections
+      .filter((o) => o.status === "selected")
+      .slice(0, 4)
+      .map((o) => toStrategySection(o.title, o.reason, [], o.confidence)),
+    strategicRisks: graph.strategicRisks.slice(0, 4).map((r) =>
+      toStrategySection(r.description.slice(0, 80), r.impact, [], r.confidence)
+    ),
+    constraints: graph.strategicAssumptions.slice(0, 4).map((a) =>
+      toStrategySection(a.statement, a.riskIfWrong, a.evidenceIds, a.confidence)
+    ),
+    assumptions: graph.strategicAssumptions.slice(0, 4).map((a) =>
+      toStrategySection(a.statement, a.validationMethod, a.evidenceIds, a.confidence)
+    ),
+    unknowns: [],
+    evidenceSummary: toStrategySection(
+      "Evidence summary",
+      graph.strategyRationale.decisionSummary || graph.summary.headline,
+      graph.evidence.map((e) => e.id)
+    ),
+    rejectedAlternatives: graph.rejectedAlternatives.map((alt) => ({
+      alternative: alt.alternative,
+      reason: alt.reason,
+      confidence: alt.confidence,
+    })),
+    decisionRationales: graph.strategicDecisions.slice(0, 6).map((d) => ({
+      decision: d.title,
+      reason: d.reason,
+      evidence: [...d.supportingEvidence],
+      alternativesConsidered: [...d.alternativesConsidered],
+      alternativesRejected: d.alternativesConsidered.slice(0, 2).map((alt) => ({
+        alternative: alt,
+        reason: d.tradeoffs[0] ?? "Not selected",
+        confidence: d.confidence,
+      })),
+      confidence: d.confidence,
+      risks: [...d.tradeoffs],
+      unknowns: [],
+    })),
+    recommendedDirection: toStrategySection(
+      "Recommended direction",
+      graph.selectedStrategy,
+      graph.positioningStrategy.evidenceIds,
+      graph.confidence
+    ),
+    successCriteria: toStrategySection(
+      "Success criteria",
+      graph.kpiFramework
+        .slice(0, 3)
+        .map((k) => k.name)
+        .join("; "),
+      []
+    ),
+  };
+}
+
+export function bridgePlanningBrainGraphToLegacy(graph: PlanningBrainGraph): PlanningGraph {
+  const createdAt = graph.createdAt;
+  const executionStages: PlanningNode[] = graph.creativeBriefInputs.map((brief) => ({
+    id: brief.id,
+    title: `${brief.channel} — ${brief.deliverableType}`,
+    description: brief.messagingDirection,
+    businessPurpose: brief.businessOutcome,
+    reason: brief.positioningDirection,
+    priority: brief.confidence === "high" ? "high" : brief.confidence === "low" ? "low" : "medium",
+    ownerBrain: "creative",
+    dependsOn: [...brief.planningRefs],
+    blocks: [],
+    estimatedEffort: brief.deadlineWindow ?? "medium",
+    requiredInputs: [...brief.contentRequirements, ...brief.proofRequirements],
+    producedOutputs: [brief.deliverableType],
+    approvalRequired: true,
+    status: "ready",
+    confidence: brief.confidence,
+  }));
+
+  const campaign = graph.campaignPlans[0];
+
+  return {
+    version: PLANNING_LAYER_VERSION,
+    organizationId: graph.organizationId,
+    campaignId: graph.campaignId ?? graph.projectId,
+    createdAt,
+    objectives: graph.planningObjectives.map((o) => ({
+      id: o.id,
+      title: o.objective,
+      description: o.businessOutcome,
+      businessValue: o.businessOutcome,
+      successCriteria: o.successMetric,
+      linkedDecisionIds: [...o.dependencies],
+    })),
+    milestones: graph.milestones.map((m) => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      intent: m.description,
+      dependsOnNodeIds: [...m.dependencies],
+      producesLearning: m.exitCriteria[0] ?? m.description,
+    })),
+    planningDecisions: [],
+    executionStages,
+    executionOrder: executionStages.map((n) => n.id),
+    dependencies: [],
+    blockedActivities: [],
+    parallelActivities: [],
+    criticalPath: graph.criticalPath.criticalPathWorkPackages,
+    requiredAssets: [],
+    requiredKnowledge: [],
+    requiredCustomerInput: [],
+    requiredIntegrations: [],
+    reviewMoments: [],
+    successCriteria: campaign ? [...campaign.successMetrics] : [],
+    readiness: {
+      level: "ready",
+      score: 85,
+      summary: graph.projectPlan.objectiveSummary,
+      blockers: [],
+      waitingFor: [],
+      checks: [],
+    },
+    risks: [],
+    unknowns: [],
+    estimatedTimeline: [],
+    dependencyAnalysis: {
+      dependencies: [],
+      criticalPath: graph.criticalPath.criticalPathWorkPackages,
+      parallelOpportunities: [],
+      missingDependencies: [],
+      circularDependencies: [],
+      unnecessaryDependencies: [],
+    },
   };
 }

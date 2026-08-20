@@ -316,6 +316,16 @@ function buildMessaging(
       ]
     : [];
 
+  const ctaFromStrategy =
+    input.strategyBrainGraph?.offerStrategyDirection.ctaType?.trim() ||
+    input.planningBrainGraph?.creativeBriefInputs[0]?.ctaType?.trim() ||
+    "";
+  const ctaFromMessaging = selectedCampaign.keyMessage.split(".").pop()?.trim() ?? "";
+  const cta =
+    ctaFromStrategy ||
+    (ctaFromMessaging.length >= 5 && ctaFromMessaging.length <= 80 ? ctaFromMessaging : "") ||
+    (nl ? "Vraag een demo aan" : "Request a demo");
+
   const messaging: CreativeMessaging = {
     id: "msg-primary",
     campaignId: selectedCampaign.id,
@@ -324,7 +334,7 @@ function buildMessaging(
       mi?.dominantMessaging?.narrative ??
       sectionText(strategy?.valueProposition) ??
       selectedCampaign.businessValue,
-    cta: nl ? "Plan een gesprek" : "Book a conversation",
+    cta,
     proof: proofPoints.slice(0, 4),
     objections: objectionPairs,
     trustBuilders: [
@@ -443,12 +453,24 @@ function buildDeliverables(
   const deliverables: CreativeDeliverable[] = channelPlans
     .map((plan, i) => {
       const type = CHANNEL_DELIVERABLE_MAP[plan.channel] ?? "campaign_concept";
+      const brief = input.planningBrainGraph?.creativeBriefInputs.find(
+        (b) => b.channel === plan.channel || b.deliverableType === type
+      );
+      const hookFromBrief = brief?.messagingDirection?.trim();
+      const hookFromStrategy =
+        input.strategyBrainGraph?.messagingStrategyDirection.primaryMessageTerritory?.trim() ||
+        input.strategyBrainGraph?.positioningStrategy.strategicAngle?.trim();
+      const hook =
+        hookFromBrief ||
+        hookFromStrategy ||
+        messaging.supportingMessage.slice(0, 200) ||
+        messaging.headline;
       return {
         id: `del-${input.projectId}-${i + 1}`,
         type,
         channel: plan.channel,
         headline: messaging.headline,
-        hook: nl ? "Herken het probleem voordat je de oplossing noemt." : "Name the problem before the solution.",
+        hook,
         bodyOutline: messaging.supportingMessage.slice(0, 300),
         cta: messaging.cta,
         headlineVariations: [

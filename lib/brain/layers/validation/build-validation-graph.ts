@@ -15,6 +15,7 @@ import {
 } from "./scoring";
 import { materializeCreativeContentArtifacts } from "../creative/materialize-creative-content-artifacts";
 import { evaluateCreativePublicationInvariants } from "../../approval/publication-readiness-invariants";
+import { containsCreativeTemplatePlaceholder } from "../creative/creative-placeholder-markers";
 import type {
   BrandRisk,
   BusinessRisk,
@@ -496,6 +497,28 @@ function evaluateCreativeQuality(ctx: EvalContext): DomainEvaluation {
   const genericHooks = countGenericPatterns(copy, GENERIC_HOOK_PATTERNS);
   const warnings: ValidationWarning[] = [];
   const passes: ValidationPass[] = [];
+  const issues: ValidationIssue[] = [];
+
+  const primaryCopy = [
+    ...creative.deliverables.map((d) => [d.hook, d.cta, d.bodyOutline].join(" ")),
+    ...creative.messaging.map((m) => [m.headline, m.supportingMessage, m.cta].join(" ")),
+    ...(creative.contentArtifacts ?? []).map((a) => [a.hook, a.body, a.cta].join(" ")),
+  ].join(" ");
+
+  if (containsCreativeTemplatePlaceholder(primaryCopy)) {
+    issues.push({
+      id: uid("cq-placeholder", 1),
+      category: "creative_quality",
+      severity: "critical",
+      reason: nl
+        ? "Sjabloon-placeholder gedetecteerd — geen publicatieklare creatieve content."
+        : "Template placeholder detected — not publication-ready creative content.",
+      businessImpact: nl ? "Publicatie moet worden geblokkeerd." : "Publication must be blocked.",
+      suggestedResolution: nl ? "Regenereer creatieve assets via LLM." : "Regenerate creative assets via LLM.",
+      blocking: true,
+      deliverableId: creative.deliverables[0]?.id,
+    });
+  }
 
   let score = Math.max(45, 88 - genericHooks * 12);
 
@@ -527,7 +550,7 @@ function evaluateCreativeQuality(ctx: EvalContext): DomainEvaluation {
       false,
       score < 50
     ),
-    issues: [],
+    issues,
     warnings,
     passes,
     businessRisks: [],

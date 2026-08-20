@@ -6,6 +6,9 @@
 import type { CreativeContentArtifact } from "../layers/creative/materialize-creative-content-artifacts";
 import type { CreativeGraph } from "../layers/creative/types";
 import type { ValidationGraph } from "../layers/validation/types";
+import {
+  containsCreativeTemplatePlaceholder,
+} from "../layers/creative/creative-placeholder-markers";
 
 export type PublicationInvariantIssue = {
   code: string;
@@ -126,6 +129,21 @@ export function evaluateCreativePublicationInvariants(input: {
         message: nl
           ? `Test/fixture-inhoud gedetecteerd (${contamination}).`
           : `Test/fixture content detected (${contamination}).`,
+        blocking: true,
+      });
+    }
+
+    if (
+      containsCreativeTemplatePlaceholder(artifact.hook) ||
+      containsCreativeTemplatePlaceholder(artifact.body) ||
+      containsCreativeTemplatePlaceholder(artifact.cta)
+    ) {
+      issues.push({
+        code: "creative_template_placeholder",
+        message: nl
+          ? "Creatieve content bevat sjabloon-placeholder — geen publicatieklare copy."
+          : "Creative content contains template placeholder — not publication-ready copy.",
+        deliverableId: artifact.sourceDeliverableId,
         blocking: true,
       });
     }

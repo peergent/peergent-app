@@ -1,4 +1,5 @@
-import { buildCreativeGraph, type CreativeBrainInput } from "./build-creative-graph";
+import { produceCreativeBrainGraph } from "./produce-creative-brain-graph";
+import type { CreativeBrainInput } from "./build-creative-graph";
 import type { CreativeRepository } from "./creative-repository";
 import { getDefaultCreativeRepository } from "./creative-repository";
 import { mapCreativeGraphToBrainOutput } from "./map-creative-graph-to-output";
@@ -15,7 +16,7 @@ export type CreativeLayerResult = {
 
 /**
  * Creative Brain Layer — transforms business understanding into structured creative direction.
- * Does NOT publish, execute, or optimize.
+ * PX-64 — production uses LLM-generated channel-ready assets.
  */
 export class CreativeLayer {
   constructor(private readonly repository: CreativeRepository = getDefaultCreativeRepository()) {}
@@ -24,8 +25,8 @@ export class CreativeLayer {
     return CREATIVE_MODULE_SPECS;
   }
 
-  buildGraph(input: CreativeBrainInput): CreativeLayerResult {
-    const graph = buildCreativeGraph(input);
+  async buildGraph(input: CreativeBrainInput): Promise<CreativeLayerResult> {
+    const graph = await produceCreativeBrainGraph(input);
     const validation = validateCreativeGraph(graph);
     const structuredOutput = mapCreativeGraphToBrainOutput({
       graph,
@@ -36,8 +37,8 @@ export class CreativeLayer {
     return { graph, validation, structuredOutput, outputRef };
   }
 
-  produceAndStore(input: CreativeBrainInput): CreativeLayerResult {
-    const result = this.buildGraph(input);
+  async produceAndStore(input: CreativeBrainInput): Promise<CreativeLayerResult> {
+    const result = await this.buildGraph(input);
     this.repository.store({
       key: {
         organizationId: input.organizationId,
@@ -61,6 +62,6 @@ export function createCreativeLayer(repository?: CreativeRepository): CreativeLa
   return new CreativeLayer(repository);
 }
 
-export function collectCreativeGraph(input: CreativeBrainInput): CreativeGraph {
-  return buildCreativeGraph(input);
+export async function collectCreativeGraph(input: CreativeBrainInput): Promise<CreativeGraph> {
+  return produceCreativeBrainGraph(input);
 }

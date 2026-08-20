@@ -1,6 +1,6 @@
 /**
  * Creative Brain Executor — runs seven thinking phases and returns BrainResult.
- * First production Brain implementing ProjectBrainContract.
+ * PX-64 — production path uses OpenAI via produceCreativeBrainGraph.
  */
 
 import type {
@@ -13,6 +13,8 @@ import type {
 import type { CreativeBrainInput, CreativeBrainOutput } from "./types";
 import { CreativeLayer } from "./creative-layer";
 import { validateCreativeGraph } from "./creative-validator";
+import { IntelligenceLlmUnavailableError } from "../../llm/intelligence-llm-errors";
+import { appendCreativeLlmAuditEvent } from "../../project-runtime/creative-persistence-audit";
 
 export type CreativeBrainPayload = CreativeBrainInput;
 
@@ -43,20 +45,29 @@ function phaseEvents(output: CreativeBrainOutput, nl: boolean): BrainEvent[] {
   }));
 }
 
+function fail(started: number, code: string): BrainResult<BrainOutput> {
+  return {
+    brainId: "creative",
+    status: "failed",
+    output: null,
+    events: [],
+    confidence: null,
+    durationMs: Date.now() - started,
+    errorCode: code,
+    requiresApproval: false,
+    approvalKind: null,
+  };
+}
+
 /** Executes Creative Brain from assembled brain input. */
 export class CreativeBrainExecutor {
   constructor(private readonly layer = new CreativeLayer()) {}
 
-  execute(input: CreativeBrainInput): CreativeBrainOutput {
-    const result = this.layer.produceAndStore(input);
-    return {
-      graph: result.graph,
-      structuredOutput: result.structuredOutput,
-      outputRef: result.outputRef,
-    };
+  execute(input: CreativeBrainInput): Promise<CreativeBrainOutput> {
+    return this.layer.produceAndStore(input);
   }
 
-  executeFromContract(brainInput: BrainInput<CreativeBrainPayload>): BrainResult<BrainOutput> {
+  async executeFromContract(brainInput: BrainInput<CreativeBrainPayload>): Promise<BrainResult<BrainOutput>> {
     const started = Date.now();
     const nl = brainInput.context.locale === "nl";
     const payload = brainInput.payload ?? ({} as CreativeBrainPayload);
@@ -69,58 +80,72 @@ export class CreativeBrainExecutor {
       locale: brainInput.context.locale,
     };
 
-    if (!creativeInput.strategyGraph && !creativeInput.campaignContext) {
-      return {
-        brainId: "creative",
-        status: "failed",
-        output: null,
-        events: [],
-        confidence: null,
-        durationMs: Date.now() - started,
-        errorCode: "missing_upstream_context",
-        requiresApproval: false,
-        approvalKind: null,
-      };
+    const hasUpstream =
+      creativeInput.strategyGraph ||
+      creativeInput.strategyBrainGraph ||
+      creativeInput.campaignContext;
+
+    if (!hasUpstream) {
+      return fail(started, "missing_upstream_context");
     }
 
-    const output = this.execute(creativeInput);
-    const validation = validateCreativeGraph(output.graph);
+    try {
+      const output = await this.execute(creativeInput);
+      const validation = validateCreativeGraph(output.graph);
 
-    if (!validation.valid) {
+      if (!validation.valid) {
+        return {
+          brainId: "creative",
+          status: "failed",
+          output: null,
+          events: phaseEvents(output, nl),
+          confidence: { value: 0.3, label: "low" },
+          durationMs: Date.now() - started,
+          errorCode: "creative_validation_failed",
+          requiresApproval: false,
+          approvalKind: null,
+        };
+      }
+
+      await appendCreativeLlmAuditEvent({
+        correlationId: brainInput.context.episodeId ?? brainInput.context.projectId,
+        payload: {
+          organizationId: brainInput.context.organizationId,
+          projectId: brainInput.context.projectId,
+          episodeId: brainInput.context.episodeId,
+          graphRef: output.outputRef,
+          providerMeta: output.graph.providerMeta ?? null,
+          durationMs: Date.now() - started,
+        },
+      });
+
+      const brainOutput: BrainOutput = {
+        outputRef: output.outputRef,
+        capabilityIds: ["creative_generation"],
+        decisionIds: output.graph.decisions.map((d) => d.id),
+        generatedAt: output.graph.createdAt,
+      };
+
       return {
         brainId: "creative",
-        status: "failed",
-        output: null,
+        status: "completed",
+        output: brainOutput,
         events: phaseEvents(output, nl),
-        confidence: { value: 0.3, label: "low" },
+        confidence: {
+          value: confidenceValue(output.graph.confidence),
+          label: output.graph.confidence,
+        },
         durationMs: Date.now() - started,
-        errorCode: "creative_validation_failed",
-        requiresApproval: false,
-        approvalKind: null,
+        errorCode: null,
+        requiresApproval: true,
+        approvalKind: "deliverable_review",
       };
+    } catch (error) {
+      if (error instanceof IntelligenceLlmUnavailableError) {
+        return fail(started, error.code);
+      }
+      return fail(started, error instanceof Error ? error.message : "creative_failed");
     }
-
-    const brainOutput: BrainOutput = {
-      outputRef: output.outputRef,
-      capabilityIds: ["creative_generation"],
-      decisionIds: output.graph.decisions.map((d) => d.id),
-      generatedAt: output.graph.createdAt,
-    };
-
-    return {
-      brainId: "creative",
-      status: "completed",
-      output: brainOutput,
-      events: phaseEvents(output, nl),
-      confidence: {
-        value: confidenceValue(output.graph.confidence),
-        label: output.graph.confidence,
-      },
-      durationMs: Date.now() - started,
-      errorCode: null,
-      requiresApproval: true,
-      approvalKind: "deliverable_review",
-    };
   }
 }
 
@@ -138,6 +163,6 @@ export const creativeBrainContract: ProjectBrainContract<CreativeBrainPayload, B
   },
 };
 
-export function createFromBrainInputs(input: CreativeBrainInput): CreativeBrainOutput {
+export function createFromBrainInputs(input: CreativeBrainInput): Promise<CreativeBrainOutput> {
   return createCreativeBrainExecutor().execute(input);
 }

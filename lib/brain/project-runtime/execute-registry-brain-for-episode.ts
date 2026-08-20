@@ -15,6 +15,9 @@ import type { BrainHandoffContext, ProjectEpisodeRecord } from "./types";
 import type { ResolvedBrainOutputs } from "./brain-output-resolver";
 import { ensureCompanyGraphFromHandoff } from "./ensure-company-graph-from-handoff";
 import { emitIntelligencePipelineDiagnostic } from "./intelligence-pipeline-diagnostics";
+import { emitCreativePipelineDiagnostic } from "./creative-pipeline-diagnostics";
+import { getDefaultCreativeRepository } from "../layers/creative/creative-repository";
+import { appendCreativeLlmAuditEvent } from "./creative-persistence-audit";
 import { getDefaultResearchBrainRepository } from "../layers/research/research-brain-repository";
 import { getDefaultReasoningBrainRepository } from "../layers/reasoning/reasoning-brain-repository";
 import { getDefaultMarketingIntelligenceBrainRepository } from "../layers/marketing-intelligence/marketing-intelligence-brain-repository";
@@ -351,6 +354,75 @@ export async function executeRegistryBrainForEpisode(
       projectId: input.episode.snapshot.projectId,
       episodeId: input.episode.snapshot.episodeId,
       brainId: "strategy",
+    });
+  }
+
+  if (input.brainId === "creative") {
+    const existing =
+      resolved.creativeGraph ??
+      getDefaultCreativeRepository().getLatest({
+        organizationId: input.episode.snapshot.organizationId,
+        campaignId: input.episode.snapshot.projectId,
+      })?.graph ??
+      null;
+    if (existing) {
+      const record = getDefaultCreativeRepository().getLatest({
+        organizationId: input.episode.snapshot.organizationId,
+        campaignId: input.episode.snapshot.projectId,
+      });
+      emitCreativePipelineDiagnostic({
+        event: "creative_graph_reused",
+        organizationId: input.episode.snapshot.organizationId,
+        projectId: input.episode.snapshot.projectId,
+        episodeId: input.episode.snapshot.episodeId,
+        brainId: "creative",
+        graphReused: true,
+        providerMode: existing.providerMeta?.providerMode,
+        graphRef: record?.outputRef ?? existing.createdAt,
+      });
+      await appendCreativeLlmAuditEvent({
+        correlationId: input.episode.correlationId,
+        payload: {
+          organizationId: input.episode.snapshot.organizationId,
+          projectId: input.episode.snapshot.projectId,
+          episodeId: input.episode.snapshot.episodeId,
+          graphRef: record?.outputRef ?? `creative:${input.episode.snapshot.organizationId}:${existing.createdAt}`,
+          providerMeta: existing.providerMeta ?? null,
+          graphReused: true,
+        },
+      });
+      input.episode.resolvedGraphs = {
+        ...input.episode.resolvedGraphs,
+        creativeGraph: existing,
+      };
+      return {
+        brainId: "creative",
+        status: "completed",
+        output: {
+          outputRef:
+            record?.outputRef ??
+            `creative:${input.episode.snapshot.organizationId}:${input.episode.snapshot.projectId}:${existing.createdAt}`,
+          capabilityIds: ["creative_generation"],
+          decisionIds: existing.decisions.map((d) => d.id),
+          generatedAt: existing.createdAt,
+        },
+        events: [],
+        confidence: {
+          value: existing.confidence === "high" ? 0.85 : existing.confidence === "medium" ? 0.65 : 0.45,
+          label: existing.confidence,
+        },
+        durationMs: Date.now() - started,
+        errorCode: null,
+        requiresApproval: true,
+        approvalKind: "deliverable_review",
+      };
+    }
+    emitCreativePipelineDiagnostic({
+      event: "creative_llm_started",
+      organizationId: input.episode.snapshot.organizationId,
+      projectId: input.episode.snapshot.projectId,
+      episodeId: input.episode.snapshot.episodeId,
+      brainId: "creative",
     });
   }
 

@@ -6,6 +6,13 @@ import type { ProjectBrainId } from "../project-engine/types";
 import type { BrainHandoffContext } from "./types";
 import type { ResolvedBrainOutputs } from "./brain-output-resolver";
 import { proposalsFromLearningGraph } from "./learning-memory-handoff";
+import {
+  bridgeMarketingIntelligenceBrainGraphToLegacy,
+  bridgePlanningBrainGraphToLegacy,
+  bridgeReasoningBrainGraphToLegacy,
+  bridgeResearchBrainGraphToLegacy,
+  bridgeStrategyBrainGraphToLegacy,
+} from "../integration/bridge-brain-graphs-to-legacy";
 
 export function buildBrainPayload(
   brainId: ProjectBrainId,
@@ -85,11 +92,30 @@ export function buildBrainPayload(
     case "creative":
       return {
         campaignContext: handoff.campaignContext,
-        strategyGraph: strategyBrainGraph,
-        planningGraph: planningBrainGraph,
-        marketingIntelligence: marketingIntelligenceBrainGraph,
-        researchGraph: researchBrainGraph,
-        reasoningGraph: reasoningBrainGraph,
+        brandGraph: handoff.brandGraph,
+        locale: handoff.locale,
+        peerId: handoff.peerId,
+        companyGraph,
+        strategyBrainGraph,
+        planningBrainGraph,
+        marketingIntelligenceBrainGraph,
+        researchBrainGraph,
+        reasoningBrainGraph,
+        strategyGraph: strategyBrainGraph
+          ? bridgeStrategyBrainGraphToLegacy(strategyBrainGraph)
+          : null,
+        planningGraph: planningBrainGraph
+          ? bridgePlanningBrainGraphToLegacy(planningBrainGraph)
+          : null,
+        marketingIntelligence: marketingIntelligenceBrainGraph
+          ? bridgeMarketingIntelligenceBrainGraphToLegacy(marketingIntelligenceBrainGraph)
+          : null,
+        researchGraph: researchBrainGraph
+          ? bridgeResearchBrainGraphToLegacy(researchBrainGraph)
+          : null,
+        reasoningGraph: reasoningBrainGraph
+          ? bridgeReasoningBrainGraphToLegacy(reasoningBrainGraph)
+          : null,
         companySummary: companyGraph?.nodes?.[0]?.label,
         audienceSummary: handoff.campaignContext.audience,
       };

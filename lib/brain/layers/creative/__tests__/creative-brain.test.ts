@@ -192,8 +192,8 @@ describe("Creative Brain", () => {
     expect(validation.score).toBeGreaterThan(70);
   });
 
-  it("produces structured brain output with creativeGraph", () => {
-    const output = createFromBrainInputs(pipelineCreativeInput());
+  it("produces structured brain output with creativeGraph", async () => {
+    const output = await createFromBrainInputs(pipelineCreativeInput());
     expect(output.outputRef).toMatch(/^creative:/);
     expect(output.structuredOutput.creativeGraph).toBeDefined();
     expect(output.structuredOutput.findings.length).toBeGreaterThan(3);
@@ -238,8 +238,8 @@ describe("Creative Brain", () => {
     expect(registry.creative?.requiredContextSlices).toContain("brand");
   });
 
-  it("never returns plain text only — deliverables are structured", () => {
-    const graph = collectCreativeGraph(pipelineCreativeInput());
+  it("never returns plain text only — deliverables are structured", async () => {
+    const graph = await collectCreativeGraph(pipelineCreativeInput());
     for (const del of graph.deliverables) {
       expect(del.headlineVariations.length).toBeGreaterThan(0);
       expect(del.ctaVariations.length).toBeGreaterThan(0);

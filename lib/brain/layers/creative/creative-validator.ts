@@ -1,4 +1,8 @@
 import type { CreativeGraph } from "./types";
+import {
+  containsCreativeTemplatePlaceholder,
+  findCreativePlaceholderIssues,
+} from "./creative-placeholder-markers";
 
 export type CreativeValidationIssue = {
   code: string;
@@ -87,7 +91,49 @@ export function validateCreativeGraph(graph: CreativeGraph): CreativeValidationR
           severity: "error",
         });
       }
+      for (const code of findCreativePlaceholderIssues({
+        headline: artifact.headline,
+        hook: artifact.hook,
+        body: artifact.body,
+        cta: artifact.cta,
+        subject: artifact.subject,
+      })) {
+        issues.push({
+          code,
+          message: `Content artifact ${artifact.id} contains template placeholder copy.`,
+          severity: "error",
+        });
+      }
     }
+  }
+
+  for (const deliverable of graph.deliverables) {
+    if (
+      containsCreativeTemplatePlaceholder(deliverable.hook) ||
+      containsCreativeTemplatePlaceholder(deliverable.cta) ||
+      containsCreativeTemplatePlaceholder(deliverable.bodyOutline)
+    ) {
+      issues.push({
+        code: "deliverable_template_placeholder",
+        message: `Deliverable ${deliverable.id} contains deterministic template copy.`,
+        severity: "error",
+      });
+    }
+    if (deliverable.reviewStatus === "planned") {
+      issues.push({
+        code: "deliverable_plan_only",
+        message: `Deliverable ${deliverable.id} is a plan, not final creative.`,
+        severity: "error",
+      });
+    }
+  }
+
+  if (graph.providerMeta?.providerMode === "live_llm" && graph.providerMeta.fallbackUsed) {
+    issues.push({
+      code: "creative_live_llm_fallback",
+      message: "Production creative marked fallbackUsed while claiming live_llm.",
+      severity: "error",
+    });
   }
 
   const errors = issues.filter((i) => i.severity === "error");

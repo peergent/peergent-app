@@ -141,6 +141,8 @@ export type CreativeGraph = {
   readonly estimatedBusinessImpact: string;
   /** PX-57 — materialized publication-ready content derived from specs + messaging. */
   readonly contentArtifacts?: readonly import("./materialize-creative-content-artifacts").CreativeContentArtifact[];
+  /** PX-64 — provider metadata for Creative LLM execution. */
+  readonly providerMeta?: import("../../llm/intelligence-provider-metadata").IntelligenceProviderMetadata;
 };
 
 /** Input to Creative Brain — assembled from Project Engine context + upstream brains. */
@@ -160,6 +162,15 @@ export type CreativeBrainInput = {
   readonly companySummary?: string;
   readonly audienceSummary?: string;
   readonly correlationId?: string;
+  /** PX-64 — canonical upstream brain graphs for LLM context. */
+  readonly strategyBrainGraph?: import("../strategy/brain-types").StrategyBrainGraph | null;
+  readonly planningBrainGraph?: import("../planning/brain-types").PlanningBrainGraph | null;
+  readonly marketingIntelligenceBrainGraph?: import("../marketing-intelligence/brain-types").MarketingIntelligenceBrainGraph | null;
+  readonly researchBrainGraph?: import("../research/brain-types").ResearchBrainGraph | null;
+  readonly reasoningBrainGraph?: import("../reasoning/brain-types").ReasoningBrainGraph | null;
+  readonly companyGraph?: import("../company/types").CompanyGraph | null;
+  readonly peerId?: string;
+  readonly llmProvider?: import("../../llm/provider").BrainLlmProvider;
 };
 
 /** Full Creative Brain output — graph + structured brain output handle. */

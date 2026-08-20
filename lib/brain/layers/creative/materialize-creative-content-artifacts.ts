@@ -182,6 +182,10 @@ export function materializeCreativeContentArtifacts(
   graph: CreativeGraph,
   input: { locale?: "nl" | "en"; audience?: string } = {}
 ): readonly CreativeContentArtifact[] {
+  if (graph.contentArtifacts?.length) {
+    return graph.contentArtifacts;
+  }
+
   const nl = input.locale === "nl";
   const messaging = graph.messaging[0];
   if (!messaging || graph.deliverables.length === 0) return [];
